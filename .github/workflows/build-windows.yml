@@ -8,11 +8,10 @@ name: Build Windows EXE
 on:
   workflow_dispatch: {}          # run on demand from the Actions tab
   push:
+    branches:
+      - "claude/artificial-life-evolution-sim-cnmdm9"   # auto-build on our branch
     tags:
       - "v*"                      # tagging a version also publishes a Release
-    paths:
-      - "standalone/evolution_lab.py"
-      - ".github/workflows/build-windows.yml"
 
 permissions:
   contents: write                 # needed to attach the .exe to a Release
