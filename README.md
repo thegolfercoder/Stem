@@ -139,7 +139,21 @@ python -m scripts.capture_animation --color species --ticks 400 --seed 7
 Drives the real Pygame viewer off-screen and writes an animated GIF — handy for
 slides and posters. `--color` picks `diet`, `species`, or `genome` colouring.
 
-### 4. Export for Blender 3D rendering
+### 4. Real-time in the browser (no install — great for exhibitions)
+
+```bash
+python -m scripts.build_web             # bundle the engine into web/evosim_pkg.js
+python -m http.server -d web 8000       # then open http://localhost:8000
+```
+
+Runs the **actual Python engine live in the browser** via Pyodide
+(CPython→WebAssembly), drawing to an HTML canvas with play/pause, speed,
+colour-mode, seed and brain controls. Nothing to install on the presentation
+machine — open a URL on any laptop or tablet and press Play. Deploy the `web/`
+folder to any static host (GitHub Pages, Netlify, …) to share a link. See
+[`web/README.md`](web/README.md) for hosting and offline setup.
+
+### 5. Export for Blender 3D rendering
 
 ```bash
 python -m scripts.export_blender --ticks 1200 --every 2
@@ -191,6 +205,7 @@ seam. Set `brain = "rule"` for the transparent heuristic control group.
 - [x] Vectorized perception — ~6× faster (thousand-generation runs in seconds)
 - [x] Blender frame export + importer
 - [x] Off-screen GIF recorder for talks/exhibitions
+- [x] In-browser real-time viewer (real engine via Pyodide/WebAssembly, no install)
 - [ ] Full NEAT (topology-evolving) via `neat-python`
 - [ ] Phylogenetic tree reconstruction and export
 
