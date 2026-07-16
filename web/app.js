@@ -167,17 +167,49 @@ function pullFrame() {
   };
 }
 
+// --- Clinical palette helpers -------------------------------------------
+// A restrained, desaturated look: muted specimen dots on a sterile light plate.
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// Diverging diet ramp: teal (herbivore) -> slate -> crimson (carnivore).
+function dietColor(t) {
+  const H = [43, 122, 120], M = [120, 132, 145], C = [168, 50, 70];
+  let r, g, b;
+  if (t < 0.5) { const u = t / 0.5; r = lerp(H[0], M[0], u); g = lerp(H[1], M[1], u); b = lerp(H[2], M[2], u); }
+  else { const u = (t - 0.5) / 0.5; r = lerp(M[0], C[0], u); g = lerp(M[1], C[1], u); b = lerp(M[2], C[2], u); }
+  return `rgb(${r | 0},${g | 0},${b | 0})`;
+}
+
+// Desaturate an engine-assigned colour toward its luminance and cap its
+// lightness, so species/genome hues stay distinct but muted and legible on the
+// light plate.
+function muted(r, g, b) {
+  const luma = 0.3 * r + 0.59 * g + 0.11 * b, a = 0.5;
+  let R = r + (luma - r) * a, G = g + (luma - g) * a, B = b + (luma - b) * a;
+  const m = Math.max(R, G, B);
+  if (m > 190) { const k = 190 / m; R *= k; G *= k; B *= k; }
+  return `rgb(${R | 0},${G | 0},${B | 0})`;
+}
+
 function draw(f) {
   const ctx = els.ctx;
   const W = els.canvas.width, H = els.canvas.height;
   const sx = W / world.width, sy = H / world.height;
   const s = Math.min(sx, sy);
 
-  ctx.fillStyle = "#0f1116";
+  // Sterile plate + faint measurement grid.
+  ctx.fillStyle = "#e9edf1";
   ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(31,42,51,0.05)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const grid = 48;
+  for (let gx = grid; gx < W; gx += grid) { ctx.moveTo(gx + 0.5, 0); ctx.lineTo(gx + 0.5, H); }
+  for (let gy = grid; gy < H; gy += grid) { ctx.moveTo(0, gy + 0.5); ctx.lineTo(W, gy + 0.5); }
+  ctx.stroke();
 
-  // Plants — tiny green squares (cheap for thousands).
-  ctx.fillStyle = "#4fb04f";
+  // Plants — muted sage squares (cheap for thousands).
+  ctx.fillStyle = "#7ba586";
   const food = f.food;
   for (let k = 0; k < food.length; k += 2) {
     ctx.fillRect(food[k] * sx - 1, food[k + 1] * sy - 1, 2, 2);
@@ -185,6 +217,7 @@ function draw(f) {
 
   // Organisms.
   const meta = f.meta, gcol = f.gcol, scol = f.scol;
+  ctx.lineWidth = 1;
   for (let i = 0; i < f.n; i++) {
     const m = i * 5, c = i * 3;
     const x = meta[m] * sx, y = meta[m + 1] * sy;
@@ -193,17 +226,17 @@ function draw(f) {
 
     let fill;
     if (colorMode === "species") {
-      fill = `rgb(${scol[c]},${scol[c + 1]},${scol[c + 2]})`;
+      fill = muted(scol[c], scol[c + 1], scol[c + 2]);
     } else if (colorMode === "genome") {
-      fill = `rgb(${gcol[c]},${gcol[c + 1]},${gcol[c + 2]})`;
-    } else { // diet: green herbivore -> red carnivore
-      fill = `rgb(${Math.round(255 * diet)},${Math.round(200 * (1 - diet))},60)`;
+      fill = muted(gcol[c], gcol[c + 1], gcol[c + 2]);
+    } else { // diet: teal herbivore -> crimson carnivore
+      fill = dietColor(diet);
     }
 
     if (showVision) {
       // vision radius (in world units) is size-independent; approximate with a
       // faint ring scaled from the organism's drawn radius for a visual cue.
-      ctx.strokeStyle = "rgba(120,130,190,0.25)";
+      ctx.strokeStyle = "rgba(15,118,110,0.18)";
       ctx.beginPath();
       ctx.arc(x, y, r * 6, 0, Math.PI * 2);
       ctx.stroke();
@@ -213,6 +246,9 @@ function draw(f) {
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
+    // Thin hairline keeps every specimen legible on the light plate.
+    ctx.strokeStyle = "rgba(31,42,51,0.35)";
+    ctx.stroke();
   }
 
   els.tick.textContent = f.tick;
