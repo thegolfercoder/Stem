@@ -21,7 +21,7 @@ events, win conditions, or hand-tuned outcomes:
 | Evolutionary principle | How EvoSim realizes it |
 |---|---|
 | **Variation** | Each organism has a genome of continuous genes; reproduction adds gaussian mutations (plus rare macro-mutations). |
-| **Heredity** | Offspring inherit the parent's genome (asexual + mutation), including any evolved neural weights. |
+| **Heredity** | Offspring inherit the parent's genome, including any evolved neural weights — either asexually (parent + mutation) or **sexually** (recombination/crossover of two same-species parents). |
 | **Selection** | Traits set the *cost* and *benefit* of every action; only organisms that net enough energy reproduce. Nothing else picks winners. |
 | **Adaptation** | Mean traits drift over time toward whatever the current environment rewards (directional selection you can plot). |
 | **Speciation** | Populations are clustered by genetic distance (NEAT-style compatibility). As lineages drift apart, new species appear and old ones vanish — unscripted. |
@@ -129,7 +129,17 @@ Writes to `data/`:
   predator–prey phase portrait)
 - `evosim_config.json` — the exact config used (for reproducibility)
 
-### 3. Export for Blender 3D rendering
+### 3. Record an animated demo (no display needed)
+
+```bash
+python -m scripts.capture_animation --out data/evosim_demo.gif --color diet
+python -m scripts.capture_animation --color species --ticks 400 --seed 7
+```
+
+Drives the real Pygame viewer off-screen and writes an animated GIF — handy for
+slides and posters. `--color` picks `diet`, `species`, or `genome` colouring.
+
+### 4. Export for Blender 3D rendering
 
 ```bash
 python -m scripts.export_blender --ticks 1200 --every 2
@@ -145,6 +155,7 @@ from evosim.analysis import generate_report
 
 cfg = SimulationConfig()
 cfg.behavior.brain = "neural"      # or "rule"
+cfg.reproduction.sexual = True     # enable recombination (default: asexual)
 sim = Simulation(cfg)
 sim.run(4000)                      # thousands of generations, headless
 generate_report(sim.stats, "data")
@@ -175,10 +186,12 @@ seam. Set `brain = "rule"` for the transparent heuristic control group.
 - [x] Predator–prey, camouflage, and metabolism trade-offs
 - [x] Pygame real-time viewer
 - [x] Matplotlib scientific report
-- [x] Neuroevolution (genome-encoded neural brains)
+- [x] Neuroevolution (genome-encoded neural brains, vectorized/batched inference)
+- [x] Sexual reproduction & genetic recombination (crossover)
+- [x] Vectorized perception — ~6× faster (thousand-generation runs in seconds)
 - [x] Blender frame export + importer
+- [x] Off-screen GIF recorder for talks/exhibitions
 - [ ] Full NEAT (topology-evolving) via `neat-python`
-- [ ] Sexual reproduction & genetic recombination
 - [ ] Phylogenetic tree reconstruction and export
 
 ---

@@ -82,6 +82,12 @@ class ReproductionConfig:
     macro_mutation_scale: float = 0.45
     # Minimum cool-down (ticks) between reproductions for one organism.
     cooldown: int = 40
+    # Sexual reproduction: offspring genomes are a recombination (crossover) of
+    # two same-species parents, adding a second engine of variation. When no
+    # compatible mate is nearby, reproduction falls back to asexual + mutation.
+    sexual: bool = False
+    # How far an organism will look for a mate (world units).
+    mate_radius: float = 35.0
 
 
 @dataclass

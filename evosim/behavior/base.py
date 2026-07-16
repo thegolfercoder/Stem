@@ -50,6 +50,20 @@ class Brain:
     uses_weights: bool = False
     #: size of the flat weight vector each genome must carry (0 if none)
     weight_size: int = 0
+    #: whether :meth:`decide_batch` can score the whole population at once
+    supports_batch: bool = False
 
     def decide(self, perception: np.ndarray, organism) -> np.ndarray:
         raise NotImplementedError
+
+    def decide_batch(self, perceptions: np.ndarray, organisms: list) -> np.ndarray:
+        """Vectorized decisions for a whole population.
+
+        ``perceptions`` is an ``(n, PERCEPTION_SIZE)`` array aligned with
+        ``organisms``; returns an ``(n, ACTION_SIZE)`` array. The default falls
+        back to calling :meth:`decide` per organism, so any brain works even if
+        it hasn't implemented a fast path.
+        """
+        return np.array(
+            [self.decide(perceptions[i], org) for i, org in enumerate(organisms)]
+        )

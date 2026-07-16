@@ -43,3 +43,16 @@ def test_neural_weights_present_when_requested():
     assert g.weights is not None and g.weights.shape == (50,)
     child = g.mutate(rng, ReproductionConfig())
     assert child.weights is not None and child.weights.shape == (50,)
+
+
+def test_crossover_inherits_from_both_parents():
+    rng = np.random.default_rng(5)
+    a = Genome.random(rng, weight_size=20)
+    b = Genome.random(rng, weight_size=20)
+    child = a.crossover(b, rng)
+    # Every gene must come from one parent or the other (no new values).
+    from_a = child.genes == a.genes
+    from_b = child.genes == b.genes
+    assert np.all(from_a | from_b)
+    assert child.weights.shape == a.weights.shape
+    assert child.generation == max(a.generation, b.generation) + 1

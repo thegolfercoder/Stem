@@ -57,6 +57,35 @@ def test_species_emerge():
     assert sim.species_tracker.count >= 1
 
 
+def test_batched_neural_matches_per_organism():
+    # The vectorized decide_batch must be numerically identical to looping decide.
+    from evosim.behavior import make_brain
+    from evosim.behavior.base import PERCEPTION_SIZE
+    from evosim.config import BehaviorConfig
+
+    sim = Simulation(small_config(seed=4))
+    for _ in range(10):
+        sim.step()
+    brain = sim.brain
+    orgs = sim.organisms
+    perceptions = np.random.default_rng(0).random((len(orgs), PERCEPTION_SIZE))
+    batched = brain.decide_batch(perceptions, orgs)
+    looped = np.array([brain.decide(perceptions[i], o) for i, o in enumerate(orgs)])
+    assert np.allclose(batched, looped, atol=1e-9)
+
+
+def test_sexual_reproduction_runs():
+    cfg = small_config(seed=8)
+    cfg.reproduction.sexual = True
+    sim = Simulation(cfg)
+    births = 0
+    for _ in range(200):
+        sim.step()
+        births += sim.stats.records[-1]["births"]
+    assert births > 0
+    assert sim.population >= 0  # did not crash
+
+
 def test_energy_conservation_bounds():
     # Organisms never exceed their max energy capacity.
     sim = Simulation(small_config(seed=2))

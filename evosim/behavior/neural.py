@@ -31,6 +31,7 @@ class NeuralBrain(Brain):
     """A small fixed-topology MLP whose weights are evolved in the genome."""
 
     uses_weights = True
+    supports_batch = True
 
     def __init__(self, hidden_units: int = 10):
         self.n_in = PERCEPTION_SIZE
@@ -53,3 +54,28 @@ class NeuralBrain(Brain):
         # out[:2] -> heading, out[2] -> throttle mapped to 0..1
         throttle = (out[2] + 1.0) * 0.5
         return np.array([out[0], out[1], throttle])
+
+    def decide_batch(self, perceptions: np.ndarray, organisms: list) -> np.ndarray:
+        """Score the whole population in two batched matmuls.
+
+        Every organism shares this network's topology but carries its *own*
+        evolved weights, so we stack the weight vectors into per-organism weight
+        tensors and evaluate them all at once with ``einsum`` -- mathematically
+        identical to calling :meth:`decide` in a loop, but far faster for large
+        populations (this is the hot path in long, thousand-generation runs).
+        """
+        n = len(organisms)
+        if n == 0:
+            return np.empty((0, self.n_out))
+        w = np.stack([org.genome.weights for org in organisms])  # (n, weight_size)
+        w1 = w[:, : self.w1_size].reshape(n, self.n_in, self.hidden)
+        w2 = w[:, self.w1_size :].reshape(n, self.hidden + 1, self.n_out)
+
+        hidden = np.tanh(np.einsum("np,nph->nh", perceptions, w1))
+        ones = np.ones((n, 1))
+        hidden_b = np.concatenate([hidden, ones], axis=1)  # (n, hidden+1)
+        out = np.tanh(np.einsum("nh,nho->no", hidden_b, w2))  # (n, n_out)
+
+        actions = out.copy()
+        actions[:, 2] = (out[:, 2] + 1.0) * 0.5  # throttle -> 0..1
+        return actions

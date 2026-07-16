@@ -31,7 +31,9 @@
     "mutation_scale": 0.09,
     "macro_mutation_rate": 0.015,
     "macro_mutation_scale": 0.45,
-    "cooldown": 40
+    "cooldown": 40,
+    "sexual": false,
+    "mate_radius": 35.0
   },
   "speciation": {
     "compatibility_threshold": 0.32,

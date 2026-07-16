@@ -146,6 +146,32 @@ class Genome:
         diff = np.abs(self.genes - other.genes)
         return float(np.dot(diff, _WEIGHTS))
 
+    # ------------------------------------------------------- recombination ---
+    def crossover(self, other: "Genome", rng: np.random.Generator) -> "Genome":
+        """Uniform crossover with another genome (sexual reproduction).
+
+        Each gene (and each neural weight) is inherited from one parent or the
+        other with equal probability. Recombination lets beneficial mutations
+        that arose in separate lineages come together in a single offspring --
+        a distinct source of variation from point mutation alone.
+        """
+        gene_mask = rng.random(self.genes.shape) < 0.5
+        genes = np.where(gene_mask, self.genes, other.genes)
+
+        weights = None
+        if self.weights is not None and other.weights is not None:
+            wmask = rng.random(self.weights.shape) < 0.5
+            weights = np.where(wmask, self.weights, other.weights)
+        elif self.weights is not None:
+            weights = self.weights.copy()
+
+        return Genome(
+            genes=genes,
+            weights=weights,
+            generation=max(self.generation, other.generation) + 1,
+            lineage_id=self.lineage_id,
+        )
+
     def copy(self) -> "Genome":
         return Genome(
             genes=self.genes.copy(),
