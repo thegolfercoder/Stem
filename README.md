@@ -74,7 +74,7 @@ evosim/
 │   ├── pygame_renderer.py  # Real-time 2D viewer
 │   └── blender_export.py   # Serialize frames → JSON for 3D rendering
 └── analysis/
-    └── plots.py         # Matplotlib scientific report (6 panels)
+    └── plots.py         # Matplotlib scientific report (8 panels)
 
 scripts/                 # Entry points (run_simulation, run_headless, export_blender)
 blender/import_evosim.py # Blender-side importer (uses bpy; standalone)
@@ -124,9 +124,9 @@ python -m scripts.run_headless --ticks 4000 --seed 42
 
 Writes to `data/`:
 - `evosim_stats.csv` / `.json` — the full per-tick time series
-- `evosim_report.png` — a 6-panel Matplotlib report (population dynamics, trait
-  evolution, species count, trophic composition, mortality by cause, and a
-  predator–prey phase portrait)
+- `evosim_report.png` — an 8-panel Matplotlib report (population dynamics, trait evolution,
+  species count, trophic composition, mortality by cause, predator–prey phase
+  portrait, biodiversity (Shannon + genetic diversity), and trait spread)
 - `evosim_config.json` — the exact config used (for reproducibility)
 
 ### 3. Record an animated demo (no display needed)
@@ -209,7 +209,7 @@ seam. Set `brain = "rule"` for the transparent heuristic control group.
 - [x] Emergent speciation via compatibility clustering
 - [x] Predator–prey, camouflage, and metabolism trade-offs
 - [x] Pygame real-time viewer
-- [x] Matplotlib scientific report
+- [x] Matplotlib scientific report (incl. biodiversity & trait-spread metrics)
 - [x] Neuroevolution (genome-encoded neural brains, vectorized/batched inference)
 - [x] Sexual reproduction & genetic recombination (crossover)
 - [x] Vectorized perception — ~6× faster (thousand-generation runs in seconds)
@@ -220,6 +220,19 @@ seam. Set `brain = "rule"` for the transparent heuristic control group.
 - [ ] Phylogenetic tree reconstruction and export
 
 ---
+
+## Project mind map (Obsidian)
+
+Generate an Obsidian vault that maps every source file and links them along the
+*real* code dependencies (parsed from imports), so Obsidian's Graph view becomes
+an accurate mind map of the system:
+
+```bash
+python -m scripts.build_mindmap        # -> docs/obsidian/  (open as a vault)
+```
+
+Start at the **"EvoSim — Project Map"** note (it also embeds a Mermaid
+dependency graph).
 
 ## Testing
 
