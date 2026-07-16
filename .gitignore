@@ -27,3 +27,6 @@ data/*.json
 *.swp
 .idea/
 .vscode/
+
+# graphify knowledge-graph output (regenerate with: graphify . --code-only)
+graphify-out/
