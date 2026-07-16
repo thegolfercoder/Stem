@@ -31,6 +31,7 @@ WEB = ROOT / "web"
 PAGES = {
     "survival": ("survival.html", "survival.js"),
     "index": ("index.html", "app.js"),
+    "evidence": ("evidence.html", "evidence.js"),
 }
 
 
