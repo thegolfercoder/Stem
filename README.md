@@ -221,6 +221,19 @@ seam. Set `brain = "rule"` for the transparent heuristic control group.
 
 ---
 
+## Standalone mini model (one file, no dependencies)
+
+For a hand-out or a live code walkthrough, [`standalone/`](standalone/) has a
+self-contained "survival of the fittest" model in **both Python and C++** — no
+EvoSim, no numpy, just each language's standard library. A population of random
+creatures converges, on its own, onto the best-adapted trait (printed as an
+ASCII chart), demonstrating the same principle the full engine runs on.
+
+```bash
+python3 standalone/mini_evolution.py
+g++ -O2 -std=c++17 -o mini standalone/mini_evolution.cpp && ./mini
+```
+
 ## Project mind map (Obsidian)
 
 Generate an Obsidian vault that maps every source file and links them along the
