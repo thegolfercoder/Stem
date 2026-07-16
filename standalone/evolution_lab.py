@@ -309,13 +309,13 @@ def run_gui():
     from tkinter import ttk
 
     BG, PANEL, INK, MUT = "#0f1218", "#171c24", "#e7ecf3", "#93a1b0"
-    CW, CH = 760, 580
+    CW, CH, TREND_H = 760, 520, 120
 
     root = tk.Tk()
     root.title("EvoSim Lab — Evolution Sandbox")
     root.configure(bg=BG)
-    root.minsize(1040, 620)
-    root.geometry("1100x760")
+    root.minsize(1040, 660)
+    root.geometry("1120x800")
 
     world = World(CW, CH, rng=random.Random(7))
 
@@ -329,8 +329,15 @@ def run_gui():
     main = tk.Frame(root, bg=BG)
     main.pack(fill="both", expand=True)
 
-    canvas = tk.Canvas(main, width=CW, height=CH, bg="#0b0d12", highlightthickness=0)
-    canvas.pack(side="left", padx=10, pady=10)
+    left = tk.Frame(main, bg=BG)
+    left.pack(side="left", padx=10, pady=10)
+    canvas = tk.Canvas(left, width=CW, height=CH, bg="#0b0d12", highlightthickness=0)
+    canvas.pack()
+    trend = tk.Canvas(left, width=CW, height=TREND_H, bg="#0b0d12", highlightthickness=0)
+    trend.pack(pady=(8, 0))
+    tk.Label(left, text="Population (green)   ·   Average speed (orange)   — over time",
+             bg=BG, fg=MUT, font=("Helvetica", 9)).pack(anchor="w", pady=(4, 0))
+    history: list[tuple[int, float]] = []
 
     panel = tk.Frame(main, bg=PANEL, width=300)
     panel.pack(side="right", fill="y", padx=(0, 10), pady=10)
@@ -452,6 +459,29 @@ def run_gui():
             cnt.configure(text=str(n), fg=MUT if n else "#555f6c")
             lab.configure(fg=INK if n else "#555f6c")
 
+        # --- live trend graph (population + average speed over time) ---
+        history.append((st["pop"], st["avg_speed"]))
+        if len(history) > 300:
+            del history[0]
+        trend.delete("all")
+        if len(history) >= 2:
+            w, h, pad = CW, TREND_H, 6
+            npt = len(history)
+            maxpop = max(1, max(p for p, _ in history))
+            slo, shi = SPEED
+
+            def line(select, lo, hi, color):
+                coords = []
+                for k, rec in enumerate(history):
+                    v = select(rec)
+                    x = pad + k / (npt - 1) * (w - 2 * pad)
+                    y = h - pad - (v - lo) / (hi - lo) * (h - 2 * pad)
+                    coords += [x, y]
+                trend.create_line(*coords, fill=color, width=2, smooth=True)
+
+            line(lambda r: r[0], 0, maxpop, "#3f9e57")     # population
+            line(lambda r: r[1], slo, shi, "#e08a3c")      # average speed
+
     # --- live control wiring ---
     def apply_live(*_):
         world.food_mult = float(v_food.get())
@@ -473,6 +503,7 @@ def run_gui():
         world.start_pop = int(round(float(v_pop.get())))
         apply_live()
         world.reset()
+        history.clear()
         rebuild_legend()
         render()
 

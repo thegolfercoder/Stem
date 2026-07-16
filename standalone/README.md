@@ -70,3 +70,23 @@ package it into a standalone executable with PyInstaller:
 pip install pyinstaller
 pyinstaller --onefile --windowed evolution_lab.py   # -> dist/evolution_lab(.exe)
 ```
+
+### Download for Windows (.exe — no Python needed)
+
+A GitHub Actions workflow (`.github/workflows/build-windows.yml`) compiles
+`evolution_lab.py` into a standalone **`EvoSimLab.exe`** on a Windows runner, so
+anyone can run it with no Python install:
+
+1. Open the repo's **Actions** tab → **Build Windows EXE** → run it
+   (**Run workflow**), or push a version tag like `v1.0`.
+2. When it finishes, download **EvoSimLab-windows** from the run's **Artifacts**
+   (a `.zip` containing `EvoSimLab.exe`). Tagging `v*` also publishes it as a
+   **Release** asset for one-click download.
+3. Double-click `EvoSimLab.exe` on any Windows PC.
+
+Building locally on Windows instead:
+
+```bat
+pip install pyinstaller
+pyinstaller --onefile --windowed --name EvoSimLab standalone\evolution_lab.py
+```
