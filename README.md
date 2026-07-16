@@ -153,6 +153,16 @@ machine — open a URL on any laptop or tablet and press Play. Deploy the `web/`
 folder to any static host (GitHub Pages, Netlify, …) to share a link. See
 [`web/README.md`](web/README.md) for hosting and offline setup.
 
+Two front doors ship in `web/`:
+
+- **`survival.html`** — a stripped-down **"Survival of the Fittest"** view for a
+  general audience: a few large, followable creatures and scarce food, so you
+  literally watch the slow ones starve (✕) while the fast ones eat and breed.
+  One plain-English meter ("speed of the herd") climbs generation over
+  generation. No jargon. Backed by `SimulationConfig.survival()`.
+- **`index.html`** — the full scientific viewer (species, genomes, neural
+  brains, three colour modes) for the "show the proof" moment.
+
 ### 5. Export for Blender 3D rendering
 
 ```bash

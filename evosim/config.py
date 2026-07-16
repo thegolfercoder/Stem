@@ -131,6 +131,38 @@ class SimulationConfig:
     def save(self, path: str | Path) -> None:
         Path(path).write_text(json.dumps(self.to_dict(), indent=2))
 
+    # ----------------------------------------------------------- presets ---
+    @classmethod
+    def survival(cls, seed: int = 7) -> "SimulationConfig":
+        """A stripped-down 'survival of the fittest' preset for general audiences.
+
+        The full default config celebrates *biodiversity* (many species coexisting
+        in balance). This preset does the opposite: it makes one idea impossible
+        to miss -- **the fit survive and multiply, the unfit starve.**
+
+        It uses a small world with few, large, easy-to-follow creatures and
+        genuinely scarce food, so an onlooker literally watches the slow ones fail
+        to reach food and die while the fast ones eat and breed. Selection is
+        strong and directional (mean speed climbs generation over generation),
+        and the simple, transparent rule-based brain keeps behaviour explainable.
+        """
+        cfg = cls(seed=seed)
+        cfg.world.width = 900.0
+        cfg.world.height = 600.0
+        cfg.world.terrain_cells_x = 9
+        cfg.world.terrain_cells_y = 6
+        cfg.population.initial_organisms = 30
+        cfg.population.max_organisms = 80
+        cfg.food.initial_count = 90
+        cfg.food.carrying_capacity = 120
+        cfg.food.regrowth_rate = 0.11
+        cfg.food.energy_per_item = 40.0
+        cfg.energy.base_metabolic_cost = 0.5
+        cfg.reproduction.cooldown = 55
+        cfg.reproduction.sexual = False
+        cfg.behavior.brain = "rule"  # transparent + predictable for a demo
+        return cfg
+
     @classmethod
     def from_dict(cls, data: dict) -> "SimulationConfig":
         return cls(

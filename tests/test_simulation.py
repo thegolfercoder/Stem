@@ -93,3 +93,22 @@ def test_energy_conservation_bounds():
         sim.step()
         for o in sim.organisms:
             assert o.energy <= o.max_energy + 1e-6
+
+
+def test_survival_preset_selects_for_speed():
+    """The general-audience 'survival' preset should embody directional
+    selection: under genuine scarcity, mean speed rises and creatures starve
+    without the population going extinct."""
+    cfg = SimulationConfig.survival(seed=7)
+    assert cfg.behavior.brain == "rule"
+    assert cfg.population.max_organisms < 200  # few, followable creatures
+    sim = Simulation(cfg)
+    speed_start = float(np.mean([o.speed for o in sim.organisms]))
+    for _ in range(900):
+        if not sim.step():
+            break
+    assert len(sim.organisms) > 0, "population must survive the bottleneck"
+    speed_end = float(np.mean([o.speed for o in sim.organisms]))
+    assert speed_end > speed_start, "the fittest (fastest) should come to dominate"
+    starved = int(sim.stats.column("deaths_starvation").sum())
+    assert starved > 0, "scarcity should produce visible starvation deaths"

@@ -16,9 +16,13 @@ JavaScript re-implementation.
 
 | File | What it is |
 |---|---|
-| `index.html` | The page: canvas + controls + live stats. |
-| `app.js` | Pyodide loader, Python↔JS bridge, canvas renderer. |
+| `survival.html` + `survival.js` | **Survival of the Fittest** — a simple, jargon-free view for a general audience (few big creatures, scarce food, visible starvation/breeding, one "speed of the herd" meter). Best for a booth. |
+| `index.html` + `app.js` | The full scientific viewer: species/diet/genome colouring, neural vs rule brains, seed control, live trait stats. |
 | `evosim_pkg.js` | The bundled `evosim` engine source (auto-generated). |
+
+Both pages run the same real engine; they differ only in framing. Start a
+general audience on `survival.html`, then switch to `index.html` for the
+detailed science.
 
 `evosim_pkg.js` is produced from the Python package by:
 

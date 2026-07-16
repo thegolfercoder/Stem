@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Survival of the Fittest — EvoSim</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>" />
+  <style>
+    :root {
+      --bg: #eef2f4; --panel: #ffffff; --arena: #eef2f4;
+      --ink: #1f2a33; --muted: #5b6b7a; --faint: #8494a2;
+      --line: #d6dde4; --line-soft: #e4e9ee;
+      --accent: #0b5c56; --warm: #b2343c;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: var(--bg); color: var(--ink);
+      font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      display: flex; flex-direction: column; min-height: 100%;
+    }
+    header { padding: 16px 24px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+    header h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: .01em; }
+    header p { margin: 6px 0 0; color: var(--muted); font-size: 14px; max-width: 70ch; }
+    main { flex: 1; display: flex; gap: 18px; padding: 18px 24px; align-items: flex-start; flex-wrap: wrap; }
+    #stage { flex: 1 1 620px; min-width: 300px; }
+    #arena { width: 100%; display: block; background: var(--arena); border: 1px solid var(--line); border-radius: 6px; }
+    #caption {
+      margin: 12px 2px 0; font-size: 16px; line-height: 1.5; color: var(--ink);
+      min-height: 46px; font-weight: 500;
+    }
+    #status { margin: 8px 2px 0; color: var(--faint); font-size: 12.5px; font-family: var(--mono); display: flex; align-items: center; gap: 8px; }
+    .spin { width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; display: inline-block; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    aside { flex: 0 0 300px; display: flex; flex-direction: column; gap: 16px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+    .hero .label { font-size: 12px; text-transform: uppercase; letter-spacing: .09em; color: var(--faint); }
+    .hero .val { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
+    .hero .num { font-size: 40px; font-weight: 700; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .hero .arrow { font-size: 22px; }
+    .hero .sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .track { margin-top: 12px; height: 10px; background: #eef2f4; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+    .track > div { height: 100%; width: 0; background: linear-gradient(90deg, #c9d6d3, #0b5c56); transition: width .25s; }
+
+    .controls { display: flex; gap: 8px; }
+    .controls button { flex: 1; padding: 12px; font-size: 15px; font-weight: 600; border-radius: 5px; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+    .controls button:hover { border-color: var(--accent); }
+    .controls button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .controls button.primary:hover { background: #094a45; }
+    .speed-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+    .speed-row label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+    .speed-row input { flex: 1; accent-color: var(--accent); }
+    .speed-row .v { font-family: var(--mono); font-size: 13px; color: var(--muted); width: 30px; text-align: right; }
+
+    .mini { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center; }
+    .mini .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); }
+    .mini .v { font-size: 22px; font-weight: 700; font-family: var(--mono); font-variant-numeric: tabular-nums; margin-top: 2px; }
+    .mini .v.warm { color: var(--warm); }
+
+    .legend .row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+    .legend .row + .row { margin-top: 10px; }
+    .ramp { flex: 1; height: 10px; border-radius: 3px; border: 1px solid var(--line); background: linear-gradient(90deg, rgb(201,214,211), rgb(11,92,86)); }
+    .swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(31,42,51,.4); flex: none; }
+    .x { color: var(--warm); font-weight: 700; }
+    h3.card-title { margin: 0 0 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--faint); }
+    footer { padding: 10px 24px 20px; }
+    footer a { color: var(--accent); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Survival of the Fittest</h1>
+    <p>
+      Food is scarce. Each dot is a creature that must reach food to survive and
+      have babies — the slow ones can't get there in time and starve. Nobody is
+      steering this. Just watch what happens to the whole group over time.
+    </p>
+  </header>
+
+  <main>
+    <section id="stage">
+      <canvas id="arena" width="900" height="600"></canvas>
+      <p id="caption">Press Start to begin.</p>
+      <p id="status"><span id="spinner" class="spin" style="display:none"></span><span>Loading…</span></p>
+    </section>
+
+    <aside>
+      <div class="card hero">
+        <div class="label">Speed of the herd</div>
+        <div class="val">
+          <span class="num" id="speed-now">0.00</span>
+          <span class="arrow" id="speed-arrow">•</span>
+        </div>
+        <div class="sub">average of every living creature</div>
+        <div class="track"><div id="speed-bar"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="controls">
+          <button id="start" class="primary">Start</button>
+          <button id="restart">Restart</button>
+        </div>
+        <div class="speed-row">
+          <label>Time speed</label>
+          <input type="range" id="time" min="1" max="12" value="2" />
+          <span class="v" id="time-val">2×</span>
+        </div>
+      </div>
+
+      <div class="card mini">
+        <div><div class="k">Alive</div><div class="v" id="m-alive">0</div></div>
+        <div><div class="k">Starved</div><div class="v warm" id="m-starved">0</div></div>
+        <div><div class="k">Generation</div><div class="v" id="m-gen">0</div></div>
+      </div>
+
+      <div class="card legend">
+        <h3 class="card-title">How to read it</h3>
+        <div class="row"><span class="swatch" style="background:rgb(201,214,211)"></span> Slow creature</div>
+        <div class="row"><span>Slow</span><span class="ramp"></span><span>Fast</span></div>
+        <div class="row"><span class="swatch" style="background:rgb(11,92,86)"></span> Fast creature (ringed = fastest alive)</div>
+        <div class="row"><span class="x">✕</span> A creature just starved to death</div>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <a href="index.html">→ Open the full scientific viewer (species, genomes, neural brains)</a>
+  </footer>
+
+  <script src="evosim_pkg.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+  <script src="survival.js"></script>
+</body>
+</html>
