@@ -46,3 +46,27 @@ library required.
 Both files are deterministic (fixed seed), so the result is reproducible every
 run. This is the same principle the full EvoSim engine runs on — just stripped
 to its absolute core.
+
+---
+
+## Bonus: `evolution_lab.py` — a full native sandbox (also dependency-free)
+
+A complete **native desktop application** in one file, using only the standard
+library (the GUI is tkinter, which ships with Python). A living 2D world of
+colour-coded species evolves in real time — herbivores forage, carnivores hunt,
+species compete and go **extinct** on their own. Live sliders let you run
+experiments: number of species, starting population, food abundance, mutation,
+harshness, and simulation speed.
+
+```bash
+python3 evolution_lab.py
+```
+
+Nothing to install. The simulation core (`World`) has no GUI dependency, so it
+can also be imported and driven headless. To hand it to someone without Python,
+package it into a standalone executable with PyInstaller:
+
+```bash
+pip install pyinstaller
+pyinstaller --onefile --windowed evolution_lab.py   # -> dist/evolution_lab(.exe)
+```
