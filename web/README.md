@@ -33,6 +33,23 @@ python -m scripts.build_web      # regenerate after changing the engine
 Re-run that whenever you change anything under `evosim/` so the browser build
 stays in sync with the engine.
 
+## Single-file build (double-click, no server)
+
+Compile the whole viewer into one self-contained `.html` you can download and
+open directly (`file://`) — nothing to serve, no sibling files:
+
+```bash
+python -m scripts.build_web          # refresh the engine bundle
+python -m scripts.build_single       # -> dist/index.html  (Survival view)
+python -m scripts.build_single --page index   # or the full scientific viewer
+```
+
+Our engine + front-end are inlined into the file. The Pyodide runtime
+(CPython+NumPy, ~15 MB) still streams from its CDN on the **first** open (too
+large to embed in a clickable file) and is cached afterwards — so the single
+file needs internet once, then runs offline from cache. For a guaranteed
+no-internet booth, use the vendored-Pyodide setup below instead.
+
 ## Run it locally
 
 Pyodide needs the files served over HTTP (not opened with `file://`), so use
