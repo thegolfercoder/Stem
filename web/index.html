@@ -88,6 +88,25 @@
     .hint { color: var(--faint); font-size: 11.5px; margin: 6px 0 0; }
     kbd { background: #f2f5f7; border: 1px solid var(--line); border-bottom-width: 2px;
           border-radius: 3px; padding: 1px 5px; font-size: 11px; font-family: var(--mono); }
+
+    /* analytics dashboard */
+    .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .metric { background: #f7f9fb; border: 1px solid var(--line-soft); border-radius: 3px; padding: 7px 9px; }
+    .metric .mk { font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); }
+    .mrow { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .metric .mv { font-size: 18px; font-weight: 600; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    canvas.spark { display: block; }
+    .kv { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+    .kv > div { display: flex; justify-content: space-between; font-size: 12.5px; }
+    .kk { color: var(--muted); }
+    .kvv { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+    .troph { display: flex; height: 16px; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+    .troph > span { display: block; height: 100%; transition: width .25s; }
+    table.traits { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    table.traits td { padding: 4px 0; border-bottom: 1px solid var(--line-soft); }
+    table.traits td:last-child { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    table.traits tr:last-child td { border-bottom: none; }
+    .faint { color: var(--faint); font-size: 10.5px; }
   </style>
 </head>
 <body>
@@ -146,13 +165,45 @@
       </div>
 
       <div class="group">
-        <h3>Live measurements</h3>
-        <div class="stats">
-          <div class="stat"><div class="k">Tick</div><div class="v" id="stat-tick">0</div></div>
-          <div class="stat"><div class="k">Population</div><div class="v" id="stat-pop">0</div></div>
-          <div class="stat"><div class="k">Species</div><div class="v" id="stat-species">0</div></div>
-          <div class="stat"><div class="k">Plants</div><div class="v" id="stat-food">0</div></div>
-          <div class="stat"><div class="k">FPS</div><div class="v" id="stat-fps">0</div></div>
+        <h3>Analytics</h3>
+        <div class="metrics">
+          <div class="metric"><div class="mk">Population</div><div class="mrow"><span class="mv" id="a-pop">0</span><canvas class="spark" id="sp-pop" width="80" height="22"></canvas></div></div>
+          <div class="metric"><div class="mk">Species</div><div class="mrow"><span class="mv" id="a-species">0</span><canvas class="spark" id="sp-species" width="80" height="22"></canvas></div></div>
+          <div class="metric" title="Shannon diversity index: species richness × evenness. 0 = one lineage dominates."><div class="mk">Diversity (H)</div><div class="mrow"><span class="mv" id="a-shannon">0.00</span><canvas class="spark" id="sp-shannon" width="80" height="22"></canvas></div></div>
+          <div class="metric" title="Mean speed of the population (fastest-evolving trait here)."><div class="mk">Mean speed</div><div class="mrow"><span class="mv" id="a-speed-x">–</span><canvas class="spark" id="sp-speed" width="80" height="22"></canvas></div></div>
+        </div>
+        <div class="kv">
+          <div><span class="kk">Genetic diversity</span><span class="kvv" id="a-gendiv">0.000</span></div>
+          <div><span class="kk">Mean generation</span><span class="kvv" id="a-gen">0.0</span></div>
+          <div><span class="kk">Mean energy</span><span class="kvv" id="a-energy">0</span></div>
+          <div><span class="kk">Tick / FPS</span><span class="kvv"><span id="a-tick">0</span> / <span id="a-fps">0</span></span></div>
+          <div><span class="kk">Plants</span><span class="kvv" id="a-food">0</span></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Trophic mix</h3>
+        <div class="troph"><span id="troph-herb" style="background:#31a354"></span><span id="troph-omn" style="background:#fec44f"></span><span id="troph-carn" style="background:#de2d26"></span></div>
+        <div class="hint" id="troph-label">–</div>
+      </div>
+
+      <div class="group">
+        <h3>Traits (mean ± sd)</h3>
+        <table class="traits">
+          <tr><td>Speed</td><td id="tr-speed">–</td></tr>
+          <tr><td>Vision</td><td id="tr-vision">–</td></tr>
+          <tr><td>Size</td><td id="tr-size">–</td></tr>
+          <tr><td>Diet <span class="faint">(0=herb,1=carn)</span></td><td id="tr-diet">–</td></tr>
+        </table>
+      </div>
+
+      <div class="group">
+        <h3>Cumulative</h3>
+        <div class="kv">
+          <div><span class="kk">Births</span><span class="kvv" id="mo-births">0</span></div>
+          <div><span class="kk">Died · starvation</span><span class="kvv" id="mo-starv">0</span></div>
+          <div><span class="kk">Died · predation</span><span class="kvv" id="mo-pred">0</span></div>
+          <div><span class="kk">Died · old age</span><span class="kvv" id="mo-old">0</span></div>
         </div>
       </div>
     </aside>

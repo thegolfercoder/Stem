@@ -118,6 +118,42 @@ def plot_predator_prey_phase(stats: StatsRecorder, ax) -> None:
     ax.grid(alpha=0.2)
 
 
+def plot_diversity(stats: StatsRecorder, ax) -> None:
+    """Biodiversity over time: species evenness (Shannon) vs standing genetic
+    variation. When one design wins, both curves fall toward zero."""
+    t = stats.column("tick")
+    ax.plot(t, stats.column("shannon_index"), color="#1b9e77", label="Shannon H (species)")
+    ax.set_title("Biodiversity over time")
+    ax.set_xlabel("tick")
+    ax.set_ylabel("Shannon H", color="#1b9e77")
+    ax.grid(alpha=0.2)
+    ax2 = ax.twinx()
+    ax2.plot(t, stats.column("genetic_diversity"), color="#7570b3", alpha=0.7,
+             label="genetic diversity")
+    ax2.set_ylabel("mean gene variance", color="#7570b3")
+    lines = ax.get_lines() + ax2.get_lines()
+    ax.legend(lines, [ln.get_label() for ln in lines], fontsize=8, loc="upper right")
+
+
+def plot_trait_spread(stats: StatsRecorder, ax) -> None:
+    """Standard deviation of key traits over time. Directional selection
+    *narrows* the spread as it fixes a winning value -- so a falling curve is
+    selection at work, a rising one is diversification."""
+    t = stats.column("tick")
+    for key, color in [
+        ("std_speed", "#e6550d"),
+        ("std_vision", "#3182bd"),
+        ("std_size", "#756bb1"),
+        ("std_diet", "#c51b8a"),
+    ]:
+        ax.plot(t, _smooth(stats.column(key)), color=color, label=key.replace("std_", ""))
+    ax.set_title("Trait spread (std-dev) over time")
+    ax.set_xlabel("tick")
+    ax.set_ylabel("std-dev of trait")
+    ax.legend(fontsize=8, loc="upper right")
+    ax.grid(alpha=0.2)
+
+
 def _isnan(arr):
     import numpy as np
 
@@ -129,15 +165,17 @@ def generate_report(stats: StatsRecorder, output_dir: str = "data", prefix: str 
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
-    fig, axes = plt.subplots(3, 2, figsize=(15, 12))
+    fig, axes = plt.subplots(4, 2, figsize=(15, 16))
     plot_population_dynamics(stats, axes[0, 0])
     plot_trait_evolution(stats, axes[0, 1])
     plot_species(stats, axes[1, 0])
     plot_trophic(stats, axes[1, 1])
     plot_mortality(stats, axes[2, 0])
     plot_predator_prey_phase(stats, axes[2, 1])
-    fig.suptitle("EvoSim - Evolution of a Digital Ecosystem", fontsize=16, y=0.995)
-    fig.tight_layout(rect=(0, 0, 1, 0.98))
+    plot_diversity(stats, axes[3, 0])
+    plot_trait_spread(stats, axes[3, 1])
+    fig.suptitle("EvoSim - Evolution of a Digital Ecosystem", fontsize=16, y=0.997)
+    fig.tight_layout(rect=(0, 0, 1, 0.985))
 
     path = out / f"{prefix}_report.png"
     fig.savefig(path, dpi=110)

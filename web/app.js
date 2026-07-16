@@ -58,6 +58,16 @@ def frame():
         sc = sp.color if sp is not None else (200, 200, 200)
         scol[k, 0] = sc[0]; scol[k, 1] = sc[1]; scol[k, 2] = sc[2]
     fp = np.ascontiguousarray(sim.world.food_pos, np.float32)
+
+    rec = sim.stats.records[-1] if sim.stats.records else {}
+    def g(k):
+        v = rec.get(k, 0.0)
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            return 0.0
+        return v if v == v else 0.0   # NaN -> 0
+    col = sim.stats.column
     return {
         'n': n,
         'tick': int(sim.tick),
@@ -67,6 +77,22 @@ def frame():
         'gcol': gcol.tobytes(),
         'scol': scol.tobytes(),
         'food': fp.tobytes(),
+        # --- analytical metrics (computed once by the engine, reused here) ---
+        'shannon': g('shannon_index'),
+        'gendiv': g('genetic_diversity'),
+        'gen': g('avg_generation'),
+        'energy': g('avg_energy'),
+        'herb': int(rec.get('herbivores', 0)),
+        'omn': int(rec.get('omnivores', 0)),
+        'carn': int(rec.get('carnivores', 0)),
+        'speed': g('avg_speed'), 'speed_sd': g('std_speed'),
+        'vision': g('avg_vision'), 'vision_sd': g('std_vision'),
+        'size': g('avg_size'), 'size_sd': g('std_size'),
+        'diet': g('avg_diet'), 'diet_sd': g('std_diet'),
+        'births': int(col('births').sum()),
+        'starv': int(col('deaths_starvation').sum()),
+        'pred': int(col('deaths_predation').sum()),
+        'old': int(col('deaths_old_age').sum()),
     }
 `;
 
@@ -94,11 +120,7 @@ async function boot() {
   els.ctx = els.canvas.getContext("2d");
   els.status = $("status");
   els.spinner = $("spinner");
-  els.tick = $("stat-tick");
-  els.pop = $("stat-pop");
-  els.species = $("stat-species");
-  els.food = $("stat-food");
-  els.fps = $("stat-fps");
+  els.fps = $("a-fps");
 
   wireControls();
   resizeCanvas();
@@ -147,6 +169,7 @@ function newSim() {
   const dims = py.make_sim(seed, brain, maxPop).toJs({ dict_converter: Object.fromEntries });
   world.width = dims.width;
   world.height = dims.height;
+  for (const k in hist) hist[k].length = 0;   // fresh analytics history
   drawOnce();
 }
 
@@ -164,7 +187,79 @@ function pullFrame() {
     gcol: d.gcol,          // Uint8Array, 3 per organism
     scol: d.scol,          // Uint8Array, 3 per organism
     food: new Float32Array(d.food.buffer, d.food.byteOffset, d.nfood * 2),
+    m: {
+      shannon: d.shannon, gendiv: d.gendiv, gen: d.gen, energy: d.energy,
+      herb: d.herb, omn: d.omn, carn: d.carn,
+      speed: d.speed, speed_sd: d.speed_sd, vision: d.vision, vision_sd: d.vision_sd,
+      size: d.size, size_sd: d.size_sd, diet: d.diet, diet_sd: d.diet_sd,
+      births: d.births, starv: d.starv, pred: d.pred, old: d.old,
+    },
   };
+}
+
+// --- Live analytics: rolling history + sparklines --------------------------
+const HIST_MAX = 160;
+const hist = { pop: [], species: [], shannon: [], speed: [] };
+
+function pushHist(f) {
+  hist.pop.push(f.n);
+  hist.species.push(f.species);
+  hist.shannon.push(f.m.shannon);
+  hist.speed.push(f.m.speed);
+  for (const k in hist) if (hist[k].length > HIST_MAX) hist[k].shift();
+}
+
+function drawSpark(id, series, color) {
+  const cv = document.getElementById(id);
+  if (!cv) return;
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  if (series.length < 2) return;
+  let lo = Infinity, hi = -Infinity;
+  for (const v of series) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  const span = hi - lo || 1;
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let i = 0; i < series.length; i++) {
+    const x = (i / (series.length - 1)) * (W - 2) + 1;
+    const y = H - 2 - ((series[i] - lo) / span) * (H - 4);
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.stroke();
+  // last-point dot
+  const lx = W - 1, ly = H - 2 - ((series[series.length - 1] - lo) / span) * (H - 4);
+  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(lx, ly, 1.8, 0, Math.PI * 2); ctx.fill();
+}
+
+function renderAnalytics(f) {
+  const m = f.m, S = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  pushHist(f);
+
+  S("a-tick", f.tick); S("a-pop", f.n); S("a-species", f.species); S("a-food", f.nfood);
+  S("a-speed-x", m.speed.toFixed(2));
+  S("a-shannon", m.shannon.toFixed(2)); S("a-gendiv", m.gendiv.toFixed(3));
+  S("a-gen", m.gen.toFixed(1)); S("a-energy", m.energy.toFixed(0));
+
+  drawSpark("sp-pop", hist.pop, "#0f766e");
+  drawSpark("sp-species", hist.species, "#6ea8ff");
+  drawSpark("sp-shannon", hist.shannon, "#1b9e77");
+  drawSpark("sp-speed", hist.speed, "#e6550d");
+
+  // trophic mix bar
+  const total = Math.max(1, m.herb + m.omn + m.carn);
+  const seg = (id, v) => { const e = document.getElementById(id); if (e) e.style.width = `${(v / total * 100).toFixed(1)}%`; };
+  seg("troph-herb", m.herb); seg("troph-omn", m.omn); seg("troph-carn", m.carn);
+  S("troph-label", `${m.herb} herbivore · ${m.omn} omnivore · ${m.carn} carnivore`);
+
+  // trait table: mean ± sd
+  S("tr-speed", `${m.speed.toFixed(2)} ± ${m.speed_sd.toFixed(2)}`);
+  S("tr-vision", `${m.vision.toFixed(0)} ± ${m.vision_sd.toFixed(0)}`);
+  S("tr-size", `${m.size.toFixed(2)} ± ${m.size_sd.toFixed(2)}`);
+  S("tr-diet", `${m.diet.toFixed(2)} ± ${m.diet_sd.toFixed(2)}`);
+
+  // cumulative mortality / births
+  S("mo-births", m.births); S("mo-starv", m.starv);
+  S("mo-pred", m.pred); S("mo-old", m.old);
 }
 
 // --- Clinical palette helpers -------------------------------------------
@@ -251,10 +346,7 @@ function draw(f) {
     ctx.stroke();
   }
 
-  els.tick.textContent = f.tick;
-  els.pop.textContent = f.n;
-  els.species.textContent = f.species;
-  els.food.textContent = f.nfood;
+  renderAnalytics(f);
 }
 
 function drawOnce() {
