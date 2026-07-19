@@ -386,16 +386,18 @@ def run_gui():
     import tkinter as tk
     from tkinter import ttk
 
-    BG = "#eef2f5"; CARD = "#ffffff"; INK = "#17222c"; MUT = "#5c6b78"
-    FAINT = "#8b98a4"; LINE = "#d9e0e6"; ACCENT = "#127a6b"; ACCENT_D = "#0d5d51"
-    VIEW = "#0c1116"; CREDIT = "#0d5d51"; GOLD = "#e0a53c"
+    # --- design tokens -----------------------------------------------------
+    BG = "#eef1f5"; BG2 = "#e7ecf1"; CARD = "#ffffff"; CARD_SUB = "#f6f8fa"
+    INK = "#141b22"; MUT = "#57646f"; FAINT = "#8b97a3"; LINE = "#dde3e9"
+    ACCENT = "#0e7c6b"; ACCENT_D = "#0a5d50"; ACCENT_SOFT = "#e2f1ee"
+    VIEW = "#0b0f14"; CREDIT = "#0a5d50"; GOLD = "#d9a43a"
     FONT = "Segoe UI"
 
     root = tk.Tk()
     root.title("EvoSim — Evolution Simulator")
     root.configure(bg=BG)
-    root.geometry("1180x830")
-    root.minsize(1100, 740)
+    root.geometry("1200x910")
+    root.minsize(1120, 820)
 
     style = ttk.Style(root)
     try:
@@ -430,23 +432,50 @@ def run_gui():
         b.bind("<Leave>", lambda e: b.config(bg=bgc))
         return b
 
+    def round_rect(cv, x1, y1, x2, y2, r, **kw):
+        pts = [x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r, x2, y2 - r, x2, y2,
+               x2 - r, y2, x1 + r, y2, x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
+        return cv.create_polygon(pts, smooth=True, **kw)
+
+    def card_frame(parent, accent=False):
+        """A white card with a hairline border and an optional accent top rule."""
+        outer = tk.Frame(parent, bg=LINE)                 # 1px border via padding
+        inner = tk.Frame(outer, bg=CARD)
+        inner.pack(fill="both", expand=True, padx=1, pady=1)
+        if accent:
+            tk.Frame(inner, bg=ACCENT, height=3).pack(fill="x")
+        return outer, inner
+
+    def section_header(parent, text, bg=CARD):
+        row = tk.Frame(parent, bg=bg); row.pack(fill="x", padx=13, pady=(11, 3))
+        tk.Frame(row, bg=ACCENT, width=3, height=13).pack(side="left")
+        tk.Label(row, text=text, bg=bg, fg=FAINT,
+                 font=(FONT, 9, "bold")).pack(side="left", padx=7)
+        return row
+
     # ================================================================= splash
     def show_splash():
         clear()
         wrap = tk.Frame(container, bg=BG)
         wrap.place(relx=0.5, rely=0.5, anchor="center")
-        tk.Label(wrap, text="🧬", bg=BG, font=(FONT, 62)).pack()
-        tk.Label(wrap, text="EvoSim", bg=BG, fg=INK, font=(FONT, 42, "bold")).pack()
-        tk.Label(wrap, text="An Evolution Simulator", bg=BG, fg=MUT, font=(FONT, 15)).pack(pady=(0, 4))
-        card = tk.Frame(wrap, bg=CARD, highlightbackground=LINE, highlightthickness=1)
-        card.pack(pady=18, ipadx=28, ipady=16)
-        L(card, "Created by", 10, FAINT).pack()
-        L(card, "Rian Sikka", 22, CREDIT, bold=True).pack()
-        L(card, "Grade 9  ·  IGCSE", 12, INK).pack(pady=(2, 0))
-        L(card, "Scottish High International School", 11, MUT).pack()
-        pb = ttk.Progressbar(wrap, style="Horizontal.TProgressbar", length=340,
+        tk.Label(wrap, text="🧬", bg=BG, font=(FONT, 58)).pack()
+        tk.Label(wrap, text="EvoSim", bg=BG, fg=INK, font=(FONT, 46, "bold")).pack()
+        tk.Frame(wrap, bg=ACCENT, width=64, height=4).pack(pady=(6, 0))     # accent underline
+        tk.Label(wrap, text="AN  EVOLUTION  SIMULATOR", bg=BG, fg=MUT,
+                 font=(FONT, 12)).pack(pady=(10, 2))
+        # credit card with a left accent bar
+        outer, card = card_frame(wrap, accent=False)
+        outer.pack(pady=18)
+        row = tk.Frame(card, bg=CARD); row.pack(padx=0, pady=0)
+        tk.Frame(row, bg=ACCENT, width=4).pack(side="left", fill="y")
+        inner = tk.Frame(row, bg=CARD); inner.pack(side="left", padx=30, pady=18)
+        L(inner, "CREATED BY", 9, FAINT).pack()
+        L(inner, "Rian Sikka", 24, CREDIT, bold=True).pack(pady=(2, 4))
+        L(inner, "Grade 9  ·  IGCSE", 12, INK).pack()
+        L(inner, "Scottish High International School", 11, MUT).pack()
+        pb = ttk.Progressbar(wrap, style="Horizontal.TProgressbar", length=360,
                              mode="determinate", maximum=100)
-        pb.pack(pady=(16, 6))
+        pb.pack(pady=(18, 6))
         status = tk.Label(wrap, text="", bg=BG, fg=FAINT, font=(FONT, 10))
         status.pack()
         msgs = ["Seeding primordial genomes…", "Growing the food web…",
@@ -464,35 +493,50 @@ def run_gui():
     # ============================================================== scenarios
     def show_scenarios():
         clear()
-        head = tk.Frame(container, bg=BG); head.pack(fill="x", pady=(24, 4))
+        head = tk.Frame(container, bg=BG); head.pack(fill="x", pady=(30, 2))
         tk.Label(head, text="Choose a world to evolve", bg=BG, fg=INK,
-                 font=(FONT, 24, "bold")).pack()
+                 font=(FONT, 26, "bold")).pack()
+        tk.Frame(head, bg=ACCENT, width=54, height=3).pack(pady=(8, 0))
         tk.Label(head, text="Each world starts with different species and traits. "
                             "Nothing is scripted — watch who survives.",
-                 bg=BG, fg=MUT, font=(FONT, 12)).pack(pady=(2, 0))
+                 bg=BG, fg=MUT, font=(FONT, 12)).pack(pady=(12, 0))
         grid = tk.Frame(container, bg=BG); grid.pack(expand=True)
 
         def card(scn, r, col):
-            c = tk.Frame(grid, bg=CARD, highlightbackground=LINE, highlightthickness=1,
-                         width=300, height=290)
-            c.grid(row=r, column=col, padx=12, pady=12); c.pack_propagate(False)
-            tk.Label(c, text=scn["emoji"], bg=CARD, font=(FONT, 44)).pack(pady=(18, 2))
-            L(c, scn["title"], 16, INK, bold=True).pack()
-            L(c, "  ".join(f'{s["emoji"]} {s["name"]}' for s in scn["species"]), 10, ACCENT).pack(pady=(3, 6))
-            L(c, scn["blurb"], 10, MUT, wraplength=250, justify="center").pack(padx=14)
+            outer, c = card_frame(grid, accent=True)
+            outer.grid(row=r, column=col, padx=13, pady=13)
+            c.configure(width=298, height=300); c.pack_propagate(False)
+            # tinted emoji badge
+            badge = tk.Canvas(c, width=76, height=76, bg=CARD, highlightthickness=0)
+            badge.pack(pady=(20, 4))
+            badge.create_oval(6, 6, 70, 70, fill=ACCENT_SOFT, outline="")
+            badge.create_text(38, 40, text=scn["emoji"], font=(FONT, 34))
+            L(c, scn["title"], 17, INK, bold=True).pack()
+            # signature-trait pill
+            pill = tk.Label(c, text=f"  selects for {TRAIT_LABEL[scn['signature']].upper()}  ",
+                            bg=ACCENT_SOFT, fg=ACCENT_D, font=(FONT, 8, "bold"))
+            pill.pack(pady=(5, 6))
+            L(c, "  ".join(f'{s["emoji"]} {s["name"]}' for s in scn["species"]), 10, MUT).pack()
+            L(c, scn["blurb"], 10, MUT, wraplength=248, justify="center").pack(padx=16, pady=(6, 0))
             button(c, "Simulate  ▶", lambda s=scn: start_scenario(s), big=True).pack(side="bottom", pady=16)
+            # hover elevation: border + accent tint
+            def enter(_): outer.configure(bg=ACCENT)
+            def leave(_): outer.configure(bg=LINE)
+            for w in (outer, c, badge):
+                w.bind("<Enter>", enter); w.bind("<Leave>", leave)
 
         for i, scn in enumerate(SCENARIOS):
             card(scn, i // 3, i % 3)
 
-        custom = tk.Frame(container, bg=BG); custom.pack(pady=(0, 16))
-        L(custom, "…or build a custom world:", 11, MUT, BG).grid(row=0, column=0, padx=(0, 10))
+        cout, custom = card_frame(container); cout.pack(pady=(2, 18))
+        crow = tk.Frame(custom, bg=CARD); crow.pack(padx=18, pady=12)
+        L(crow, "Build a custom world", 11, INK, bold=True).grid(row=0, column=0, padx=(0, 14))
         sp_var = tk.IntVar(value=4); pop_var = tk.IntVar(value=150)
-        L(custom, "species", 10, FAINT, BG).grid(row=0, column=1)
-        tk.Spinbox(custom, from_=1, to=8, width=3, textvariable=sp_var).grid(row=0, column=2, padx=4)
-        L(custom, "population", 10, FAINT, BG).grid(row=0, column=3)
-        tk.Spinbox(custom, from_=40, to=300, increment=10, width=4, textvariable=pop_var).grid(row=0, column=4, padx=4)
-        button(custom, "Build ▶", lambda: start_custom(sp_var.get(), pop_var.get())).grid(row=0, column=5, padx=10)
+        L(crow, "species", 10, FAINT).grid(row=0, column=1)
+        tk.Spinbox(crow, from_=1, to=8, width=3, textvariable=sp_var).grid(row=0, column=2, padx=4)
+        L(crow, "population", 10, FAINT).grid(row=0, column=3, padx=(8, 0))
+        tk.Spinbox(crow, from_=40, to=300, increment=10, width=4, textvariable=pop_var).grid(row=0, column=4, padx=4)
+        button(crow, "Build ▶", lambda: start_custom(sp_var.get(), pop_var.get())).grid(row=0, column=5, padx=(12, 0))
 
     # ============================================================= simulation
     def start_scenario(scn):
@@ -526,12 +570,15 @@ def run_gui():
         history: list[tuple] = []
         death_fx: list[dict] = []
 
-        top = tk.Frame(container, bg=BG); top.pack(fill="x", padx=16, pady=(12, 0))
-        button(top, "←  Worlds", show_scenarios, kind="ghost").pack(side="left")
-        tk.Label(top, text=title, bg=BG, fg=INK, font=(FONT, 18, "bold")).pack(side="left", padx=14)
-        tk.Label(top, text=f"Fitness trait: {TRAIT_LABEL[sig]}", bg=BG, fg=MUT,
-                 font=(FONT, 11)).pack(side="left")
-        tk.Label(top, text="EvoSim · by Rian Sikka", bg=BG, fg=FAINT, font=(FONT, 10)).pack(side="right")
+        head = tk.Frame(container, bg=BG); head.pack(fill="x", padx=16, pady=(12, 0))
+        hout, hb = card_frame(head); hout.pack(fill="x")
+        bar = tk.Frame(hb, bg=CARD); bar.pack(fill="x", padx=14, pady=10)
+        button(bar, "←  Worlds", show_scenarios, kind="ghost").pack(side="left")
+        tk.Label(bar, text=title, bg=CARD, fg=INK, font=(FONT, 18, "bold")).pack(side="left", padx=14)
+        tk.Label(bar, text=f"  SELECTS FOR {TRAIT_LABEL[sig].upper()}  ", bg=ACCENT_SOFT,
+                 fg=ACCENT_D, font=(FONT, 8, "bold")).pack(side="left")
+        tk.Label(bar, text="EvoSim · by Rian Sikka", bg=CARD, fg=FAINT,
+                 font=(FONT, 10)).pack(side="right")
 
         body = tk.Frame(container, bg=BG); body.pack(fill="both", expand=True, padx=16, pady=12)
         left = tk.Frame(body, bg=BG); left.pack(side="left")
@@ -547,9 +594,9 @@ def run_gui():
         right.pack_propagate(False)
 
         def panel(t):
-            box = tk.Frame(right, bg=CARD, highlightbackground=LINE, highlightthickness=1)
-            box.pack(fill="x", pady=(0, 10))
-            L(box, t, 9, FAINT, bold=True).pack(anchor="w", padx=12, pady=(9, 2))
+            outer, box = card_frame(right)
+            outer.pack(fill="x", pady=(0, 10))
+            section_header(box, t)
             return box
 
         # view toggles
