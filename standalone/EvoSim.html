@@ -723,12 +723,12 @@ class Sim{
       lb.append(row); return row; });
   }
 
-  onboard(){ if(localStorage.getItem("evosim_onboard"))return;
+  onboard(){ let seen=false; try{ seen=localStorage.getItem("evosim_onboard"); }catch(e){} if(seen)return;
     const el=$("#vpLegend"); const tip=document.createElement("div");
     tip.style.cssText="position:absolute;left:50%;top:16px;transform:translateX(-50%);font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);background:rgba(10,13,18,.8);border:1px solid var(--line2);border-radius:4px;padding:8px 14px;pointer-events:none;transition:opacity .6s";
     tip.textContent="Scroll to zoom · drag to pan · click an organism to inspect · [space] pause";
     this.cv.parentElement.append(tip);
-    setTimeout(()=>{tip.style.opacity=0;setTimeout(()=>tip.remove(),700);localStorage.setItem("evosim_onboard","1");},5200);
+    setTimeout(()=>{tip.style.opacity=0;setTimeout(()=>tip.remove(),700);try{localStorage.setItem("evosim_onboard","1");}catch(e){}},5200);
   }
 
   /* ---- effects ---- */
