@@ -90,3 +90,34 @@ Building locally on Windows instead:
 pip install pyinstaller
 pyinstaller --onefile --windowed --name EvoSimLab standalone\evolution_lab.py
 ```
+
+
+---
+
+## `EvoSim.html` — the premium web edition (flagship)
+
+A complete redesign as a **single self-contained HTML file** (no server, no
+dependencies — fonts and engine are embedded). Open it in any browser or
+double-click it.
+
+A "deep-time observatory" visual identity: a code-driven **cinematic intro**
+(a Nolan-style developer credit that pushes in and dissolves into the title),
+an ambient **main menu** with a drifting organism field and a typographic
+world-select, and a focused **simulation** with a quiet instrument rail.
+
+Runs a deeper JS engine than the desktop build — a 7-gene genome
+(speed, size, vision, diet, metabolism, aggression, hue) with macro-mutations,
+seasonal + patchy food, lineage tracking and richer decision-making — plus:
+
+- **Camera**: smooth zoom (scroll), pan (drag), follow-selected.
+- **Organism inspector**: click any creature to read its genome, generation,
+  age, energy and offspring live.
+- **Evolution graphs**: population/mean-fitness trend, fitness-spread
+  (ancestors vs now), and species-over-time stack.
+- **Colour modes** (species / fitness gradient / genome hue), **screenshot
+  capture**, birth/death/mutation **particle effects**, six world presets +
+  custom, keyboard shortcuts, and onboarding.
+
+Because it's HTML it can be wrapped to a native `.exe`/`.app` later (Tauri /
+Electron / a webview shell). Built with typography, spacing and motion — not
+gradients or neon.
