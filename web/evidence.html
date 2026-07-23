@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Survival of the Fittest, Measured — EvoSim</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>" />
+  <style>
+    :root {
+      --bg: #eef2f4; --panel: #ffffff; --ink: #1f2a33; --muted: #5b6b7a; --faint: #8494a2;
+      --line: #d6dde4; --accent: #0b5c56; --grey: #8494a2;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { background: var(--bg); color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    header { padding: 18px 24px 14px; background: var(--panel); border-bottom: 1px solid var(--line); }
+    header h1 { margin: 0; font-size: 22px; font-weight: 800; }
+    header p { margin: 6px 0 0; color: var(--muted); font-size: 14px; max-width: 78ch; }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 20px 24px 40px; }
+    .headline { font-size: 21px; line-height: 1.4; font-weight: 500; margin: 2px 2px 18px; }
+    .headline b { color: var(--accent); font-weight: 800; }
+
+    .layout { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; align-items: start; }
+    @media (max-width: 840px) { .layout { grid-template-columns: 1fr; } }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+    h3.t { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .09em; color: var(--faint); }
+    .cap { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+
+    .beforeafter { display: flex; align-items: stretch; gap: 10px; margin: 6px 0 14px; }
+    .ba { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+    .ba.first { background: #f4f6f8; }
+    .ba.now { background: #eaf5f2; border-color: #bfe0d8; }
+    .ba .k { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); }
+    .ba .v { font-size: 30px; font-weight: 800; font-family: var(--mono); }
+    .ba.first .v { color: var(--grey); } .ba.now .v { color: var(--accent); }
+    .ba .u { font-size: 11px; color: var(--muted); }
+    .arrow { align-self: center; font-size: 22px; color: var(--accent); }
+
+    canvas#chart { display: block; width: 100%; }
+    .legend { display: flex; gap: 16px; margin-top: 8px; font-size: 12.5px; color: var(--muted); flex-wrap: wrap; }
+    .legend i { display: inline-block; width: 13px; height: 13px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; }
+
+    #mini { width: 100%; display: block; background: #f2f5f6; border: 1px solid var(--line); border-radius: 6px; }
+    .mini-legend { font-size: 12px; color: var(--muted); margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+    .ramp { height: 9px; width: 84px; border-radius: 3px; border: 1px solid var(--line); background: linear-gradient(90deg, rgb(206,221,217), rgb(11,92,86)); }
+    .mrow { display: flex; justify-content: space-between; font-size: 13px; margin-top: 8px; }
+    .mrow b { font-family: var(--mono); }
+    .controls { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+    .controls button { padding: 10px 18px; font-size: 15px; font-weight: 600; border-radius: 5px; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+    .controls button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .controls .sp { display: flex; align-items: center; gap: 8px; margin-left: auto; color: var(--muted); font-size: 13px; }
+    .controls .sp input { accent-color: var(--accent); }
+    #status { margin-top: 10px; color: var(--faint); font-size: 12px; font-family: var(--mono); display: flex; align-items: center; gap: 8px; }
+    .spin { width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; display: inline-block; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    footer { margin-top: 18px; } footer a { color: var(--accent); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📈 Survival of the Fittest, Measured</h1>
+    <p>
+      Food is scarce, so the fastest creatures reach it first, survive, and pass
+      their speed to their babies. Nobody chooses who lives — yet generation after
+      generation the <em>whole population</em> drifts toward faster. Here's the
+      proof: the speed of the very first generation, versus the population now.
+    </p>
+  </header>
+
+  <div class="wrap">
+    <p class="headline" id="headline">Press Start to begin the experiment.</p>
+
+    <div class="layout">
+      <section class="card">
+        <h3 class="t">Average speed: ancestors vs now</h3>
+        <div class="beforeafter">
+          <div class="ba first"><div class="k">First generation</div><div class="v" id="mean0">–</div><div class="u">average speed</div></div>
+          <div class="arrow">→</div>
+          <div class="ba now"><div class="k">Population now</div><div class="v" id="mean-now">–</div><div class="u">average speed</div></div>
+        </div>
+        <h3 class="t">The whole population, shifting</h3>
+        <p class="cap">How many creatures have each speed — the first generation vs today.</p>
+        <canvas id="chart" height="230"></canvas>
+        <div class="legend">
+          <span><i style="background:rgba(132,148,162,0.5)"></i>First generation</span>
+          <span><i style="background:rgba(11,92,86,0.6)"></i>Population now</span>
+          <span><i style="background:transparent;border-left:2px dashed #8494a2;width:0"></i> dashed = ancestors' average · solid = today's</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3 class="t">The living world</h3>
+        <p class="cap">The population right now — colour shows each creature's speed.</p>
+        <canvas id="mini" width="900" height="600"></canvas>
+        <div class="mini-legend"><span>slow</span><span class="ramp"></span><span>fast</span></div>
+        <div class="mrow"><span>Alive now</span><b id="m-alive">0</b></div>
+        <div class="mrow"><span>Generations passed</span><b id="m-gen">0</b></div>
+        <div class="controls">
+          <button id="start" class="primary">Start</button>
+          <button id="restart">Restart</button>
+          <div class="sp">Speed <input type="range" id="time" min="1" max="16" value="4" /><span id="time-val" style="font-family:var(--mono)">4×</span></div>
+        </div>
+        <div id="status"><span id="spinner" class="spin" style="display:none"></span><span>Loading…</span></div>
+      </section>
+    </div>
+
+    <footer>
+      <a href="survival.html">← Simple view</a> &nbsp;·&nbsp;
+      <a href="index.html">Full scientific viewer →</a>
+    </footer>
+  </div>
+
+  <script src="evosim_pkg.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+  <script src="evidence.js"></script>
+</body>
+</html>

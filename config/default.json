@@ -1,0 +1,47 @@
+{
+  "seed": 1234,
+  "world": {
+    "width": 1200.0,
+    "height": 800.0,
+    "terrain_cells_x": 12,
+    "terrain_cells_y": 8,
+    "wrap": true
+  },
+  "food": {
+    "initial_count": 700,
+    "carrying_capacity": 1400,
+    "regrowth_rate": 0.35,
+    "energy_per_item": 32.0,
+    "cluster_bias": 0.65
+  },
+  "population": {
+    "initial_organisms": 220,
+    "max_organisms": 2200,
+    "extinction_warning": 8
+  },
+  "energy": {
+    "start_energy": 90.0,
+    "base_metabolic_cost": 0.35,
+    "movement_cost": 0.01,
+    "predation_efficiency": 0.7,
+    "max_energy": 260.0
+  },
+  "reproduction": {
+    "mutation_rate": 0.14,
+    "mutation_scale": 0.09,
+    "macro_mutation_rate": 0.015,
+    "macro_mutation_scale": 0.45,
+    "cooldown": 40,
+    "sexual": false,
+    "mate_radius": 35.0
+  },
+  "speciation": {
+    "compatibility_threshold": 0.32,
+    "reclassify_interval": 30,
+    "min_species_size": 4
+  },
+  "behavior": {
+    "brain": "neural",
+    "hidden_units": 10
+  }
+}

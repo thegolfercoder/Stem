@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EvoSim — Live Evolution in Your Browser</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>" />
+  <style>
+    :root {
+      --bg: #eef1f4; --panel: #ffffff; --canvas-bg: #e9edf1;
+      --ink: #1f2a33; --muted: #5b6b7a; --faint: #8494a2;
+      --line: #d6dde4; --line-soft: #e4e9ee;
+      --accent: #0f766e; --accent-ink: #ffffff;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: var(--bg); color: var(--ink);
+      font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      display: flex; flex-direction: column; min-height: 100%;
+    }
+    header {
+      padding: 12px 22px; background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    }
+    header h1 {
+      font-size: 15px; margin: 0; font-weight: 650;
+      letter-spacing: .12em; text-transform: uppercase;
+    }
+    header .tag { color: var(--muted); font-size: 12.5px; }
+    main { flex: 1; display: flex; gap: 18px; padding: 18px; align-items: flex-start; flex-wrap: wrap; }
+    #stage { flex: 1 1 640px; min-width: 320px; }
+    #view {
+      width: 100%; display: block; background: var(--canvas-bg);
+      border: 1px solid var(--line); border-radius: 4px;
+    }
+    aside {
+      flex: 0 0 268px; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 4px; padding: 16px; display: flex; flex-direction: column; gap: 18px;
+    }
+    .group { display: flex; flex-direction: column; gap: 9px; }
+    .group h3 {
+      margin: 0; font-size: 10.5px; font-weight: 650; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--faint);
+      padding-bottom: 6px; border-bottom: 1px solid var(--line-soft);
+    }
+    button {
+      background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+      border-radius: 3px; padding: 8px 12px; cursor: pointer; font-size: 13px;
+      transition: border-color .12s, background .12s;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+    button.primary:hover { background: #0b5c56; }
+    .seg { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+    .seg button { flex: 1; padding: 7px 6px; font-size: 12.5px; border: none; border-right: 1px solid var(--line); border-radius: 0; }
+    .seg button:last-child { border-right: none; }
+    .seg button.active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+    .seg button:hover:not(.active) { background: #f2f5f7; }
+    label { font-size: 12.5px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    input[type="number"], select {
+      background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+      border-radius: 3px; padding: 6px 8px; font-size: 12.5px; width: 96px; font-family: var(--mono);
+    }
+    select { font-family: inherit; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .row { display: flex; gap: 8px; }
+    .row button { flex: 1; }
+    .legend { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); }
+    .ramp { flex: 1; height: 8px; border-radius: 2px; border: 1px solid var(--line);
+            background: linear-gradient(90deg, rgb(43,122,120), rgb(120,132,145), rgb(168,50,70)); }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat { background: #f7f9fb; border: 1px solid var(--line-soft); border-radius: 3px; padding: 8px 10px; }
+    .stat .k { font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
+    .stat .v { font-size: 19px; font-weight: 600; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    #status {
+      color: var(--muted); font-size: 12.5px; min-height: 20px; margin: 10px 0 0;
+      display: flex; align-items: center; gap: 8px; font-family: var(--mono);
+    }
+    .spin {
+      width: 12px; height: 12px; border: 2px solid var(--line);
+      border-top-color: var(--accent); border-radius: 50%; display: inline-block;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hint { color: var(--faint); font-size: 11.5px; margin: 6px 0 0; }
+    kbd { background: #f2f5f7; border: 1px solid var(--line); border-bottom-width: 2px;
+          border-radius: 3px; padding: 1px 5px; font-size: 11px; font-family: var(--mono); }
+
+    /* analytics dashboard */
+    .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .metric { background: #f7f9fb; border: 1px solid var(--line-soft); border-radius: 3px; padding: 7px 9px; }
+    .metric .mk { font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); }
+    .mrow { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .metric .mv { font-size: 18px; font-weight: 600; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    canvas.spark { display: block; }
+    .kv { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+    .kv > div { display: flex; justify-content: space-between; font-size: 12.5px; }
+    .kk { color: var(--muted); }
+    .kvv { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+    .troph { display: flex; height: 16px; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+    .troph > span { display: block; height: 100%; transition: width .25s; }
+    table.traits { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    table.traits td { padding: 4px 0; border-bottom: 1px solid var(--line-soft); }
+    table.traits td:last-child { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    table.traits tr:last-child td { border-bottom: none; }
+    .faint { color: var(--faint); font-size: 10.5px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>EvoSim</h1>
+    <span class="tag">Live artificial-life evolution — the real Python engine, running in your browser via WebAssembly.</span>
+  </header>
+
+  <main>
+    <section id="stage">
+      <canvas id="view" width="960" height="640"></canvas>
+      <p id="status"><span id="spinner" class="spin" style="display:none"></span><span>Booting…</span></p>
+      <p class="hint">
+        <kbd>Space</kbd> play/pause · <kbd>↑</kbd>/<kbd>↓</kbd> speed ·
+        <kbd>c</kbd> colour mode · <kbd>v</kbd> vision. Nothing is scripted —
+        organisms that gather enough energy reproduce; everything else evolves.
+      </p>
+    </section>
+
+    <aside>
+      <div class="group">
+        <div class="row">
+          <button id="play" class="primary">Play</button>
+          <button id="reset">Reset</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Colour organisms by</h3>
+        <div class="seg">
+          <button data-color="species">Species</button>
+          <button data-color="diet">Diet</button>
+          <button data-color="genome">Genome</button>
+        </div>
+        <div class="legend"><span>Herbivore</span><span class="ramp"></span><span>Carnivore</span></div>
+      </div>
+
+      <div class="group">
+        <h3>Speed</h3>
+        <label>Ticks / frame <span id="speed-val">3×</span></label>
+        <input type="range" id="speed" min="1" max="20" value="3" />
+        <label><input type="checkbox" id="vision" /> Show vision radii</label>
+      </div>
+
+      <div class="group">
+        <h3>New world</h3>
+        <label>Seed <input type="number" id="seed" value="7" /></label>
+        <label>Brain
+          <select id="brain">
+            <option value="neural">Neural (neuroevolution)</option>
+            <option value="rule">Rule-based (control)</option>
+          </select>
+        </label>
+        <label>Max population <input type="number" id="maxpop" value="1500" step="100" /></label>
+        <span class="hint">Change values, then press <b>Reset</b> to spawn a fresh planet.</span>
+      </div>
+
+      <div class="group">
+        <h3>Analytics</h3>
+        <div class="metrics">
+          <div class="metric"><div class="mk">Population</div><div class="mrow"><span class="mv" id="a-pop">0</span><canvas class="spark" id="sp-pop" width="80" height="22"></canvas></div></div>
+          <div class="metric"><div class="mk">Species</div><div class="mrow"><span class="mv" id="a-species">0</span><canvas class="spark" id="sp-species" width="80" height="22"></canvas></div></div>
+          <div class="metric" title="Shannon diversity index: species richness × evenness. 0 = one lineage dominates."><div class="mk">Diversity (H)</div><div class="mrow"><span class="mv" id="a-shannon">0.00</span><canvas class="spark" id="sp-shannon" width="80" height="22"></canvas></div></div>
+          <div class="metric" title="Mean speed of the population (fastest-evolving trait here)."><div class="mk">Mean speed</div><div class="mrow"><span class="mv" id="a-speed-x">–</span><canvas class="spark" id="sp-speed" width="80" height="22"></canvas></div></div>
+        </div>
+        <div class="kv">
+          <div><span class="kk">Genetic diversity</span><span class="kvv" id="a-gendiv">0.000</span></div>
+          <div><span class="kk">Mean generation</span><span class="kvv" id="a-gen">0.0</span></div>
+          <div><span class="kk">Mean energy</span><span class="kvv" id="a-energy">0</span></div>
+          <div><span class="kk">Tick / FPS</span><span class="kvv"><span id="a-tick">0</span> / <span id="a-fps">0</span></span></div>
+          <div><span class="kk">Plants</span><span class="kvv" id="a-food">0</span></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Trophic mix</h3>
+        <div class="troph"><span id="troph-herb" style="background:#31a354"></span><span id="troph-omn" style="background:#fec44f"></span><span id="troph-carn" style="background:#de2d26"></span></div>
+        <div class="hint" id="troph-label">–</div>
+      </div>
+
+      <div class="group">
+        <h3>Traits (mean ± sd)</h3>
+        <table class="traits">
+          <tr><td>Speed</td><td id="tr-speed">–</td></tr>
+          <tr><td>Vision</td><td id="tr-vision">–</td></tr>
+          <tr><td>Size</td><td id="tr-size">–</td></tr>
+          <tr><td>Diet <span class="faint">(0=herb,1=carn)</span></td><td id="tr-diet">–</td></tr>
+        </table>
+      </div>
+
+      <div class="group">
+        <h3>Cumulative</h3>
+        <div class="kv">
+          <div><span class="kk">Births</span><span class="kvv" id="mo-births">0</span></div>
+          <div><span class="kk">Died · starvation</span><span class="kvv" id="mo-starv">0</span></div>
+          <div><span class="kk">Died · predation</span><span class="kvv" id="mo-pred">0</span></div>
+          <div><span class="kk">Died · old age</span><span class="kvv" id="mo-old">0</span></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="evosim_pkg.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

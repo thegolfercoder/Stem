@@ -1,0 +1,48 @@
+name: Build Windows EXE
+
+# Produces a standalone Windows executable of EvoSim Lab (the native evolution
+# sandbox) using PyInstaller on GitHub's Windows runners. The resulting
+# EvoSimLab.exe is uploaded as a downloadable build artifact, and attached to a
+# GitHub Release when you push a version tag (e.g. v1.0).
+
+on:
+  workflow_dispatch: {}          # run on demand from the Actions tab
+  push:
+    branches:
+      - "claude/artificial-life-evolution-sim-cnmdm9"   # auto-build on our branch
+    tags:
+      - "v*"                      # tagging a version also publishes a Release
+
+permissions:
+  contents: write                 # needed to attach the .exe to a Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Build EvoSim Lab (.exe)
+        run: >
+          pyinstaller --onefile --windowed --clean
+          --name EvoSimLab standalone/evolution_lab.py
+
+      - name: Upload the .exe as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EvoSimLab-windows
+          path: dist/EvoSimLab.exe
+          if-no-files-found: error
+
+      - name: Attach the .exe to the Release (only on version tags)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/EvoSimLab.exe

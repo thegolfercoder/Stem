@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Adapt or Fall Behind — EvoSim</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐆</text></svg>" />
+  <style>
+    :root {
+      --bg: #eef2f4; --panel: #ffffff; --arena: #eef2f4;
+      --ink: #1f2a33; --muted: #5b6b7a; --faint: #8494a2;
+      --line: #d6dde4; --line-soft: #e4e9ee;
+      --adapt: #0b5c56; --behind: #b26a34;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--bg); color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    header { padding: 16px 24px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+    header h1 { margin: 0; font-size: 21px; font-weight: 700; }
+    header p { margin: 6px 0 0; color: var(--muted); font-size: 14px; max-width: 74ch; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 18px 24px 40px; }
+
+    /* headline split bar */
+    .headline { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; margin-bottom: 16px; }
+    .split { display: flex; height: 34px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+    .split .a { background: var(--adapt); }
+    .split .b { background: var(--behind); flex: 1; }
+    .split-labels { display: flex; justify-content: space-between; margin-top: 8px; font-size: 14px; }
+    .split-labels b { font-family: var(--mono); font-size: 17px; }
+    .adapt-ink { color: var(--adapt); } .behind-ink { color: var(--behind); }
+    #hl-caption { margin: 10px 2px 0; font-size: 15px; font-weight: 500; min-height: 22px; }
+
+    /* tabs */
+    .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tabs button { flex: 0 0 auto; padding: 9px 18px; font-size: 14px; font-weight: 600; cursor: pointer;
+                   background: var(--panel); border: 1px solid var(--line); border-radius: 6px; color: var(--muted); }
+    .tabs button.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+    #arena { width: 100%; display: block; background: var(--arena); border: 1px solid var(--line); border-radius: 6px; }
+    .controls { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+    .controls button { padding: 10px 18px; font-size: 15px; font-weight: 600; border-radius: 5px; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+    .controls button.primary { background: var(--adapt); color: #fff; border-color: var(--adapt); }
+    .controls .sp { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .controls .sp input { accent-color: var(--adapt); }
+    .legend { margin-top: 10px; color: var(--muted); font-size: 13px; }
+    #status { margin-top: 8px; color: var(--faint); font-size: 12px; font-family: var(--mono); display: flex; align-items: center; gap: 8px; }
+    .spin { width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--adapt); border-radius: 50%; display: inline-block; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* divide tab */
+    .divide { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .group { border-radius: 8px; padding: 18px; border: 1px solid var(--line); }
+    .group.adapt { background: #eaf5f2; border-color: #bfe0d8; }
+    .group.behind { background: #f7efe6; border-color: #e6d3bd; }
+    .group .ico { font-size: 40px; }
+    .group .big { font-size: 40px; font-weight: 800; font-family: var(--mono); margin: 4px 0 0; }
+    .group .name { font-size: 15px; font-weight: 700; }
+    .group .sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+    .group .stat { margin-top: 10px; font-size: 13px; display: flex; justify-content: space-between; }
+    .group .stat b { font-family: var(--mono); }
+    .full { grid-column: 1 / -1; }
+    .pict { font-size: 26px; letter-spacing: 2px; line-height: 1.4; word-break: break-all; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 14px; }
+    .row + .row { margin-top: 8px; }
+    .row b { font-family: var(--mono); }
+    canvas.spark { display: block; border: 1px solid var(--line-soft); border-radius: 4px; background: #f7f9fb; }
+    h3.t { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--faint); }
+    footer a { color: var(--adapt); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🐆 Adapt or Fall Behind</h1>
+    <p>
+      The world is harsh and food is scarce. Creatures that adapt — evolving the
+      speed to reach food first — survive and pass it on. Those that don't get
+      left behind. Nobody steers this; it's the same pressure anyone faces when
+      the world changes. Watch what share of the world manages to keep up.
+    </p>
+  </header>
+
+  <div class="wrap">
+    <div class="headline">
+      <div class="split"><div class="a" id="split-adapted" style="width:50%"></div><div class="b"></div></div>
+      <div class="split-labels">
+        <span class="adapt-ink">🐆 Adapted <b id="pct-adapted">50%</b></span>
+        <span class="behind-ink"><b id="pct-behind">50%</b> Left behind 🐌</span>
+      </div>
+      <p id="hl-caption">Press Start to begin.</p>
+    </div>
+
+    <div class="tabs">
+      <button data-tab="world" class="active">🌍 The World</button>
+      <button data-tab="divide">📊 The Divide</button>
+    </div>
+
+    <!-- TAB 1: the living world -->
+    <section id="tab-world" class="card">
+      <canvas id="arena" width="900" height="600"></canvas>
+      <div class="controls">
+        <button id="start" class="primary">Start</button>
+        <button id="restart">Restart</button>
+        <div class="sp"><span style="color:var(--muted);font-size:13px">Time speed</span>
+          <input type="range" id="time" min="1" max="12" value="2" /><span id="time-val" style="font-family:var(--mono);font-size:13px;color:var(--muted)">2×</span></div>
+      </div>
+      <div class="legend">🐆 = adapted (fast enough to reach food) · 🐌 = left behind (too slow) · ✕ = just starved</div>
+      <div id="status"><span id="spinner" class="spin" style="display:none"></span><span>Loading…</span></div>
+    </section>
+
+    <!-- TAB 2: the analytical breakdown -->
+    <section id="tab-divide" style="display:none">
+      <div class="divide">
+        <div class="group adapt">
+          <div class="ico">🐆</div>
+          <div class="name adapt-ink">Adapted — kept up</div>
+          <div class="big adapt-ink" id="d-adapted-pct">–</div>
+          <div class="sub">of the population is now fast enough to reach food and breed.</div>
+          <div class="stat"><span>How many</span><b id="d-adapted-n">0</b></div>
+          <div class="stat"><span>Average speed</span><b id="d-adapted-spd">–</b></div>
+        </div>
+        <div class="group behind">
+          <div class="ico">🐌</div>
+          <div class="name behind-ink">Left behind</div>
+          <div class="big behind-ink" id="d-behind-pct">–</div>
+          <div class="sub">too slow to keep up — most of these starve before they can breed.</div>
+          <div class="stat"><span>How many</span><b id="d-behind-n">0</b></div>
+          <div class="stat"><span>Average speed</span><b id="d-behind-spd">–</b></div>
+        </div>
+
+        <div class="group full card" style="background:#fff">
+          <h3 class="t">Share adapted, over time</h3>
+          <canvas class="spark" id="sp-adapted" width="600" height="70" style="width:100%"></canvas>
+          <div class="pict" id="pictograph" style="margin-top:12px">🐌🐌🐌🐌🐌🐌🐌🐌🐌🐌🐌🐌🐌🐌🐌🐌🐌🐌🐌🐌</div>
+          <div style="color:var(--muted);font-size:12.5px;margin-top:6px">Each icon ≈ 5% of the world.</div>
+        </div>
+
+        <div class="group full card" style="background:#fff">
+          <h3 class="t">The numbers</h3>
+          <div class="row"><span>Alive now</span><b id="d-alive">0</b></div>
+          <div class="row"><span>Fell behind &amp; starved (total)</span><b id="d-fell">0</b></div>
+          <div class="row"><span>Generations passed</span><b id="d-gen">0</b></div>
+        </div>
+      </div>
+    </section>
+
+    <footer style="margin-top:18px">
+      <a href="index.html">→ Open the full scientific viewer (species, genomes, neural brains, analytics)</a>
+    </footer>
+  </div>
+
+  <script src="evosim_pkg.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+  <script src="survival.js"></script>
+</body>
+</html>

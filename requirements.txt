@@ -1,0 +1,17 @@
+# Core simulation & analysis
+numpy>=1.24
+matplotlib>=3.7
+
+# Real-time 2D visualization
+pygame>=2.5
+
+# Image handling for the GIF recorder (scripts/capture_animation.py).
+# Also pulled in transitively by matplotlib.
+pillow>=9.0
+
+# Testing (development)
+pytest>=7.0
+
+# --- Optional / future integrations -----------------------------------------
+# neat-python>=0.92     # topology-evolving neural networks (see behavior/neural.py)
+# Blender is used via its bundled Python; no pip install required.

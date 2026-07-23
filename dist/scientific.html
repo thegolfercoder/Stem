@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EvoSim — Live Evolution in Your Browser</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>" />
+  <style>
+    :root {
+      --bg: #eef1f4; --panel: #ffffff; --canvas-bg: #e9edf1;
+      --ink: #1f2a33; --muted: #5b6b7a; --faint: #8494a2;
+      --line: #d6dde4; --line-soft: #e4e9ee;
+      --accent: #0f766e; --accent-ink: #ffffff;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: var(--bg); color: var(--ink);
+      font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      display: flex; flex-direction: column; min-height: 100%;
+    }
+    header {
+      padding: 12px 22px; background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    }
+    header h1 {
+      font-size: 15px; margin: 0; font-weight: 650;
+      letter-spacing: .12em; text-transform: uppercase;
+    }
+    header .tag { color: var(--muted); font-size: 12.5px; }
+    main { flex: 1; display: flex; gap: 18px; padding: 18px; align-items: flex-start; flex-wrap: wrap; }
+    #stage { flex: 1 1 640px; min-width: 320px; }
+    #view {
+      width: 100%; display: block; background: var(--canvas-bg);
+      border: 1px solid var(--line); border-radius: 4px;
+    }
+    aside {
+      flex: 0 0 268px; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 4px; padding: 16px; display: flex; flex-direction: column; gap: 18px;
+    }
+    .group { display: flex; flex-direction: column; gap: 9px; }
+    .group h3 {
+      margin: 0; font-size: 10.5px; font-weight: 650; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--faint);
+      padding-bottom: 6px; border-bottom: 1px solid var(--line-soft);
+    }
+    button {
+      background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+      border-radius: 3px; padding: 8px 12px; cursor: pointer; font-size: 13px;
+      transition: border-color .12s, background .12s;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+    button.primary:hover { background: #0b5c56; }
+    .seg { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+    .seg button { flex: 1; padding: 7px 6px; font-size: 12.5px; border: none; border-right: 1px solid var(--line); border-radius: 0; }
+    .seg button:last-child { border-right: none; }
+    .seg button.active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+    .seg button:hover:not(.active) { background: #f2f5f7; }
+    label { font-size: 12.5px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    input[type="number"], select {
+      background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+      border-radius: 3px; padding: 6px 8px; font-size: 12.5px; width: 96px; font-family: var(--mono);
+    }
+    select { font-family: inherit; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .row { display: flex; gap: 8px; }
+    .row button { flex: 1; }
+    .legend { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); }
+    .ramp { flex: 1; height: 8px; border-radius: 2px; border: 1px solid var(--line);
+            background: linear-gradient(90deg, rgb(43,122,120), rgb(120,132,145), rgb(168,50,70)); }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat { background: #f7f9fb; border: 1px solid var(--line-soft); border-radius: 3px; padding: 8px 10px; }
+    .stat .k { font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
+    .stat .v { font-size: 19px; font-weight: 600; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    #status {
+      color: var(--muted); font-size: 12.5px; min-height: 20px; margin: 10px 0 0;
+      display: flex; align-items: center; gap: 8px; font-family: var(--mono);
+    }
+    .spin {
+      width: 12px; height: 12px; border: 2px solid var(--line);
+      border-top-color: var(--accent); border-radius: 50%; display: inline-block;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hint { color: var(--faint); font-size: 11.5px; margin: 6px 0 0; }
+    kbd { background: #f2f5f7; border: 1px solid var(--line); border-bottom-width: 2px;
+          border-radius: 3px; padding: 1px 5px; font-size: 11px; font-family: var(--mono); }
+
+    /* analytics dashboard */
+    .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .metric { background: #f7f9fb; border: 1px solid var(--line-soft); border-radius: 3px; padding: 7px 9px; }
+    .metric .mk { font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); }
+    .mrow { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .metric .mv { font-size: 18px; font-weight: 600; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    canvas.spark { display: block; }
+    .kv { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+    .kv > div { display: flex; justify-content: space-between; font-size: 12.5px; }
+    .kk { color: var(--muted); }
+    .kvv { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+    .troph { display: flex; height: 16px; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+    .troph > span { display: block; height: 100%; transition: width .25s; }
+    table.traits { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    table.traits td { padding: 4px 0; border-bottom: 1px solid var(--line-soft); }
+    table.traits td:last-child { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    table.traits tr:last-child td { border-bottom: none; }
+    .faint { color: var(--faint); font-size: 10.5px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>EvoSim</h1>
+    <span class="tag">Live artificial-life evolution — the real Python engine, running in your browser via WebAssembly.</span>
+  </header>
+
+  <main>
+    <section id="stage">
+      <canvas id="view" width="960" height="640"></canvas>
+      <p id="status"><span id="spinner" class="spin" style="display:none"></span><span>Booting…</span></p>
+      <p class="hint">
+        <kbd>Space</kbd> play/pause · <kbd>↑</kbd>/<kbd>↓</kbd> speed ·
+        <kbd>c</kbd> colour mode · <kbd>v</kbd> vision. Nothing is scripted —
+        organisms that gather enough energy reproduce; everything else evolves.
+      </p>
+    </section>
+
+    <aside>
+      <div class="group">
+        <div class="row">
+          <button id="play" class="primary">Play</button>
+          <button id="reset">Reset</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Colour organisms by</h3>
+        <div class="seg">
+          <button data-color="species">Species</button>
+          <button data-color="diet">Diet</button>
+          <button data-color="genome">Genome</button>
+        </div>
+        <div class="legend"><span>Herbivore</span><span class="ramp"></span><span>Carnivore</span></div>
+      </div>
+
+      <div class="group">
+        <h3>Speed</h3>
+        <label>Ticks / frame <span id="speed-val">3×</span></label>
+        <input type="range" id="speed" min="1" max="20" value="3" />
+        <label><input type="checkbox" id="vision" /> Show vision radii</label>
+      </div>
+
+      <div class="group">
+        <h3>New world</h3>
+        <label>Seed <input type="number" id="seed" value="7" /></label>
+        <label>Brain
+          <select id="brain">
+            <option value="neural">Neural (neuroevolution)</option>
+            <option value="rule">Rule-based (control)</option>
+          </select>
+        </label>
+        <label>Max population <input type="number" id="maxpop" value="1500" step="100" /></label>
+        <span class="hint">Change values, then press <b>Reset</b> to spawn a fresh planet.</span>
+      </div>
+
+      <div class="group">
+        <h3>Analytics</h3>
+        <div class="metrics">
+          <div class="metric"><div class="mk">Population</div><div class="mrow"><span class="mv" id="a-pop">0</span><canvas class="spark" id="sp-pop" width="80" height="22"></canvas></div></div>
+          <div class="metric"><div class="mk">Species</div><div class="mrow"><span class="mv" id="a-species">0</span><canvas class="spark" id="sp-species" width="80" height="22"></canvas></div></div>
+          <div class="metric" title="Shannon diversity index: species richness × evenness. 0 = one lineage dominates."><div class="mk">Diversity (H)</div><div class="mrow"><span class="mv" id="a-shannon">0.00</span><canvas class="spark" id="sp-shannon" width="80" height="22"></canvas></div></div>
+          <div class="metric" title="Mean speed of the population (fastest-evolving trait here)."><div class="mk">Mean speed</div><div class="mrow"><span class="mv" id="a-speed-x">–</span><canvas class="spark" id="sp-speed" width="80" height="22"></canvas></div></div>
+        </div>
+        <div class="kv">
+          <div><span class="kk">Genetic diversity</span><span class="kvv" id="a-gendiv">0.000</span></div>
+          <div><span class="kk">Mean generation</span><span class="kvv" id="a-gen">0.0</span></div>
+          <div><span class="kk">Mean energy</span><span class="kvv" id="a-energy">0</span></div>
+          <div><span class="kk">Tick / FPS</span><span class="kvv"><span id="a-tick">0</span> / <span id="a-fps">0</span></span></div>
+          <div><span class="kk">Plants</span><span class="kvv" id="a-food">0</span></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Trophic mix</h3>
+        <div class="troph"><span id="troph-herb" style="background:#31a354"></span><span id="troph-omn" style="background:#fec44f"></span><span id="troph-carn" style="background:#de2d26"></span></div>
+        <div class="hint" id="troph-label">–</div>
+      </div>
+
+      <div class="group">
+        <h3>Traits (mean ± sd)</h3>
+        <table class="traits">
+          <tr><td>Speed</td><td id="tr-speed">–</td></tr>
+          <tr><td>Vision</td><td id="tr-vision">–</td></tr>
+          <tr><td>Size</td><td id="tr-size">–</td></tr>
+          <tr><td>Diet <span class="faint">(0=herb,1=carn)</span></td><td id="tr-diet">–</td></tr>
+        </table>
+      </div>
+
+      <div class="group">
+        <h3>Cumulative</h3>
+        <div class="kv">
+          <div><span class="kk">Births</span><span class="kvv" id="mo-births">0</span></div>
+          <div><span class="kk">Died · starvation</span><span class="kvv" id="mo-starv">0</span></div>
+          <div><span class="kk">Died · predation</span><span class="kvv" id="mo-pred">0</span></div>
+          <div><span class="kk">Died · old age</span><span class="kvv" id="mo-old">0</span></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+// AUTO-GENERATED by scripts/build_web.py -- do not edit by hand.
+// Regenerate after changing the evosim engine:  python -m scripts.build_web
+self.EVOSIM_FILES = {
+"evosim/__init__.py": "\"\"\"EvoSim -- Artificial Life Evolution Simulator.\n\nA scientific digital ecosystem in which organisms with heritable genomes evolve\nthrough natural selection, mutation, competition, and predator-prey dynamics.\n\nPublic API::\n\n    from evosim import Simulation, SimulationConfig\n\nThe core (:mod:`evosim.simulation`) is fully headless. Visualization\n(:mod:`evosim.render`) and analysis (:mod:`evosim.analysis`) are optional layers\nbuilt on top, so the same engine can drive Pygame today and Blender/NEAT later.\n\"\"\"\n\nfrom __future__ import annotations\n\nfrom .config import SimulationConfig\nfrom .genome import Genome\nfrom .organism import Organism\nfrom .simulation import Simulation\nfrom .world import World\n\n__version__ = \"0.1.0\"\n\n__all__ = [\n    \"Simulation\",\n    \"SimulationConfig\",\n    \"Genome\",\n    \"Organism\",\n    \"World\",\n    \"__version__\",\n]\n",
+"evosim/behavior/__init__.py": "\"\"\"Pluggable behaviour back-ends for organisms.\"\"\"\n\nfrom __future__ import annotations\n\nfrom .base import ACTION_SIZE, PERCEPTION_SIZE, Brain\nfrom .neural import NeuralBrain\nfrom .rule_based import RuleBasedBrain\n\n\ndef make_brain(behavior_cfg) -> Brain:\n    \"\"\"Factory: build the brain selected in :class:`BehaviorConfig`.\"\"\"\n    kind = behavior_cfg.brain.lower()\n    if kind == \"rule\":\n        return RuleBasedBrain()\n    if kind == \"neural\":\n        return NeuralBrain(hidden_units=behavior_cfg.hidden_units)\n    raise ValueError(f\"Unknown brain type: {behavior_cfg.brain!r}\")\n\n\n__all__ = [\n    \"Brain\",\n    \"NeuralBrain\",\n    \"RuleBasedBrain\",\n    \"make_brain\",\n    \"PERCEPTION_SIZE\",\n    \"ACTION_SIZE\",\n]\n",
+"evosim/behavior/base.py": "\"\"\"Behaviour abstraction: the swappable \"mind\" of an organism.\n\nThe simulation never calls behaviour logic directly. Instead it builds a fixed\n**perception vector** for each organism and asks a :class:`Brain` for an\n**action vector**. Because both are plain numpy arrays of fixed size, any brain\nimplementation is interchangeable:\n\n* :class:`~evosim.behavior.rule_based.RuleBasedBrain` -- transparent heuristics.\n* :class:`~evosim.behavior.neural.NeuralBrain` -- a genome-encoded network that\n  *evolves* (fixed-topology neuroevolution today; a clean seam for NEAT's\n  topology evolution tomorrow -- see ``neural.py``).\n\nPerception layout (all values pre-normalized by the engine)\n-----------------------------------------------------------\n=====  ===========================================================\nindex  meaning\n=====  ===========================================================\n0      bias (always 1.0)\n1      energy fraction (0..1)\n2      age fraction (0..1)\n3-4    unit direction to nearest food (0,0 if none)\n5      food proximity (1 - dist/vision, 0 if none)\n6-7    unit direction to nearest prey\n8      prey proximity\n9-10   unit direction to nearest predator/threat\n11     threat proximity\n12     local crowding (0..1)\n13     own diet gene (0 herbivore .. 1 carnivore)\n14     own aggression gene\n=====  ===========================================================\n\nAction layout\n-------------\n``[dir_x, dir_y, throttle]`` -- desired heading (auto-normalized) and speed\nfraction in 0..1.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport numpy as np\n\nPERCEPTION_SIZE = 15\nACTION_SIZE = 3\n\n\nclass Brain:\n    \"\"\"Abstract decision-maker. Subclasses implement :meth:`decide`.\"\"\"\n\n    #: whether this brain type carries evolvable weights in the genome\n    uses_weights: bool = False\n    #: size of the flat weight vector each genome must carry (0 if none)\n    weight_size: int = 0\n    #: whether :meth:`decide_batch` can score the whole population at once\n    supports_batch: bool = False\n\n    def decide(self, perception: np.ndarray, organism) -> np.ndarray:\n        raise NotImplementedError\n\n    def decide_batch(self, perceptions: np.ndarray, organisms: list) -> np.ndarray:\n        \"\"\"Vectorized decisions for a whole population.\n\n        ``perceptions`` is an ``(n, PERCEPTION_SIZE)`` array aligned with\n        ``organisms``; returns an ``(n, ACTION_SIZE)`` array. The default falls\n        back to calling :meth:`decide` per organism, so any brain works even if\n        it hasn't implemented a fast path.\n        \"\"\"\n        return np.array(\n            [self.decide(perceptions[i], org) for i, org in enumerate(organisms)]\n        )\n",
+"evosim/behavior/neural.py": "\"\"\"Genome-encoded neural brain: evolving intelligence via neuroevolution.\n\nEach organism carries a flat vector of network weights *inside its genome*.\nThose weights mutate and are inherited exactly like any other gene, so the\nmapping from perception to action is **discovered by natural selection** rather\nthan hand-coded. This is neuroevolution with a fixed topology -- the direct\nconceptual predecessor of NEAT.\n\nUpgrading to NEAT\n-----------------\nNEAT adds *topology* evolution (new nodes/connections via innovation numbers)\non top of weight evolution. Because the rest of the engine only depends on the\n:class:`Brain` contract (perception vector in, action vector out), swapping this\nclass for a ``NeatBrain`` that wraps ``neat-python`` requires **no changes** to\norganisms, reproduction, or the simulation loop -- only:\n\n1. store a NEAT genome instead of a weight vector, and\n2. build a network with ``neat.nn.FeedForwardNetwork.create`` in ``decide``.\n\nThat seam is intentional and is why weights live behind this interface.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport numpy as np\n\nfrom .base import ACTION_SIZE, PERCEPTION_SIZE, Brain\n\n\nclass NeuralBrain(Brain):\n    \"\"\"A small fixed-topology MLP whose weights are evolved in the genome.\"\"\"\n\n    uses_weights = True\n    supports_batch = True\n\n    def __init__(self, hidden_units: int = 10):\n        self.n_in = PERCEPTION_SIZE\n        self.hidden = hidden_units\n        self.n_out = ACTION_SIZE\n        # Two weight matrices; the perception vector's index-0 bias term feeds\n        # the hidden layer, and we fold an explicit bias into the output layer.\n        self.w1_size = self.n_in * self.hidden\n        self.w2_size = (self.hidden + 1) * self.n_out\n        self.weight_size = self.w1_size + self.w2_size\n\n    def decide(self, perception: np.ndarray, organism) -> np.ndarray:\n        w = organism.genome.weights\n        w1 = w[: self.w1_size].reshape(self.n_in, self.hidden)\n        w2 = w[self.w1_size :].reshape(self.hidden + 1, self.n_out)\n\n        hidden = np.tanh(perception @ w1)\n        hidden_b = np.concatenate([hidden, [1.0]])  # bias unit\n        out = np.tanh(hidden_b @ w2)\n        # out[:2] -> heading, out[2] -> throttle mapped to 0..1\n        throttle = (out[2] + 1.0) * 0.5\n        return np.array([out[0], out[1], throttle])\n\n    def decide_batch(self, perceptions: np.ndarray, organisms: list) -> np.ndarray:\n        \"\"\"Score the whole population in two batched matmuls.\n\n        Every organism shares this network's topology but carries its *own*\n        evolved weights, so we stack the weight vectors into per-organism weight\n        tensors and evaluate them all at once with ``einsum`` -- mathematically\n        identical to calling :meth:`decide` in a loop, but far faster for large\n        populations (this is the hot path in long, thousand-generation runs).\n        \"\"\"\n        n = len(organisms)\n        if n == 0:\n            return np.empty((0, self.n_out))\n        w = np.stack([org.genome.weights for org in organisms])  # (n, weight_size)\n        w1 = w[:, : self.w1_size].reshape(n, self.n_in, self.hidden)\n        w2 = w[:, self.w1_size :].reshape(n, self.hidden + 1, self.n_out)\n\n        hidden = np.tanh(np.einsum(\"np,nph->nh\", perceptions, w1))\n        ones = np.ones((n, 1))\n        hidden_b = np.concatenate([hidden, ones], axis=1)  # (n, hidden+1)\n        out = np.tanh(np.einsum(\"nh,nho->no\", hidden_b, w2))  # (n, n_out)\n\n        actions = out.copy()\n        actions[:, 2] = (out[:, 2] + 1.0) * 0.5  # throttle -> 0..1\n        return actions\n",
+"evosim/behavior/rule_based.py": "\"\"\"Transparent, hand-written behaviour heuristics.\n\nThis brain is the scientific *control group*: its logic is fully legible, so it\nmakes the ecosystem's dynamics easy to reason about and to compare against the\nevolved :class:`NeuralBrain`. Even though the rules are fixed, behaviour still\n*varies* between organisms because every decision is weighted by heritable\ntraits (diet, aggression, vision), so selection still shapes the population.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport numpy as np\n\nfrom .base import Brain\n\n\nclass RuleBasedBrain(Brain):\n    uses_weights = False\n    weight_size = 0\n\n    def decide(self, perception: np.ndarray, organism) -> np.ndarray:\n        energy_frac = perception[1]\n        food_dir = perception[3:5]\n        food_close = perception[5]\n        prey_dir = perception[6:8]\n        prey_close = perception[8]\n        threat_dir = perception[9:11]\n        threat_close = perception[11]\n        diet = perception[13]\n        aggression = perception[14]\n\n        # 1. Survival first: flee a nearby, larger threat.\n        if threat_close > 0.05:\n            direction = -threat_dir\n            return np.array([direction[0], direction[1], 1.0])\n\n        # 2. Carnivores/omnivores hunt visible prey (more so when hungry/aggressive).\n        hunt_drive = diet * (0.4 + 0.6 * (1.0 - energy_frac)) + 0.3 * aggression\n        if prey_close > 0.02 and hunt_drive > 0.35:\n            return np.array([prey_dir[0], prey_dir[1], 1.0])\n\n        # 3. Herbivores/omnivores forage for plants.\n        forage_drive = (1.0 - diet) * (0.4 + 0.6 * (1.0 - energy_frac))\n        if food_close > 0.02 and forage_drive > 0.2:\n            return np.array([food_dir[0], food_dir[1], 0.85])\n\n        # 4. Otherwise wander with persistence (correlated random walk).\n        organism.wander_heading += organism.rng.normal(0.0, 0.4)\n        wx = np.cos(organism.wander_heading)\n        wy = np.sin(organism.wander_heading)\n        return np.array([wx, wy, 0.5])\n",
+"evosim/config.py": "\"\"\"Central configuration for the Artificial Life Evolution Simulator.\n\nEvery tunable parameter of the ecosystem lives here as a plain dataclass so\nthat experiments are reproducible and self-documenting. Nothing in the\nsimulation reads a \"magic number\" directly -- it always comes from a\n``SimulationConfig`` instance, which can be serialized to / loaded from JSON.\n\nThis is deliberately data-only (no behavior) so the same config can drive the\nheadless engine, the Pygame front-end, and future Blender/NEAT back-ends.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport json\nfrom dataclasses import asdict, dataclass, field\nfrom pathlib import Path\n\n\n@dataclass\nclass WorldConfig:\n    \"\"\"Physical layout of the digital planet.\"\"\"\n\n    width: float = 1200.0\n    height: float = 800.0\n    # Number of coarse terrain patches per axis. Terrain colour drives the\n    # camouflage mechanic (an organism hides best on matching terrain).\n    terrain_cells_x: int = 12\n    terrain_cells_y: int = 8\n    # Toroidal world (wraps at the edges) avoids artificial boundary crowding.\n    wrap: bool = True\n\n\n@dataclass\nclass FoodConfig:\n    \"\"\"Plant / primary-producer dynamics (the base of the food web).\"\"\"\n\n    initial_count: int = 700\n    carrying_capacity: int = 1400\n    # Probability per tick that a new plant spawns (scaled by free capacity).\n    regrowth_rate: float = 0.35\n    energy_per_item: float = 32.0\n    # Plants cluster around \"fertile\" terrain to create spatial heterogeneity.\n    cluster_bias: float = 0.65\n\n\n@dataclass\nclass PopulationConfig:\n    \"\"\"Starting population and hard limits.\"\"\"\n\n    initial_organisms: int = 220\n    # Absolute cap keeps runtime bounded even during population booms.\n    max_organisms: int = 2200\n    # Minimum viable population; below this we log a near-extinction warning.\n    extinction_warning: int = 8\n\n\n@dataclass\nclass EnergyConfig:\n    \"\"\"Bioenergetics -- the currency that natural selection actually optimizes.\"\"\"\n\n    start_energy: float = 90.0\n    # Base metabolic cost scales with size**0.75 (Kleiber's law) * metabolism.\n    base_metabolic_cost: float = 0.35\n    # Movement cost scales with speed**2 * size (kinetic-energy analogue).\n    movement_cost: float = 0.010\n    # Fraction of a prey's energy actually absorbed when eaten.\n    predation_efficiency: float = 0.70\n    # Energy needed (as a multiple of start_energy) before reproduction.\n    max_energy: float = 260.0\n\n\n@dataclass\nclass ReproductionConfig:\n    \"\"\"Inheritance and mutation -- the engine of variation.\"\"\"\n\n    # Per-gene probability of mutation in an offspring.\n    mutation_rate: float = 0.14\n    # Std-dev of a gaussian mutation, as a fraction of the gene's range.\n    mutation_scale: float = 0.09\n    # Rare large mutations create the jumps that seed new species.\n    macro_mutation_rate: float = 0.015\n    macro_mutation_scale: float = 0.45\n    # Minimum cool-down (ticks) between reproductions for one organism.\n    cooldown: int = 40\n    # Sexual reproduction: offspring genomes are a recombination (crossover) of\n    # two same-species parents, adding a second engine of variation. When no\n    # compatible mate is nearby, reproduction falls back to asexual + mutation.\n    sexual: bool = False\n    # How far an organism will look for a mate (world units).\n    mate_radius: float = 35.0\n\n\n@dataclass\nclass SpeciationConfig:\n    \"\"\"NEAT-style compatibility clustering that lets species emerge.\"\"\"\n\n    # Genetic distance above which two organisms are different species.\n    compatibility_threshold: float = 0.32\n    # How often (ticks) to re-cluster the population into species.\n    reclassify_interval: int = 30\n    min_species_size: int = 4\n\n\n@dataclass\nclass BehaviorConfig:\n    \"\"\"Selects and tunes the decision-making back-end.\"\"\"\n\n    # \"rule\" -> hand-written heuristics; \"neural\" -> genome-encoded network.\n    brain: str = \"neural\"\n    # Hidden-layer width for the NeuralBrain (fixed topology neuroevolution).\n    hidden_units: int = 10\n\n\n@dataclass\nclass SimulationConfig:\n    \"\"\"Top-level container assembled from the sub-configs above.\"\"\"\n\n    seed: int = 1234\n    world: WorldConfig = field(default_factory=WorldConfig)\n    food: FoodConfig = field(default_factory=FoodConfig)\n    population: PopulationConfig = field(default_factory=PopulationConfig)\n    energy: EnergyConfig = field(default_factory=EnergyConfig)\n    reproduction: ReproductionConfig = field(default_factory=ReproductionConfig)\n    speciation: SpeciationConfig = field(default_factory=SpeciationConfig)\n    behavior: BehaviorConfig = field(default_factory=BehaviorConfig)\n\n    # ----------------------------------------------------------------- IO ---\n    def to_dict(self) -> dict:\n        return asdict(self)\n\n    def save(self, path: str | Path) -> None:\n        Path(path).write_text(json.dumps(self.to_dict(), indent=2))\n\n    # ----------------------------------------------------------- presets ---\n    @classmethod\n    def survival(cls, seed: int = 7) -> \"SimulationConfig\":\n        \"\"\"A stripped-down 'survival of the fittest' preset for general audiences.\n\n        The full default config celebrates *biodiversity* (many species coexisting\n        in balance). This preset does the opposite: it makes one idea impossible\n        to miss -- **the fit survive and multiply, the unfit starve.**\n\n        It uses a small world with few, large, easy-to-follow creatures and\n        genuinely scarce food, so an onlooker literally watches the slow ones fail\n        to reach food and die while the fast ones eat and breed. Selection is\n        strong and directional (mean speed climbs generation over generation),\n        and the simple, transparent rule-based brain keeps behaviour explainable.\n        \"\"\"\n        cfg = cls(seed=seed)\n        cfg.world.width = 900.0\n        cfg.world.height = 600.0\n        cfg.world.terrain_cells_x = 9\n        cfg.world.terrain_cells_y = 6\n        cfg.population.initial_organisms = 30\n        cfg.population.max_organisms = 80\n        cfg.food.initial_count = 90\n        cfg.food.carrying_capacity = 120\n        cfg.food.regrowth_rate = 0.11\n        cfg.food.energy_per_item = 40.0\n        cfg.energy.base_metabolic_cost = 0.5\n        cfg.reproduction.cooldown = 55\n        cfg.reproduction.sexual = False\n        cfg.behavior.brain = \"rule\"  # transparent + predictable for a demo\n        return cfg\n\n    @classmethod\n    def from_dict(cls, data: dict) -> \"SimulationConfig\":\n        return cls(\n            seed=data.get(\"seed\", 1234),\n            world=WorldConfig(**data.get(\"world\", {})),\n            food=FoodConfig(**data.get(\"food\", {})),\n            population=PopulationConfig(**data.get(\"population\", {})),\n            energy=EnergyConfig(**data.get(\"energy\", {})),\n            reproduction=ReproductionConfig(**data.get(\"reproduction\", {})),\n            speciation=SpeciationConfig(**data.get(\"speciation\", {})),\n            behavior=BehaviorConfig(**data.get(\"behavior\", {})),\n        )\n\n    @classmethod\n    def load(cls, path: str | Path) -> \"SimulationConfig\":\n        return cls.from_dict(json.loads(Path(path).read_text()))\n",
+"evosim/genome.py": "\"\"\"Genome: the heritable blueprint that natural selection acts upon.\n\nA :class:`Genome` is a fixed set of continuous *genes*, each bounded to a\nbiologically meaningful range. Genes are expressed as *traits* (via\n:meth:`Genome.trait`) which the rest of the simulation reads to decide how an\norganism moves, eats, hides, fights, and reproduces.\n\nDesign goals\n------------\n* **Continuous & bounded** -- every gene lives in ``[0, 1]`` internally and is\n  scaled to a physical range on expression, so mutation can never produce an\n  impossible organism.\n* **Neuroevolvable** -- an optional flat vector of neural-network weights rides\n  along in the genome, so switching to a :class:`NeuralBrain` needs no change\n  to reproduction or mutation.\n* **Speciation-ready** -- :meth:`distance` gives a NEAT-style compatibility\n  metric so populations can be clustered into emergent species.\n\"\"\"\n\nfrom __future__ import annotations\n\nfrom dataclasses import dataclass, field\nfrom typing import Dict\n\nimport numpy as np\n\n# --- Gene specification ------------------------------------------------------\n# name -> (physical_min, physical_max, speciation_weight)\n# The genome stores each gene normalized in [0, 1]; ``trait()`` maps it back to\n# the physical range below. ``speciation_weight`` controls how much a gene\n# contributes to the genetic-distance metric used for clustering species --\n# ecologically defining traits (diet, size) matter more than e.g. exact colour.\nGENE_SPECS: Dict[str, tuple] = {\n    # locomotion\n    \"speed\": (0.4, 4.2, 1.0),\n    # perception radius (world units)\n    \"vision\": (20.0, 220.0, 1.0),\n    # metabolic multiplier: high = fast/hungry, low = slow/thrifty\n    \"metabolism\": (0.5, 1.9, 1.0),\n    # body size: affects energy capacity, cost, and who-eats-whom\n    \"size\": (0.5, 3.0, 1.5),\n    # maximum age in ticks\n    \"lifespan\": (900.0, 5200.0, 0.6),\n    # camouflage: how strongly colour-matching to terrain hides the organism\n    \"camouflage\": (0.0, 1.0, 0.7),\n    # diet: 0.0 = pure herbivore, 1.0 = pure carnivore (continuum -> divergence)\n    \"diet\": (0.0, 1.0, 2.0),\n    # aggression: willingness to attack when able\n    \"aggression\": (0.0, 1.0, 0.8),\n    # energy fraction at which the organism attempts reproduction\n    \"repro_threshold\": (0.45, 0.9, 0.5),\n    # fraction of its energy an organism invests into each offspring\n    \"offspring_investment\": (0.25, 0.6, 0.5),\n    # heritable colour, also the phenotype used for camouflage matching\n    \"color_r\": (0.0, 1.0, 0.3),\n    \"color_g\": (0.0, 1.0, 0.3),\n    \"color_b\": (0.0, 1.0, 0.3),\n}\n\nGENE_NAMES = list(GENE_SPECS.keys())\n_MINS = np.array([GENE_SPECS[g][0] for g in GENE_NAMES])\n_MAXS = np.array([GENE_SPECS[g][1] for g in GENE_NAMES])\n_RANGES = _MAXS - _MINS\n_WEIGHTS = np.array([GENE_SPECS[g][2] for g in GENE_NAMES])\n_WEIGHTS = _WEIGHTS / _WEIGHTS.sum()\n_INDEX = {name: i for i, name in enumerate(GENE_NAMES)}\n\n\n@dataclass\nclass Genome:\n    \"\"\"A vector of normalized genes plus optional neural weights.\"\"\"\n\n    genes: np.ndarray  # shape (len(GENE_NAMES),), values in [0, 1]\n    weights: np.ndarray | None = None  # flat neural-network weight vector\n    # Lineage bookkeeping for phylogeny / analysis.\n    generation: int = 0\n    lineage_id: int = 0\n\n    # ------------------------------------------------------------ factory ---\n    @classmethod\n    def random(\n        cls,\n        rng: np.random.Generator,\n        weight_size: int = 0,\n        lineage_id: int = 0,\n    ) -> \"Genome\":\n        genes = rng.random(len(GENE_NAMES))\n        weights = None\n        if weight_size > 0:\n            # Small initial weights keep early behaviour gentle before selection.\n            weights = rng.normal(0.0, 0.5, size=weight_size)\n        return cls(genes=genes, weights=weights, generation=0, lineage_id=lineage_id)\n\n    # ---------------------------------------------------------- expression ---\n    def trait(self, name: str) -> float:\n        \"\"\"Return the physical value of a named trait.\"\"\"\n        i = _INDEX[name]\n        return float(_MINS[i] + self.genes[i] * _RANGES[i])\n\n    @property\n    def color(self) -> tuple[int, int, int]:\n        \"\"\"RGB colour (0-255) expressed by the colour genes.\"\"\"\n        r = int(self.trait(\"color_r\") * 255)\n        g = int(self.trait(\"color_g\") * 255)\n        b = int(self.trait(\"color_b\") * 255)\n        return (r, g, b)\n\n    # ----------------------------------------------------------- heredity ---\n    def mutate(self, rng: np.random.Generator, repro_cfg) -> \"Genome\":\n        \"\"\"Return a mutated copy of this genome (asexual reproduction).\"\"\"\n        genes = self.genes.copy()\n\n        # Point mutations: small gaussian nudges to a random subset of genes.\n        mask = rng.random(genes.shape) < repro_cfg.mutation_rate\n        genes[mask] += rng.normal(0.0, repro_cfg.mutation_scale, size=mask.sum())\n\n        # Macro mutations: rare large jumps that can found new species.\n        macro = rng.random(genes.shape) < repro_cfg.macro_mutation_rate\n        genes[macro] += rng.normal(0.0, repro_cfg.macro_mutation_scale, size=macro.sum())\n\n        np.clip(genes, 0.0, 1.0, out=genes)\n\n        weights = None\n        if self.weights is not None:\n            weights = self.weights.copy()\n            wmask = rng.random(weights.shape) < repro_cfg.mutation_rate\n            weights[wmask] += rng.normal(\n                0.0, repro_cfg.mutation_scale * 2.0, size=wmask.sum()\n            )\n\n        return Genome(\n            genes=genes,\n            weights=weights,\n            generation=self.generation + 1,\n            lineage_id=self.lineage_id,\n        )\n\n    # --------------------------------------------------------- speciation ---\n    def distance(self, other: \"Genome\") -> float:\n        \"\"\"Weighted genetic distance used for NEAT-style speciation.\n\n        Only the phenotype genes contribute (not neural weights): two organisms\n        that behave differently but look/eat/live identically are still the same\n        species, which matches how biologists actually delimit species.\n        \"\"\"\n        diff = np.abs(self.genes - other.genes)\n        return float(np.dot(diff, _WEIGHTS))\n\n    # ------------------------------------------------------- recombination ---\n    def crossover(self, other: \"Genome\", rng: np.random.Generator) -> \"Genome\":\n        \"\"\"Uniform crossover with another genome (sexual reproduction).\n\n        Each gene (and each neural weight) is inherited from one parent or the\n        other with equal probability. Recombination lets beneficial mutations\n        that arose in separate lineages come together in a single offspring --\n        a distinct source of variation from point mutation alone.\n        \"\"\"\n        gene_mask = rng.random(self.genes.shape) < 0.5\n        genes = np.where(gene_mask, self.genes, other.genes)\n\n        weights = None\n        if self.weights is not None and other.weights is not None:\n            wmask = rng.random(self.weights.shape) < 0.5\n            weights = np.where(wmask, self.weights, other.weights)\n        elif self.weights is not None:\n            weights = self.weights.copy()\n\n        return Genome(\n            genes=genes,\n            weights=weights,\n            generation=max(self.generation, other.generation) + 1,\n            lineage_id=self.lineage_id,\n        )\n\n    def copy(self) -> \"Genome\":\n        return Genome(\n            genes=self.genes.copy(),\n            weights=None if self.weights is None else self.weights.copy(),\n            generation=self.generation,\n            lineage_id=self.lineage_id,\n        )\n",
+"evosim/organism.py": "\"\"\"Organism: an individual agent in the ecosystem.\n\nAn organism is the unit of selection. It carries a :class:`Genome`, a position,\nan energy budget, and an age. Its heritable traits are *expressed* from the\ngenome once at birth and cached for speed. All of its verbs -- move, eat, hunt,\nreproduce, die -- are driven by that genome, so differences in survival and\nreproduction are differences in genes: natural selection.\n\nInteraction logic that needs the whole world (who is near whom, who eats whom)\nlives in :class:`~evosim.simulation.Simulation`; this class owns the individual\nstate and the bioenergetics of a single life.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport itertools\n\nimport numpy as np\n\nfrom .config import EnergyConfig\nfrom .genome import Genome\n\n_id_counter = itertools.count(1)\n\n\nclass Organism:\n    __slots__ = (\n        \"id\",\n        \"genome\",\n        \"pos\",\n        \"energy\",\n        \"age\",\n        \"alive\",\n        \"repro_cooldown\",\n        \"wander_heading\",\n        \"rng\",\n        \"species_id\",\n        \"children\",\n        # cached expressed traits\n        \"speed\",\n        \"vision\",\n        \"metabolism\",\n        \"size\",\n        \"lifespan\",\n        \"camouflage\",\n        \"diet\",\n        \"aggression\",\n        \"repro_threshold\",\n        \"offspring_investment\",\n        \"max_energy\",\n    )\n\n    def __init__(\n        self,\n        genome: Genome,\n        pos: np.ndarray,\n        energy: float,\n        rng: np.random.Generator,\n        energy_cfg: EnergyConfig,\n    ):\n        self.id = next(_id_counter)\n        self.genome = genome\n        self.pos = pos.astype(float)\n        self.energy = float(energy)\n        self.age = 0\n        self.alive = True\n        self.repro_cooldown = 0\n        self.rng = rng\n        self.species_id = -1\n        self.children = 0\n\n        # Express phenotype from genotype (done once; traits are fixed for life).\n        self.speed = genome.trait(\"speed\")\n        self.vision = genome.trait(\"vision\")\n        self.metabolism = genome.trait(\"metabolism\")\n        self.size = genome.trait(\"size\")\n        self.lifespan = genome.trait(\"lifespan\")\n        self.camouflage = genome.trait(\"camouflage\")\n        self.diet = genome.trait(\"diet\")\n        self.aggression = genome.trait(\"aggression\")\n        self.repro_threshold = genome.trait(\"repro_threshold\")\n        self.offspring_investment = genome.trait(\"offspring_investment\")\n        # Larger bodies can bank more energy.\n        self.max_energy = energy_cfg.max_energy * (0.6 + 0.4 * self.size)\n        self.wander_heading = float(rng.random() * 2 * np.pi)\n\n    # -------------------------------------------------------- bioenergetics ---\n    def metabolic_cost(self, energy_cfg: EnergyConfig, throttle: float) -> float:\n        \"\"\"Energy spent this tick: basal (Kleiber ~ size**0.75) + locomotion.\n\n        Faster, bigger, higher-metabolism bodies cost more to run -- which is\n        exactly the trade-off that stops \"maximum everything\" from winning.\n        \"\"\"\n        basal = energy_cfg.base_metabolic_cost * (self.size ** 0.75) * self.metabolism\n        realized_speed = self.speed * throttle\n        locomotion = energy_cfg.movement_cost * (realized_speed ** 2) * self.size\n        return basal + locomotion\n\n    @property\n    def energy_fraction(self) -> float:\n        return min(1.0, self.energy / self.max_energy)\n\n    @property\n    def age_fraction(self) -> float:\n        return min(1.0, self.age / self.lifespan)\n\n    def can_reproduce(self) -> bool:\n        return (\n            self.alive\n            and self.repro_cooldown <= 0\n            and self.energy_fraction >= self.repro_threshold\n        )\n\n    def is_prey_of(self, predator: \"Organism\") -> bool:\n        \"\"\"A predator can eat prey that is meaningfully smaller than itself.\"\"\"\n        return predator.size > self.size * 1.15\n",
+"evosim/simulation.py": "\"\"\"The simulation engine -- the beating heart of the digital planet.\n\nThis module runs the ecological/evolutionary loop and is deliberately\n**headless**: it has no dependency on Pygame, Matplotlib, or any display. That\nseparation is what lets the exact same simulation drive a real-time Pygame\nwindow, a batch run on a server, or (later) a Blender render -- each is just a\nconsumer of engine state.\n\nOne ``step()`` advances the world by one tick in three passes:\n\n1. **Perceive** -- every organism builds a normalized sensory vector (food,\n   prey, threats) from the start-of-tick world. Distances are computed with\n   vectorized NumPy ops, not a Python loop per candidate.\n2. **Decide** -- the whole population is scored in a single batched call to the\n   pluggable :class:`Brain`.\n3. **Act & live** -- move, forage, hunt (camouflage modulates who gets seen),\n   pay metabolic costs, age, and possibly reproduce (asexually or sexually) or\n   die.\n\nSelection is never scripted: organisms that gather energy and reproduce leave\nmore (mutated/recombined) descendants, and that is the only thing steering the\npopulation.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport numpy as np\n\nfrom .behavior import make_brain\nfrom .behavior.base import PERCEPTION_SIZE\nfrom .config import SimulationConfig\nfrom .genome import Genome\nfrom .organism import Organism\nfrom .species import SpeciesTracker\nfrom .spatial import SpatialHash\nfrom .stats import StatsRecorder\nfrom .world import World\n\n\nclass Simulation:\n    def __init__(self, config: SimulationConfig | None = None):\n        self.config = config or SimulationConfig()\n        self.rng = np.random.default_rng(self.config.seed)\n        self.tick = 0\n\n        self.world = World(self.config, self.rng)\n        self.brain = make_brain(self.config.behavior)\n        self.species_tracker = SpeciesTracker(self.config.speciation, self.rng)\n        self.stats = StatsRecorder()\n\n        self.organisms: list[Organism] = []\n        self.positions = np.empty((0, 2))\n        self._org_hash = SpatialHash(\n            self.world.width,\n            self.world.height,\n            cell_size=64.0,\n            wrap=self.config.world.wrap,\n        )\n        self._spawn_initial_population()\n        self.species_tracker.classify(self.organisms, self.tick)\n\n    # ------------------------------------------------------------- spawning ---\n    def _spawn_initial_population(self) -> None:\n        n = self.config.population.initial_organisms\n        weight_size = self.brain.weight_size if self.brain.uses_weights else 0\n        for lineage in range(n):\n            genome = Genome.random(self.rng, weight_size=weight_size, lineage_id=lineage)\n            pos = self.rng.random(2) * [self.world.width, self.world.height]\n            org = Organism(\n                genome=genome,\n                pos=pos,\n                energy=self.config.energy.start_energy,\n                rng=self.rng,\n                energy_cfg=self.config.energy,\n            )\n            self.organisms.append(org)\n        self._rebuild_positions()\n\n    def _rebuild_positions(self) -> None:\n        if self.organisms:\n            self.positions = np.array([o.pos for o in self.organisms])\n        else:\n            self.positions = np.empty((0, 2))\n\n    # ------------------------------------------------------------- geometry ---\n    def _relative(self, a: np.ndarray, b: np.ndarray) -> tuple[np.ndarray, float]:\n        \"\"\"Shortest displacement a->b and its length, respecting world wrap.\"\"\"\n        d = b - a\n        if self.config.world.wrap:\n            d[0] -= self.world.width * round(d[0] / self.world.width)\n            d[1] -= self.world.height * round(d[1] / self.world.height)\n        dist = float(np.hypot(d[0], d[1]))\n        return d, dist\n\n    def _camouflage_effect(self, org: Organism) -> float:\n        \"\"\"How hidden an organism is (0..1): camouflage gene * terrain match.\"\"\"\n        terr = self.world.terrain_color_at(org.pos[0], org.pos[1])\n        col = np.array(org.genome.color) / 255.0\n        match = 1.0 - float(np.mean(np.abs(col - terr)))  # 1 = perfect match\n        return org.camouflage * max(0.0, match)\n\n    def _deltas(self, origin: np.ndarray, targets: np.ndarray) -> np.ndarray:\n        \"\"\"Vectorized shortest displacements from ``origin`` to each target row.\n\n        ``targets`` is an ``(m, 2)`` array; returns an ``(m, 2)`` array of wrap-\n        aware deltas. Doing this in one NumPy op (instead of a Python call per\n        candidate) is the key to keeping large populations fast.\n        \"\"\"\n        d = targets - origin\n        if self.config.world.wrap:\n            d[:, 0] -= self.world.width * np.round(d[:, 0] / self.world.width)\n            d[:, 1] -= self.world.height * np.round(d[:, 1] / self.world.height)\n        return d\n\n    # ------------------------------------------------------------ main step ---\n    def step(self) -> bool:\n        \"\"\"Advance the world one tick. Returns False if the population is extinct.\"\"\"\n        if not self.organisms:\n            self.stats.snapshot(self.tick, self.organisms, len(self.world.food_pos), 0)\n            return False\n\n        self._rebuild_positions()\n        self._org_hash.rebuild(self.positions)\n        self.world.rebuild_food_index()\n\n        n = len(self.organisms)\n        # Per-tick trait arrays (aligned with self.organisms / self.positions)\n        # so perception can compare against neighbours with vectorized ops.\n        self._sizes = np.fromiter((o.size for o in self.organisms), float, n)\n        self._diets = np.fromiter((o.diet for o in self.organisms), float, n)\n        self._camo = np.array([self._camouflage_effect(o) for o in self.organisms])\n\n        newborns: list[Organism] = []\n        energy_cfg = self.config.energy\n        eat_radius_base = 5.0\n\n        # --- Pass 1: perceive (all organisms sense the start-of-tick world) --\n        # Perceiving up-front (rather than interleaved with movement) means the\n        # whole population can be scored in one vectorized batch, and models\n        # simultaneous perception -- more biologically faithful than a serial\n        # scan where late movers react to early movers within the same instant.\n        perceptions = np.zeros((n, PERCEPTION_SIZE))\n        prey_targets: list = [None] * n\n        for i, org in enumerate(self.organisms):\n            perceptions[i], prey_targets[i] = self._perceive(i, org)\n\n        # --- Pass 2: decide (batched through the brain) ----------------------\n        actions = self.brain.decide_batch(perceptions, self.organisms)\n\n        # --- Pass 3: act & live ---------------------------------------------\n        for i, org in enumerate(self.organisms):\n            if not org.alive:\n                continue\n\n            action = actions[i]\n            throttle = float(np.clip(action[2], 0.0, 1.0))\n\n            # --- Move ------------------------------------------------------\n            heading = action[:2]\n            norm = np.hypot(heading[0], heading[1])\n            if norm > 1e-6:\n                heading = heading / norm\n                org.wander_heading = float(np.arctan2(heading[1], heading[0]))\n                org.pos = org.pos + heading * (org.speed * throttle)\n                self.world.wrap_position(org.pos)\n\n            # --- Forage (plants) ------------------------------------------\n            eat_radius = eat_radius_base + org.size * 3.0\n            self._forage(org, eat_radius)\n\n            # --- Hunt (predation) -----------------------------------------\n            prey = prey_targets[i]\n            if prey is not None and prey.alive:\n                self._attempt_predation(org, prey, eat_radius)\n\n            # --- Metabolism & ageing --------------------------------------\n            org.energy -= org.metabolic_cost(energy_cfg, throttle)\n            org.energy = min(org.energy, org.max_energy)\n            org.age += 1\n            if org.repro_cooldown > 0:\n                org.repro_cooldown -= 1\n\n            # --- Death ----------------------------------------------------\n            if org.energy <= 0.0:\n                org.alive = False\n                self.stats.deaths_starvation += 1\n                continue\n            if org.age >= org.lifespan:\n                org.alive = False\n                self.stats.deaths_old_age += 1\n                continue\n\n            # --- Reproduction ---------------------------------------------\n            if org.can_reproduce() and (\n                len(self.organisms) + len(newborns) < self.config.population.max_organisms\n            ):\n                child = self._reproduce(org)\n                newborns.append(child)\n\n        # --- Bookkeeping --------------------------------------------------\n        self.organisms = [o for o in self.organisms if o.alive] + newborns\n        self.world.compact_food()\n        self.world.regrow()\n        self.tick += 1\n\n        if self.tick % self.config.speciation.reclassify_interval == 0:\n            self.species_tracker.classify(self.organisms, self.tick)\n\n        self.stats.snapshot(\n            self.tick,\n            self.organisms,\n            len(self.world.food_pos),\n            self.species_tracker.count,\n        )\n        return len(self.organisms) > 0\n\n    # ------------------------------------------------------------ perceive ---\n    def _perceive(self, i: int, org: Organism):\n        \"\"\"Build the sensory vector for one organism (vectorized over candidates).\n\n        Returns ``(perception, prey_obj)`` where ``prey_obj`` is the hunt target\n        (or ``None``). All neighbour/food distances for this organism are\n        computed with array ops rather than a Python loop per candidate.\n        \"\"\"\n        vision = org.vision\n        p = np.zeros(PERCEPTION_SIZE)\n        p[0] = 1.0  # bias\n        p[1] = org.energy_fraction\n        p[2] = org.age_fraction\n        p[13] = org.diet\n        p[14] = org.aggression\n\n        # --- Nearest plant within vision ---------------------------------\n        fidx = self.world.find_food_near(org.pos[0], org.pos[1], vision)\n        if fidx:\n            fidx = np.asarray(fidx, dtype=int)\n            fidx = fidx[self.world.food_alive[fidx]]\n            if len(fidx):\n                d = self._deltas(org.pos, self.world.food_pos[fidx])\n                dist = np.hypot(d[:, 0], d[:, 1])\n                m = int(np.argmin(dist))\n                if 1e-6 < dist[m] < vision:\n                    u = d[m] / dist[m]\n                    p[3], p[4] = u\n                    p[5] = 1.0 - dist[m] / vision\n\n        # --- Nearest prey & threat among organisms within vision ----------\n        prey_obj = None\n        neigh = self._org_hash.query_radius(org.pos[0], org.pos[1], vision)\n        if neigh:\n            neigh = np.asarray(neigh, dtype=int)\n            neigh = neigh[neigh != i]\n            if len(neigh):\n                d = self._deltas(org.pos, self.positions[neigh])\n                dist = np.hypot(d[:, 0], d[:, 1])\n                within = dist <= vision\n                if within.any():\n                    neigh = neigh[within]\n                    d, dist = d[within], dist[within]\n                    sizes = self._sizes[neigh]\n                    diets = self._diets[neigh]\n                    camo = self._camo[neigh]\n                    p[12] = min(1.0, len(neigh) / 20.0)\n\n                    # Prey: smaller than us; camouflage shrinks our sight of them.\n                    if org.diet > 0.2:\n                        eff_vision = vision * (1.0 - 0.85 * camo)\n                        prey_mask = (org.size > sizes * 1.15) & (dist <= eff_vision)\n                        if prey_mask.any():\n                            masked = np.where(prey_mask, dist, np.inf)\n                            m = int(np.argmin(masked))\n                            if dist[m] > 1e-6:\n                                u = d[m] / dist[m]\n                                p[6], p[7] = u\n                                p[8] = 1.0 - dist[m] / vision\n                            prey_obj = self.organisms[neigh[m]]\n\n                    # Threat: a predator big enough to eat us and inclined to hunt.\n                    threat_mask = (sizes > org.size * 1.15) & (diets > 0.2)\n                    if threat_mask.any():\n                        masked = np.where(threat_mask, dist, np.inf)\n                        m = int(np.argmin(masked))\n                        if dist[m] > 1e-6:\n                            u = d[m] / dist[m]\n                            p[9], p[10] = u\n                            p[11] = 1.0 - dist[m] / vision\n\n        return p, prey_obj\n\n    # -------------------------------------------------------------- actions ---\n    def _forage(self, org: Organism, eat_radius: float) -> None:\n        if len(self.world.food_pos) == 0:\n            return\n        near = self.world.find_food_near(org.pos[0], org.pos[1], eat_radius)\n        if not near:\n            return\n        idx = np.asarray(near, dtype=int)\n        idx = idx[self.world.food_alive[idx]]\n        if not len(idx):\n            return\n        d = self._deltas(org.pos, self.world.food_pos[idx])\n        dist = np.hypot(d[:, 0], d[:, 1])\n        eaten = idx[dist <= eat_radius]\n        if len(eaten):\n            # Herbivores digest plants well; carnivores barely at all.\n            plant_mult = 1.0 - 0.7 * org.diet\n            org.energy = min(\n                org.energy + float(self.world.food_energy[eaten].sum()) * plant_mult,\n                org.max_energy,\n            )\n            self.world.consume_food(eaten.tolist())\n\n    def _attempt_predation(self, org: Organism, prey: Organism, eat_radius: float) -> None:\n        _, dist = self._relative(org.pos, prey.pos)\n        attack_reach = eat_radius + prey.size * 2.0\n        if dist > attack_reach:\n            return\n        # Success chance rises with aggression and size advantage.\n        size_edge = np.clip((org.size - prey.size) / max(prey.size, 0.1), 0.0, 1.0)\n        success = 0.35 + 0.5 * org.aggression + 0.15 * size_edge\n        if self.rng.random() < success:\n            prey.alive = False\n            self.stats.deaths_predation += 1\n            meat_mult = 0.4 + 0.6 * org.diet  # carnivores digest meat better\n            gain = prey.energy * self.config.energy.predation_efficiency * meat_mult\n            org.energy = min(org.energy + gain, org.max_energy)\n\n    def _find_mate(self, parent: Organism) -> Organism | None:\n        \"\"\"Nearest reproducible, same-species organism within the mate radius.\"\"\"\n        radius = self.config.reproduction.mate_radius\n        candidates = self._org_hash.query_radius(parent.pos[0], parent.pos[1], radius)\n        best, best_d = None, radius\n        for j in candidates:\n            other = self.organisms[j]\n            if other is parent or not other.alive:\n                continue\n            if other.species_id != parent.species_id:\n                continue\n            if other.energy_fraction < other.repro_threshold:\n                continue\n            _, dist = self._relative(parent.pos, other.pos)\n            if dist < best_d:\n                best, best_d = other, dist\n        return best\n\n    def _reproduce(self, parent: Organism) -> Organism:\n        invest = parent.offspring_investment * parent.energy\n        parent.energy -= invest\n        parent.repro_cooldown = self.config.reproduction.cooldown\n        parent.children += 1\n\n        repro_cfg = self.config.reproduction\n        if repro_cfg.sexual:\n            mate = self._find_mate(parent)\n            if mate is not None:\n                # Recombine then mutate; the mate also pays a small cool-down so\n                # it can't co-parent every tick.\n                recombined = parent.genome.crossover(mate.genome, self.rng)\n                child_genome = recombined.mutate(self.rng, repro_cfg)\n                mate.repro_cooldown = max(mate.repro_cooldown, repro_cfg.cooldown // 2)\n            else:\n                child_genome = parent.genome.mutate(self.rng, repro_cfg)\n        else:\n            child_genome = parent.genome.mutate(self.rng, repro_cfg)\n        # Offspring appears next to the parent.\n        offset = self.rng.normal(0, 8.0, size=2)\n        child_pos = parent.pos + offset\n        self.world.wrap_position(child_pos)\n        child = Organism(\n            genome=child_genome,\n            pos=child_pos,\n            energy=invest,\n            rng=self.rng,\n            energy_cfg=self.config.energy,\n        )\n        child.species_id = parent.species_id\n        self.stats.births += 1\n        return child\n\n    # ---------------------------------------------------------------- helpers ---\n    @property\n    def population(self) -> int:\n        return len(self.organisms)\n\n    def run(self, ticks: int, on_step=None) -> None:\n        \"\"\"Run headless for ``ticks`` steps (or until extinction).\"\"\"\n        for _ in range(ticks):\n            alive = self.step()\n            if on_step is not None:\n                on_step(self)\n            if not alive:\n                break\n",
+"evosim/spatial.py": "\"\"\"Spatial hash grid for O(1)-ish neighbour queries.\n\nVision, eating and predation all boil down to \"what is near position P?\".\nA naive all-pairs scan is O(n^2) and kills performance once the population\ngrows into the thousands. This uniform-grid spatial hash buckets entities by\ncell so a radius query only inspects the handful of nearby cells.\n\nThe grid is rebuilt each tick from the current positions (cheap, vectorized),\nwhich keeps the data structure simple and correct as organisms move.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport math\nfrom typing import Iterable, List, Tuple\n\nimport numpy as np\n\n\nclass SpatialHash:\n    def __init__(self, width: float, height: float, cell_size: float, wrap: bool = True):\n        self.width = width\n        self.height = height\n        self.cell_size = max(cell_size, 1.0)\n        self.wrap = wrap\n        self.cols = max(1, int(math.ceil(width / self.cell_size)))\n        self.rows = max(1, int(math.ceil(height / self.cell_size)))\n        self._cells: dict[Tuple[int, int], List[int]] = {}\n\n    def _cell_of(self, x: float, y: float) -> Tuple[int, int]:\n        return (int(x // self.cell_size) % self.cols, int(y // self.cell_size) % self.rows)\n\n    def rebuild(self, positions: np.ndarray) -> None:\n        \"\"\"Rebuild the grid from an (n, 2) array of positions.\"\"\"\n        self._cells = {}\n        if len(positions) == 0:\n            return\n        cx = (positions[:, 0] // self.cell_size).astype(int) % self.cols\n        cy = (positions[:, 1] // self.cell_size).astype(int) % self.rows\n        for idx, (i, j) in enumerate(zip(cx, cy)):\n            self._cells.setdefault((int(i), int(j)), []).append(idx)\n\n    def query_radius(self, x: float, y: float, radius: float) -> List[int]:\n        \"\"\"Return indices of entities whose *cell* is within ``radius`` of (x, y).\n\n        This is a broad-phase filter: it may return a few entities just outside\n        the radius, so callers still do an exact distance check. That trade-off\n        is what makes it fast.\n        \"\"\"\n        reach = int(math.ceil(radius / self.cell_size))\n        cx, cy = self._cell_of(x, y)\n        found: List[int] = []\n        for di in range(-reach, reach + 1):\n            for dj in range(-reach, reach + 1):\n                i = (cx + di) % self.cols if self.wrap else cx + di\n                j = (cy + dj) % self.rows if self.wrap else cy + dj\n                bucket = self._cells.get((i, j))\n                if bucket:\n                    found.extend(bucket)\n        return found\n\n\ndef toroidal_delta(a: np.ndarray, b: np.ndarray, width: float, height: float) -> np.ndarray:\n    \"\"\"Shortest vector from ``a`` to ``b`` on a wrapping (toroidal) world.\"\"\"\n    d = b - a\n    d[..., 0] -= width * np.round(d[..., 0] / width)\n    d[..., 1] -= height * np.round(d[..., 1] / height)\n    return d\n",
+"evosim/species.py": "\"\"\"Emergent speciation via compatibility clustering (NEAT-style).\n\nSpecies are **not** predefined. Instead, every so often the whole population is\nclustered by genetic distance: an organism joins the first existing species\nwhose representative is within :attr:`compatibility_threshold`, otherwise it\nfounds a brand-new species. As lineages accumulate mutations and drift apart,\nclusters split -- so the *number* and *identity* of species is an emergent,\nunscripted output of the simulation, which is precisely what Darwinian\ndivergence predicts.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport itertools\nfrom dataclasses import dataclass, field\n\nimport numpy as np\n\nfrom .config import SpeciationConfig\nfrom .genome import Genome\n\n\n@dataclass\nclass Species:\n    id: int\n    representative: Genome\n    color: tuple[int, int, int]\n    members: list = field(default_factory=list)\n    born_tick: int = 0\n    peak_size: int = 0\n\n\nclass SpeciesTracker:\n    def __init__(self, config: SpeciationConfig, rng: np.random.Generator):\n        self.config = config\n        self.rng = rng\n        self.species: dict[int, Species] = {}\n        self._id = itertools.count(1)\n\n    def _new_species(self, rep: Genome, tick: int) -> Species:\n        sid = next(self._id)\n        color = tuple(int(c) for c in self.rng.integers(60, 255, size=3))\n        sp = Species(id=sid, representative=rep.copy(), color=color, born_tick=tick)\n        self.species[sid] = sp\n        return sp\n\n    def classify(self, organisms: list, tick: int) -> None:\n        \"\"\"Assign every organism to a species, creating/pruning as needed.\"\"\"\n        # Reset membership; keep representatives from last round for stability.\n        for sp in self.species.values():\n            sp.members = []\n\n        rep_items = list(self.species.values())\n        threshold = self.config.compatibility_threshold\n\n        for org in organisms:\n            best_sp = None\n            best_dist = threshold\n            for sp in rep_items:\n                d = org.genome.distance(sp.representative)\n                if d < best_dist:\n                    best_dist = d\n                    best_sp = sp\n            if best_sp is None:\n                best_sp = self._new_species(org.genome, tick)\n                rep_items.append(best_sp)\n            best_sp.members.append(org)\n            org.species_id = best_sp.id\n\n        # Update representatives to a random member and prune empty/tiny species.\n        survivors: dict[int, Species] = {}\n        for sp in self.species.values():\n            if len(sp.members) >= self.config.min_species_size:\n                rep = sp.members[self.rng.integers(len(sp.members))]\n                sp.representative = rep.genome.copy()\n                sp.peak_size = max(sp.peak_size, len(sp.members))\n                survivors[sp.id] = sp\n            elif sp.members:\n                # Too small to be its own species: fold members into nearest.\n                for org in sp.members:\n                    org.species_id = self._nearest_existing(org, survivors, threshold)\n        self.species = survivors\n\n    def _nearest_existing(self, org, pool: dict, threshold: float) -> int:\n        best_id, best = -1, float(\"inf\")\n        for sid, sp in pool.items():\n            d = org.genome.distance(sp.representative)\n            if d < best:\n                best, best_id = d, sid\n        if best_id != -1 and best <= threshold * 1.5:\n            pool[best_id].members.append(org)\n            return best_id\n        return org.species_id\n\n    @property\n    def count(self) -> int:\n        return len(self.species)\n",
+"evosim/stats.py": "\"\"\"Scientific data logging.\n\nEvolution is only convincing if it is *measured*. Each tick the engine hands the\nrecorder a snapshot; the recorder derives population-level statistics -- means of\nevery trait, species counts, births/deaths broken down by cause, trophic\nstructure -- and stores them as a tidy time series that can be written to\nCSV/JSON and fed to the Matplotlib analysis module.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport csv\nimport json\nfrom pathlib import Path\n\nimport numpy as np\n\nTRAIT_KEYS = [\n    \"speed\",\n    \"vision\",\n    \"metabolism\",\n    \"size\",\n    \"lifespan\",\n    \"camouflage\",\n    \"diet\",\n    \"aggression\",\n]\n\n\ndef _shannon(species_ids: list) -> float:\n    \"\"\"Shannon diversity index H = -Σ pᵢ·ln pᵢ over species.\n\n    A standard ecology measure of biodiversity: it rises with both the number\n    of species and how evenly individuals are spread across them. H = 0 means a\n    single lineage dominates (competitive exclusion); higher H means a rich,\n    balanced community.\n    \"\"\"\n    ids, counts = np.unique(np.asarray(species_ids), return_counts=True)\n    if len(ids) <= 1:\n        return 0.0\n    p = counts / counts.sum()\n    return float(-np.sum(p * np.log(p)))\n\n\ndef _genetic_diversity(organisms: list) -> float:\n    \"\"\"Mean per-gene variance across the population (genes are normalized 0–1).\n\n    A genotype-level measure of standing variation -- the raw material evolution\n    works with. It collapses toward zero as the gene pool converges on one\n    'fittest' design and grows when lineages diverge.\n    \"\"\"\n    genes = np.array([o.genome.genes for o in organisms], dtype=float)\n    return float(genes.var(axis=0).mean())\n\n\nclass StatsRecorder:\n    def __init__(self):\n        self.records: list[dict] = []\n        # Per-tick counters, reset by the engine after each snapshot.\n        self.births = 0\n        self.deaths_starvation = 0\n        self.deaths_predation = 0\n        self.deaths_old_age = 0\n\n    def reset_counters(self) -> None:\n        self.births = 0\n        self.deaths_starvation = 0\n        self.deaths_predation = 0\n        self.deaths_old_age = 0\n\n    def snapshot(self, tick: int, organisms: list, food_count: int, species_count: int) -> dict:\n        n = len(organisms)\n        rec: dict = {\n            \"tick\": tick,\n            \"population\": n,\n            \"food\": food_count,\n            \"species\": species_count,\n            \"births\": self.births,\n            \"deaths_starvation\": self.deaths_starvation,\n            \"deaths_predation\": self.deaths_predation,\n            \"deaths_old_age\": self.deaths_old_age,\n        }\n        if n > 0:\n            for key in TRAIT_KEYS:\n                vals = np.array([getattr(o, key) for o in organisms], dtype=float)\n                rec[f\"avg_{key}\"] = float(vals.mean())\n                # Spread of a trait = how much variation selection still has to\n                # act on (it shrinks as a trait is fixed by directional selection).\n                rec[f\"std_{key}\"] = float(vals.std())\n            rec[\"avg_energy\"] = float(np.mean([o.energy for o in organisms]))\n            rec[\"avg_generation\"] = float(np.mean([o.genome.generation for o in organisms]))\n            diets = np.array([o.diet for o in organisms])\n            rec[\"herbivores\"] = int(np.sum(diets < 0.35))\n            rec[\"omnivores\"] = int(np.sum((diets >= 0.35) & (diets <= 0.65)))\n            rec[\"carnivores\"] = int(np.sum(diets > 0.65))\n            rec[\"shannon_index\"] = _shannon([o.species_id for o in organisms])\n            rec[\"genetic_diversity\"] = _genetic_diversity(organisms)\n        else:\n            for key in TRAIT_KEYS:\n                rec[f\"avg_{key}\"] = float(\"nan\")\n                rec[f\"std_{key}\"] = float(\"nan\")\n            rec[\"avg_energy\"] = float(\"nan\")\n            rec[\"avg_generation\"] = float(\"nan\")\n            rec[\"herbivores\"] = rec[\"omnivores\"] = rec[\"carnivores\"] = 0\n            rec[\"shannon_index\"] = float(\"nan\")\n            rec[\"genetic_diversity\"] = float(\"nan\")\n\n        self.records.append(rec)\n        self.reset_counters()\n        return rec\n\n    # --------------------------------------------------------------- export ---\n    def column(self, key: str) -> np.ndarray:\n        return np.array([r.get(key, float(\"nan\")) for r in self.records], dtype=float)\n\n    def to_json(self, path: str | Path) -> None:\n        Path(path).write_text(json.dumps(self.records, indent=2))\n\n    def to_csv(self, path: str | Path) -> None:\n        if not self.records:\n            Path(path).write_text(\"\")\n            return\n        keys = list(self.records[0].keys())\n        with open(path, \"w\", newline=\"\") as f:\n            writer = csv.DictWriter(f, fieldnames=keys)\n            writer.writeheader()\n            writer.writerows(self.records)\n",
+"evosim/world.py": "\"\"\"The digital planet: terrain, plants, and the spatial environment.\n\nThe world provides three things the ecosystem depends on:\n\n* **Terrain** -- a coarse colour field. Camouflage effectiveness is the match\n  between an organism's colour and the terrain it sits on, so terrain creates\n  spatially varying selection pressure (an organism adapted to one biome is\n  exposed in another).\n* **Food (plants)** -- primary producers that regrow up to a carrying capacity\n  and cluster on fertile terrain, forming the base of the food web.\n* **Geometry** -- world size and toroidal wrapping helpers.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport numpy as np\n\nfrom .config import SimulationConfig\nfrom .spatial import SpatialHash\n\n\nclass World:\n    def __init__(self, config: SimulationConfig, rng: np.random.Generator):\n        self.config = config\n        self.rng = rng\n        self.width = config.world.width\n        self.height = config.world.height\n\n        # --- Terrain colour field (used for the camouflage mechanic) --------\n        tx, ty = config.world.terrain_cells_x, config.world.terrain_cells_y\n        # Smoothly varying RGB in [0, 1] per terrain cell.\n        base = rng.random((ty, tx, 3))\n        # Blend with neighbours so biomes look coherent rather than static.\n        self.terrain = 0.5 * base + 0.5 * np.roll(base, 1, axis=1)\n        # \"Fertility\" per cell biases where plants grow (greener = more fertile).\n        self.fertility = 0.3 + 0.7 * self.terrain[:, :, 1]\n        self._terr_cell_w = self.width / tx\n        self._terr_cell_h = self.height / ty\n\n        # --- Food state -----------------------------------------------------\n        # ``food_alive`` lets us mark plants eaten *during* a tick without\n        # resizing the arrays (which would invalidate the spatial-hash indices\n        # built at the start of the tick). Dead plants are compacted away once\n        # per tick by :meth:`compact_food`.\n        self.food_pos = np.empty((0, 2))\n        self.food_energy = np.empty((0,))\n        self.food_alive = np.empty((0,), dtype=bool)\n        self._food_hash = SpatialHash(\n            self.width, self.height, cell_size=48.0, wrap=config.world.wrap\n        )\n        self._seed_initial_food()\n\n    # ---------------------------------------------------------------- food ---\n    def _sample_fertile_positions(self, n: int) -> np.ndarray:\n        \"\"\"Sample n positions, biased toward fertile terrain when configured.\"\"\"\n        if n <= 0:\n            return np.empty((0, 2))\n        bias = self.config.food.cluster_bias\n        # A fraction of plants are placed uniformly; the rest cluster on fertile\n        # cells chosen proportionally to fertility.\n        n_cluster = int(n * bias)\n        n_uniform = n - n_cluster\n\n        pos = []\n        if n_uniform > 0:\n            pos.append(\n                self.rng.random((n_uniform, 2)) * [self.width, self.height]\n            )\n        if n_cluster > 0:\n            flat = self.fertility.flatten()\n            probs = flat / flat.sum()\n            cells = self.rng.choice(len(flat), size=n_cluster, p=probs)\n            ty, tx = self.fertility.shape\n            cy, cx = np.divmod(cells, tx)\n            jitter = self.rng.random((n_cluster, 2))\n            xs = (cx + jitter[:, 0]) * self._terr_cell_w\n            ys = (cy + jitter[:, 1]) * self._terr_cell_h\n            pos.append(np.stack([xs, ys], axis=1))\n        return np.concatenate(pos, axis=0)\n\n    def _seed_initial_food(self) -> None:\n        n = self.config.food.initial_count\n        self.food_pos = self._sample_fertile_positions(n)\n        self.food_energy = np.full(n, self.config.food.energy_per_item)\n        self.food_alive = np.ones(n, dtype=bool)\n\n    def compact_food(self) -> None:\n        \"\"\"Drop plants marked eaten this tick. Call once at end of a tick.\"\"\"\n        if len(self.food_pos) == 0 or self.food_alive.all():\n            return\n        keep = self.food_alive\n        self.food_pos = self.food_pos[keep]\n        self.food_energy = self.food_energy[keep]\n        self.food_alive = np.ones(len(self.food_pos), dtype=bool)\n\n    def regrow(self) -> None:\n        \"\"\"Grow new plants toward the carrying capacity (logistic-ish).\"\"\"\n        cap = self.config.food.carrying_capacity\n        current = len(self.food_pos)\n        free = cap - current\n        if free <= 0:\n            return\n        # More plants regrow when there is more free capacity (density feedback).\n        expected = self.config.food.regrowth_rate * free * (free / cap)\n        n_new = self.rng.poisson(max(expected, 0.0))\n        n_new = int(min(n_new, free))\n        if n_new <= 0:\n            return\n        new_pos = self._sample_fertile_positions(n_new)\n        new_energy = np.full(n_new, self.config.food.energy_per_item)\n        self.food_pos = np.concatenate([self.food_pos, new_pos], axis=0)\n        self.food_energy = np.concatenate([self.food_energy, new_energy])\n        self.food_alive = np.concatenate([self.food_alive, np.ones(n_new, dtype=bool)])\n\n    def rebuild_food_index(self) -> None:\n        self._food_hash.rebuild(self.food_pos)\n\n    def find_food_near(self, x: float, y: float, radius: float) -> list[int]:\n        return self._food_hash.query_radius(x, y, radius)\n\n    def is_food_alive(self, index: int) -> bool:\n        return 0 <= index < len(self.food_alive) and bool(self.food_alive[index])\n\n    def consume_food(self, indices: list[int]) -> None:\n        \"\"\"Mark plants as eaten (compacted away at end of tick).\"\"\"\n        for i in indices:\n            if 0 <= i < len(self.food_alive):\n                self.food_alive[i] = False\n\n    # ------------------------------------------------------------- terrain ---\n    def terrain_color_at(self, x: float, y: float) -> np.ndarray:\n        \"\"\"RGB terrain colour (0-1) at a world position.\"\"\"\n        ty, tx = self.fertility.shape\n        cx = int((x % self.width) / self._terr_cell_w) % tx\n        cy = int((y % self.height) / self._terr_cell_h) % ty\n        return self.terrain[cy, cx]\n\n    # ------------------------------------------------------------ geometry ---\n    def wrap_position(self, pos: np.ndarray) -> np.ndarray:\n        if self.config.world.wrap:\n            pos[..., 0] %= self.width\n            pos[..., 1] %= self.height\n        else:\n            pos[..., 0] = np.clip(pos[..., 0], 0, self.width)\n            pos[..., 1] = np.clip(pos[..., 1], 0, self.height)\n        return pos\n"
+};
+
+</script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+  <script>
+/*
+ * EvoSim browser viewer.
+ *
+ * Runs the REAL evosim Python engine in the browser via Pyodide (CPython on
+ * WebAssembly). The Python side only advances the simulation and hands back
+ * compact typed-array frames; all drawing happens here on a 2D canvas. Because
+ * the engine is the exact same code that powers the Pygame/headless runs, the
+ * evolution you watch here is scientifically identical -- nothing is faked or
+ * re-implemented in JavaScript.
+ */
+
+"use strict";
+
+const PYODIDE_VERSION = "v0.26.2";
+const PYODIDE_CDN = `https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/`;
+
+// Python glue: build a sim, step it, and export a drawable frame as raw bytes.
+const BRIDGE = `
+import numpy as np
+from evosim import Simulation, SimulationConfig
+
+_STATE = {}
+
+def make_sim(seed, brain, max_pop):
+    cfg = SimulationConfig()
+    cfg.seed = int(seed)
+    cfg.behavior.brain = brain
+    if max_pop:
+        cfg.population.max_organisms = int(max_pop)
+    sim = Simulation(cfg)
+    _STATE['sim'] = sim
+    return {'width': float(sim.world.width), 'height': float(sim.world.height)}
+
+def step_sim(n):
+    sim = _STATE['sim']
+    alive = True
+    for _ in range(int(n)):
+        alive = sim.step()
+        if not alive:
+            break
+    return bool(alive)
+
+def frame():
+    sim = _STATE['sim']
+    orgs = sim.organisms
+    n = len(orgs)
+    meta = np.empty((n, 5), np.float32)   # x, y, size, heading, diet
+    gcol = np.empty((n, 3), np.uint8)     # genome RGB
+    scol = np.empty((n, 3), np.uint8)     # species RGB
+    tr = sim.species_tracker
+    for k, o in enumerate(orgs):
+        p = o.pos
+        meta[k, 0] = p[0]; meta[k, 1] = p[1]
+        meta[k, 2] = o.size; meta[k, 3] = o.wander_heading; meta[k, 4] = o.diet
+        gc = o.genome.color
+        gcol[k, 0] = gc[0]; gcol[k, 1] = gc[1]; gcol[k, 2] = gc[2]
+        sp = tr.species.get(o.species_id)
+        sc = sp.color if sp is not None else (200, 200, 200)
+        scol[k, 0] = sc[0]; scol[k, 1] = sc[1]; scol[k, 2] = sc[2]
+    fp = np.ascontiguousarray(sim.world.food_pos, np.float32)
+
+    rec = sim.stats.records[-1] if sim.stats.records else {}
+    def g(k):
+        v = rec.get(k, 0.0)
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            return 0.0
+        return v if v == v else 0.0   # NaN -> 0
+    col = sim.stats.column
+    return {
+        'n': n,
+        'tick': int(sim.tick),
+        'species': int(tr.count),
+        'nfood': int(len(fp)),
+        'meta': meta.tobytes(),
+        'gcol': gcol.tobytes(),
+        'scol': scol.tobytes(),
+        'food': fp.tobytes(),
+        # --- analytical metrics (computed once by the engine, reused here) ---
+        'shannon': g('shannon_index'),
+        'gendiv': g('genetic_diversity'),
+        'gen': g('avg_generation'),
+        'energy': g('avg_energy'),
+        'herb': int(rec.get('herbivores', 0)),
+        'omn': int(rec.get('omnivores', 0)),
+        'carn': int(rec.get('carnivores', 0)),
+        'speed': g('avg_speed'), 'speed_sd': g('std_speed'),
+        'vision': g('avg_vision'), 'vision_sd': g('std_vision'),
+        'size': g('avg_size'), 'size_sd': g('std_size'),
+        'diet': g('avg_diet'), 'diet_sd': g('std_diet'),
+        'births': int(col('births').sum()),
+        'starv': int(col('deaths_starvation').sum()),
+        'pred': int(col('deaths_predation').sum()),
+        'old': int(col('deaths_old_age').sum()),
+    }
+`;
+
+const els = {};
+let pyodide = null;
+let py = {};              // { make_sim, step_sim, frame } PyProxy callables
+let world = { width: 1200, height: 800 };
+let running = false;
+let stepsPerFrame = 3;
+let colorMode = "diet";  // species | diet | genome
+let showVision = false;
+let rafId = null;
+let lastFpsT = performance.now();
+let frameCount = 0;
+
+function $(id) { return document.getElementById(id); }
+
+function setStatus(text, spinning = false) {
+  els.status.textContent = text;
+  els.spinner.style.display = spinning ? "inline-block" : "none";
+}
+
+async function boot() {
+  els.canvas = $("view");
+  els.ctx = els.canvas.getContext("2d");
+  els.status = $("status");
+  els.spinner = $("spinner");
+  els.fps = $("a-fps");
+
+  wireControls();
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
+
+  setStatus("Loading Python runtime (Pyodide)…", true);
+  pyodide = await loadPyodide({ indexURL: PYODIDE_CDN });
+
+  setStatus("Loading NumPy…", true);
+  await pyodide.loadPackage("numpy");
+
+  setStatus("Loading EvoSim engine…", true);
+  writeEngineFiles();
+  pyodide.runPython(BRIDGE);
+  py.make_sim = pyodide.globals.get("make_sim");
+  py.step_sim = pyodide.globals.get("step_sim");
+  py.frame = pyodide.globals.get("frame");
+
+  newSim();
+  setStatus("Ready — press Play (or Space).");
+  drawOnce();
+}
+
+// Materialize the bundled evosim source into Pyodide's virtual filesystem.
+function writeEngineFiles() {
+  const files = self.EVOSIM_FILES || {};
+  const made = new Set();
+  for (const path of Object.keys(files)) {
+    const parts = path.split("/");
+    let dir = "";
+    for (let i = 0; i < parts.length - 1; i++) {
+      dir = dir ? `${dir}/${parts[i]}` : parts[i];
+      if (!made.has(dir)) {
+        try { pyodide.FS.mkdir(dir); } catch (e) { /* exists */ }
+        made.add(dir);
+      }
+    }
+    pyodide.FS.writeFile(path, files[path]);
+  }
+}
+
+function newSim() {
+  const seed = parseInt(els.seed.value, 10) || 0;
+  const brain = els.brain.value;
+  const maxPop = parseInt(els.maxpop.value, 10) || 0;
+  const dims = py.make_sim(seed, brain, maxPop).toJs({ dict_converter: Object.fromEntries });
+  world.width = dims.width;
+  world.height = dims.height;
+  for (const k in hist) hist[k].length = 0;   // fresh analytics history
+  drawOnce();
+}
+
+// Pull one frame of draw data back from Python as typed arrays.
+function pullFrame() {
+  const proxy = py.frame();
+  const d = proxy.toJs({ dict_converter: Object.fromEntries });
+  proxy.destroy();
+  return {
+    n: d.n,
+    tick: d.tick,
+    species: d.species,
+    nfood: d.nfood,
+    meta: new Float32Array(d.meta.buffer, d.meta.byteOffset, d.n * 5),
+    gcol: d.gcol,          // Uint8Array, 3 per organism
+    scol: d.scol,          // Uint8Array, 3 per organism
+    food: new Float32Array(d.food.buffer, d.food.byteOffset, d.nfood * 2),
+    m: {
+      shannon: d.shannon, gendiv: d.gendiv, gen: d.gen, energy: d.energy,
+      herb: d.herb, omn: d.omn, carn: d.carn,
+      speed: d.speed, speed_sd: d.speed_sd, vision: d.vision, vision_sd: d.vision_sd,
+      size: d.size, size_sd: d.size_sd, diet: d.diet, diet_sd: d.diet_sd,
+      births: d.births, starv: d.starv, pred: d.pred, old: d.old,
+    },
+  };
+}
+
+// --- Live analytics: rolling history + sparklines --------------------------
+const HIST_MAX = 160;
+const hist = { pop: [], species: [], shannon: [], speed: [] };
+
+function pushHist(f) {
+  hist.pop.push(f.n);
+  hist.species.push(f.species);
+  hist.shannon.push(f.m.shannon);
+  hist.speed.push(f.m.speed);
+  for (const k in hist) if (hist[k].length > HIST_MAX) hist[k].shift();
+}
+
+function drawSpark(id, series, color) {
+  const cv = document.getElementById(id);
+  if (!cv) return;
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  if (series.length < 2) return;
+  let lo = Infinity, hi = -Infinity;
+  for (const v of series) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  const span = hi - lo || 1;
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let i = 0; i < series.length; i++) {
+    const x = (i / (series.length - 1)) * (W - 2) + 1;
+    const y = H - 2 - ((series[i] - lo) / span) * (H - 4);
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.stroke();
+  // last-point dot
+  const lx = W - 1, ly = H - 2 - ((series[series.length - 1] - lo) / span) * (H - 4);
+  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(lx, ly, 1.8, 0, Math.PI * 2); ctx.fill();
+}
+
+function renderAnalytics(f) {
+  const m = f.m, S = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  pushHist(f);
+
+  S("a-tick", f.tick); S("a-pop", f.n); S("a-species", f.species); S("a-food", f.nfood);
+  S("a-speed-x", m.speed.toFixed(2));
+  S("a-shannon", m.shannon.toFixed(2)); S("a-gendiv", m.gendiv.toFixed(3));
+  S("a-gen", m.gen.toFixed(1)); S("a-energy", m.energy.toFixed(0));
+
+  drawSpark("sp-pop", hist.pop, "#0f766e");
+  drawSpark("sp-species", hist.species, "#6ea8ff");
+  drawSpark("sp-shannon", hist.shannon, "#1b9e77");
+  drawSpark("sp-speed", hist.speed, "#e6550d");
+
+  // trophic mix bar
+  const total = Math.max(1, m.herb + m.omn + m.carn);
+  const seg = (id, v) => { const e = document.getElementById(id); if (e) e.style.width = `${(v / total * 100).toFixed(1)}%`; };
+  seg("troph-herb", m.herb); seg("troph-omn", m.omn); seg("troph-carn", m.carn);
+  S("troph-label", `${m.herb} herbivore · ${m.omn} omnivore · ${m.carn} carnivore`);
+
+  // trait table: mean ± sd
+  S("tr-speed", `${m.speed.toFixed(2)} ± ${m.speed_sd.toFixed(2)}`);
+  S("tr-vision", `${m.vision.toFixed(0)} ± ${m.vision_sd.toFixed(0)}`);
+  S("tr-size", `${m.size.toFixed(2)} ± ${m.size_sd.toFixed(2)}`);
+  S("tr-diet", `${m.diet.toFixed(2)} ± ${m.diet_sd.toFixed(2)}`);
+
+  // cumulative mortality / births
+  S("mo-births", m.births); S("mo-starv", m.starv);
+  S("mo-pred", m.pred); S("mo-old", m.old);
+}
+
+// --- Clinical palette helpers -------------------------------------------
+// A restrained, desaturated look: muted specimen dots on a sterile light plate.
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// Diverging diet ramp: teal (herbivore) -> slate -> crimson (carnivore).
+function dietColor(t) {
+  const H = [43, 122, 120], M = [120, 132, 145], C = [168, 50, 70];
+  let r, g, b;
+  if (t < 0.5) { const u = t / 0.5; r = lerp(H[0], M[0], u); g = lerp(H[1], M[1], u); b = lerp(H[2], M[2], u); }
+  else { const u = (t - 0.5) / 0.5; r = lerp(M[0], C[0], u); g = lerp(M[1], C[1], u); b = lerp(M[2], C[2], u); }
+  return `rgb(${r | 0},${g | 0},${b | 0})`;
+}
+
+// Desaturate an engine-assigned colour toward its luminance and cap its
+// lightness, so species/genome hues stay distinct but muted and legible on the
+// light plate.
+function muted(r, g, b) {
+  const luma = 0.3 * r + 0.59 * g + 0.11 * b, a = 0.5;
+  let R = r + (luma - r) * a, G = g + (luma - g) * a, B = b + (luma - b) * a;
+  const m = Math.max(R, G, B);
+  if (m > 190) { const k = 190 / m; R *= k; G *= k; B *= k; }
+  return `rgb(${R | 0},${G | 0},${B | 0})`;
+}
+
+function draw(f) {
+  const ctx = els.ctx;
+  const W = els.canvas.width, H = els.canvas.height;
+  const sx = W / world.width, sy = H / world.height;
+  const s = Math.min(sx, sy);
+
+  // Sterile plate + faint measurement grid.
+  ctx.fillStyle = "#e9edf1";
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(31,42,51,0.05)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const grid = 48;
+  for (let gx = grid; gx < W; gx += grid) { ctx.moveTo(gx + 0.5, 0); ctx.lineTo(gx + 0.5, H); }
+  for (let gy = grid; gy < H; gy += grid) { ctx.moveTo(0, gy + 0.5); ctx.lineTo(W, gy + 0.5); }
+  ctx.stroke();
+
+  // Plants — muted sage squares (cheap for thousands).
+  ctx.fillStyle = "#7ba586";
+  const food = f.food;
+  for (let k = 0; k < food.length; k += 2) {
+    ctx.fillRect(food[k] * sx - 1, food[k + 1] * sy - 1, 2, 2);
+  }
+
+  // Organisms.
+  const meta = f.meta, gcol = f.gcol, scol = f.scol;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < f.n; i++) {
+    const m = i * 5, c = i * 3;
+    const x = meta[m] * sx, y = meta[m + 1] * sy;
+    const size = meta[m + 2], diet = meta[m + 4];
+    const r = Math.max(2, size * 2.4 * s);
+
+    let fill;
+    if (colorMode === "species") {
+      fill = muted(scol[c], scol[c + 1], scol[c + 2]);
+    } else if (colorMode === "genome") {
+      fill = muted(gcol[c], gcol[c + 1], gcol[c + 2]);
+    } else { // diet: teal herbivore -> crimson carnivore
+      fill = dietColor(diet);
+    }
+
+    if (showVision) {
+      // vision radius (in world units) is size-independent; approximate with a
+      // faint ring scaled from the organism's drawn radius for a visual cue.
+      ctx.strokeStyle = "rgba(15,118,110,0.18)";
+      ctx.beginPath();
+      ctx.arc(x, y, r * 6, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    // Thin hairline keeps every specimen legible on the light plate.
+    ctx.strokeStyle = "rgba(31,42,51,0.35)";
+    ctx.stroke();
+  }
+
+  renderAnalytics(f);
+}
+
+function drawOnce() {
+  if (!py.frame) return;
+  draw(pullFrame());
+}
+
+function loop() {
+  if (!running) return;
+  const alive = py.step_sim(stepsPerFrame);
+  draw(pullFrame());
+
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsT >= 500) {
+    els.fps.textContent = Math.round((frameCount * 1000) / (now - lastFpsT));
+    frameCount = 0;
+    lastFpsT = now;
+  }
+
+  if (!alive) {
+    setStatus("Population went extinct — reset to run again.");
+    stop();
+    return;
+  }
+  rafId = requestAnimationFrame(loop);
+}
+
+function start() {
+  if (running || !py.step_sim) return;
+  running = true;
+  els.play.textContent = "⏸ Pause";
+  setStatus("Running — evolution in progress.");
+  lastFpsT = performance.now();
+  frameCount = 0;
+  rafId = requestAnimationFrame(loop);
+}
+
+function stop() {
+  running = false;
+  els.play.textContent = "▶ Play";
+  if (rafId) cancelAnimationFrame(rafId);
+}
+
+function toggle() { running ? stop() : start(); }
+
+function resizeCanvas() {
+  const wrap = els.canvas.parentElement;
+  const w = wrap.clientWidth;
+  const h = Math.round(w * (world.height / world.width));
+  els.canvas.width = w;
+  els.canvas.height = h;
+  if (!running) drawOnce();
+}
+
+function setColorMode(mode) {
+  colorMode = mode;
+  for (const b of document.querySelectorAll("[data-color]")) {
+    b.classList.toggle("active", b.dataset.color === mode);
+  }
+  if (!running) drawOnce();
+}
+
+function wireControls() {
+  els.play = $("play");
+  els.reset = $("reset");
+  els.seed = $("seed");
+  els.brain = $("brain");
+  els.maxpop = $("maxpop");
+  els.speed = $("speed");
+  els.vision = $("vision");
+
+  els.play.addEventListener("click", toggle);
+  els.reset.addEventListener("click", () => {
+    const wasRunning = running;
+    stop();
+    newSim();
+    els.fps.textContent = "0";
+    setStatus("Reset. Press Play (or Space).");
+    if (wasRunning) start();
+  });
+
+  els.speed.addEventListener("input", () => {
+    stepsPerFrame = parseInt(els.speed.value, 10);
+    $("speed-val").textContent = `${stepsPerFrame}×`;
+  });
+  els.vision.addEventListener("change", () => {
+    showVision = els.vision.checked;
+    if (!running) drawOnce();
+  });
+
+  for (const b of document.querySelectorAll("[data-color]")) {
+    b.addEventListener("click", () => setColorMode(b.dataset.color));
+  }
+  setColorMode(colorMode);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+    if (e.code === "Space") { e.preventDefault(); toggle(); }
+    else if (e.code === "ArrowUp") {
+      els.speed.value = Math.min(20, stepsPerFrame + 1); els.speed.dispatchEvent(new Event("input"));
+    } else if (e.code === "ArrowDown") {
+      els.speed.value = Math.max(1, stepsPerFrame - 1); els.speed.dispatchEvent(new Event("input"));
+    } else if (e.key === "c") {
+      const order = ["species", "diet", "genome"];
+      setColorMode(order[(order.indexOf(colorMode) + 1) % order.length]);
+    } else if (e.key === "v") {
+      els.vision.checked = !els.vision.checked; els.vision.dispatchEvent(new Event("change"));
+    }
+  });
+}
+
+boot().catch((err) => {
+  console.error(err);
+  setStatus("Failed to load: " + err.message);
+});
+
+</script>
+</body>
+</html>
