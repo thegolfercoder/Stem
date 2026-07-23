@@ -49,44 +49,99 @@ canvas{display:block}
   text-transform:uppercase;opacity:0;transition:opacity .6s;pointer-events:none}
 
 /* ============================================================ menu ====== */
-#menu{z-index:20}
-#menuField{position:absolute;inset:0;width:100%;height:100%;z-index:0}
-#menu .wrap{position:relative;z-index:1;height:100%;display:grid;
-  grid-template-columns:1fr;align-content:safe center;justify-items:center;
-  padding:5vh 8vw;gap:0;overflow-y:auto;scrollbar-width:none}
+#menu{z-index:20;background:radial-gradient(130% 100% at 82% -12%,#0d1219,var(--bg))}
+#menuField{position:absolute;inset:0;width:100%;height:100%;z-index:0;opacity:.5}
+#menu .wrap{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;
+  padding:clamp(20px,3.2vw,44px) clamp(22px,4.4vw,60px);overflow-y:auto;scrollbar-width:none}
 #menu .wrap::-webkit-scrollbar{display:none}
-.brand{text-align:center;margin-bottom:min(6vh,54px)}
-.brand .mark{font-family:var(--mono);font-weight:500;
-  font-size:clamp(40px,8vw,86px);letter-spacing:.2em;line-height:1;
-  color:var(--ink);text-indent:.2em}
-.brand .rule{width:56px;height:2px;background:var(--jade);margin:26px auto 20px;opacity:.9}
-.brand .tag{font-family:var(--mono);font-size:12px;letter-spacing:.36em;
-  text-transform:uppercase;color:var(--muted)}
 
-.worlds{width:min(620px,92vw);display:flex;flex-direction:column;
-  border-top:1px solid var(--line)}
-.world{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:20px;
-  padding:19px 8px 19px 4px;border-bottom:1px solid var(--line);
-  cursor:pointer;position:relative;transition:padding .45s var(--e-out),background .4s}
-.world::before{content:"";position:absolute;left:0;top:0;bottom:0;width:0;
-  background:var(--jade);transition:width .45s var(--e-out)}
-.world:hover,.world:focus-visible{padding-left:18px;background:linear-gradient(90deg,rgba(88,198,160,.06),transparent 60%);outline:none}
-.world:hover::before,.world:focus-visible::before{width:2px}
-.world .spec{width:44px;height:26px}
-.world .body .name{font-size:19px;font-weight:500;color:var(--ink);letter-spacing:.005em}
-.world .body .desc{font-size:12.5px;color:var(--muted);margin-top:3px;
-  max-width:44ch;line-height:1.45;opacity:.9}
-.world .side{display:flex;align-items:center;gap:16px}
-.world .trait{font-family:var(--mono);font-size:10px;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--jade);border:1px solid var(--jade-dim);
-  padding:4px 8px;border-radius:2px;white-space:nowrap;opacity:.86}
-.world .arrow{font-family:var(--mono);color:var(--faint);
-  transform:translateX(-6px);opacity:0;transition:all .4s var(--e-out)}
-.world:hover .arrow,.world:focus-visible .arrow{transform:translateX(0);opacity:1;color:var(--jade)}
-.world.custom .body .name{color:var(--muted)}
-.menu-foot{margin-top:min(7vh,48px);text-align:center;font-family:var(--mono);
-  font-size:11px;letter-spacing:.14em;color:var(--faint)}
-.menu-foot b{color:var(--muted);font-weight:500}
+.dash-top{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;
+  padding-bottom:22px;border-bottom:1px solid var(--line);margin-bottom:28px}
+.brand-row{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap}
+.brand-row .mark{font-family:var(--mono);font-weight:500;font-size:clamp(30px,4.4vw,52px);
+  letter-spacing:.2em;line-height:1;color:var(--ink);text-indent:.2em}
+.brand-meta{display:flex;align-items:center;gap:12px}
+.brand-meta .rule{width:32px;height:2px;background:var(--jade);opacity:.9;display:inline-block}
+.brand-meta .tag{font-family:var(--mono);font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--muted)}
+.dash-status{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:11px;
+  letter-spacing:.14em;color:var(--faint);white-space:nowrap}
+.dash-status .dot{width:7px;height:7px;border-radius:50%;background:var(--jade);
+  animation:pulseDot 2.6s var(--e-io) infinite}
+.dash-status .sep{width:1px;height:11px;background:var(--line2)}
+@keyframes pulseDot{0%,100%{box-shadow:0 0 0 0 rgba(88,198,160,.45)}50%{box-shadow:0 0 0 5px rgba(88,198,160,0)}}
+
+.dash-grid{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 336px;gap:30px;align-items:start}
+@media(max-width:980px){.dash-grid{grid-template-columns:1fr}}
+
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:16px}
+.sec-head .k{font-family:var(--mono);font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--muted)}
+.sec-head .hint{font-size:12px;color:var(--faint);text-align:right}
+
+.world-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+@media(max-width:620px){.world-cards{grid-template-columns:1fr}}
+.wcard{position:relative;border:1px solid var(--line);border-radius:8px;background:var(--bg1);
+  padding:16px 16px 14px;cursor:pointer;overflow:hidden;
+  animation:fadeUp .55s var(--e-out) both;
+  transition:transform .4s var(--e-out),border-color .3s,background .3s,box-shadow .3s}
+.wcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:0;background:var(--jade);transition:width .35s var(--e-out)}
+.wcard:hover,.wcard:focus-visible{transform:translateY(-3px);border-color:var(--line2);
+  background:linear-gradient(180deg,rgba(88,198,160,.05),var(--bg1) 68%);box-shadow:0 14px 34px -22px rgba(0,0,0,.9);outline:none}
+.wcard:hover::before,.wcard:focus-visible::before{width:3px}
+.wcard .wtop{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.wcard .spec{width:58px;height:30px}
+.wcard .era{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);border:1px solid var(--line);padding:3px 8px;border-radius:100px;white-space:nowrap}
+.wcard .wname{font-size:17px;font-weight:600;color:var(--ink);letter-spacing:.005em}
+.wcard .wdesc{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.45;min-height:2.55em}
+.wcard .wfoot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px;
+  padding-top:11px;border-top:1px solid var(--line)}
+.wcard .trait{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--jade);opacity:.92}
+.wcard .arrow{font-family:var(--mono);color:var(--faint);transition:.35s var(--e-out)}
+.wcard:hover .arrow,.wcard:focus-visible .arrow{color:var(--jade);transform:translateX(3px)}
+.wcard.custom{border-style:dashed}
+.wcard.custom .wname{color:var(--muted)}
+
+.dash-side{display:flex;flex-direction:column;gap:16px}
+.widget{border:1px solid var(--line);border-radius:8px;background:var(--bg1);padding:15px 16px;
+  animation:fadeUp .55s var(--e-out) both}
+.widget .w-head{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:13px;display:flex;align-items:center;gap:8px}
+.widget .w-head::before{content:"";width:2px;height:11px;background:var(--jade);border-radius:2px}
+
+.qa-list{display:flex;flex-direction:column;gap:8px}
+.qa{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:6px;
+  text-align:left;transition:.25s var(--e-out)}
+.qa:hover{border-color:var(--jade-dim);background:rgba(88,198,160,.05)}
+.qa .ic{width:28px;height:28px;flex:none;display:grid;place-items:center;border-radius:6px;
+  background:var(--bg2);border:1px solid var(--line);font-size:14px;color:var(--muted)}
+.qa:hover .ic{color:var(--jade)}
+.qa .qt{display:flex;flex-direction:column;gap:1px;min-width:0}
+.qa .qt b{font-size:13px;font-weight:500;color:var(--ink)}
+.qa .qt span{font-size:11px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qa:disabled{opacity:.45;cursor:default}
+.qa:disabled:hover{border-color:var(--line);background:none}
+.qa:disabled:hover .ic{color:var(--muted)}
+
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.tile{border:1px solid var(--line);border-radius:6px;padding:11px 12px;background:var(--bg2)}
+.tile .tv{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:21px;color:var(--ink);line-height:1}
+.tile .tv small{font-size:11px;color:var(--muted)}
+.tile .tk{font-size:10.5px;color:var(--faint);margin-top:6px;letter-spacing:.01em}
+
+.recent-list{display:flex;flex-direction:column}
+.recent-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line);
+  cursor:pointer;transition:.2s}
+.recent-row:last-child{border-bottom:none}
+.recent-row:hover{padding-left:6px}
+.recent-row .rdot{width:7px;height:7px;border-radius:50%;flex:none}
+.recent-row .rn{flex:1;font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recent-row:hover .rn{color:var(--jade)}
+.recent-row .rt{font-family:var(--mono);font-size:10px;color:var(--faint);white-space:nowrap}
+.recent-empty{font-size:12px;color:var(--faint);line-height:1.55;padding:2px 2px}
+
+.dash-foot{margin-top:26px;padding-top:18px;border-top:1px solid var(--line);text-align:center;
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--faint)}
+.dash-foot b{color:var(--muted);font-weight:500}
 
 /* custom sheet */
 #custom{position:absolute;inset:0;z-index:30;background:rgba(6,8,11,.72);
@@ -252,6 +307,57 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
 .topbar .help{width:26px;height:26px;border:1px solid var(--line);border-radius:50%;color:var(--muted);
   font-family:var(--mono);font-size:12px;transition:.25s;flex:none}
 .topbar .help:hover{border-color:var(--jade-dim);color:var(--jade)}
+.topbar .ctxbtn{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--muted);
+  border:1px solid var(--line);border-radius:4px;padding:6px 11px;transition:.25s;flex:none;white-space:nowrap}
+.topbar .ctxbtn:hover{border-color:var(--jade-dim);color:var(--jade);background:rgba(88,198,160,.05)}
+
+/* history & scientific context — a natural-history dossier */
+#context{position:fixed;inset:0;background:rgba(5,7,10,.82);display:grid;place-items:center;z-index:85;
+  opacity:0;visibility:hidden;transition:opacity .32s;backdrop-filter:blur(3px);padding:24px}
+#context.on{opacity:1;visibility:visible}
+.ctx-card{width:min(760px,94vw);max-height:88vh;overflow-y:auto;background:var(--bg1);
+  border:1px solid var(--line2);border-radius:10px;box-shadow:var(--shadow);
+  transform:translateY(12px) scale(.985);transition:transform .36s var(--e-out);
+  scrollbar-width:thin;scrollbar-color:var(--dim) transparent}
+#context.on .ctx-card{transform:none}
+.ctx-card::-webkit-scrollbar{width:9px}.ctx-card::-webkit-scrollbar-thumb{background:var(--dim);border-radius:5px}
+.ctx-hero{position:relative;padding:26px 30px 22px;border-bottom:1px solid var(--line);
+  background:radial-gradient(120% 140% at 88% -20%,rgba(88,198,160,.09),transparent 60%)}
+.ctx-hero .eb{font-family:var(--mono);font-size:10px;letter-spacing:.34em;text-transform:uppercase;color:var(--jade);margin-bottom:11px}
+.ctx-hero h2{font-size:24px;font-weight:600;letter-spacing:.01em;margin-bottom:4px}
+.ctx-hero .era{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--muted)}
+.ctx-close{position:absolute;top:20px;right:22px;width:28px;height:28px;border:1px solid var(--line2);
+  border-radius:50%;color:var(--muted);font-size:15px;transition:.2s}
+.ctx-close:hover{border-color:var(--rose);color:var(--rose)}
+.ctx-body{padding:22px 30px 30px;display:flex;flex-direction:column;gap:22px}
+.ctx-block .bh{font-family:var(--mono);font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);
+  margin-bottom:9px;display:flex;align-items:center;gap:8px}
+.ctx-block .bh::before{content:"";width:2px;height:10px;background:var(--jade);border-radius:2px}
+.ctx-lead{font-size:13.5px;line-height:1.6;color:var(--ink)}
+.ctx-lead.dim{color:var(--muted);font-size:13px}
+.spx{border:1px solid var(--line);border-radius:8px;background:var(--bg2);overflow:hidden}
+.spx .sph{display:flex;align-items:center;gap:11px;padding:13px 16px;border-bottom:1px solid var(--line);background:var(--bg1)}
+.spx .sdot{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:0 0 0 3px rgba(255,255,255,.03)}
+.spx .snm{font-size:15.5px;font-weight:600;color:var(--ink)}
+.spx .ssci{font-family:var(--mono);font-size:11px;color:var(--faint);font-style:italic;margin-top:1px}
+.spx .spill{margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  padding:4px 9px;border-radius:100px;white-space:nowrap;border:1px solid}
+.spill.survived{color:var(--jade);border-color:var(--jade-dim);background:rgba(88,198,160,.08)}
+.spill.extinct{color:var(--rose);border-color:rgba(217,106,102,.4);background:rgba(217,106,102,.09)}
+.spill.threatened{color:var(--amber);border-color:rgba(224,169,75,.4);background:rgba(224,169,75,.09)}
+.spill.root{color:var(--muted);border-color:var(--line2);background:var(--bg3)}
+.spx .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.spx .fct{background:var(--bg2);padding:11px 16px}
+.spx .fct .k{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+.spx .fct .v{font-size:12.5px;color:var(--ink);line-height:1.4}
+.spx .prose{padding:14px 16px;display:flex;flex-direction:column;gap:11px}
+.spx .prose .row .k{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--jade);margin-bottom:4px;opacity:.85}
+.spx .prose .row .v{font-size:12.8px;color:var(--muted);line-height:1.55}
+.spx .prose .row.fate .v{color:var(--ink)}
+.spx .prose .facts-inline{font-size:12.5px;color:var(--muted);line-height:1.55}
+.spx .prose .facts-inline li{margin-left:16px;padding:2px 0}
+.ctx-foot{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--faint);text-align:center;
+  padding-top:6px;border-top:1px solid var(--line);margin-top:4px;line-height:1.6}
 </style>
 </head>
 <body>
@@ -265,14 +371,41 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
   <!-- MENU -->
   <section id="menu" class="screen">
     <canvas id="menuField"></canvas>
-    <div class="wrap">
-      <div class="brand">
-        <div class="mark">EVOSIM</div>
-        <div class="rule"></div>
-        <div class="tag">An Artificial-Life Observatory</div>
+    <div class="wrap dash">
+      <header class="dash-top">
+        <div class="brand-row">
+          <div class="mark">EVOSIM</div>
+          <div class="brand-meta"><span class="rule"></span><span class="tag">An Artificial-Life Observatory</span></div>
+        </div>
+        <div class="dash-status"><span class="dot"></span>Engine ready<span class="sep"></span><span id="dashDate"></span></div>
+      </header>
+
+      <div class="dash-grid">
+        <main class="dash-main">
+          <div class="sec-head"><span class="k">Worlds</span><span class="hint">Choose a scenario — each is a real chapter of evolution</span></div>
+          <div class="world-cards" id="worldList"></div>
+        </main>
+        <aside class="dash-side">
+          <section class="widget">
+            <div class="w-head">Quick actions</div>
+            <div class="qa-list">
+              <button class="qa" id="qaResume"><span class="ic">↺</span><span class="qt"><b>Resume last</b><span id="qaResumeSub">No runs yet</span></span></button>
+              <button class="qa" id="qaRandom"><span class="ic">⚄</span><span class="qt"><b>Random world</b><span>Let selection surprise you</span></span></button>
+              <button class="qa" id="qaCustom"><span class="ic">✎</span><span class="qt"><b>Custom world</b><span>Set species &amp; population</span></span></button>
+            </div>
+          </section>
+          <section class="widget">
+            <div class="w-head">Overview</div>
+            <div class="tiles" id="dashTiles"></div>
+          </section>
+          <section class="widget">
+            <div class="w-head">Recent activity</div>
+            <div class="recent-list" id="recentList"></div>
+          </section>
+        </aside>
       </div>
-      <nav class="worlds" id="worldList"></nav>
-      <div class="menu-foot">Developed by <b>Rian Sikka</b> · Grade 9 IGCSE · Scottish High International School</div>
+
+      <footer class="dash-foot">Developed by <b>Rian Sikka</b> · Grade 9 IGCSE · Scottish High International School</footer>
     </div>
 
     <div id="custom" class="screen-inline">
@@ -298,6 +431,7 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
       <div class="trait" id="simTrait">—</div>
       <div class="spacer"></div>
       <div class="clock num" id="simClock">GEN 0.0 · T 0</div>
+      <button class="ctxbtn" id="ctxBtn" data-tip="History &amp; scientific context">◷ Field notes</button>
       <button class="help" id="helpBtn" data-tip="Keyboard shortcuts">?</button>
       <div class="credit">EVOSIM · RIAN SIKKA</div>
     </div>
@@ -332,9 +466,12 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
     <div class="krow"><span>Follow selected organism</span><kbd>F</kbd></div>
     <div class="krow"><span>Capture screenshot</span><kbd>C</kbd></div>
     <div class="krow"><span>Restart world</span><kbd>R</kbd></div>
+    <div class="krow"><span>History &amp; field notes</span><kbd>H</kbd></div>
     <div class="krow"><span>Deselect / back to menu</span><kbd>Esc</kbd></div>
     <div class="krow"><span>Zoom · pan · inspect</span><span>scroll · drag · click</span></div>
   </div></div>
+
+  <div id="context"><div class="ctx-card" id="ctxCard"></div></div>
 </div>
 <script>"use strict";
 /* ============================================================ EvoSim ====
@@ -547,6 +684,136 @@ const PRESETS=[
    mutRate:0.22, mutScale:0.14, macro:0.03, pop:140},
 ];
 
+/* ===================================================== scientific lore ===
+   Real natural-history context for every world — an interactive natural-
+   history museum. Each dossier frames the era, the true evolutionary
+   principle on show, and a researched profile of every species. Kept factual
+   and specific rather than generic. */
+const LORE = {
+  wings:{
+    eraChip:"Cenozoic · living",
+    principle:"Powered flight as an adaptation. Where food is scattered widely, the ability to cover ground quickly — through the air — is strongly favoured. Selection tunes wing shape, flight-muscle power and visual acuity against the metabolic cost of flying.",
+    reflect:"In the simulation, food blooms are spread thin across the map, so the swiftest, keenest foragers reach it first and leave more offspring — mirroring how aerial and cursorial birds partition a landscape by how far and fast they can travel.",
+    species:[
+      {name:"Eagles",sci:"family Accipitridae (e.g. Aquila chrysaetos)",period:"Radiated in the Paleogene, ~35 Mya",place:"Every continent except Antarctica; open country & mountains",diet:"Carnivore — mammals, birds, fish, carrion",lifespan:"20–30 yrs in the wild",population:"Golden eagle ~300,000",status:"Least Concern",statusType:"survived",
+       traits:"Broad soaring wings, forward-facing eyes with ~2× human acuity, powerful taloned feet, deep keeled sternum anchoring flight muscles.",
+       interactions:"Apex aerial predator; eggs and eaglets taken by other raptors and mammals.",
+       fate:"Thriving after 20th-century recovery from persecution and DDT thinning of eggshells.",
+       facts:["Can resolve prey from ~3 km away.","Stoops (dives) at over 240 km/h."]},
+      {name:"Sparrows",sci:"family Passeridae (Passer domesticus)",period:"Passerines radiated in the Miocene; commensal with humans ~10,000 yrs",place:"Native to Eurasia & N. Africa; now near-global via human transport",diet:"Omnivore — seeds, grain, insects",lifespan:"3–5 yrs in the wild",population:"Hundreds of millions (declining in some cities)",status:"Least Concern",statusType:"survived",
+       traits:"Small light body and rapid wingbeat for agile flight, a stout generalist beak, and dense flocking for safety.",
+       interactions:"Hunted by cats, sparrowhawks and other small raptors.",
+       fate:"Survives by generalism and by living alongside humans wherever crops grow.",
+       facts:["One of the most widely distributed wild birds on Earth.","Followed human agriculture out of the Near East."]},
+      {name:"Ground Fowl",sci:"order Galliformes (Gallus, pheasants, quail)",period:"An ancient lineage near the Cretaceous–Paleogene boundary, ~65 Mya",place:"Worldwide; forests and grasslands",diet:"Omnivore — ground-foraged seeds and insects",lifespan:"5–10 yrs",population:"Domestic chicken >25 billion — the most numerous bird",status:"Least Concern",statusType:"survived",
+       traits:"Heavy body and short rounded wings built for explosive escape flights, strong scratching legs, and precocial chicks that run within hours of hatching.",
+       interactions:"Preyed on by foxes, raptors and snakes; eggs widely predated.",
+       fate:"Survives in the ground-foraging niche; domestication made it the planet's most abundant bird.",
+       facts:["Chickens outnumber every other bird species combined.","Junglefowl were domesticated in Asia ~8,000 yrs ago."]}
+    ]
+  },
+  fangs:{
+    eraChip:"Neogene · living",
+    principle:"The predator–prey arms race. Hunters are selected for the size, strength and stealth to subdue prey; prey are selected for the speed, vigilance and fecundity to escape. Neither side ever 'wins' — each adaptation raises the bar for the other.",
+    reflect:"Aggression and body-size genes let large creatures take others as food, while smaller, faster ones must out-run and out-breed the danger — reproducing the Red Queen dynamic where both sides keep evolving just to hold their ground.",
+    species:[
+      {name:"Tigers",sci:"Panthera tigris",period:"Genus Panthera emerged ~2 Mya",place:"Forests & grasslands of Asia",diet:"Obligate carnivore — large ungulates",lifespan:"10–15 yrs in the wild",population:"~3,900 in the wild",status:"Endangered",statusType:"threatened",
+       traits:"Muscular ambush build, disruptive stripe camouflage, retractable claws and forward binocular night vision.",
+       interactions:"Apex predator of deer and wild boar; competes with leopards and dholes.",
+       fate:"Survival in the balance — habitat loss and poaching have cut it to a fraction of its former range.",
+       facts:["The largest of all cats.","Stripe patterns are unique to each individual, like fingerprints — and mark the skin, not just the fur."]},
+      {name:"Deer",sci:"family Cervidae (Cervus and kin)",period:"Radiated in the Miocene, ~20 Mya",place:"Worldwide across many biomes",diet:"Herbivore — browse and graze",lifespan:"10–20 yrs",population:"Abundant across many species",status:"Least Concern",statusType:"survived",
+       traits:"Long cursorial legs for sustained speed, antlers shaped by sexual selection, and acute hearing and smell backed by herd vigilance.",
+       interactions:"Primary prey of big cats and wolves.",
+       fate:"Survives through speed and high reproductive output.",
+       facts:["Antlers are the fastest-growing tissue of any mammal.","They are shed and regrown every single year."]},
+      {name:"Hares",sci:"genus Lepus",period:"Leporids appear by the Eocene–Oligocene, ~35 Mya",place:"Worldwide grasslands, tundra and desert",diet:"Herbivore",lifespan:"3–5 yrs",population:"Abundant",status:"Least Concern",statusType:"survived",
+       traits:"Explosive sprinting (~70 km/h), long ears for hearing and heat-dumping, and precocial young born ready to flee.",
+       interactions:"Hunted by foxes, raptors, cats and mustelids.",
+       fate:"Survives by raw speed paired with a fast, high-output breeding strategy.",
+       facts:["Hares are born furred with eyes open — unlike helpless newborn rabbits.","Can change direction mid-sprint to shake a pursuer."]}
+    ]
+  },
+  minds:{
+    eraChip:"Quaternary · living",
+    principle:"Intelligence as a survival strategy. When food is cryptic or hard to reach, brains that can plan, remember, use tools and cooperate out-compete raw strength or speed. The cost is an energetically expensive brain and a long, vulnerable childhood.",
+    reflect:"Here the trait under selection is vision — a stand-in for perception and problem-solving. Sharper-sensing lineages locate resources others miss, showing how a cognitive edge can outweigh size or pace.",
+    species:[
+      {name:"Humans",sci:"Homo sapiens",period:"Emerged ~300,000 yrs ago in Africa",place:"Every continent and beyond",diet:"Omnivore",lifespan:"~73 yrs average (up to ~120)",population:"~8 billion",status:"Least Concern",statusType:"survived",
+       traits:"A large neocortex, upright bipedal gait freeing the hands, language, cumulative culture and deep social cooperation.",
+       interactions:"Historically preyed on by big cats; now without natural predators.",
+       fate:"Dominant — culture and technology let the species reshape almost every environment.",
+       facts:["The brain burns ~20% of the body's energy at rest.","The only species to have left the planet."]},
+      {name:"Chimps",sci:"Pan troglodytes",period:"Split from the human line ~6–7 Mya",place:"Forests & savanna of equatorial Africa",diet:"Omnivore — fruit, insects, some meat",lifespan:"30–40 yrs (to ~50 in captivity)",population:"~170,000–300,000",status:"Endangered",statusType:"threatened",
+       traits:"Tool manufacture, intricate social politics, and roughly 98.8% of DNA shared with humans.",
+       interactions:"Preyed on by leopards; hunts monkeys cooperatively.",
+       fate:"Survival threatened by habitat loss and the bushmeat trade.",
+       facts:["Strips leaves to 'fish' for termites — culturally transmitted tool use.","Neighbouring groups wage lethal, coordinated territorial conflict."]},
+      {name:"Gorillas",sci:"genus Gorilla",period:"Split from the African ape line ~8–10 Mya",place:"Rainforests of central Africa",diet:"Herbivore — folivore",lifespan:"35–40 yrs",population:"Mountain gorilla ~1,000",status:"Critically Endangered (western)",statusType:"threatened",
+       traits:"Massive size and strength, a long fermenting gut for leaves, and cohesive troops led by a silverback.",
+       interactions:"Rarely taken by leopards; effectively without predators as adults.",
+       fate:"Survival in the balance from habitat loss, disease and poaching.",
+       facts:["The largest living primate.","Gentle folivores despite their power — most 'charges' are bluff."]}
+    ]
+  },
+  ice:{
+    eraChip:"Late Pleistocene",
+    principle:"Cold-climate adaptation vs. adaptability. Bergmann's rule favours large, well-insulated bodies that conserve heat in glacial cold — yet when the climate flips, those specialists can be trapped. Small generalists that breed fast and eat anything ride out the change instead.",
+    reflect:"Body-size selection rewards the large and heat-retaining while the world stays harsh; raise the harshness or shift the food and the small, fast-breeding lineages persist — exactly the contrast between the woolly mammoth and the rabbit.",
+    species:[
+      {name:"Mammoths",sci:"Mammuthus primigenius (woolly mammoth)",period:"Late Pleistocene; last survivors on Wrangel Island ~4,000 yrs ago",place:"The 'mammoth steppe' across northern Eurasia & North America",diet:"Herbivore — grasses and sedges",lifespan:"~60 yrs",population:"Extinct — zero remaining",status:"Extinct",statusType:"extinct",
+       traits:"A dense double coat, small ears and short tail to cut heat loss, a fat hump for reserves, and long curved tusks to sweep snow off forage.",
+       interactions:"Calves taken by cave lions and hunted by humans.",
+       fate:"EXTINCT — a warming climate fragmented the steppe just as human hunting pressure rose; the two together ended the lineage.",
+       facts:["Its closest living relative is the Asian elephant.","The last mammoths were still alive after the Great Pyramid was built.","Whole carcasses survive frozen in Siberian permafrost."]},
+      {name:"Wolves",sci:"Canis lupus",period:"Mid-Pleistocene to present",place:"Holarctic — across the northern hemisphere",diet:"Carnivore — ungulates",lifespan:"6–8 yrs in the wild",population:"~200,000–300,000",status:"Least Concern",statusType:"survived",
+       traits:"Endurance-running build, thick winter coat, and coordinated pack hunting that fells prey far larger than any individual.",
+       interactions:"Preys on deer, elk and bison; competes with other large carnivores.",
+       fate:"Survives by behavioural flexibility and social hunting across many climates.",
+       facts:["The ancestor of every domestic dog.","A pack's teamwork lets it bring down prey ten times a wolf's weight."]},
+      {name:"Rabbits",sci:"Oryctolagus cuniculus & kin",period:"Leporids since the Eocene, ~40 Mya",place:"Originally Iberia; now on every continent but Antarctica",diet:"Herbivore",lifespan:"1–2 yrs in the wild",population:"Extremely abundant",status:"Least Concern",statusType:"survived",
+       traits:"Explosive r-selected breeding (a ~30-day gestation, litters almost monthly), burrowed warrens for shelter, re-ingestion of food to extract more nutrition, and a flexible diet.",
+       interactions:"Prey to nearly every predator — foxes, raptors, mustelids, cats.",
+       fate:"SURVIVES — sheer reproductive speed and adaptability outrun both predators and a shifting climate.",
+       facts:["A single pair can leave hundreds of descendants within a year.","Introduced to Australia, they became one of history's worst invasive species."]}
+    ]
+  },
+  deep:{
+    eraChip:"Deep time · living",
+    principle:"Life at the extreme. In the cold, dark, high-pressure deep sea, food is vanishingly scarce. Selection favours exquisite sensing, energy-thrifty bodies and unusual reproductive shortcuts — every calorie and every mate is hard-won.",
+    reflect:"Vision — a proxy for sensing scarce resources — is the trait under selection: the lineages best at detecting rare food in near-darkness endure, echoing how abyssal animals invest everything in finding the next meal.",
+    species:[
+      {name:"Anglerfish",sci:"order Lophiiformes (e.g. Melanocetus)",period:"Deep-sea lineages since the Cretaceous–Paleogene",place:"Bathypelagic zone worldwide, ~1,000–4,000 m",diet:"Carnivore — fish and crustaceans",lifespan:"Poorly known; likely tens of years",population:"Unknown",status:"Not evaluated",statusType:"root",
+       traits:"A bioluminescent lure lit by symbiotic bacteria, enormous jaws and an expandable stomach to swallow rare large prey, and extreme sexual dimorphism.",
+       interactions:"Ambush predator; itself little-preyed-upon in the deep.",
+       fate:"Survives as a specialist of scarcity — sit, glow, and wait.",
+       facts:["In many species the tiny male fuses to the female and shares her bloodstream for life.","Its 'headlight' is made by glowing bacteria it farms."]},
+      {name:"Squid",sci:"order Teuthida",period:"Cephalopods since the Jurassic",place:"All oceans, surface to abyss",diet:"Carnivore — fish and crustaceans",lifespan:"1–5 yrs (giant species longer)",population:"Unknown; abundant",status:"Data deficient",statusType:"root",
+       traits:"Jet propulsion, the largest eyes in the animal kingdom, colour-shifting chromatophores, and quick problem-solving intelligence.",
+       interactions:"Prey of sperm whales; hunts fish and other squid.",
+       fate:"Survives through speed, vision and adaptability across depths.",
+       facts:["A giant squid's eye is the size of a dinner plate.","Those eyes may be tuned to spot the glow of approaching whales."]},
+      {name:"Shrimp",sci:"infraorder Caridea",period:"Caridean shrimp since the Jurassic",place:"All oceans, including hydrothermal vents",diet:"Omnivore / detritivore",lifespan:"1–6 yrs",population:"Enormous",status:"Least Concern",statusType:"survived",
+       traits:"Fine chemoreception, transparency for camouflage, high fecundity, and — in vent species — heat- and light-sensing organs.",
+       interactions:"A base of the food web; eaten by fish and cephalopods.",
+       fate:"Survives by sheer numbers at the bottom of the food chain.",
+       facts:["Vent shrimp swarm scalding hydrothermal chimneys in the thousands.","Some sense the faint infrared glow of the vents themselves."]}
+    ]
+  },
+  soup:{
+    eraChip:"≈3.7 billion yrs ago",
+    principle:"Adaptive radiation from a common ancestor. A single lineage, given open niches and heritable variation, diversifies into many forms — the branching pattern at the root of the entire tree of life.",
+    reflect:"One ancestral species starts with a high mutation rate; watch it radiate into a spread of speeds and forms with no designer involved — a compressed re-enactment of how all of today's diversity descends from single-celled beginnings.",
+    species:[
+      {name:"Protozoa",sci:"early single-celled eukaryotes",period:"Life ~3.7–4.1 Gya; eukaryotic cells ~1.6–2.1 Gya",place:"Ancient oceans, pools and sediments",diet:"Heterotroph / mixotroph",lifespan:"Measured in cell divisions (hours to days)",population:"Uncountable",status:"Ancestral lineage",statusType:"root",
+       traits:"A single self-contained cell, rapid division, high mutation enabling fast adaptive radiation, and cilia or flagella for motility.",
+       interactions:"Both predator and prey among other microbes.",
+       fate:"The root of the tree — every plant, animal and fungus descends from ancestors like these.",
+       facts:["All multicellular life traces back to single-celled ancestors.","Life spent roughly two billion years as microbes before complex forms arose.","Mitochondria began as free-living bacteria taken inside another cell."]}
+    ]
+  }
+};
+
 /* ======================================================= application ==== */
 const App = (()=>{
   let screen="intro";
@@ -704,33 +971,75 @@ const App = (()=>{
   }
   function resizeMF(){ if(!mf)return; const dpr=devicePixelRatio||1; mf.width=innerWidth*dpr; mf.height=innerHeight*dpr; }
 
-  /* -------- menu / world list -------- */
+  /* -------- run history (localStorage) -------- */
+  function specColor(p,j){ return hsl((p.species.length>1?j*67+18:150)%360,52,62); }
+  function loadRuns(){ try{ return JSON.parse(localStorage.getItem("evosim_runs")||"[]"); }catch(e){ return []; } }
+  function runCount(){ try{ return +localStorage.getItem("evosim_runcount")||0; }catch(e){ return 0; } }
+  function pushRecent(entry){ try{ let r=loadRuns().filter(x=>x.id!==entry.id);
+    r.unshift(Object.assign({t:Date.now()},entry));
+    localStorage.setItem("evosim_runs",JSON.stringify(r.slice(0,6)));
+    localStorage.setItem("evosim_runcount",String(runCount()+1)); }catch(e){} }
+  function agoLabel(t){ const s=(Date.now()-t)/1000;
+    if(s<60)return "just now"; if(s<3600)return Math.floor(s/60)+"m ago";
+    if(s<86400)return Math.floor(s/3600)+"h ago"; return Math.floor(s/86400)+"d ago"; }
+  function openRun(id){ const p=PRESETS.find(x=>x.id===id); if(p)launch(p); else openCustom(); }
+
+  /* -------- dashboard / world grid -------- */
+  function drawSpec(cv,p){ const g=cv.getContext("2d");
+    p.species.forEach((s,j)=>{ g.beginPath(); g.arc(16+j*22,30+(j%2?7:-5),5+s.size*1.6,0,TAU);
+      g.fillStyle=specColor(p,j); g.globalAlpha=.92; g.fill(); g.globalAlpha=1; }); }
   function buildMenu(){
+    const dt=$("#dashDate"); if(dt) dt.textContent=new Date().toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
     const list=$("#worldList"); list.innerHTML="";
     PRESETS.forEach((p,i)=>{
-      const row=document.createElement("div"); row.className="world"; row.tabIndex=0;
-      row.style.animation=`fadeUp .6s var(--e-out) ${0.05+i*0.06}s both`;
-      const spec=document.createElement("canvas"); spec.className="spec"; spec.width=88; spec.height=52;
-      const g=spec.getContext("2d"); p.species.forEach((s,j)=>{ const col=hsl((PRESETS[i].species.length>1?j*70+18:150)%360,52,62);
-        g.beginPath(); g.arc(14+j*20,26+(j%2?6:-4),4+s.size*1.4,0,TAU); g.fillStyle=col; g.fill(); });
-      const body=document.createElement("div"); body.className="body";
-      body.innerHTML=`<div class="name">${p.name}</div><div class="desc">${p.desc}</div>`;
-      const side=document.createElement("div"); side.className="side";
-      side.innerHTML=`<span class="trait">selects ${TRAIT_LABEL[p.trait].toLowerCase()}</span><span class="arrow">▸</span>`;
-      row.append(spec,body,side);
-      const go=()=>launch(p); row.onclick=go; row.onkeydown=e=>{if(e.key==="Enter")go();};
-      list.append(row);
+      const card=document.createElement("div"); card.className="wcard"; card.tabIndex=0;
+      card.style.animationDelay=(0.04+i*0.05)+"s";
+      const lore=LORE[p.id]||{};
+      card.innerHTML=`
+        <div class="wtop"><canvas class="spec" width="116" height="60"></canvas><span class="era">${lore.eraChip||""}</span></div>
+        <div class="wname">${p.name}</div>
+        <div class="wdesc">${p.desc}</div>
+        <div class="wfoot"><span class="trait">selects ${TRAIT_LABEL[p.trait].toLowerCase()}</span><span class="arrow">▸</span></div>`;
+      drawSpec(card.querySelector("canvas"),p);
+      const go=()=>launch(p); card.onclick=go; card.onkeydown=e=>{if(e.key==="Enter")go();};
+      list.append(card);
     });
-    // custom row
-    const c=document.createElement("div"); c.className="world custom"; c.tabIndex=0;
-    c.style.animation=`fadeUp .6s var(--e-out) ${0.05+PRESETS.length*0.06}s both`;
-    c.innerHTML=`<canvas class="spec" width="88" height="52"></canvas>
-      <div class="body"><div class="name">Custom World</div><div class="desc">Design your own — choose the number of species and starting population.</div></div>
-      <div class="side"><span class="trait">sandbox</span><span class="arrow">▸</span></div>`;
+    const c=document.createElement("div"); c.className="wcard custom"; c.tabIndex=0;
+    c.style.animationDelay=(0.04+PRESETS.length*0.05)+"s";
+    c.innerHTML=`
+      <div class="wtop"><canvas class="spec" width="116" height="60"></canvas><span class="era">Sandbox</span></div>
+      <div class="wname">Custom World</div>
+      <div class="wdesc">Design your own — set the number of species and the starting population.</div>
+      <div class="wfoot"><span class="trait">open-ended</span><span class="arrow">▸</span></div>`;
     const cg=c.querySelector("canvas").getContext("2d");
-    for(let j=0;j<4;j++){cg.beginPath();cg.arc(14+j*18,26+(j%2?6:-4),5,0,TAU);cg.fillStyle=hsl(j*90+20,45,58);cg.fill();}
+    for(let j=0;j<4;j++){cg.beginPath();cg.arc(16+j*22,30+(j%2?7:-5),6,0,TAU);cg.fillStyle=hsl(j*90+20,45,58);cg.globalAlpha=.9;cg.fill();cg.globalAlpha=1;}
     c.onclick=openCustom; c.onkeydown=e=>{if(e.key==="Enter")openCustom();};
     list.append(c);
+
+    // overview tiles
+    const specCount=PRESETS.reduce((a,p)=>a+p.species.length,0);
+    const tiles=$("#dashTiles"); if(tiles) tiles.innerHTML=`
+      <div class="tile"><div class="tv">${PRESETS.length}</div><div class="tk">Worlds available</div></div>
+      <div class="tile"><div class="tv">${specCount}</div><div class="tk">Species catalogued</div></div>
+      <div class="tile"><div class="tv">${runCount()}</div><div class="tk">Simulations run</div></div>
+      <div class="tile"><div class="tv">4<small> Gya</small></div><div class="tk">Time span covered</div></div>`;
+
+    // quick actions
+    const runs=loadRuns();
+    const qaResume=$("#qaResume"), qaResumeSub=$("#qaResumeSub");
+    if(runs.length){ qaResume.disabled=false; qaResumeSub.textContent=runs[0].name;
+      qaResume.onclick=()=>openRun(runs[0].id); }
+    else { qaResume.disabled=true; qaResumeSub.textContent="No runs yet"; qaResume.onclick=null; }
+    $("#qaRandom").onclick=()=>launch(PRESETS[Math.random()*PRESETS.length|0]);
+    $("#qaCustom").onclick=openCustom;
+
+    // recent activity
+    const rl=$("#recentList");
+    if(!runs.length){ rl.innerHTML=`<div class="recent-empty">No runs yet. Launch a world and your recent simulations will appear here.</div>`; }
+    else { rl.innerHTML=""; runs.forEach(r=>{ const row=document.createElement("div"); row.className="recent-row"; row.tabIndex=0;
+      row.innerHTML=`<span class="rdot" style="background:${r.color}"></span><span class="rn">${r.name}</span><span class="rt">${agoLabel(r.t)}</span>`;
+      const go=()=>openRun(r.id); row.onclick=go; row.onkeydown=e=>{if(e.key==="Enter")go();};
+      rl.append(row); }); }
   }
   let cSp=4,cPop=150;
   function openCustom(){ $("#custom").classList.add("on"); $("#cSp").textContent=cSp; $("#cPop").textContent=cPop; }
@@ -739,13 +1048,15 @@ const App = (()=>{
   /* -------- launch simulation -------- */
   let sim=null;
   function launch(preset){
+    pushRecent({id:preset.id,name:preset.name,color:specColor(preset,0)});
     const w=new World();
     if(preset.mutRate)w.mutRate=preset.mutRate; if(preset.mutScale)w.mutScale=preset.mutScale; if(preset.macro)w.macro=preset.macro;
     w.configureScenario(preset.species,preset.trait,preset.pop);
-    sim=new Sim(w,preset.name); show("sim"); sim.enter();
+    sim=new Sim(w,preset.name,preset); show("sim"); sim.enter();
   }
-  function launchCustom(){ const w=new World(); w.configureCustom(cSp,cPop);
-    sim=new Sim(w,"Custom World"); closeCustom(); show("sim"); sim.enter(); }
+  function launchCustom(){ pushRecent({id:"custom",name:`Custom · ${cSp} species`,color:hsl(150,52,62)});
+    const w=new World(); w.configureCustom(cSp,cPop);
+    sim=new Sim(w,"Custom World",null); closeCustom(); show("sim"); sim.enter(); }
 
   return {runIntro, buildMenu,
     stepper:(k,d)=>{ if(k==="sp"){cSp=clamp(cSp+d,1,8);$("#cSp").textContent=cSp;} else {cPop=clamp(cPop+d,40,400);$("#cPop").textContent=cPop;} },
@@ -754,7 +1065,8 @@ const App = (()=>{
 
 /* ======================================================= Sim class ====== */
 class Sim{
-  constructor(world,title){ this.w=world; this.title=title;
+  constructor(world,title,preset){ this.w=world; this.title=title; this.preset=preset||null;
+    this.lore=preset?LORE[preset.id]:null;
     this.cv=$("#world"); this.cx=this.cv.getContext("2d");
     this.chart=$("#chart"); this.ccx=this.chart.getContext("2d");
     this.cam={s:1,x:0,y:0,ts:1,tx:0,ty:0}; // scale/offset with smoothing targets
@@ -776,7 +1088,52 @@ class Sim{
     $("#helpBtn").onclick=()=>sc.classList.toggle("on");
     sc.onclick=e=>{ if(e.target===sc) sc.classList.remove("on"); };
     $("#extinctRestart").onclick=()=>this.restart();
+    // history & scientific context dossier
+    const cx=$("#context");
+    this.buildContext(); $("#ctxBtn").onclick=()=>cx.classList.toggle("on");
+    cx.onclick=e=>{ if(e.target===cx) cx.classList.remove("on"); };
     this.loop(); this.onboard(); }
+  buildContext(){ const card=$("#ctxCard"); const L=this.lore;
+    if(!L){ card.innerHTML=`
+      <div class="ctx-hero"><button class="ctx-close" id="ctxClose">✕</button>
+        <div class="eb">Field notes</div><h2>${this.title}</h2>
+        <div class="era">A sandbox world — no historical species to profile.</div></div>
+      <div class="ctx-body"><p class="ctx-lead dim">This is a custom sandbox. Pick one of the curated worlds from the menu to read a full natural-history dossier: real time periods, classifications, diets, evolutionary traits and why each species survived or vanished.</p></div>`;
+      $("#ctxClose").onclick=()=>$("#context").classList.remove("on"); return; }
+    const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+    const np=this.preset.species.length;
+    const spCards=L.species.map((s,i)=>{ const col=this.w.speciesMeta[i]?this.w.speciesMeta[i].color:hsl((np>1?i*67+18:150)%360,52,62);
+      const fact=(k,v)=>`<div class="fct"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`;
+      const row=(k,v,cls="")=>`<div class="row ${cls}"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`;
+      return `<div class="spx">
+        <div class="sph"><span class="sdot" style="background:${col}"></span>
+          <div><div class="snm">${esc(s.name)}</div><div class="ssci">${esc(s.sci)}</div></div>
+          <span class="spill ${s.statusType}">${esc(s.status)}</span></div>
+        <div class="facts">
+          ${fact("Time period",s.period)}${fact("Location",s.place)}${fact("Diet",s.diet)}
+          ${fact("Avg. lifespan",s.lifespan)}${fact("Population",s.population)}</div>
+        <div class="prose">
+          ${row("Key evolutionary traits",s.traits)}
+          ${row("Predators & prey",s.interactions)}
+          ${row("Why it "+(s.statusType==="extinct"?"vanished":"survives"),s.fate,"fate")}
+          <div class="row"><div class="k">Did you know</div>
+            <ul class="facts-inline">${s.facts.map(f=>`<li>${esc(f)}</li>`).join("")}</ul></div>
+        </div></div>`; }).join("");
+    card.innerHTML=`
+      <div class="ctx-hero"><button class="ctx-close" id="ctxClose">✕</button>
+        <div class="eb">History &amp; scientific context</div>
+        <h2>${esc(this.title)}</h2>
+        <div class="era">${esc(L.eraChip)} · selects ${TRAIT_LABEL[this.w.signature].toLowerCase()}</div></div>
+      <div class="ctx-body">
+        <div class="ctx-block"><div class="bh">The evolutionary principle</div>
+          <p class="ctx-lead">${esc(L.principle)}</p></div>
+        <div class="ctx-block"><div class="bh">How this simulation reflects it</div>
+          <p class="ctx-lead dim">${esc(L.reflect)}</p></div>
+        <div class="ctx-block"><div class="bh">The species</div>
+          <div style="display:flex;flex-direction:column;gap:14px">${spCards}</div></div>
+        <div class="ctx-foot">Curated natural-history context · figures are representative real-world estimates<br>EvoSim — an interactive natural-history observatory by Rian Sikka</div>
+      </div>`;
+    $("#ctxClose").onclick=()=>$("#context").classList.remove("on"); }
   exit(){ cancelAnimationFrame(this.raf); this.ro&&this.ro.disconnect(); this.unbindView&&this.unbindView(); }
 
   /* ---- camera ---- */
@@ -810,8 +1167,11 @@ class Sim{
     else if(e.key.toLowerCase()==="c"){this.capture();}
     else if(e.key.toLowerCase()==="f"){if(this.sel){this.follow=!this.follow;}}
     else if(e.key.toLowerCase()==="v"){this.setColour(this.colour==="species"?"fitness":this.colour==="fitness"?"genome":"species");}
+    else if(e.key.toLowerCase()==="h"){ $("#context").classList.toggle("on"); }
     else if(e.key==="?"||(e.shiftKey&&e.key==="/")){ $("#shortcuts").classList.toggle("on"); }
-    else if(e.key==="Escape"){ const sc=$("#shortcuts"); if(sc.classList.contains("on")){sc.classList.remove("on");}
+    else if(e.key==="Escape"){ const sc=$("#shortcuts"),ctx=$("#context");
+      if(ctx.classList.contains("on")){ctx.classList.remove("on");}
+      else if(sc.classList.contains("on")){sc.classList.remove("on");}
       else if(this.sel){this.sel=null;this.renderInspector();} else App.toMenu(); }
   }
 
