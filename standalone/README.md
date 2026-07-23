@@ -118,6 +118,24 @@ seasonal + patchy food, lineage tracking and richer decision-making — plus:
   capture**, birth/death/mutation **particle effects**, six world presets +
   custom, keyboard shortcuts, and onboarding.
 
-Because it's HTML it can be wrapped to a native `.exe`/`.app` later (Tauri /
-Electron / a webview shell). Built with typography, spacing and motion — not
-gradients or neon.
+Built with typography, spacing and motion — not gradients or neon.
+
+### Native desktop build (`EvoSimApp.exe`)
+
+`evosim_desktop.py` wraps `EvoSim.html` in a native OS window via a system
+webview (WebView2 / Edge-Chromium on Windows), and the workflow
+`.github/workflows/build-evosim-app.yml` packages it into a self-contained
+**`EvoSimApp.exe`** on a Windows runner — the HTML is bundled inside the binary,
+so there are no external files. It opens in its own window (own titlebar +
+taskbar entry, no browser chrome) and stays small (~15 MB) by rendering through
+the WebView2 runtime that ships with Windows 10/11.
+
+Download from the repo's **Actions** tab → *Build EvoSim Desktop (Windows)* →
+newest run → **Artifacts** (`EvoSimApp-windows`). Build locally with:
+
+```bash
+pip install pywebview pyinstaller
+cd standalone
+pyinstaller --onefile --windowed --name EvoSimApp \
+  --add-data "EvoSim.html;." --collect-all webview evosim_desktop.py
+```
