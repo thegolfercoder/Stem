@@ -42,17 +42,11 @@ canvas{display:block}
 .screen.on{opacity:1;visibility:visible}
 
 /* ============================================================ intro ===== */
-#intro{background:#000;display:grid;place-items:center;z-index:40}
-#intro .credit{text-align:center;opacity:0}
-#intro .credit .by{font-family:var(--mono);font-size:12px;letter-spacing:.42em;
-  text-transform:uppercase;color:#7d8794;margin-bottom:22px}
-#intro .credit .name{font-family:var(--sans);font-weight:500;font-size:clamp(34px,6vw,64px);
-  letter-spacing:.02em;color:#f2f5f9}
-#intro .hairline{width:0;height:1px;background:linear-gradient(90deg,transparent,#3a424e,transparent);
-  margin:30px auto 0}
+#intro{background:#000;overflow:hidden;z-index:40}
+#introCv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #intro .skip{position:absolute;bottom:30px;left:0;right:0;text-align:center;
   font-family:var(--mono);font-size:10.5px;letter-spacing:.3em;color:#333a44;
-  text-transform:uppercase;opacity:0;transition:opacity .5s}
+  text-transform:uppercase;opacity:0;transition:opacity .6s;pointer-events:none}
 
 /* ============================================================ menu ====== */
 #menu{z-index:20}
@@ -264,11 +258,7 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
 <div id="app">
   <!-- INTRO -->
   <section id="intro" class="screen">
-    <div class="credit" id="introCredit">
-      <div class="by">Developed by</div>
-      <div class="name">Rian Sikka</div>
-      <div class="hairline" id="introRule"></div>
-    </div>
+    <canvas id="introCv"></canvas>
     <div class="skip" id="introSkip">Click to skip</div>
   </section>
 
@@ -566,23 +556,134 @@ const App = (()=>{
   /* -------- intro sequence (cinematic, code-driven) -------- */
   function runIntro(){
     show("intro");
-    const cr=$("#introCredit"), rule=$("#introRule"), skip=$("#introSkip");
+    const cv=$("#introCv"), ctx=cv.getContext("2d"), skip=$("#introSkip"), introEl=$("#intro");
     const reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;
-    let done=false;
-    const finish=()=>{ if(done)return; done=true; buildMenu(); setTimeout(()=>show("menu"),40); };
-    if(reduce){ cr.style.transition="opacity .5s"; cr.style.opacity=1; setTimeout(finish,1400); }
-    else{
-      cr.animate([{opacity:0,transform:"scale(1.06)",filter:"blur(6px)"},
-                  {opacity:1,transform:"scale(1)",filter:"blur(0)"}],
-                 {duration:2600,easing:"cubic-bezier(.16,.84,.28,1)",fill:"forwards"});
-      rule.animate([{width:"0px"},{width:"240px"}],{duration:2600,delay:400,easing:"cubic-bezier(.16,.84,.28,1)",fill:"forwards"});
-      setTimeout(()=>{ cr.animate([{opacity:1,transform:"scale(1)"},{opacity:0,transform:"scale(1.03)"}],
-        {duration:900,easing:"cubic-bezier(.65,.02,.24,1)",fill:"forwards"}); },3400);
-      setTimeout(finish,4500);
+    const sansStack='"IBM Plex Sans", system-ui, sans-serif';
+    const monoStack='"IBM Plex Mono", ui-monospace, monospace';
+    const lerp=(a,b,t)=>a+(b-a)*t, easeOut=t=>1-Math.pow(1-t,3),
+          easeIO=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+    let done=false, started=false, fading=false, raf=0;
+    let W,H,dpr,cx,cy;
+    function size(){ dpr=Math.min(devicePixelRatio||1,2); W=innerWidth; H=innerHeight;
+      cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); cx=W/2; cy=H/2; }
+    size(); addEventListener("resize",size);
+    function setLS(v){ try{ ctx.letterSpacing=v; }catch(e){} }
+    const cleanup=()=>{ removeEventListener("resize",size);
+      window.removeEventListener("keydown",sk); introEl.removeEventListener("click",sk); };
+    const finish=()=>{ if(done)return; done=true; cancelAnimationFrame(raf); cleanup();
+      buildMenu(); setTimeout(()=>show("menu"),40); };
+    const sk=()=>{ if(done)return; skip.style.opacity=0;
+      introEl.animate([{opacity:1},{opacity:0}],{duration:420,easing:"ease",fill:"forwards"});
+      setTimeout(finish,380); };
+    window.addEventListener("keydown",sk); introEl.addEventListener("click",sk);
+    setTimeout(()=>{ if(!done) skip.style.opacity=1; },1200);
+
+    // a baked, fast cell sprite — soft membrane, bright nucleus, faint glow
+    const sprite=(()=>{ const s=96,c=document.createElement("canvas"); c.width=c.height=s;
+      const g=c.getContext("2d"),m=s/2;
+      const rad=g.createRadialGradient(m,m,0,m,m,m);
+      rad.addColorStop(0,"rgba(210,248,232,0.95)"); rad.addColorStop(0.32,"rgba(96,204,168,0.5)");
+      rad.addColorStop(0.7,"rgba(72,172,142,0.16)"); rad.addColorStop(1,"rgba(72,172,142,0)");
+      g.fillStyle=rad; g.beginPath(); g.arc(m,m,m,0,TAU); g.fill();
+      const nu=g.createRadialGradient(m-3,m-3,0,m,m,s*0.22);
+      nu.addColorStop(0,"rgba(255,255,255,0.85)"); nu.addColorStop(1,"rgba(150,230,200,0)");
+      g.fillStyle=nu; g.beginPath(); g.arc(m,m,s*0.22,0,TAU); g.fill(); return c; })();
+
+    const fontPx=Math.round(clamp(W*0.082,46,104));
+    let targets=[], cells=[], N=0, t0=0, nextSplit=0, mitosisEnd=null, assigned=false;
+    let CONV_START=null,CONV_END=0,EYE_START=0,MERGE_START=0,MERGE_END=0,HOLD_END=0,FADE_START=0,creditOut=null;
+    const MIT_START=880, INT=175, CONV_DUR=1550;
+
+    function sampleText(){
+      const oc=document.createElement("canvas"), o=oc.getContext("2d");
+      const f=`600 ${fontPx}px ${sansStack}`; o.font=f;
+      const w=Math.ceil(o.measureText("Rian Sikka").width)+10, h=Math.ceil(fontPx*1.5);
+      oc.width=w; oc.height=h; o.font=f; o.textBaseline="middle"; o.textAlign="left"; o.fillStyle="#fff";
+      o.fillText("Rian Sikka",5,h/2);
+      const d=o.getImageData(0,0,w,h).data, pts=[], gap=Math.max(3,Math.round(fontPx/24));
+      for(let y=0;y<h;y+=gap)for(let x=0;x<w;x+=gap) if(d[(y*w+x)*4+3]>130) pts.push([cx-w/2+x,cy-h/2+y]);
+      return pts;
     }
-    setTimeout(()=>skip.style.opacity=1,900);
-    const sk=()=>{ skip.style.opacity=0; finish(); window.removeEventListener("keydown",sk); $("#intro").removeEventListener("click",sk); };
-    window.addEventListener("keydown",sk); $("#intro").addEventListener("click",sk);
+    function doGeneration(){
+      const cur=cells.slice();
+      for(const c of cur){ if(cells.length>=N)break;
+        const nr=Math.max(4.4,c.br*0.82); c.br=nr;
+        const a=Math.random()*TAU, off=c.r*0.85;
+        cells.push({x:c.x+Math.cos(a)*off,y:c.y+Math.sin(a)*off,r:nr,br:nr,
+          ph:Math.random()*TAU,vx:Math.cos(a)*0.3,vy:Math.sin(a)*0.3,tx:cx,ty:cy});
+        c.vx-=Math.cos(a)*0.3; c.vy-=Math.sin(a)*0.3; }
+    }
+    function assign(){
+      const cs=cells.slice().sort((a,b)=>a.x-b.x||a.y-b.y);
+      const ts=targets.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+      for(let i=0;i<cs.length;i++){ const c=cs[i]; c.tx=ts[i][0]; c.ty=ts[i][1];
+        c.sx=c.x; c.sy=c.y; c.delay=(i/cs.length)*0.3; }
+      assigned=true;
+    }
+    function phaseTimes(){ CONV_START=mitosisEnd+260; CONV_END=CONV_START+CONV_DUR;
+      EYE_START=CONV_START+780; MERGE_START=CONV_END-120; MERGE_END=MERGE_START+720;
+      HOLD_END=MERGE_END+980; FADE_START=HOLD_END; creditOut=mitosisEnd+40; }
+
+    function frame(){
+      const now=performance.now()-t0;
+      if(mitosisEnd==null){ while(now>=nextSplit && cells.length<N){ doGeneration(); nextSplit+=INT; }
+        if(cells.length>=N){ mitosisEnd=now; phaseTimes(); } }
+      if(CONV_START!=null && !assigned && now>=CONV_START) assign();
+      const convP=CONV_START!=null?clamp((now-CONV_START)/CONV_DUR,0,1):0;
+      for(const c of cells){
+        if(assigned){ const lp=clamp((convP-c.delay)/0.7,0,1),e=easeIO(lp);
+          c.x=lerp(c.sx,c.tx,e); c.y=lerp(c.sy,c.ty,e); }
+        else { c.vx+=(cx-c.x)*0.00018+(Math.random()-.5)*0.02; c.vy+=(cy-c.y)*0.00018+(Math.random()-.5)*0.02;
+          c.vx*=0.95; c.vy*=0.95; c.x+=c.vx; c.y+=c.vy; }
+        c.r+=(c.br-c.r)*0.12;
+      }
+      ctx.clearRect(0,0,W,H);
+      const genA=clamp(now/650,0,1);
+      const mergeA=MERGE_END?clamp((now-MERGE_START)/(MERGE_END-MERGE_START),0,1):0;
+      // faint launch credit under the first cell — hands off as the swarm builds the name
+      let creditA=clamp((now-450)/450,0,1);
+      if(creditOut!=null) creditA*=1-clamp((now-creditOut)/300,0,1);
+      if(creditA>0.01){ ctx.globalAlpha=creditA; ctx.textAlign="center"; ctx.textBaseline="alphabetic";
+        ctx.fillStyle="#9aa4b2"; ctx.font=`400 15px ${sansStack}`; setLS("0.02em");
+        ctx.fillText("Developed by Rian Sikka",cx,cy+fontPx*0.9); setLS("0px"); ctx.globalAlpha=1; }
+      // living cells
+      const cellA=genA*(1-easeOut(mergeA));
+      if(cellA>0.001){ for(const c of cells){ const pulse=assigned?1:(1+0.12*Math.sin(now*0.004+c.ph));
+        const R=c.r*pulse*2.2*(1-0.35*easeOut(mergeA)); ctx.globalAlpha=cellA*0.92;
+        ctx.drawImage(sprite,c.x-R,c.y-R,2*R,2*R); } ctx.globalAlpha=1; }
+      // eyebrow
+      if(EYE_START && now>=EYE_START){ const ea=clamp((now-EYE_START)/460,0,1);
+        ctx.globalAlpha=ea; ctx.textAlign="center"; ctx.textBaseline="alphabetic";
+        ctx.fillStyle="#7d8794"; ctx.font=`500 12px ${monoStack}`; setLS("0.42em");
+        ctx.fillText("DEVELOPED BY",cx+3,cy-fontPx*0.62-16); setLS("0px"); ctx.globalAlpha=1; }
+      // cells merge into crisp title
+      if(mergeA>0){ const e=easeOut(mergeA); ctx.globalAlpha=e; ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.font=`600 ${fontPx}px ${sansStack}`; ctx.fillStyle="#f2f5f9";
+        ctx.shadowColor="rgba(96,204,168,0.5)"; ctx.shadowBlur=26*e; ctx.fillText("Rian Sikka",cx,cy);
+        ctx.shadowBlur=0; ctx.globalAlpha=1; }
+      if(FADE_START && now>=FADE_START && !fading){ fading=true;
+        introEl.animate([{opacity:1},{opacity:0}],{duration:680,easing:"cubic-bezier(.65,.02,.24,1)",fill:"forwards"});
+        setTimeout(finish,650); }
+      if(!done) raf=requestAnimationFrame(frame);
+    }
+    function begin(){ if(started||done)return; started=true;
+      targets=sampleText();
+      for(let i=targets.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[targets[i],targets[j]]=[targets[j],targets[i]];}
+      targets=targets.slice(0,Math.min(targets.length,650)); N=targets.length;
+      cells=[{x:cx,y:cy,r:15,br:15,ph:Math.random()*TAU,vx:0,vy:0,tx:cx,ty:cy}];
+      nextSplit=MIT_START; t0=performance.now(); raf=requestAnimationFrame(frame); }
+    function staticIntro(){ if(started||done)return; started=true;
+      ctx.clearRect(0,0,W,H); ctx.textAlign="center";
+      ctx.textBaseline="alphabetic"; ctx.fillStyle="#7d8794"; ctx.font=`500 12px ${monoStack}`; setLS("0.42em");
+      ctx.fillText("DEVELOPED BY",cx+3,cy-fontPx*0.62-16); setLS("0px");
+      ctx.textBaseline="middle"; ctx.font=`600 ${fontPx}px ${sansStack}`; ctx.fillStyle="#f2f5f9";
+      ctx.fillText("Rian Sikka",cx,cy); setTimeout(finish,1600); }
+
+    if(reduce){ staticIntro(); }
+    else if(document.fonts && document.fonts.ready){
+      try{ document.fonts.load(`600 ${fontPx}px "IBM Plex Sans"`); }catch(e){}
+      document.fonts.ready.then(begin); setTimeout(begin,600);
+    } else begin();
     startMenuField();
   }
 
