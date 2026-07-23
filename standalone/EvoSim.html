@@ -171,7 +171,8 @@ canvas{display:block}
 .slider{padding:9px 0}
 .slider .lab{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:8px}
 .slider .lab .k{color:var(--muted)} .slider .lab .v{font-family:var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
-input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:2px;background:var(--line2);border-radius:2px;outline:none}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:3px;outline:none;cursor:pointer;
+  background:linear-gradient(90deg,var(--jade) 0 var(--p,50%),var(--line2) var(--p,50%) 100%)}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;
   background:var(--ink);border:2px solid var(--bg1);cursor:pointer;transition:.2s;box-shadow:0 0 0 0 rgba(88,198,160,.25)}
 input[type=range]::-webkit-slider-thumb:hover{background:var(--jade);box-shadow:0 0 0 5px rgba(88,198,160,.14)}
@@ -206,6 +207,57 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
   *{animation-duration:.001s!important;transition-duration:.12s!important}
 }
 @media (max-width:1080px){ .rail{width:300px} }
+
+/* ---- interaction craft ---------------------------------------------- */
+:focus-visible{outline:2px solid var(--jade);outline-offset:2px;border-radius:3px}
+.btn:active,.topbar .back:active{transform:translateY(1px)}
+.btn.primary:active{transform:translateY(1px)}
+/* sliding segmented indicator */
+.seg{position:relative}
+.seg .ind{position:absolute;top:3px;bottom:3px;left:3px;width:0;background:var(--bg3);border-radius:3px;
+  box-shadow:0 1px 0 rgba(255,255,255,.05) inset;transition:transform .32s var(--e-out),width .32s var(--e-out);z-index:0}
+.seg button{position:relative;z-index:1;background:transparent!important}
+.seg button.act{color:var(--ink)} .seg button:not(.act):hover{color:var(--ink)}
+/* tooltips on icon buttons */
+[data-tip]{position:relative}
+[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(4px);
+  background:var(--bg3);color:var(--ink);font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;white-space:nowrap;
+  padding:5px 8px;border:1px solid var(--line2);border-radius:4px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50}
+[data-tip]:hover::after{opacity:1;transform:translateX(-50%) translateY(0)}
+/* toasts */
+#toasts{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:70;align-items:center;pointer-events:none}
+.toast{font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--ink);background:rgba(16,20,27,.92);
+  border:1px solid var(--line2);border-left:2px solid var(--jade);border-radius:5px;padding:9px 15px;
+  box-shadow:var(--shadow);display:flex;align-items:center;gap:9px;
+  animation:toastIn .34s var(--e-out),toastOut .4s var(--e-io) 2.2s forwards}
+.toast .dot{width:5px;height:5px;border-radius:50%;background:var(--jade)}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes toastOut{to{opacity:0;transform:translateY(-6px)}}
+/* extinction overlay */
+.extinct{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(120% 120% at 50% 40%,rgba(11,14,19,.5),rgba(8,10,14,.9));
+  opacity:0;visibility:hidden;transition:opacity .6s;z-index:5}
+.extinct.on{opacity:1;visibility:visible}
+.extinct .card{text-align:center}
+.extinct .eb{font-family:var(--mono);font-size:11px;letter-spacing:.36em;text-transform:uppercase;color:var(--rose)}
+.extinct h2{font-size:26px;font-weight:600;margin:12px 0 6px;letter-spacing:.01em}
+.extinct p{color:var(--muted);font-size:13px;max-width:34ch;margin:0 auto 20px;line-height:1.5}
+.extinct .stat-line{font-family:var(--mono);font-size:12px;color:var(--faint);margin-bottom:20px}
+/* shortcuts overlay */
+#shortcuts{position:fixed;inset:0;background:rgba(6,8,11,.8);display:grid;place-items:center;z-index:80;
+  opacity:0;visibility:hidden;transition:opacity .3s;backdrop-filter:blur(2px)}
+#shortcuts.on{opacity:1;visibility:visible}
+#shortcuts .card{width:min(460px,90vw);background:var(--bg1);border:1px solid var(--line2);border-radius:8px;
+  padding:26px 28px;box-shadow:var(--shadow);transform:translateY(10px) scale(.98);transition:transform .34s var(--e-out)}
+#shortcuts.on .card{transform:none}
+#shortcuts h3{font-family:var(--mono);font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);margin-bottom:18px}
+#shortcuts .krow{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+#shortcuts .krow:last-child{border-bottom:none}
+#shortcuts .krow span{font-size:13.5px;color:var(--ink)}
+#shortcuts kbd{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--bg2);border:1px solid var(--line2);
+  border-bottom-width:2px;border-radius:4px;padding:3px 8px;min-width:26px;text-align:center;display:inline-block}
+.topbar .help{width:26px;height:26px;border:1px solid var(--line);border-radius:50%;color:var(--muted);
+  font-family:var(--mono);font-size:12px;transition:.25s;flex:none}
+.topbar .help:hover{border-color:var(--jade-dim);color:var(--jade)}
 </style>
 </head>
 <body>
@@ -256,6 +308,7 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
       <div class="trait" id="simTrait">—</div>
       <div class="spacer"></div>
       <div class="clock num" id="simClock">GEN 0.0 · T 0</div>
+      <button class="help" id="helpBtn" data-tip="Keyboard shortcuts">?</button>
       <div class="credit">EVOSIM · RIAN SIKKA</div>
     </div>
     <div class="stage">
@@ -263,6 +316,13 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
         <div class="viewport">
           <canvas id="world"></canvas>
           <div class="vp-legend" id="vpLegend"></div>
+          <div class="extinct" id="extinct"><div class="card">
+            <div class="eb">Extinction</div>
+            <h2>Every lineage is lost.</h2>
+            <p>The last organism has died. Nothing was scripted — this world simply ran out of the fit.</p>
+            <div class="stat-line" id="extinctStat"></div>
+            <button class="btn primary" id="extinctRestart" style="max-width:220px;margin:0 auto">↺ Seed a new world</button>
+          </div></div>
         </div>
         <div class="chartbox">
           <div class="chdr"><span class="lbl" id="chartLbl">Population &amp; fitness</span></div>
@@ -272,6 +332,19 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
       <aside class="rail" id="rail"></aside>
     </div>
   </section>
+
+  <div id="toasts"></div>
+  <div id="shortcuts"><div class="card">
+    <h3>Keyboard</h3>
+    <div class="krow"><span>Play / pause</span><kbd>Space</kbd></div>
+    <div class="krow"><span>Slower / faster</span><span><kbd>[</kbd> <kbd>]</kbd></span></div>
+    <div class="krow"><span>Cycle colour mode</span><kbd>V</kbd></div>
+    <div class="krow"><span>Follow selected organism</span><kbd>F</kbd></div>
+    <div class="krow"><span>Capture screenshot</span><kbd>C</kbd></div>
+    <div class="krow"><span>Restart world</span><kbd>R</kbd></div>
+    <div class="krow"><span>Deselect / back to menu</span><kbd>Esc</kbd></div>
+    <div class="krow"><span>Zoom · pan · inspect</span><span>scroll · drag · click</span></div>
+  </div></div>
 </div>
 <script>"use strict";
 /* ============================================================ EvoSim ====
@@ -597,6 +670,11 @@ class Sim{
     this.ro.observe(this.cv.parentElement); this.ro.observe(this.chart);
     this.resize(); this.fitCamera();
     window.__sim=this;
+    // overlays: keyboard-shortcuts sheet + extinction restart
+    const sc=$("#shortcuts");
+    $("#helpBtn").onclick=()=>sc.classList.toggle("on");
+    sc.onclick=e=>{ if(e.target===sc) sc.classList.remove("on"); };
+    $("#extinctRestart").onclick=()=>this.restart();
     this.loop(); this.onboard(); }
   exit(){ cancelAnimationFrame(this.raf); this.ro&&this.ro.disconnect(); this.unbindView&&this.unbindView(); }
 
@@ -631,18 +709,26 @@ class Sim{
     else if(e.key.toLowerCase()==="c"){this.capture();}
     else if(e.key.toLowerCase()==="f"){if(this.sel){this.follow=!this.follow;}}
     else if(e.key.toLowerCase()==="v"){this.setColour(this.colour==="species"?"fitness":this.colour==="fitness"?"genome":"species");}
-    else if(e.key==="Escape"){ if(this.sel){this.sel=null;this.renderInspector();} else App.toMenu(); }
+    else if(e.key==="?"||(e.shiftKey&&e.key==="/")){ $("#shortcuts").classList.toggle("on"); }
+    else if(e.key==="Escape"){ const sc=$("#shortcuts"); if(sc.classList.contains("on")){sc.classList.remove("on");}
+      else if(this.sel){this.sel=null;this.renderInspector();} else App.toMenu(); }
   }
 
   /* ---- controls / rail ---- */
-  toggle(){ this.running=!this.running; $("#playBtn").innerHTML=this.running?"❙❙ Pause":"▸ Play"; }
-  setSpeed(n){ this.spf=n; $("#spfVal").textContent=n+"×"; $("#spf").value=n; }
-  setColour(m){ this.colour=m; document.querySelectorAll("#segCol button").forEach(b=>b.classList.toggle("act",b.dataset.v===m)); this.buildLegend(); }
-  setChart(m){ this.chartMode=m; document.querySelectorAll("#segChart button").forEach(b=>b.classList.toggle("act",b.dataset.v===m));
+  toast(msg){ const box=$("#toasts"); const t=document.createElement("div"); t.className="toast";
+    t.innerHTML=`<span class="dot"></span>${msg}`; box.append(t); setTimeout(()=>t.remove(),2700); }
+  moveSeg(id){ const seg=$("#"+id); if(!seg)return; const act=seg.querySelector("button.act"),ind=seg.querySelector(".ind");
+    if(!act||!ind)return; ind.style.width=act.offsetWidth+"px"; ind.style.transform=`translateX(${act.offsetLeft-3}px)`; }
+  fillRange(el){ const mn=+el.min,mx=+el.max; el.style.setProperty("--p",((+el.value-mn)/(mx-mn)*100).toFixed(1)+"%"); }
+  toggle(){ this.running=!this.running; $("#playBtn").innerHTML=this.running?"❙❙ Pause":"▸ Play"; this.toast(this.running?"Running":"Paused"); }
+  setSpeed(n){ this.spf=n; $("#spfVal").textContent=n+"×"; const s=$("#spf"); s.value=n; this.fillRange(s); }
+  setColour(m){ this.colour=m; document.querySelectorAll("#segCol button").forEach(b=>b.classList.toggle("act",b.dataset.v===m)); this.moveSeg("segCol"); this.buildLegend(); }
+  setChart(m){ this.chartMode=m; document.querySelectorAll("#segChart button").forEach(b=>b.classList.toggle("act",b.dataset.v===m)); this.moveSeg("segChart");
     $("#chartLbl").textContent={trend:"Population & mean fitness",dist:"Fitness spread · ancestors vs now",species:"Species over time"}[m]; }
-  restart(){ this.w.reset(); this.w._seed(); this.sel=null; this.fx=[]; this.fitCamera(); this.renderInspector(); }
+  restart(){ this.w.reset(); this.w._seed(); this.sel=null; this.fx=[]; this.fitCamera(); this.renderInspector();
+    $("#extinct").classList.remove("on"); this.toast("New world seeded"); }
   capture(){ const url=this.cv.toDataURL("image/png"); const a=document.createElement("a");
-    a.href=url; a.download=`evosim_${this.title.replace(/\W+/g,"_").toLowerCase()}_gen${this.w.stats().gen.toFixed(0)}.png`; a.click(); }
+    a.href=url; a.download=`evosim_${this.title.replace(/\W+/g,"_").toLowerCase()}_gen${this.w.stats().gen.toFixed(0)}.png`; a.click(); this.toast("Screenshot saved"); }
 
   buildLegend(){ const el=$("#vpLegend");
     if(this.colour==="fitness") el.innerHTML=`<span><i style="background:#6B7686"></i>low ${TRAIT_LABEL[this.w.signature].toLowerCase()}</span><span><i style="background:#58C6A0"></i>high</span><span><i style="background:#E0A94B"></i>fittest</span>`;
@@ -664,9 +750,9 @@ class Sim{
       <div class="head"><span class="bar"></span><span class="t">View</span></div>
       <div class="body">
         <div class="seg-row"><span class="k">Colour</span>
-          <div class="seg" id="segCol"><button data-v="species" class="act">Species</button><button data-v="fitness">Fitness</button><button data-v="genome">Genome</button></div></div>
+          <div class="seg" id="segCol"><span class="ind"></span><button data-v="species" class="act">Species</button><button data-v="fitness">Fitness</button><button data-v="genome">Genome</button></div></div>
         <div class="seg-row"><span class="k">Chart</span>
-          <div class="seg" id="segChart"><button data-v="trend" class="act">Trend</button><button data-v="dist">Spread</button><button data-v="species">Species</button></div></div>
+          <div class="seg" id="segChart"><span class="ind"></span><button data-v="trend" class="act">Trend</button><button data-v="dist">Spread</button><button data-v="species">Species</button></div></div>
         <div class="btnrow" style="margin-top:8px"><button class="btn" id="capBtn">◉ Capture</button><button class="btn" id="fitBtn">⤢ Reset view</button></div>
       </div></div>
 
@@ -714,13 +800,16 @@ class Sim{
     document.querySelectorAll("#segCol button").forEach(b=>b.onclick=()=>this.setColour(b.dataset.v));
     document.querySelectorAll("#segChart button").forEach(b=>b.onclick=()=>this.setChart(b.dataset.v));
     const w=this.w;
-    $("#food").oninput=e=>{w.foodMul=+e.target.value/100;$("#foodVal").textContent=e.target.value+"%";};
-    $("#mut").oninput=e=>{w.mutRate=+e.target.value/100;$("#mutVal").textContent=e.target.value+"%";};
-    $("#harsh").oninput=e=>{w.harsh=+e.target.value/100;$("#harshVal").textContent=e.target.value+"%";};
+    $("#food").oninput=e=>{w.foodMul=+e.target.value/100;$("#foodVal").textContent=e.target.value+"%";this.fillRange(e.target);};
+    $("#mut").oninput=e=>{w.mutRate=+e.target.value/100;$("#mutVal").textContent=e.target.value+"%";this.fillRange(e.target);};
+    $("#harsh").oninput=e=>{w.harsh=+e.target.value/100;$("#harshVal").textContent=e.target.value+"%";this.fillRange(e.target);};
     // build lb rows
     const lb=$("#lb"); this.lbRows=w.speciesMeta.map(m=>{ const row=document.createElement("div"); row.className="lbrow";
       row.innerHTML=`<span class="dot" style="background:${m.color}"></span><span class="nm">${m.name}</span><span class="ct num">0</span><span class="track"><i style="background:${m.color}"></i></span>`;
       lb.append(row); return row; });
+    // paint initial slider fills + segmented indicators (rAF so layout is measured)
+    ["#spf","#food","#mut","#harsh"].forEach(id=>this.fillRange($(id)));
+    requestAnimationFrame(()=>{ this.moveSeg("segCol"); this.moveSeg("segChart"); });
   }
 
   onboard(){ let seen=false; try{ seen=localStorage.getItem("evosim_onboard"); }catch(e){} if(seen)return;
@@ -838,12 +927,20 @@ class Sim{
         cx.lineTo(W-pad,H-pad); cx.closePath(); cx.fillStyle=meta[s].color+ ""; cx.globalAlpha=.55; cx.fill(); cx.globalAlpha=1; } }
     else { if(hist.length<2)return; const n=hist.length,bw=(W-2*pad)/(n-1);
       let mp=1; for(const h of hist)mp=Math.max(mp,h[0]); const[lo,hi]=GENES[this.w.signature];
+      // faint horizontal grid — quiet reference lines
+      cx.strokeStyle="rgba(255,255,255,0.05)"; cx.lineWidth=1;
+      for(let g=1;g<4;g++){ const y=pad+g/4*(H-2*pad); cx.beginPath(); cx.moveTo(pad,y); cx.lineTo(W-pad,y); cx.stroke(); }
       cx.beginPath(); for(let i=0;i<n;i++){ const x=pad+i*bw,y=H-pad-hist[i][0]/mp*(H-2*pad); i?cx.lineTo(x,y):cx.moveTo(x,y);}
       cx.lineTo(W-pad,H-pad); cx.lineTo(pad,H-pad); cx.closePath(); cx.fillStyle="rgba(88,198,160,0.10)"; cx.fill();
       cx.beginPath(); for(let i=0;i<n;i++){ const x=pad+i*bw,y=H-pad-hist[i][0]/mp*(H-2*pad); i?cx.lineTo(x,y):cx.moveTo(x,y);}
       cx.strokeStyle="#58C6A0"; cx.lineWidth=1.6*dpr; cx.stroke();
       cx.beginPath(); for(let i=0;i<n;i++){ const x=pad+i*bw,y=H-pad-(hist[i][1]-lo)/(hi-lo)*(H-2*pad); i?cx.lineTo(x,y):cx.moveTo(x,y);}
-      cx.strokeStyle="#E0A94B"; cx.lineWidth=1.4*dpr; cx.stroke(); }
+      cx.strokeStyle="#E0A94B"; cx.lineWidth=1.4*dpr; cx.stroke();
+      // emphasised endpoints — where the population stands right now
+      const ex=pad+(n-1)*bw, py=H-pad-hist[n-1][0]/mp*(H-2*pad), fy=H-pad-(hist[n-1][1]-lo)/(hi-lo)*(H-2*pad);
+      const dot=(x,y,c)=>{ cx.fillStyle=c; cx.beginPath(); cx.arc(x,y,2.6*dpr,0,TAU); cx.fill();
+        cx.strokeStyle="rgba(11,14,19,0.9)"; cx.lineWidth=1.4*dpr; cx.stroke(); };
+      dot(ex,py,"#58C6A0"); dot(ex,fy,"#E0A94B"); }
   }
   _line(f,mx,W,H,pad,bw,n){ const cx=this.ccx; cx.lineWidth=1.6*(devicePixelRatio||1); cx.beginPath();
     for(let i=0;i<n;i++){ const x=pad+i*bw+bw/2,y=H-pad-f[i]/mx*(H-2*pad); i?cx.lineTo(x,y):cx.moveTo(x,y);} cx.stroke(); }
@@ -859,6 +956,10 @@ class Sim{
       row.classList.toggle("dead",ct===0);
       row.querySelector(".dot").style.background=m.color; row.querySelector(".nm").textContent=m.name;
       row.querySelector(".ct").textContent=ct; const bar=row.querySelector(".track > i"); bar.style.width=(ct/mx*100)+"%"; bar.style.background=m.color; });
+    // extinction overlay — the world has fallen silent
+    const gone=s.pop===0, ov=$("#extinct");
+    if(gone!==ov.classList.contains("on")){ ov.classList.toggle("on",gone);
+      if(gone) $("#extinctStat").textContent=`Survived ${s.gen.toFixed(1)} generations · ${s.births} born · ${s.deaths} lost`; }
     if(this.sel) this._inspLive();
   }
   _inspLive(){ const c=this.sel; const e=$("#inspBody"); if(!e)return;
