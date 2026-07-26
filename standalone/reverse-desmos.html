@@ -1,0 +1,2693 @@
+<meta charset="utf-8" />
+<title>Reverse Desmos — standalone</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<!--
+  Reverse Desmos, as one self-contained file.
+
+  This is a full port of the Python fitting engine to JavaScript so the whole
+  thing runs in a browser with no server: least squares, Levenberg-Marquardt,
+  AICc ranking with an effective-sample-size correction, exact-form recovery,
+  and the OpenCV screenshot pipeline rewritten against ImageData.
+
+  No build step, no dependencies, no network. Open it and draw.
+-->
+
+<style>
+  :root {
+    --surface-0: #0b0c0e;
+    --surface-1: #121317;
+    --surface-2: #17181d;
+    --surface-3: #1e2027;
+    --line: #26282f;
+    --line-strong: #33363f;
+    --ink-0: #f2f3f5;
+    --ink-1: #a8acb8;
+    --ink-2: #6f7481;
+    --ink-3: #4a4e59;
+    --accent: #4f8ff7;
+    --accent-dim: #23477f;
+    --positive: #38b48b;
+    --warning: #e8a33a;
+    --negative: #e05d6f;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  body {
+    background: var(--surface-0);
+    color: var(--ink-0);
+    font: 13px/1.5 "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Spacing is an 8-point system throughout; 4px is used only for optical
+     adjustment inside controls. */
+  .app { display: flex; flex-direction: column; height: 100%; }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 44px;
+    flex-shrink: 0;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  h1 { font-size: 13px; font-weight: 500; margin: 0; letter-spacing: -0.01em; }
+  .subtitle { color: var(--ink-3); margin-left: 12px; }
+
+  .body { display: flex; flex: 1; min-height: 0; }
+  main { position: relative; flex: 1; min-width: 0; }
+  canvas#plot { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+
+  aside {
+    width: 344px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--line);
+    background: var(--surface-1);
+    overflow-y: auto;
+  }
+
+  section { border-bottom: 1px solid var(--line); }
+
+  .label {
+    font-size: 10px;
+    font-weight: 550;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  h2.label { margin: 12px 0 4px; padding: 0 16px; }
+
+  .numeric { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  button {
+    font: inherit;
+    color: var(--ink-2);
+    background: none;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: color 120ms, background-color 120ms;
+  }
+  button:hover:not(:disabled) { color: var(--ink-0); }
+  button:disabled { color: var(--ink-3); cursor: not-allowed; }
+  button[aria-pressed="true"], button.active { background: var(--surface-3); color: var(--ink-0); }
+
+  .toolbar { display: flex; align-items: center; gap: 4px; }
+  .segmented { display: flex; gap: 2px; padding: 2px; background: var(--surface-2); border-radius: 5px; }
+  .divider { width: 1px; height: 16px; background: var(--line); margin: 0 4px; }
+
+  .primary {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 500;
+    padding: 6px 12px;
+  }
+  .primary:hover:not(:disabled) { color: #fff; opacity: 0.9; }
+  .primary:disabled { opacity: 0.4; color: #fff; }
+
+  .ghost { border: 1px solid var(--line-strong); }
+  .ghost:hover { border-color: var(--ink-3); }
+
+  .tabs { display: flex; gap: 4px; padding: 12px 12px 0; }
+  .pane { padding: 12px; }
+
+  .dropzone {
+    border: 1px dashed var(--line-strong);
+    border-radius: 4px;
+    padding: 16px;
+    text-align: center;
+    transition: border-color 120ms, background-color 120ms;
+  }
+  .dropzone.over { border-color: var(--accent); background: var(--surface-2); }
+
+  textarea, input[type="number"] {
+    width: 100%;
+    background: var(--surface-0);
+    color: var(--ink-0);
+    border: 1px solid var(--line-strong);
+    border-radius: 4px;
+    padding: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    resize: vertical;
+  }
+  input[type="number"] { padding: 6px 8px; }
+
+  .hint { color: var(--ink-2); font-size: 11px; line-height: 1.4; margin: 6px 0 0; }
+  .ok { color: var(--positive); margin: 8px 0 0; }
+  .warn { color: var(--warning); margin: 8px 0 0; }
+  .err { color: var(--negative); margin: 0; }
+
+  /* Layers */
+  .layer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    transition: background-color 120ms;
+  }
+  .layer:hover { background: var(--surface-2); }
+  .layer.selected { background: var(--surface-3); }
+  .swatch { width: 12px; height: 12px; border-radius: 50%; border: 1px solid; flex-shrink: 0; padding: 0; }
+  .layer-name { flex: 1; min-width: 0; text-align: left; color: var(--ink-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0; }
+  .layer .count { font-size: 11px; color: var(--ink-3); }
+  .layer .kill { opacity: 0; padding: 0 4px; }
+  .layer:hover .kill { opacity: 1; }
+  .layer .kill:hover { color: var(--negative); }
+
+  /* Equation */
+  .eq-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .badge {
+    background: var(--accent-dim);
+    color: var(--ink-0);
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .equation {
+    font-family: var(--mono);
+    font-size: 15px;
+    margin: 8px 0 0;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    white-space: nowrap;
+  }
+  .equation sup { font-size: 0.72em; }
+  .equation .num { color: var(--ink-0); }
+  .equation .op { color: var(--ink-2); }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 12px; margin: 12px 0 0; }
+  .stats dt { margin: 0; }
+  .stats dd { margin: 0; font-family: var(--mono); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+
+  .param { margin-top: 10px; }
+  .param-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .param-row label { font-family: var(--mono); color: var(--ink-1); }
+  .param-row .val { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .param-row .val .pm { color: var(--ink-3); }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 16px;
+    background: transparent;
+    cursor: ew-resize;
+    margin: 0;
+  }
+  input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--line-strong); border-radius: 1px; }
+  input[type="range"]::-moz-range-track { height: 2px; background: var(--line-strong); border-radius: 1px; }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 11px; height: 11px; margin-top: -4.5px;
+    border-radius: 50%; background: var(--ink-0); border: none;
+    transition: transform 120ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  input[type="range"]::-moz-range-thumb { width: 11px; height: 11px; border-radius: 50%; background: var(--ink-0); border: none; }
+  input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.25); }
+
+  /* Candidates */
+  .cand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 8px 16px;
+    text-align: left;
+    border-radius: 0;
+  }
+  .cand:hover { background: var(--surface-2); }
+  .cand.selected { background: var(--surface-3); }
+  .cand .rank { width: 12px; flex-shrink: 0; font-family: var(--mono); color: var(--ink-3); }
+  .cand .info { flex: 1; min-width: 0; }
+  .cand .title { display: block; color: var(--ink-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cand .expr { display: block; font-family: var(--mono); font-size: 11px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cand .meter { width: 64px; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .cand .pct { font-family: var(--mono); font-size: 11px; color: var(--ink-1); }
+  .cand .bar { width: 100%; height: 2px; background: var(--line); border-radius: 1px; overflow: hidden; }
+  .cand .bar > span { display: block; height: 100%; background: var(--ink-3); transition: width 300ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+  .empty-hint {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    text-align: center;
+  }
+  /* An author `display` declaration beats the UA stylesheet's `[hidden]`
+     rule, so hiding this needs to be stated explicitly. */
+  .empty-hint[hidden] { display: none; }
+  .empty-hint p { margin: 0; }
+  .empty-hint .lead { color: var(--ink-1); }
+  .empty-hint .sub { color: var(--ink-3); margin-top: 4px; max-width: 280px; }
+
+  .msg { padding: 24px 16px; color: var(--ink-2); }
+
+  :focus-visible { outline: none; box-shadow: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--accent); }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line-strong); border: 3px solid var(--surface-1); border-radius: 6px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; }
+  }
+</style>
+
+<div class="app">
+  <header>
+    <div style="display:flex;align-items:baseline">
+      <h1>Reverse Desmos</h1>
+      <span class="subtitle">Draw, drop or paste — get the equation</span>
+    </div>
+    <div class="toolbar">
+      <div class="segmented">
+        <button id="tool-draw" aria-pressed="true" title="Sketch a curve to fit (D)">Draw</button>
+        <button id="tool-pan" aria-pressed="false" title="Drag to move the view (H)">Pan</button>
+      </div>
+      <span class="divider"></span>
+      <button id="btn-snap" aria-pressed="false" title="Snap to grid (G)">Snap</button>
+      <button id="btn-fit-view" title="Fit everything in view (0)">Fit view</button>
+      <span class="divider"></span>
+      <button id="btn-undo" title="Undo (Ctrl/Cmd Z)" disabled>Undo</button>
+      <button id="btn-clear" title="Remove all layers">Clear</button>
+    </div>
+  </header>
+
+  <div class="body">
+    <main>
+      <canvas id="plot"></canvas>
+      <div class="empty-hint" id="empty-hint">
+        <div>
+          <p class="lead">Draw a curve</p>
+          <p class="sub">Sketch with the mouse or a stylus and the equation appears on the right. Scroll to zoom, shift-drag to pan.</p>
+        </div>
+      </div>
+    </main>
+
+    <aside>
+      <section>
+        <h2 class="label">Import</h2>
+        <div class="tabs" role="tablist">
+          <button id="tab-file" role="tab" class="active">File</button>
+          <button id="tab-type" role="tab">Type</button>
+          <button id="tab-image" role="tab">Screenshot</button>
+        </div>
+
+        <div class="pane" id="pane-file">
+          <div class="dropzone" id="dropzone">
+            <p style="margin:0;color:var(--ink-1)">Drop a CSV or JSON file</p>
+            <button class="ghost" id="btn-choose-file" style="margin-top:8px">Choose file</button>
+            <input type="file" id="input-file" accept=".csv,.tsv,.txt,.json" hidden />
+          </div>
+          <p class="hint">The first two columns are read as x and y. A non-numeric first row is treated as a header.</p>
+          <div id="file-status"></div>
+        </div>
+
+        <div class="pane" id="pane-type" hidden>
+          <label class="label" for="manual">One pair per line</label>
+          <textarea id="manual" rows="7" spellcheck="false" placeholder="0, 1&#10;1, 2.7&#10;2, 7.4&#10;3, 20.1" style="margin-top:6px"></textarea>
+          <button class="primary" id="btn-manual" style="margin-top:8px" disabled>Fit equation</button>
+          <div id="manual-status"></div>
+        </div>
+
+        <div class="pane" id="pane-image" hidden>
+          <label class="label" for="units">One grid square equals</label>
+          <input type="number" id="units" min="0" step="any" value="1" style="margin-top:6px" />
+          <p class="hint">Axes and grid pitch are measured from the image. Tick labels are not read, so set this to match the plot's scale.</p>
+          <button class="primary" id="btn-choose-image" style="margin-top:12px">Choose screenshot</button>
+          <input type="file" id="input-image" accept="image/*" hidden />
+          <div id="image-status"></div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="label">Layers</h2>
+        <div id="layers"><p class="msg">Draw on the canvas, or import data to begin.</p></div>
+      </section>
+
+      <section>
+        <h2 class="label">Equation</h2>
+        <div id="results"><p class="msg">Select a layer to see its equation.</p></div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================================
+   Linear algebra
+   ========================================================================= */
+
+/**
+ * Least squares solve of A x ~= b by Householder QR.
+ *
+ * QR is used rather than the normal equations because a Vandermonde matrix is
+ * already badly conditioned by degree five, and forming AᵀA squares that
+ * condition number — enough to visibly corrupt a quintic's coefficients.
+ *
+ * @param {number[][]} A  n x m, row-major
+ * @param {number[]} b    length n
+ * @returns {number[]|null} the m coefficients, or null if rank-deficient
+ */
+function lstsq(A, b) {
+  const n = A.length;
+  const m = A[0].length;
+  if (n < m) return null;
+
+  const R = A.map((row) => row.slice());
+  const y = b.slice();
+
+  for (let k = 0; k < m; k += 1) {
+    let norm = 0;
+    for (let i = k; i < n; i += 1) norm += R[i][k] * R[i][k];
+    norm = Math.sqrt(norm);
+    if (norm < 1e-14) return null;
+
+    // Choose the reflection sign that avoids cancellation.
+    if (R[k][k] > 0) norm = -norm;
+    const alpha = R[k][k] - norm;
+
+    const v = new Float64Array(n);
+    v[k] = alpha;
+    for (let i = k + 1; i < n; i += 1) v[i] = R[i][k];
+
+    let vv = 0;
+    for (let i = k; i < n; i += 1) vv += v[i] * v[i];
+    if (vv < 1e-300) continue;
+
+    for (let j = k; j < m; j += 1) {
+      let dot = 0;
+      for (let i = k; i < n; i += 1) dot += v[i] * R[i][j];
+      const scale = (2 * dot) / vv;
+      for (let i = k; i < n; i += 1) R[i][j] -= scale * v[i];
+    }
+
+    let dot = 0;
+    for (let i = k; i < n; i += 1) dot += v[i] * y[i];
+    const scale = (2 * dot) / vv;
+    for (let i = k; i < n; i += 1) y[i] -= scale * v[i];
+  }
+
+  // Back-substitute through the upper triangle.
+  const x = new Array(m).fill(0);
+  for (let i = m - 1; i >= 0; i -= 1) {
+    let sum = y[i];
+    for (let j = i + 1; j < m; j += 1) sum -= R[i][j] * x[j];
+    if (Math.abs(R[i][i]) < 1e-14) return null;
+    x[i] = sum / R[i][i];
+  }
+  return x.every(Number.isFinite) ? x : null;
+}
+
+/** Invert a small square matrix by Gauss-Jordan with partial pivoting. */
+function inverse(M) {
+  const n = M.length;
+  const a = M.map((row, i) => [
+    ...row,
+    ...Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)),
+  ]);
+
+  for (let col = 0; col < n; col += 1) {
+    let pivot = col;
+    for (let row = col + 1; row < n; row += 1) {
+      if (Math.abs(a[row][col]) > Math.abs(a[pivot][col])) pivot = row;
+    }
+    if (Math.abs(a[pivot][col]) < 1e-14) return null;
+    [a[col], a[pivot]] = [a[pivot], a[col]];
+
+    const d = a[col][col];
+    for (let j = 0; j < 2 * n; j += 1) a[col][j] /= d;
+
+    for (let row = 0; row < n; row += 1) {
+      if (row === col) continue;
+      const factor = a[row][col];
+      if (factor === 0) continue;
+      for (let j = 0; j < 2 * n; j += 1) a[row][j] -= factor * a[col][j];
+    }
+  }
+  return a.map((row) => row.slice(n));
+}
+
+/** Aᵀ A for a tall matrix. */
+function normalMatrix(A) {
+  const m = A[0].length;
+  const out = Array.from({ length: m }, () => new Array(m).fill(0));
+  for (const row of A) {
+    for (let i = 0; i < m; i += 1) {
+      for (let j = i; j < m; j += 1) out[i][j] += row[i] * row[j];
+    }
+  }
+  for (let i = 0; i < m; i += 1) for (let j = 0; j < i; j += 1) out[i][j] = out[j][i];
+  return out;
+}
+
+/* =========================================================================
+   Levenberg-Marquardt
+   ========================================================================= */
+
+const BLOWUP = 1e15;
+
+/** Guard a model so out-of-domain parameters give bad-but-finite output. */
+function safeEval(model, x, p) {
+  const v = model.f(x, p);
+  return Number.isFinite(v) ? v : BLOWUP;
+}
+
+function residualSum(model, xs, ys, p) {
+  let total = 0;
+  for (let i = 0; i < xs.length; i += 1) {
+    const d = safeEval(model, xs[i], p) - ys[i];
+    total += d * d;
+    if (!Number.isFinite(total)) return Infinity;
+  }
+  return total;
+}
+
+function clampToBounds(p, bounds) {
+  if (!bounds) return p;
+  return p.map((v, i) => {
+    const lo = bounds.lower[i];
+    const hi = bounds.upper[i];
+    return Math.min(Math.max(v, lo ?? -Infinity), hi ?? Infinity);
+  });
+}
+
+/**
+ * Levenberg-Marquardt with a numeric Jacobian.
+ *
+ * The damping term interpolates between Gauss-Newton (fast near a solution)
+ * and gradient descent (reliable far from one), which is what lets a single
+ * routine cope with seeds as rough as the heuristics below produce.
+ */
+function levenbergMarquardt(model, xs, ys, p0, bounds, maxIterations = 120) {
+  const n = xs.length;
+  const m = p0.length;
+  let p = clampToBounds(p0.slice(), bounds);
+  let cost = residualSum(model, xs, ys, p);
+  if (!Number.isFinite(cost)) return null;
+
+  let lambda = 1e-3;
+
+  for (let iteration = 0; iteration < maxIterations; iteration += 1) {
+    // Jacobian by central differences, stepped relative to each parameter's
+    // own magnitude so a parameter near zero still gets a usable step.
+    const J = Array.from({ length: n }, () => new Array(m).fill(0));
+    const residuals = new Array(n);
+    for (let i = 0; i < n; i += 1) residuals[i] = safeEval(model, xs[i], p) - ys[i];
+
+    for (let k = 0; k < m; k += 1) {
+      const step = Math.max(Math.abs(p[k]), 1e-4) * 1e-6;
+      const up = p.slice();
+      const down = p.slice();
+      up[k] += step;
+      down[k] -= step;
+      for (let i = 0; i < n; i += 1) {
+        J[i][k] = (safeEval(model, xs[i], up) - safeEval(model, xs[i], down)) / (2 * step);
+      }
+    }
+
+    const JtJ = normalMatrix(J);
+    const Jtr = new Array(m).fill(0);
+    for (let i = 0; i < n; i += 1) {
+      for (let k = 0; k < m; k += 1) Jtr[k] += J[i][k] * residuals[i];
+    }
+
+    let improved = false;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const damped = JtJ.map((row, i) =>
+        row.map((v, j) => (i === j ? v * (1 + lambda) + lambda * 1e-12 : v)),
+      );
+      const inv = inverse(damped);
+      if (!inv) {
+        lambda *= 10;
+        continue;
+      }
+
+      const delta = new Array(m).fill(0);
+      for (let i = 0; i < m; i += 1) {
+        for (let j = 0; j < m; j += 1) delta[i] -= inv[i][j] * Jtr[j];
+      }
+
+      const trial = clampToBounds(
+        p.map((v, i) => v + delta[i]),
+        bounds,
+      );
+      const trialCost = residualSum(model, xs, ys, trial);
+
+      if (trialCost < cost) {
+        const relative = (cost - trialCost) / Math.max(cost, 1e-300);
+        p = trial;
+        cost = trialCost;
+        lambda = Math.max(lambda * 0.3, 1e-12);
+        improved = true;
+        if (relative < 1e-12) return { params: p, rss: cost, jacobian: J };
+        break;
+      }
+      lambda *= 10;
+      if (lambda > 1e12) return { params: p, rss: cost, jacobian: J };
+    }
+
+    if (!improved) break;
+  }
+
+  return { params: p, rss: cost, jacobian: null };
+}
+
+/** Parameter standard errors from the Jacobian at the solution. */
+function standardErrors(J, rss, n, k) {
+  if (!J || n <= k) return new Array(k).fill(null);
+  const inv = inverse(normalMatrix(J));
+  if (!inv) return new Array(k).fill(null);
+  const variance = rss / (n - k);
+  return inv.map((row, i) => {
+    const value = Math.sqrt(Math.abs(row[i] * variance));
+    return Number.isFinite(value) ? value : null;
+  });
+}
+
+/* =========================================================================
+   Formatting helpers used by the model library
+   ========================================================================= */
+
+/** Render a number for display, trimming floating-point dust. */
+function show(value) {
+  if (!Number.isFinite(value)) return "?";
+  if (value === Math.round(value) && Math.abs(value) < 1e15) return String(Math.round(value));
+  const magnitude = Math.abs(value);
+  if (magnitude !== 0 && (magnitude < 1e-4 || magnitude >= 1e6)) return value.toExponential(2);
+  return String(Number(value.toPrecision(4)));
+}
+
+/** " + 3" / " - 3", so terms read naturally instead of "+ -3". */
+function signed(value) {
+  if (!Number.isFinite(value)) return " + ?";
+  return value < 0 ? ` - ${show(-value)}` : ` + ${show(value)}`;
+}
+
+/** A horizontal shift, omitted entirely when it snapped to zero: `ln(x)`,
+    not `ln(x + 0)`. */
+function shift(value) {
+  return value === 0 ? "" : signed(value);
+}
+
+/** Drop a term entirely when its coefficient snapped to zero. */
+function term(coefficient, body) {
+  if (coefficient === 0) return "";
+  if (coefficient === 1) return ` + ${body}`;
+  if (coefficient === -1) return ` - ${body}`;
+  return coefficient < 0 ? ` - ${show(-coefficient)}${body}` : ` + ${show(coefficient)}${body}`;
+}
+
+/** Leading term: same as `term`, but without a "+" in front. */
+function lead(coefficient, body) {
+  return term(coefficient, body).replace(/^ \+ /, "").replace(/^ - /, "-");
+}
+
+function polynomialText(coefficients) {
+  // Coefficients are highest-degree first.
+  const degree = coefficients.length - 1;
+  let out = "";
+  coefficients.forEach((c, index) => {
+    const power = degree - index;
+    const body = power === 0 ? "" : power === 1 ? "x" : `x<sup>${power}</sup>`;
+    if (power === 0) {
+      if (c !== 0 || out === "") out += out === "" ? show(c) : signed(c);
+    } else {
+      out += out === "" ? lead(c, body) : term(c, body);
+    }
+  });
+  return out === "" ? "0" : out;
+}
+
+/* =========================================================================
+   Model library
+   ========================================================================= */
+
+const span = (values) => {
+  const s = Math.max(...values) - Math.min(...values);
+  return s > 1e-12 ? s : 1;
+};
+
+const mean = (values) => values.reduce((a, b) => a + b, 0) / values.length;
+
+/** Slope and intercept by ordinary least squares; seeds several families. */
+function linearSeed(xs, ys) {
+  const mx = mean(xs);
+  const my = mean(ys);
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < xs.length; i += 1) {
+    num += (xs[i] - mx) * (ys[i] - my);
+    den += (xs[i] - mx) ** 2;
+  }
+  const slope = den > 1e-300 ? num / den : 0;
+  return [slope, my - slope * mx];
+}
+
+/**
+ * Angular frequency of the dominant non-DC component.
+ *
+ * Freehand samples are never evenly spaced, so the signal is resampled onto a
+ * uniform grid and detrended before a plain DFT. Only a modest number of bins
+ * are scanned — enough to seed the optimiser, which refines from there.
+ */
+function dominantFrequency(xs, ys) {
+  const n = 128;
+  const lo = xs[0];
+  const hi = xs[xs.length - 1];
+  const grid = [];
+  const values = [];
+  const [slope, intercept] = linearSeed(xs, ys);
+
+  for (let i = 0; i < n; i += 1) {
+    const x = lo + ((hi - lo) * i) / (n - 1);
+    grid.push(x);
+    values.push(interpolate(xs, ys, x) - (slope * x + intercept));
+  }
+
+  const dx = (hi - lo) / (n - 1);
+  let bestPower = 0;
+  let bestCycles = 1 / span(xs);
+
+  for (let bin = 1; bin < n / 2; bin += 1) {
+    let re = 0;
+    let im = 0;
+    for (let i = 0; i < n; i += 1) {
+      // Hann window, to stop the ends of a non-periodic window smearing energy
+      // across every bin.
+      const w = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (n - 1));
+      const angle = (-2 * Math.PI * bin * i) / n;
+      re += values[i] * w * Math.cos(angle);
+      im += values[i] * w * Math.sin(angle);
+    }
+    const power = re * re + im * im;
+    if (power > bestPower) {
+      bestPower = power;
+      bestCycles = bin / (n * dx);
+    }
+  }
+  return 2 * Math.PI * bestCycles;
+}
+
+/** Linear interpolation into a sorted (xs, ys) series. */
+function interpolate(xs, ys, x) {
+  if (x <= xs[0]) return ys[0];
+  if (x >= xs[xs.length - 1]) return ys[ys.length - 1];
+  let lo = 0;
+  let hi = xs.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (xs[mid] <= x) lo = mid;
+    else hi = mid;
+  }
+  const t = (x - xs[lo]) / (xs[hi] - xs[lo] || 1);
+  return ys[lo] + t * (ys[hi] - ys[lo]);
+}
+
+/** Largest exponential rate that stays representable across the domain. */
+const rateLimit = (xs) => 40 / span(xs);
+
+/**
+ * The candidate families.
+ *
+ * Each declares how to evaluate itself, how to seed the optimiser, and how to
+ * render. `complexity` is a structural cost in "readability units" — how much
+ * effort the written form demands of a reader — and feeds the simplicity prior
+ * in the ranker.
+ */
+const MODELS = [
+  {
+    kind: "constant", label: "Constant", family: "polynomial", params: ["c"],
+    complexity: 0.5, degree: 0,
+    f: (x, p) => p[0],
+    text: (p) => show(p[0]),
+  },
+  {
+    kind: "linear", label: "Linear", family: "polynomial", params: ["m", "b"],
+    complexity: 1, degree: 1,
+    f: (x, p) => p[0] * x + p[1],
+    text: (p) => polynomialText(p),
+  },
+  {
+    kind: "quadratic", label: "Quadratic", family: "polynomial", params: ["a", "b", "c"],
+    complexity: 2, degree: 2,
+    f: (x, p) => (p[0] * x + p[1]) * x + p[2],
+    text: (p) => polynomialText(p),
+  },
+  {
+    kind: "cubic", label: "Cubic", family: "polynomial", params: ["a", "b", "c", "d"],
+    complexity: 3.2, degree: 3,
+    f: (x, p) => ((p[0] * x + p[1]) * x + p[2]) * x + p[3],
+    text: (p) => polynomialText(p),
+  },
+  {
+    kind: "quartic", label: "Quartic", family: "polynomial", params: ["a", "b", "c", "d", "e"],
+    complexity: 5, degree: 4,
+    f: (x, p) => (((p[0] * x + p[1]) * x + p[2]) * x + p[3]) * x + p[4],
+    text: (p) => polynomialText(p),
+  },
+  {
+    kind: "quintic", label: "Quintic", family: "polynomial", params: ["a", "b", "c", "d", "e", "f"],
+    complexity: 7, degree: 5,
+    f: (x, p) => ((((p[0] * x + p[1]) * x + p[2]) * x + p[3]) * x + p[4]) * x + p[5],
+    text: (p) => polynomialText(p),
+  },
+  {
+    kind: "exponential", label: "Exponential", family: "exponential", params: ["a", "b", "c"],
+    complexity: 3,
+    f: (x, p) => p[0] * Math.exp(p[1] * x) + p[2],
+    bounds: (xs) => ({ lower: [-Infinity, -rateLimit(xs), -Infinity], upper: [Infinity, rateLimit(xs), Infinity] }),
+    seeds: (xs, ys) => {
+      const out = [];
+      const lo = Math.min(...ys);
+      const hi = Math.max(...ys);
+      const pad = 0.1 * span(ys);
+      // Linearise log|y - c| for a few guesses of the asymptote c.
+      for (const c of [lo - pad, 0, hi + pad]) {
+        const lx = [];
+        const ly = [];
+        let sign = 1;
+        for (let i = 0; i < xs.length; i += 1) {
+          const shifted = ys[i] - c;
+          if (Math.abs(shifted) > 1e-9) {
+            lx.push(xs[i]);
+            ly.push(Math.log(Math.abs(shifted)));
+            sign = shifted < 0 ? -1 : 1;
+          }
+        }
+        if (lx.length < 3) continue;
+        const [b, logA] = linearSeed(lx, ly);
+        out.push([sign * Math.exp(logA), b, c]);
+      }
+      return out.length ? out : [[1, 1, 0]];
+    },
+    text: (p) => `${lead(p[0], `e<sup>${lead(p[1], "x")}</sup>`)}${p[2] === 0 ? "" : signed(p[2])}`,
+  },
+  {
+    kind: "logarithmic", label: "Logarithmic", family: "logarithmic", params: ["a", "h", "c"],
+    complexity: 3.2,
+    f: (x, p) => (x - p[1] <= 0 ? NaN : p[0] * Math.log(x - p[1]) + p[2]),
+    // The shift must stay strictly left of the data, and bounded away from
+    // minus infinity where the curve flattens into a constant.
+    bounds: (xs) => ({
+      lower: [-Infinity, Math.min(...xs) - 20 * span(xs), -Infinity],
+      upper: [Infinity, Math.min(...xs) - 1e-6, Infinity],
+    }),
+    seeds: (xs, ys) => {
+      const lo = Math.min(...xs);
+      return [0.05, 0.5, 1].map((fraction) => {
+        const h = lo - fraction * span(xs);
+        const [a, c] = linearSeed(xs.map((x) => Math.log(x - h)), ys);
+        return [a, h, c];
+      });
+    },
+    text: (p) => `${lead(p[0], `ln(x${shift(-p[1])})`)}${p[2] === 0 ? "" : signed(p[2])}`,
+  },
+  {
+    kind: "power", label: "Power law", family: "power", params: ["a", "b", "c"],
+    complexity: 3.5,
+    f: (x, p) => (x <= 0 ? NaN : p[0] * Math.pow(x, p[1]) + p[2]),
+    applies: (xs) => xs.filter((x) => x > 1e-9).length > 0.8 * xs.length,
+    seeds: (xs, ys) => {
+      const c = Math.min(...ys) - 0.05 * span(ys);
+      const lx = [];
+      const ly = [];
+      for (let i = 0; i < xs.length; i += 1) {
+        if (xs[i] > 1e-9 && ys[i] - c > 1e-9) {
+          lx.push(Math.log(xs[i]));
+          ly.push(Math.log(ys[i] - c));
+        }
+      }
+      const seeds = [[1, 2, 0], [1, 0.5, 0], [1, -1, 0]];
+      if (lx.length >= 3) {
+        const [b, logA] = linearSeed(lx, ly);
+        seeds.unshift([Math.exp(logA), b, c]);
+      }
+      return seeds;
+    },
+    text: (p) => `${lead(p[0], `x<sup>${show(p[1])}</sup>`)}${p[2] === 0 ? "" : signed(p[2])}`,
+  },
+  {
+    kind: "sqrt", label: "Square root", family: "power", params: ["a", "h", "c"],
+    complexity: 3,
+    f: (x, p) => (x - p[1] < 0 ? NaN : p[0] * Math.sqrt(x - p[1]) + p[2]),
+    bounds: (xs) => ({
+      lower: [-Infinity, Math.min(...xs) - 20 * span(xs), -Infinity],
+      upper: [Infinity, Math.min(...xs) - 1e-9, Infinity],
+    }),
+    seeds: (xs, ys) => {
+      const lo = Math.min(...xs);
+      const a = span(ys) / Math.max(Math.sqrt(span(xs)), 1e-9);
+      const sign = ys[ys.length - 1] >= ys[0] ? 1 : -1;
+      return [
+        [sign * a, lo - 1e-3 * span(xs), Math.min(...ys)],
+        [sign * a, lo - span(xs), mean(ys)],
+      ];
+    },
+    text: (p) => `${lead(p[0], `√(x${shift(-p[1])})`)}${p[2] === 0 ? "" : signed(p[2])}`,
+  },
+  {
+    kind: "sinusoidal", label: "Sinusoidal", family: "periodic", params: ["A", "ω", "φ", "C"],
+    complexity: 4.5,
+    f: (x, p) => p[0] * Math.sin(p[1] * x + p[2]) + p[3],
+    // Cap the frequency at the Nyquist limit of the sample spacing: anything
+    // faster is aliasing, not signal.
+    bounds: (xs) => {
+      const spacing = span(xs) / Math.max(xs.length - 1, 1);
+      return {
+        lower: [-Infinity, 0, -4 * Math.PI, -Infinity],
+        upper: [Infinity, Math.PI / Math.max(spacing, 1e-9), 4 * Math.PI, Infinity],
+      };
+    },
+    applies: (xs, ys) => {
+      // Require a few crossings of the mean before proposing a wave.
+      const centre = mean(ys);
+      let crossings = 0;
+      for (let i = 1; i < ys.length; i += 1) {
+        if ((ys[i - 1] - centre < 0) !== (ys[i] - centre < 0)) crossings += 1;
+      }
+      return crossings >= 2;
+    },
+    seeds: (xs, ys) => {
+      const amp = span(ys) / 2;
+      const offset = mean(ys);
+      const w = dominantFrequency(xs, ys);
+      // The transform pins frequency but says nothing reliable about phase.
+      return [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]
+        .map((phase) => [amp, w, phase, offset])
+        .concat([[amp, w / 2, 0, offset], [amp, w * 2, 0, offset]]);
+    },
+    canonical: (p) => {
+      // A sine is only identified up to A -> -A, φ -> φ + π, and whole turns
+      // of φ. Without this, `3sin(2x + 6.28)` is reported instead of `3sin(2x)`.
+      let [A, w, phi, C] = p;
+      if (A < 0) { A = -A; phi += Math.PI; }
+      phi = ((phi + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+      return [A, w, phi, C];
+    },
+    text: (p) => `${lead(p[0], `sin(${lead(p[1], "x")}${shift(p[2])})`)}${p[3] === 0 ? "" : signed(p[3])}`,
+  },
+  {
+    kind: "logistic", label: "Logistic", family: "sigmoid", params: ["L", "k", "x₀", "c"],
+    complexity: 5,
+    f: (x, p) => p[0] / (1 + Math.exp(-p[1] * (x - p[2]))) + p[3],
+    bounds: (xs) => ({
+      lower: [-Infinity, -rateLimit(xs), -Infinity, -Infinity],
+      upper: [Infinity, rateLimit(xs), Infinity, Infinity],
+    }),
+    seeds: (xs, ys) => {
+      const lo = Math.min(...ys);
+      const hi = Math.max(...ys);
+      const middle = (lo + hi) / 2;
+      let index = 0;
+      let best = Infinity;
+      ys.forEach((y, i) => {
+        const d = Math.abs(y - middle);
+        if (d < best) { best = d; index = i; }
+      });
+      const k = 4 / span(xs);
+      const rising = ys[ys.length - 1] >= ys[0] ? 1 : -1;
+      return [[hi - lo, rising * k, xs[index], lo], [hi - lo, rising * k * 4, xs[index], lo]];
+    },
+    text: (p) => `${show(p[0])} / (1 + e<sup>${lead(-p[1], `(x${shift(-p[2])})`)}</sup>)${p[3] === 0 ? "" : signed(p[3])}`,
+  },
+  {
+    kind: "tanh", label: "Hyperbolic tangent", family: "sigmoid", params: ["a", "k", "h", "c"],
+    complexity: 5,
+    f: (x, p) => p[0] * Math.tanh(p[1] * (x - p[2])) + p[3],
+    bounds: (xs) => ({
+      lower: [-Infinity, -rateLimit(xs), -Infinity, -Infinity],
+      upper: [Infinity, rateLimit(xs), Infinity, Infinity],
+    }),
+    seeds: (xs, ys) => {
+      const lo = Math.min(...ys);
+      const hi = Math.max(...ys);
+      const sign = ys[ys.length - 1] >= ys[0] ? 1 : -1;
+      return [[(hi - lo) / 2, (sign * 4) / span(xs), mean(xs), (hi + lo) / 2]];
+    },
+    text: (p) => `${lead(p[0], `tanh(${lead(p[1], `(x${shift(-p[2])})`)})`)}${p[3] === 0 ? "" : signed(p[3])}`,
+  },
+  {
+    kind: "gaussian", label: "Gaussian", family: "bell", params: ["A", "μ", "σ", "c"],
+    complexity: 5,
+    f: (x, p) => p[0] * Math.exp(-((x - p[1]) ** 2) / (2 * p[2] * p[2])) + p[3],
+    bounds: (xs) => ({
+      lower: [-Infinity, -Infinity, 1e-6, -Infinity],
+      upper: [Infinity, Infinity, 10 * span(xs), Infinity],
+    }),
+    seeds: (xs, ys) => {
+      const baseline = median(ys);
+      let peak = 0;
+      let best = -Infinity;
+      ys.forEach((y, i) => {
+        const d = Math.abs(y - baseline);
+        if (d > best) { best = d; peak = i; }
+      });
+      return [
+        [ys[peak] - baseline, xs[peak], span(xs) / 6, baseline],
+        [ys[peak] - baseline, xs[peak], span(xs) / 2, baseline],
+      ];
+    },
+    text: (p) => `${lead(p[0], `e<sup>−(x${shift(-p[1])})<sup>2</sup>/${show(2 * p[2] * p[2])}</sup>`)}${p[3] === 0 ? "" : signed(p[3])}`,
+  },
+  {
+    kind: "hyperbola", label: "Inverse", family: "rational", params: ["a", "h", "c"],
+    complexity: 3.5,
+    f: (x, p) => p[0] / (x - p[1]) + p[2],
+    poles: (p) => [p[1]],
+    seeds: (xs, ys) => {
+      const lo = Math.min(...xs);
+      const hi = Math.max(...xs);
+      const pad = 0.05 * span(xs);
+      return [
+        [span(ys) * span(xs), lo - pad, median(ys)],
+        [-span(ys) * span(xs), hi + pad, median(ys)],
+        [span(ys), (lo + hi) / 2, median(ys)],
+      ];
+    },
+    text: (p) => `${show(p[0])} / (x${shift(-p[1])})${p[2] === 0 ? "" : signed(p[2])}`,
+  },
+  {
+    kind: "rational", label: "Rational", family: "rational", params: ["a", "b", "c"],
+    complexity: 4.5,
+    f: (x, p) => (p[0] * x + p[1]) / (x + p[2]),
+    poles: (p) => [-p[2]],
+    seeds: (xs, ys) => {
+      const lo = Math.min(...xs);
+      const hi = Math.max(...xs);
+      return [
+        [median(ys), mean(ys), -(lo - 0.05 * span(xs))],
+        [median(ys), mean(ys), -(hi + 0.05 * span(xs))],
+        [0, 1, 0],
+      ];
+    },
+    text: (p) => `(${lead(p[0], "x")}${shift(p[1])}) / (x${shift(p[2])})`,
+  },
+  {
+    kind: "absolute", label: "Absolute value", family: "piecewise", params: ["a", "h", "c"],
+    complexity: 3.5,
+    f: (x, p) => p[0] * Math.abs(x - p[1]) + p[2],
+    seeds: (xs, ys) => {
+      const seeds = [];
+      for (const [index, sign] of [[argmin(ys), 1], [argmax(ys), -1]]) {
+        seeds.push([(sign * span(ys)) / Math.max(span(xs) / 2, 1e-9), xs[index], ys[index]]);
+      }
+      return seeds;
+    },
+    text: (p) => `${lead(p[0], `|x${shift(-p[1])}|`)}${p[2] === 0 ? "" : signed(p[2])}`,
+  },
+  {
+    kind: "piecewise", label: "Piecewise linear", family: "piecewise", params: ["m₁", "m₂", "t", "c"],
+    complexity: 5.5,
+    hinge: 1,
+    // Continuity at the knot is structural rather than a constraint: the
+    // hinge basis cannot represent a discontinuous curve.
+    f: (x, p) => p[3] + p[0] * (x - p[2]) + (p[1] - p[0]) * Math.max(0, x - p[2]),
+    text: (p) =>
+      `${lead(p[0], "x")}${signed(p[3] - p[0] * p[2])} for x &lt; ${show(p[2])}; ` +
+      `${lead(p[1], "x")}${signed(p[3] - p[1] * p[2])} for x ≥ ${show(p[2])}`,
+  },
+];
+
+const argmin = (values) => values.indexOf(Math.min(...values));
+const argmax = (values) => values.indexOf(Math.max(...values));
+
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = sorted.length >> 1;
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+/* =========================================================================
+   Preprocessing
+   ========================================================================= */
+
+const MAX_SAMPLES = 600;
+
+/** Clean a raw point cloud into a sorted, deduplicated sample. */
+function prepare(points) {
+  const notes = [];
+  let finite = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+  const dropped = points.length - finite.length;
+  if (dropped > 0) notes.push(`Dropped ${dropped} non-finite point(s)`);
+  if (finite.length === 0) throw new Error("No finite points supplied");
+
+  // Detect back-tracking before sorting destroys the evidence.
+  let forward = 0;
+  let backward = 0;
+  for (let i = 1; i < finite.length; i += 1) {
+    const d = finite[i].x - finite[i - 1].x;
+    if (d > 0) forward += 1;
+    else if (d < 0) backward += 1;
+  }
+  const total = forward + backward;
+  const isFunction = total === 0 ? true : Math.max(forward, backward) / total >= 0.9;
+  if (!isFunction) notes.push("Input is not single-valued in x; fitted against the sorted samples");
+
+  finite = [...finite].sort((a, b) => a.x - b.x);
+
+  // Merge points sharing an x.
+  const tolerance = Math.max(1e-12, (finite[finite.length - 1].x - finite[0].x) * 1e-9);
+  const xs = [];
+  const ys = [];
+  let groupX = finite[0].x;
+  let sumY = 0;
+  let count = 0;
+  for (const point of finite) {
+    if (count > 0 && point.x - groupX > tolerance) {
+      xs.push(groupX);
+      ys.push(sumY / count);
+      sumY = 0;
+      count = 0;
+      groupX = point.x;
+    }
+    groupX = point.x;
+    sumY += point.y;
+    count += 1;
+  }
+  xs.push(groupX);
+  ys.push(sumY / count);
+
+  if (xs.length !== finite.length && finite.length - xs.length > finite.length * 0.02) {
+    notes.push(`Averaged points sharing an x value`);
+  }
+
+  // Decimate on a uniform x grid rather than by index, so a slowly drawn
+  // region does not dominate.
+  if (xs.length > MAX_SAMPLES) {
+    const keptX = [];
+    const keptY = [];
+    const lo = xs[0];
+    const hi = xs[xs.length - 1];
+    let last = -1;
+    for (let i = 0; i < MAX_SAMPLES; i += 1) {
+      const target = lo + ((hi - lo) * i) / (MAX_SAMPLES - 1);
+      let index = binarySearch(xs, target);
+      if (index !== last) {
+        keptX.push(xs[index]);
+        keptY.push(ys[index]);
+        last = index;
+      }
+    }
+    notes.push(`Resampled to ${keptX.length} points`);
+    return { xs: keptX, ys: keptY, isFunction, notes };
+  }
+
+  return { xs, ys, isFunction, notes };
+}
+
+function binarySearch(sorted, target) {
+  let lo = 0;
+  let hi = sorted.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (sorted[mid] <= target) lo = mid;
+    else hi = mid;
+  }
+  return Math.abs(sorted[lo] - target) <= Math.abs(sorted[hi] - target) ? lo : hi;
+}
+
+/* =========================================================================
+   Scoring
+   ========================================================================= */
+
+const SIMPLICITY_WEIGHT = 1.6;
+const SMOOTHNESS_WEIGHT = 7;
+const MAX_TRUSTED_AUTOCORRELATION = 0.8;
+
+/**
+ * Discount the sample count for serial correlation in the residuals.
+ *
+ * Information criteria assume independent observations. That holds for
+ * scattered measurements but not for the inputs this tool is built around: a
+ * traced screenshot or a freehand stroke gives hundreds of points whose
+ * residuals are dominated by smooth systematic error, not independent noise.
+ *
+ * Untreated, an R² difference in the fifth decimal reads as overwhelming
+ * evidence, and a sinusoid beats the parabola that actually drew the picture.
+ */
+function effectiveSampleSize(residuals) {
+  const n = residuals.length;
+  if (n < 4) return n;
+  const m = mean(residuals);
+  let denominator = 0;
+  let numerator = 0;
+  for (let i = 0; i < n; i += 1) denominator += (residuals[i] - m) ** 2;
+  for (let i = 0; i < n - 1; i += 1) numerator += (residuals[i] - m) * (residuals[i + 1] - m);
+  if (denominator <= 1e-300) return n;
+
+  const rho = Math.min(Math.max(numerator / denominator, 0), MAX_TRUSTED_AUTOCORRELATION);
+  return Math.max(4, (n * (1 - rho)) / (1 + rho));
+}
+
+function computeMetrics(ys, predicted, k, nEffective) {
+  const n = ys.length;
+  const residuals = ys.map((y, i) => y - predicted[i]);
+  const rss = residuals.reduce((sum, r) => sum + r * r, 0);
+  const my = mean(ys);
+  const totalVariance = ys.reduce((sum, y) => sum + (y - my) ** 2, 0);
+
+  const r2 = totalVariance <= 1e-15 ? (rss <= 1e-15 ? 1 : 0) : 1 - rss / totalVariance;
+  const nEff = nEffective ?? effectiveSampleSize(residuals);
+
+  // Floor the RSS at the precision the data can resolve. Below this the fit is
+  // exact to machine precision and the remaining differences are rounding
+  // artefacts — without the floor, 1e-25 versus 1e-24 reads as decisive.
+  const safeRss = Math.max(rss, 1e-12 * Math.max(totalVariance, 1e-300), 1e-300);
+  const logLikelihood = nEff * Math.log(safeRss / nEff);
+  const correction = nEff - k - 1 > 0 ? (2 * k * (k + 1)) / (nEff - k - 1) : 4 * k * (k + 1);
+
+  return {
+    n, nEff, k, rss, r2,
+    rmse: Math.sqrt(rss / n),
+    aicc: logLikelihood + 2 * k + correction,
+    residuals,
+  };
+}
+
+/** How much more the model wiggles than the data does, in log units. */
+function excessCurvature(xs, ys, predicted) {
+  const n = xs.length;
+  if (n < 8) return 0;
+  const window = Math.max(3, Math.floor(n / 32));
+
+  const secondDifference = (values) => {
+    let total = 0;
+    let count = 0;
+    for (let i = window; i < values.length - window - 2; i += 1) {
+      total += Math.abs(values[i] - 2 * values[i + 1] + values[i + 2]);
+      count += 1;
+    }
+    return count > 0 ? total / count : 0;
+  };
+
+  // Smooth the data before measuring its curvature, so point noise is not
+  // mistaken for structure and used to excuse an oscillating model.
+  const smoothed = [];
+  for (let i = 0; i < n; i += 1) {
+    let sum = 0;
+    let count = 0;
+    for (let j = Math.max(0, i - window); j <= Math.min(n - 1, i + window); j += 1) {
+      sum += ys[j];
+      count += 1;
+    }
+    smoothed.push(sum / count);
+  }
+
+  const scale = span(ys);
+  const floor = 1e-4 * scale;
+  const ratio = (secondDifference(predicted) + floor) / (secondDifference(smoothed) + floor);
+  return Math.max(0, Math.log(ratio));
+}
+
+function combinedScore(metrics, complexity, curvature) {
+  const scale = Math.log(Math.max(metrics.nEff, 3));
+  return metrics.aicc + SIMPLICITY_WEIGHT * complexity * scale + SMOOTHNESS_WEIGHT * curvature * scale;
+}
+
+/** Akaike weights: normalised relative support, summing to one. */
+function akaikeWeights(scores) {
+  const finite = scores.filter(Number.isFinite);
+  if (finite.length === 0) return scores.map(() => 1 / scores.length);
+  const best = Math.min(...finite);
+  const raw = scores.map((s) => (Number.isFinite(s) ? Math.exp(-0.5 * Math.min(s - best, 700)) : 0));
+  const total = raw.reduce((a, b) => a + b, 0);
+  return total > 0 ? raw.map((v) => v / total) : scores.map(() => 1 / scores.length);
+}
+
+/* =========================================================================
+   Exact-form recovery
+   ========================================================================= */
+
+const SIGMA_TOLERANCE = 2.5;
+const PREFILTER_FRACTION = 0.05;
+const RSS_TOLERANCE = 0.02;
+
+/**
+ * Nicer-looking stand-ins for a float, best-looking first.
+ *
+ * The ordering is load-bearing. Multiples of π are dense enough that, without
+ * trying plain integers first, `3e/4` wins over `2` simply by landing closer
+ * to the noise.
+ */
+function niceCandidates(value) {
+  const out = [];
+  const seen = new Set();
+  const push = (v, label) => {
+    if (!Number.isFinite(v) || seen.has(label)) return;
+    seen.add(label);
+    out.push(v);
+  };
+
+  push(0, "0");
+  push(Math.round(value), String(Math.round(value)));
+
+  for (const denominator of [2, 3, 4, 5, 6, 8, 10]) {
+    const numerator = Math.round(value * denominator);
+    push(numerator / denominator, `${numerator}/${denominator}`);
+  }
+
+  for (const [constant, name] of [[Math.PI, "pi"], [Math.E, "e"]]) {
+    for (const denominator of [1, 2, 3, 4, 6]) {
+      const numerator = Math.round((value / constant) * denominator);
+      // `37π/6` is a coincidence, not a nice number.
+      if (numerator !== 0 && Math.abs(numerator) <= 8) {
+        push((numerator * constant) / denominator, `${numerator}${name}/${denominator}`);
+      }
+    }
+  }
+
+  for (const digits of [1, 2, 3, 4]) {
+    push(Number(value.toPrecision(digits)), `p${digits}`);
+  }
+  return out;
+}
+
+/**
+ * Snap parameters to nicer values wherever the fit can afford it.
+ *
+ * A proposal is accepted when either the data cannot distinguish it from the
+ * fitted value (within a few standard errors) or substituting it barely moves
+ * the RSS. The first recovers `2` from a noisy `2.04`; the second covers exact
+ * data, where the standard error collapses and the statistical test would
+ * reject everything.
+ */
+function prettify(model, params, xs, ys, errors) {
+  let current = params.slice();
+  const snapped = params.map(() => false);
+  const my = mean(ys);
+  const totalVariance = ys.reduce((sum, y) => sum + (y - my) ** 2, 0);
+  let baseline = residualSum(model, xs, ys, current);
+  if (!Number.isFinite(baseline)) return { params: current, snapped };
+
+  const floor = 1e-12 * Math.max(totalVariance, 1);
+
+  for (let index = 0; index < current.length; index += 1) {
+    const fitted = current[index];
+    const error = errors[index];
+    const reach = Math.max(
+      error && Number.isFinite(error) ? SIGMA_TOLERANCE * error : 0,
+      PREFILTER_FRACTION * Math.max(Math.abs(fitted), 1e-9),
+    );
+
+    for (const candidate of niceCandidates(fitted)) {
+      const distance = Math.abs(candidate - fitted);
+      if (distance > reach) continue;
+
+      let trial = current.slice();
+      trial[index] = candidate;
+
+      // Let the still-free parameters absorb the change: pinning `a` to 2 and
+      // re-optimising the rest recovers exact forms that snapping each
+      // parameter independently would miss.
+      const freeIndices = current.map((_, i) => i).filter((i) => i !== index && !snapped[i]);
+      if (freeIndices.length > 0) {
+        const reduced = {
+          f: (x, free) => {
+            const full = trial.slice();
+            freeIndices.forEach((slot, j) => { full[slot] = free[j]; });
+            return model.f(x, full);
+          },
+        };
+        const refined = levenbergMarquardt(
+          reduced, xs, ys, freeIndices.map((i) => trial[i]), null, 40,
+        );
+        if (refined) {
+          const full = trial.slice();
+          freeIndices.forEach((slot, j) => { full[slot] = refined.params[j]; });
+          trial = full;
+        }
+      }
+
+      const candidateRss = residualSum(model, xs, ys, trial);
+      if (!Number.isFinite(candidateRss)) continue;
+
+      const indistinguishable = error && Number.isFinite(error) && error > 0 && distance <= SIGMA_TOLERANCE * error;
+      const costsNothing = candidateRss <= baseline * (1 + RSS_TOLERANCE) + floor;
+      const r2Drop = totalVariance > 1e-15 ? (candidateRss - baseline) / totalVariance : 0;
+
+      if ((indistinguishable || costsNothing) && r2Drop <= 0.001) {
+        current = trial;
+        snapped[index] = true;
+        baseline = Math.min(baseline, candidateRss);
+        break;
+      }
+    }
+  }
+  return { params: current, snapped };
+}
+
+/* =========================================================================
+   Fitting
+   ========================================================================= */
+
+/** Polynomials are linear in their parameters: one exact solve, no seeds. */
+function fitPolynomial(model, xs, ys) {
+  const degree = model.degree;
+  if (xs.length < degree + 2) return null;
+  const A = xs.map((x) => {
+    const row = [];
+    for (let power = degree; power >= 0; power -= 1) row.push(Math.pow(x, power));
+    return row;
+  });
+  const coefficients = lstsq(A, ys);
+  if (!coefficients) return null;
+
+  const predicted = xs.map((x) => model.f(x, coefficients));
+  const rss = ys.reduce((sum, y, i) => sum + (y - predicted[i]) ** 2, 0);
+  return { params: coefficients, errors: standardErrors(A, rss, xs.length, degree + 1) };
+}
+
+/**
+ * Continuous piecewise linear: grid-search the knot, solve exactly for the
+ * slopes at each candidate position.
+ */
+function fitHinge(model, xs, ys) {
+  if (xs.length < 7) return null;
+  const lo = xs[0];
+  const hi = xs[xs.length - 1];
+  let best = null;
+
+  for (let i = 1; i < 22; i += 1) {
+    // Keep the knot away from the ends, where a segment would hold 1-2 points.
+    const knot = lo + ((hi - lo) * (0.12 + (0.76 * i) / 21));
+    const A = xs.map((x) => [1, x - knot, Math.max(0, x - knot)]);
+    const solution = lstsq(A, ys);
+    if (!solution) continue;
+    const params = [solution[1], solution[1] + solution[2], knot, solution[0]];
+    const rss = residualSum(model, xs, ys, params);
+    if (!best || rss < best.rss) best = { params, rss, A };
+  }
+  if (!best) return null;
+
+  // Polish, letting the knot move off the grid.
+  const refined = levenbergMarquardt(model, xs, ys, best.params, null, 60);
+  if (refined && refined.rss <= best.rss) {
+    return {
+      params: refined.params,
+      errors: standardErrors(refined.jacobian, refined.rss, xs.length, 4),
+    };
+  }
+  return { params: best.params, errors: [null, null, null, null] };
+}
+
+/** Multi-start for everything else; the best converged seed wins. */
+function fitNonlinear(model, xs, ys) {
+  const bounds = model.bounds ? model.bounds(xs, ys) : null;
+  let seeds;
+  try {
+    seeds = model.seeds(xs, ys);
+  } catch {
+    return null;
+  }
+
+  const my = mean(ys);
+  const totalVariance = ys.reduce((sum, y) => sum + (y - my) ** 2, 0);
+  let best = null;
+
+  for (const seed of seeds) {
+    if (seed.length !== model.params.length || !seed.every(Number.isFinite)) continue;
+    const result = levenbergMarquardt(model, xs, ys, seed, bounds);
+    if (!result || !Number.isFinite(result.rss)) continue;
+    if (!best || result.rss < best.rss) best = result;
+    // A near-exact fit cannot be improved on; the remaining seeds only exist
+    // to escape local minima.
+    if (result.rss <= 1e-5 * totalVariance) break;
+  }
+  if (!best) return null;
+
+  return {
+    params: best.params,
+    errors: standardErrors(best.jacobian, best.rss, xs.length, model.params.length),
+  };
+}
+
+function fitModel(model, xs, ys) {
+  if (xs.length < model.params.length + 2) return null;
+  if (model.applies && !model.applies(xs, ys)) return null;
+
+  let fitted;
+  if (model.degree !== undefined) fitted = fitPolynomial(model, xs, ys);
+  else if (model.hinge) fitted = fitHinge(model, xs, ys);
+  else fitted = fitNonlinear(model, xs, ys);
+  if (!fitted) return null;
+
+  let params = fitted.params;
+  if (model.canonical) params = model.canonical(params);
+
+  const predicted = xs.map((x) => model.f(x, params));
+  if (!predicted.every((v) => Number.isFinite(v) && Math.abs(v) < BLOWUP)) return null;
+
+  const metrics = computeMetrics(ys, predicted, model.params.length, null);
+  const curvature = excessCurvature(xs, ys, predicted);
+
+  return {
+    model,
+    params,
+    errors: fitted.errors,
+    metrics,
+    curvature,
+    score: combinedScore(metrics, model.complexity, curvature),
+    predicted,
+  };
+}
+
+const MAX_PER_FAMILY = 2;
+
+/** Fit every plausible model, then rank the survivors. */
+function discover(points, maxResults = 6) {
+  const sample = prepare(points);
+  const { xs, ys } = sample;
+
+  const candidates = [];
+  for (const model of MODELS) {
+    const fitted = fitModel(model, xs, ys);
+    if (fitted) candidates.push(fitted);
+  }
+  if (candidates.length === 0) {
+    return { candidates: [], sample, notes: [...sample.notes, "No model could be fitted"] };
+  }
+
+  // Measure residual correlation once, from the most accurate fit available,
+  // and re-score everything against that shared effective sample size.
+  // Information criteria computed at differing n are not comparable, and
+  // letting each model deflate by its own correlation inverts the comparison.
+  const mostAccurate = candidates.reduce((a, b) => (a.metrics.rss <= b.metrics.rss ? a : b));
+  const sharedNEff = effectiveSampleSize(mostAccurate.metrics.residuals);
+
+  for (const candidate of candidates) {
+    candidate.metrics = computeMetrics(ys, candidate.predicted, candidate.model.params.length, sharedNEff);
+    candidate.score = combinedScore(candidate.metrics, candidate.model.complexity, candidate.curvature);
+  }
+  candidates.sort((a, b) => a.score - b.score);
+
+  // Cap each family, so the list shows genuinely different hypotheses rather
+  // than five flavours of polynomial.
+  const selected = [];
+  const perFamily = new Map();
+  for (const candidate of candidates) {
+    const family = candidate.model.family;
+    const used = perFamily.get(family) ?? 0;
+    if (used >= MAX_PER_FAMILY) continue;
+    perFamily.set(family, used + 1);
+    selected.push(candidate);
+    if (selected.length >= maxResults) break;
+  }
+
+  const weights = akaikeWeights(selected.map((c) => c.score));
+  selected.forEach((candidate, index) => { candidate.confidence = weights[index]; });
+
+  // Prettify only what will be shown. Scores are deliberately not recomputed:
+  // snapping always costs a little accuracy, so re-scoring here would penalise
+  // exactly the candidates that earned a readable form.
+  for (const candidate of selected) {
+    const result = prettify(candidate.model, candidate.params, xs, ys, candidate.errors);
+    const predicted = xs.map((x) => candidate.model.f(x, result.params));
+    if (!predicted.every(Number.isFinite)) continue;
+    candidate.params = result.params;
+    candidate.exact = result.snapped.some(Boolean);
+    candidate.metrics = computeMetrics(ys, predicted, candidate.model.params.length, sharedNEff);
+  }
+
+  return { candidates: selected, sample, notes: sample.notes };
+}
+
+/* =========================================================================
+   Stroke processing
+   ========================================================================= */
+
+/**
+ * Smooth, then resample evenly along arc length.
+ *
+ * The order matters more than it looks. A moving average over unevenly spaced
+ * points shifts a curve by an amount that depends on local spacing, so
+ * thinning first warps the shape differently along its length — sketching a
+ * parabola that way produces something a cosine fits better than a quadratic.
+ */
+function processStroke(points, samples = 220) {
+  if (points.length < 2) return points.slice();
+
+  const radius = 2;
+  const smoothed = points.map((_, i) => {
+    let sumX = 0;
+    let sumY = 0;
+    let count = 0;
+    for (let j = Math.max(0, i - radius); j <= Math.min(points.length - 1, i + radius); j += 1) {
+      sumX += points[j].x;
+      sumY += points[j].y;
+      count += 1;
+    }
+    return { x: sumX / count, y: sumY / count };
+  });
+
+  const cumulative = [0];
+  for (let i = 1; i < smoothed.length; i += 1) {
+    cumulative.push(cumulative[i - 1] + Math.hypot(smoothed[i].x - smoothed[i - 1].x, smoothed[i].y - smoothed[i - 1].y));
+  }
+  const total = cumulative[cumulative.length - 1];
+  if (total <= 0) return [smoothed[0]];
+
+  const count = Math.min(samples, Math.max(smoothed.length, 2));
+  const out = [];
+  let cursor = 0;
+  for (let step = 0; step < count; step += 1) {
+    const target = (total * step) / (count - 1);
+    while (cursor < cumulative.length - 2 && cumulative[cursor + 1] < target) cursor += 1;
+    const spanLength = cumulative[cursor + 1] - cumulative[cursor];
+    const t = spanLength > 0 ? (target - cumulative[cursor]) / spanLength : 0;
+    const a = smoothed[cursor];
+    const b = smoothed[cursor + 1] ?? a;
+    out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+  }
+  return out;
+}
+
+/* =========================================================================
+   Screenshot extraction
+   ========================================================================= */
+
+const MIN_LINE_SPAN = 0.55;
+const SATURATION_FLOOR = 80;
+
+/** Indices of rows or columns that are mostly ink, merged when adjacent. */
+function longRuns(mask, width, height, alongRows, minimum) {
+  const counts = new Array(alongRows ? height : width).fill(0);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (mask[y * width + x]) counts[alongRows ? y : x] += 1;
+    }
+  }
+
+  const hits = [];
+  counts.forEach((count, index) => { if (count >= minimum) hits.push(index); });
+  if (hits.length === 0) return [];
+
+  // An anti-aliased line is 2-3px wide and would otherwise be reported as
+  // several distinct gridlines.
+  const groups = [[hits[0]]];
+  for (const index of hits.slice(1)) {
+    const group = groups[groups.length - 1];
+    if (index - group[group.length - 1] <= 2) group.push(index);
+    else groups.push([index]);
+  }
+  return groups.map((group) => Math.round(mean(group)));
+}
+
+/** Most common gap between consecutive lines; the median resists a gap that
+    a missing gridline has doubled. */
+function modalSpacing(positions) {
+  if (positions.length < 2) return null;
+  const gaps = [];
+  for (let i = 1; i < positions.length; i += 1) {
+    const gap = positions[i] - positions[i - 1];
+    if (gap > 2) gaps.push(gap);
+  }
+  return gaps.length ? median(gaps) : null;
+}
+
+/** Recover plotted curves from an ImageData. */
+function extractFromImage(imageData, unitsPerCell) {
+  const { width, height, data } = imageData;
+  const notes = [];
+
+  const grey = new Float64Array(width * height);
+  const saturation = new Float64Array(width * height);
+  for (let i = 0; i < width * height; i += 1) {
+    const r = data[i * 4];
+    const g = data[i * 4 + 1];
+    const b = data[i * 4 + 2];
+    grey[i] = 0.299 * r + 0.587 * g + 0.114 * b;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    saturation[i] = max === 0 ? 0 : ((max - min) / max) * 255;
+  }
+
+  // Ink is anything darker than the page. A global threshold is enough for a
+  // screenshot, which has none of a photograph's uneven lighting.
+  const average = grey.reduce((a, b) => a + b, 0) / grey.length;
+  const inkThreshold = average - 12;
+  const ink = new Uint8Array(width * height);
+  for (let i = 0; i < ink.length; i += 1) ink[i] = grey[i] < inkThreshold ? 1 : 0;
+
+  const rows = longRuns(ink, width, height, true, Math.floor(width * MIN_LINE_SPAN));
+  const columns = longRuns(ink, width, height, false, Math.floor(height * MIN_LINE_SPAN));
+
+  // The axis is the darkest long line; plotting tools draw it heavier.
+  const darkest = (indices, alongRows) => {
+    if (indices.length === 0) return null;
+    let best = indices[0];
+    let bestValue = Infinity;
+    for (const index of indices) {
+      let sum = 0;
+      const limit = alongRows ? width : height;
+      for (let k = 0; k < limit; k += 1) {
+        sum += alongRows ? grey[index * width + k] : grey[k * width + index];
+      }
+      const value = sum / limit;
+      if (value < bestValue) { bestValue = value; best = index; }
+    }
+    return best;
+  };
+
+  const originY = darkest(rows, true);
+  const originX = darkest(columns, false);
+  const detected = originX !== null && originY !== null;
+  const cellX = modalSpacing(columns) ?? width / 10;
+  const cellY = modalSpacing(rows) ?? height / 10;
+  if (!detected) {
+    notes.push("No axis lines found — assumed the image centre is the origin. Set the grid scale to correct it.");
+  }
+
+  const ox = originX ?? width / 2;
+  const oy = originY ?? height / 2;
+
+  // Separate plotted ink from chrome. A Desmos screenshot has a saturated
+  // curve on a grey grid; a textbook scan is black on white, where the curve
+  // is what survives removing the long straight lines.
+  let coloured = 0;
+  const curve = new Uint8Array(width * height);
+  for (let i = 0; i < curve.length; i += 1) {
+    if (saturation[i] > SATURATION_FLOOR && grey[i] > 30) { curve[i] = 1; coloured += 1; }
+  }
+
+  if (coloured < curve.length * 0.0004) {
+    curve.fill(0);
+    for (let i = 0; i < curve.length; i += 1) curve[i] = ink[i];
+    for (const row of rows) {
+      for (let dy = -2; dy <= 2; dy += 1) {
+        const y = row + dy;
+        if (y < 0 || y >= height) continue;
+        for (let x = 0; x < width; x += 1) curve[y * width + x] = 0;
+      }
+    }
+    for (const column of columns) {
+      for (let dx = -2; dx <= 2; dx += 1) {
+        const x = column + dx;
+        if (x < 0 || x >= width) continue;
+        for (let y = 0; y < height; y += 1) curve[y * width + x] = 0;
+      }
+    }
+  }
+
+  // One y per column, taken as the median of that column's curve pixels: this
+  // stays centred on a thick line and behaves where a steep segment fills many
+  // rows at once.
+  const traced = [];
+  for (let x = 0; x < width; x += 1) {
+    const hits = [];
+    for (let y = 0; y < height; y += 1) if (curve[y * width + x]) hits.push(y);
+    if (hits.length > 0 && hits.length < height * 0.5) {
+      traced.push({ px: x, py: median(hits) });
+    }
+  }
+
+  // Split across genuine discontinuities rather than drawing a spike.
+  const strokes = [];
+  let currentStroke = [];
+  for (let i = 0; i < traced.length; i += 1) {
+    const point = traced[i];
+    const previous = traced[i - 1];
+    if (previous && (point.px - previous.px > 6 || Math.abs(point.py - previous.py) > height * 0.22)) {
+      if (currentStroke.length >= 8) strokes.push(currentStroke);
+      currentStroke = [];
+    }
+    currentStroke.push(point);
+  }
+  if (currentStroke.length >= 8) strokes.push(currentStroke);
+
+  const curves = strokes.map((stroke) =>
+    stroke.map((point) => ({
+      x: ((point.px - ox) / cellX) * unitsPerCell,
+      // Image rows increase downwards; graph y increases upwards.
+      y: (-(point.py - oy) / cellY) * unitsPerCell,
+    })),
+  );
+
+  if (curves.length === 0) notes.push("No plotted curve was found in this image.");
+  return { curves, notes, detected, cellX, cellY };
+}
+
+/* =========================================================================
+   Data import
+   ========================================================================= */
+
+function toNumber(raw) {
+  const text = String(raw).trim().replace(/^["']|["']$/g, "");
+  if (text === "") return NaN;
+  // Accept "1 234,5" as well as "1,234.5": a comma is a decimal separator only
+  // when it is the sole comma and no dot is present.
+  const normalised =
+    !text.includes(".") && (text.match(/,/g) || []).length === 1
+      ? text.replace(",", ".")
+      : text.replace(/,/g, "");
+  return Number(normalised.replace(/\s/g, ""));
+}
+
+function parseDelimited(text) {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
+  if (lines.length === 0) throw new Error("No data found");
+
+  // Pick the delimiter that splits every line into the same column count.
+  let delimiter = /[,]/;
+  let bestScore = -1;
+  for (const pattern of [/,/, /\t/, /;/, /\s+/]) {
+    const counts = lines.slice(0, 12).map((l) => l.split(pattern).length).filter((c) => c > 1);
+    if (counts.length === 0) continue;
+    const score = (counts.every((c) => c === counts[0]) ? 100 : 0) + counts[0];
+    if (score > bestScore) { bestScore = score; delimiter = pattern; }
+  }
+
+  const rows = lines.map((line) => line.split(delimiter));
+  if (rows[0].length < 2) throw new Error("Expected at least two columns of numbers");
+
+  const headerLooksTextual = Number.isNaN(toNumber(rows[0][0])) || Number.isNaN(toNumber(rows[0][1]));
+  const body = headerLooksTextual ? rows.slice(1) : rows;
+
+  const points = [];
+  let skipped = 0;
+  for (const row of body) {
+    const x = toNumber(row[0]);
+    const y = toNumber(row[1]);
+    if (Number.isFinite(x) && Number.isFinite(y)) points.push({ x, y });
+    else skipped += 1;
+  }
+  if (points.length < 2) throw new Error("Found fewer than two usable numeric rows");
+
+  const notes = [];
+  if (skipped) notes.push(`Skipped ${skipped} row(s) without two numbers`);
+  if (rows[0].length > 2) notes.push(`Used the first two of ${rows[0].length} columns`);
+  return { points, notes };
+}
+
+function parseJsonData(text) {
+  const parsed = JSON.parse(text);
+  const points = [];
+  if (Array.isArray(parsed)) {
+    for (const entry of parsed) {
+      if (Array.isArray(entry) && entry.length >= 2) {
+        const x = Number(entry[0]);
+        const y = Number(entry[1]);
+        if (Number.isFinite(x) && Number.isFinite(y)) points.push({ x, y });
+      } else if (entry && typeof entry === "object") {
+        const x = Number(entry.x ?? entry.X);
+        const y = Number(entry.y ?? entry.Y);
+        if (Number.isFinite(x) && Number.isFinite(y)) points.push({ x, y });
+      }
+    }
+  } else if (parsed && typeof parsed === "object") {
+    const xs = parsed.x ?? parsed.X;
+    const ys = parsed.y ?? parsed.Y;
+    if (Array.isArray(xs) && Array.isArray(ys)) {
+      for (let i = 0; i < Math.min(xs.length, ys.length); i += 1) {
+        if (Number.isFinite(Number(xs[i])) && Number.isFinite(Number(ys[i]))) {
+          points.push({ x: Number(xs[i]), y: Number(ys[i]) });
+        }
+      }
+    }
+  }
+  if (points.length < 2) throw new Error("Expected [[x, y], ...], [{x, y}, ...] or {x: [...], y: [...]}");
+  return { points, notes: [] };
+}
+
+/* =========================================================================
+   Viewport
+   ========================================================================= */
+
+const view = { centreX: 0, centreY: 0, scale: 48 };
+const MIN_SCALE = 1e-3;
+const MAX_SCALE = 1e6;
+
+let size = { width: 0, height: 0 };
+
+const toScreenX = (x) => size.width / 2 + (x - view.centreX) * view.scale;
+const toScreenY = (y) => size.height / 2 - (y - view.centreY) * view.scale;
+const toWorldX = (px) => view.centreX + (px - size.width / 2) / view.scale;
+const toWorldY = (py) => view.centreY - (py - size.height / 2) / view.scale;
+
+/** Grid step snapped to a 1-2-5 sequence, so labels stay readable at any zoom. */
+function gridStep(targetPixels = 72) {
+  const raw = targetPixels / view.scale;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
+  const normalised = raw / magnitude;
+  const step = normalised < 1.5 ? 1 : normalised < 3.5 ? 2 : normalised < 7.5 ? 5 : 10;
+  return step * magnitude;
+}
+
+function formatTick(value, step) {
+  if (Math.abs(value) < step / 1e6) return "0";
+  const decimals = Math.max(0, -Math.floor(Math.log10(step)));
+  if (Math.abs(value) >= 1e5 || (Math.abs(value) < 1e-3 && value !== 0)) return value.toExponential(1);
+  return value.toFixed(Math.min(decimals, 6));
+}
+
+function fitToPoints(points, margin = 0.12) {
+  if (points.length === 0) return;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const point of points) {
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) continue;
+    minX = Math.min(minX, point.x); maxX = Math.max(maxX, point.x);
+    minY = Math.min(minY, point.y); maxY = Math.max(maxY, point.y);
+  }
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) return;
+
+  const spanX = Math.max(maxX - minX, 1e-6);
+  const spanY = Math.max(maxY - minY, 1e-6);
+  view.centreX = (minX + maxX) / 2;
+  view.centreY = (minY + maxY) / 2;
+  view.scale = Math.min(
+    Math.max(Math.min((size.width * (1 - 2 * margin)) / spanX, (size.height * (1 - 2 * margin)) / spanY), MIN_SCALE),
+    MAX_SCALE,
+  );
+}
+
+/* =========================================================================
+   State
+   ========================================================================= */
+
+const PALETTE = ["#4f8ff7", "#e8833a", "#38b48b", "#c264d4", "#e05d6f", "#5bc0d4"];
+
+const state = {
+  layers: [],
+  activeId: null,
+  tool: "draw",
+  snap: false,
+  history: [],
+};
+
+let layerCounter = 0;
+
+function pushHistory() {
+  state.history.push({ layers: state.layers.map((l) => ({ ...l })), activeId: state.activeId });
+  if (state.history.length > 40) state.history.shift();
+  refreshToolbar();
+}
+
+function addLayer(source, points, name) {
+  pushHistory();
+  layerCounter += 1;
+  const layer = {
+    id: `layer-${layerCounter}`,
+    name: name || `${source === "drawing" ? "Sketch" : source === "screenshot" ? "Screenshot" : "Dataset"} ${state.layers.length + 1}`,
+    source,
+    colour: PALETTE[state.layers.length % PALETTE.length],
+    visible: true,
+    points,
+    candidates: [],
+    selectedKind: null,
+    overrides: {},
+    status: "idle",
+    error: null,
+  };
+  state.layers.push(layer);
+  state.activeId = layer.id;
+  return layer;
+}
+
+const activeLayer = () => state.layers.find((l) => l.id === state.activeId) ?? null;
+const selectedCandidate = (layer) =>
+  layer.candidates.find((c) => c.model.kind === layer.selectedKind) ?? null;
+const effectiveParams = (layer, candidate) =>
+  layer.overrides[candidate.model.kind] ?? candidate.params;
+
+/**
+ * Run a fit.
+ *
+ * Solving twenty families takes long enough to drop a frame, so the layer is
+ * marked busy and the work is deferred to the next task — the "fitting…"
+ * state paints before the main thread is occupied.
+ */
+function runFit(layer) {
+  layer.status = "fitting";
+  layer.error = null;
+  render();
+
+  setTimeout(() => {
+    try {
+      const result = discover(layer.points);
+      layer.candidates = result.candidates;
+      layer.selectedKind = result.candidates[0]?.model.kind ?? null;
+      layer.overrides = {};
+      layer.status = "ready";
+      layer.notes = result.notes;
+      layer.sample = result.sample;
+    } catch (error) {
+      layer.status = "error";
+      layer.error = error instanceof Error ? error.message : "Fit failed";
+    }
+    render();
+  }, 16);
+}
+
+/* =========================================================================
+   Canvas rendering
+   ========================================================================= */
+
+const canvas = document.getElementById("plot");
+const context = canvas.getContext("2d");
+let dirty = true;
+const markDirty = () => { dirty = true; };
+
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  size = { width: rect.width, height: rect.height };
+  canvas.width = Math.round(rect.width * ratio);
+  canvas.height = Math.round(rect.height * ratio);
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  markDirty();
+}
+
+function drawGrid() {
+  const step = gridStep();
+  const minX = toWorldX(0);
+  const maxX = toWorldX(size.width);
+  const minY = toWorldY(size.height);
+  const maxY = toWorldY(0);
+
+  // Minor lines at the step, major every fifth — the rhythm of engineering
+  // paper, which is what makes the scale readable at a glance.
+  context.lineWidth = 1;
+  for (const [multiple, colour] of [[1, "#1a1c22"], [5, "#24262e"]]) {
+    const spacing = step * multiple;
+    context.strokeStyle = colour;
+    context.beginPath();
+    for (let x = Math.ceil(minX / spacing) * spacing; x <= maxX; x += spacing) {
+      // The half-pixel offset lands the 1px line on a device pixel instead of
+      // straddling two, which is what makes it look soft and grey.
+      const px = Math.round(toScreenX(x)) + 0.5;
+      context.moveTo(px, 0);
+      context.lineTo(px, size.height);
+    }
+    for (let y = Math.ceil(minY / spacing) * spacing; y <= maxY; y += spacing) {
+      const py = Math.round(toScreenY(y)) + 0.5;
+      context.moveTo(0, py);
+      context.lineTo(size.width, py);
+    }
+    context.stroke();
+  }
+
+  // Axes, pinned to the viewport edge when the origin scrolls away.
+  const axisX = Math.round(Math.min(Math.max(toScreenX(0), 0), size.width)) + 0.5;
+  const axisY = Math.round(Math.min(Math.max(toScreenY(0), 0), size.height)) + 0.5;
+  context.strokeStyle = "#3d414c";
+  context.beginPath();
+  context.moveTo(0, axisY);
+  context.lineTo(size.width, axisY);
+  context.moveTo(axisX, 0);
+  context.lineTo(axisX, size.height);
+  context.stroke();
+
+  context.fillStyle = "#6f7481";
+  context.font = '10px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+  context.textAlign = "center";
+  context.textBaseline = "top";
+  const labelSpacing = step * 5;
+  for (let x = Math.ceil(minX / labelSpacing) * labelSpacing; x <= maxX; x += labelSpacing) {
+    if (Math.abs(x) < labelSpacing / 1e6) continue;
+    context.fillText(formatTick(x, step), toScreenX(x), Math.min(Math.max(axisY + 6, 6), size.height - 16));
+  }
+  context.textAlign = "right";
+  context.textBaseline = "middle";
+  for (let y = Math.ceil(minY / labelSpacing) * labelSpacing; y <= maxY; y += labelSpacing) {
+    if (Math.abs(y) < labelSpacing / 1e6) continue;
+    context.fillText(formatTick(y, step), Math.min(Math.max(axisX - 8, 32), size.width - 4), toScreenY(y));
+  }
+}
+
+function drawPolyline(points, colour, width) {
+  context.strokeStyle = colour;
+  context.lineWidth = width;
+  context.lineJoin = "round";
+  context.lineCap = "round";
+  context.beginPath();
+  points.forEach((point, index) => {
+    const px = toScreenX(point.x);
+    const py = toScreenY(point.y);
+    if (index === 0) context.moveTo(px, py);
+    else context.lineTo(px, py);
+  });
+  context.stroke();
+}
+
+function drawCurve(candidate, params, colour, isActive) {
+  context.strokeStyle = colour;
+  context.lineWidth = isActive ? 2 : 1.5;
+  context.globalAlpha = isActive ? 1 : 0.65;
+  context.lineJoin = "round";
+  context.beginPath();
+
+  const breakThreshold = size.height * 1.4;
+  let previousY = null;
+  let penDown = false;
+
+  for (let px = 0; px <= size.width; px += 1) {
+    const value = candidate.model.f(toWorldX(px), params);
+    if (!Number.isFinite(value)) { penDown = false; previousY = null; continue; }
+    const py = toScreenY(value);
+    // Lift the pen across a pole, or the two branches of a hyperbola are
+    // joined by a line straight through the asymptote.
+    if (previousY !== null && Math.abs(py - previousY) > breakThreshold) penDown = false;
+    if (!penDown) { context.moveTo(px, py); penDown = true; }
+    else context.lineTo(px, py);
+    previousY = py;
+  }
+  context.stroke();
+  context.globalAlpha = 1;
+
+  if (isActive && candidate.model.poles) {
+    context.save();
+    context.strokeStyle = colour;
+    context.globalAlpha = 0.32;
+    context.setLineDash([3, 4]);
+    context.beginPath();
+    for (const pole of candidate.model.poles(params)) {
+      const px = Math.round(toScreenX(pole)) + 0.5;
+      if (px < 0 || px > size.width) continue;
+      context.moveTo(px, 0);
+      context.lineTo(px, size.height);
+    }
+    context.stroke();
+    context.restore();
+  }
+}
+
+let drag = null;
+
+function paint() {
+  context.setTransform(1, 0, 0, 1, 0, 0);
+  const ratio = window.devicePixelRatio || 1;
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  context.fillStyle = "#0b0c0e";
+  context.fillRect(0, 0, size.width, size.height);
+
+  drawGrid();
+
+  for (const layer of state.layers) {
+    if (!layer.visible) continue;
+
+    if (layer.source === "drawing") {
+      drawPolyline(layer.points, "#6f7481", 1.25);
+    } else {
+      context.fillStyle = layer.colour;
+      const radius = layer.points.length > 400 ? 1.1 : 2;
+      for (const point of layer.points) {
+        const px = toScreenX(point.x);
+        const py = toScreenY(point.y);
+        if (px < -8 || px > size.width + 8 || py < -8 || py > size.height + 8) continue;
+        context.beginPath();
+        context.arc(px, py, radius, 0, Math.PI * 2);
+        context.fill();
+      }
+    }
+
+    const candidate = selectedCandidate(layer);
+    if (candidate) {
+      drawCurve(candidate, effectiveParams(layer, candidate), layer.colour, layer.id === state.activeId);
+    }
+  }
+
+  if (drag && drag.mode === "draw" && drag.points.length > 1) {
+    drawPolyline(drag.points, "#f2f3f5", 1.75);
+  }
+}
+
+// A single RAF loop that repaints only when marked dirty, so an idle
+// workspace costs nothing.
+(function loop() {
+  if (dirty) { dirty = false; paint(); }
+  requestAnimationFrame(loop);
+})();
+
+/* =========================================================================
+   Interaction
+   ========================================================================= */
+
+const pointerAt = (event) => {
+  const rect = canvas.getBoundingClientRect();
+  return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+};
+
+const snapValue = (value, step) => Math.round(value / step) * step;
+
+canvas.addEventListener("pointerdown", (event) => {
+  const { x, y } = pointerAt(event);
+  canvas.setPointerCapture(event.pointerId);
+
+  // Middle-drag and shift-drag always pan, whatever the active tool.
+  if (state.tool === "pan" || event.button === 1 || event.shiftKey) {
+    drag = { mode: "pan", lastX: x, lastY: y };
+    return;
+  }
+  if (state.tool !== "draw" || event.button !== 0) return;
+
+  const step = gridStep();
+  const wx = toWorldX(x);
+  const wy = toWorldY(y);
+  drag = {
+    mode: "draw",
+    points: [state.snap ? { x: snapValue(wx, step), y: snapValue(wy, step) } : { x: wx, y: wy }],
+  };
+  markDirty();
+});
+
+canvas.addEventListener("pointermove", (event) => {
+  if (!drag) return;
+  const { x, y } = pointerAt(event);
+
+  if (drag.mode === "pan") {
+    view.centreX -= (x - drag.lastX) / view.scale;
+    view.centreY += (y - drag.lastY) / view.scale;
+    drag.lastX = x;
+    drag.lastY = y;
+    markDirty();
+    return;
+  }
+
+  const step = gridStep();
+  const wx = toWorldX(x);
+  const wy = toWorldY(y);
+  const point = state.snap ? { x: snapValue(wx, step), y: snapValue(wy, step) } : { x: wx, y: wy };
+  // Snapping produces long runs of identical points; storing them would skew
+  // the arc-length resampling.
+  const last = drag.points[drag.points.length - 1];
+  if (!last || last.x !== point.x || last.y !== point.y) drag.points.push(point);
+  markDirty();
+});
+
+function endDrag(event) {
+  const finished = drag;
+  drag = null;
+  if (!finished) return;
+  try { canvas.releasePointerCapture(event.pointerId); } catch { /* already released */ }
+  if (finished.mode !== "draw") return;
+
+  // A tap is not a stroke.
+  if (finished.points.length < 4) { markDirty(); return; }
+
+  const layer = addLayer("drawing", processStroke(finished.points));
+  runFit(layer);
+  markDirty();
+}
+
+canvas.addEventListener("pointerup", endDrag);
+canvas.addEventListener("pointercancel", endDrag);
+
+canvas.addEventListener("wheel", (event) => {
+  event.preventDefault();
+  const { x, y } = pointerAt(event);
+  const factor = Math.exp(-event.deltaY * 0.0015);
+  const scale = Math.min(Math.max(view.scale * factor, MIN_SCALE), MAX_SCALE);
+  if (scale === view.scale) return;
+
+  // Keep the world point under the cursor exactly where it is.
+  const anchorX = toWorldX(x);
+  const anchorY = toWorldY(y);
+  view.scale = scale;
+  view.centreX = anchorX - (x - size.width / 2) / scale;
+  view.centreY = anchorY + (y - size.height / 2) / scale;
+  markDirty();
+}, { passive: false });
+
+window.addEventListener("keydown", (event) => {
+  const target = event.target;
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
+
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+    event.preventDefault();
+    undo();
+    return;
+  }
+  if (event.metaKey || event.ctrlKey) return;
+
+  switch (event.key.toLowerCase()) {
+    case "d": setTool("draw"); break;
+    case "h": setTool("pan"); break;
+    case "g": toggleSnap(); break;
+    case "0": fitView(); break;
+  }
+});
+
+function setTool(tool) {
+  state.tool = tool;
+  canvas.style.cursor = tool === "pan" ? "grab" : "crosshair";
+  refreshToolbar();
+}
+
+function toggleSnap() {
+  state.snap = !state.snap;
+  refreshToolbar();
+}
+
+function fitView() {
+  const points = state.layers.filter((l) => l.visible).flatMap((l) => l.points);
+  if (points.length > 0) fitToPoints(points);
+  else { view.centreX = 0; view.centreY = 0; view.scale = 48; }
+  markDirty();
+}
+
+function undo() {
+  const previous = state.history.pop();
+  if (!previous) return;
+  state.layers = previous.layers;
+  state.activeId = previous.activeId;
+  render();
+}
+
+/* =========================================================================
+   Panel rendering
+   ========================================================================= */
+
+const escapeHtml = (text) =>
+  String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function formatNumber(value) {
+  if (!Number.isFinite(value)) return "—";
+  const magnitude = Math.abs(value);
+  if (magnitude !== 0 && (magnitude < 1e-3 || magnitude >= 1e6)) return value.toExponential(2);
+  return String(Number(value.toFixed(magnitude < 1 ? 4 : 3)));
+}
+
+/** R² needs enough decimals to separate 0.9991 from 0.9999. */
+const formatR2 = (value) =>
+  !Number.isFinite(value) ? "—" : value > 0.9999 ? value.toFixed(6) : value.toFixed(4);
+
+function renderLayers() {
+  const host = document.getElementById("layers");
+  if (state.layers.length === 0) {
+    host.innerHTML = '<p class="msg">Draw on the canvas, or import data to begin.</p>';
+    return;
+  }
+
+  host.innerHTML = state.layers
+    .map((layer) => {
+      const top = layer.candidates[0];
+      const status =
+        layer.status === "fitting" ? '<span style="font-size:11px;color:var(--ink-2)">fitting…</span>'
+        : layer.status === "error" ? '<span style="font-size:11px;color:var(--negative)">failed</span>'
+        : top ? `<span class="numeric" style="font-size:11px;color:var(--ink-2)">${Math.round(top.confidence * 100)}%</span>`
+        : "";
+
+      return `
+        <div class="layer ${layer.id === state.activeId ? "selected" : ""}" data-id="${layer.id}">
+          <button class="swatch" data-action="toggle" data-id="${layer.id}"
+                  style="background:${layer.visible ? layer.colour : "transparent"};border-color:${layer.colour}"
+                  aria-label="${layer.visible ? "Hide" : "Show"} ${escapeHtml(layer.name)}"></button>
+          <button class="layer-name" data-action="select" data-id="${layer.id}">${escapeHtml(layer.name)}</button>
+          <span class="count numeric">${layer.points.length}</span>
+          ${status}
+          <button class="kill" data-action="remove" data-id="${layer.id}" aria-label="Delete ${escapeHtml(layer.name)}">✕</button>
+        </div>`;
+    })
+    .join("");
+}
+
+function renderResults() {
+  const host = document.getElementById("results");
+  const layer = activeLayer();
+
+  if (!layer) { host.innerHTML = '<p class="msg">Select a layer to see its equation.</p>'; return; }
+  if (layer.status === "fitting") { host.innerHTML = '<p class="msg">Searching model space…</p>'; return; }
+  if (layer.status === "error") {
+    host.innerHTML = `<div class="pane"><p class="err">${escapeHtml(layer.error)}</p></div>`;
+    return;
+  }
+  if (layer.candidates.length === 0) { host.innerHTML = '<p class="msg">No equation yet.</p>'; return; }
+
+  const candidate = selectedCandidate(layer);
+  const params = candidate ? effectiveParams(layer, candidate) : [];
+  const edited = candidate ? layer.overrides[candidate.model.kind] !== undefined : false;
+
+  const sliders = candidate
+    ? candidate.model.params
+        .map((name, index) => {
+          const value = params[index];
+          const magnitude = Math.max(Math.abs(candidate.params[index]), 1e-3);
+          const min = candidate.params[index] - 2 * magnitude;
+          const max = candidate.params[index] + 2 * magnitude;
+          const error = candidate.errors[index];
+          return `
+            <div class="param">
+              <div class="param-row">
+                <label for="p${index}">${escapeHtml(name)}</label>
+                <span class="val">${formatNumber(value)}${
+                  error && !edited ? `<span class="pm"> ± ${formatNumber(error)}</span>` : ""
+                }</span>
+              </div>
+              <input type="range" id="p${index}" data-param="${index}"
+                     min="${min}" max="${max}" step="${(max - min) / 400}" value="${value}" />
+            </div>`;
+        })
+        .join("")
+    : "";
+
+  const rows = layer.candidates
+    .map((entry, index) => `
+      <button class="cand ${entry.model.kind === layer.selectedKind ? "selected" : ""}" data-kind="${entry.model.kind}">
+        <span class="rank">${index + 1}</span>
+        <span class="info">
+          <span class="title">${escapeHtml(entry.model.label)}</span>
+          <span class="expr">${entry.model.text(entry.params)}</span>
+        </span>
+        <span class="meter">
+          <span class="pct">${Math.round(entry.confidence * 100)}%</span>
+          <span class="bar"><span style="width:${Math.max(2, entry.confidence * 100)}%;background:${
+            entry.model.kind === layer.selectedKind ? layer.colour : "#4a4e59"
+          }"></span></span>
+        </span>
+      </button>`)
+    .join("");
+
+  host.innerHTML = `
+    ${candidate ? `
+      <div class="pane">
+        <div class="eq-head">
+          <span class="label">${escapeHtml(candidate.model.label)}</span>
+          ${candidate.exact ? '<span class="badge" title="Parameters snapped to exact values without losing accuracy">exact form</span>' : ""}
+        </div>
+        <div class="equation">y = ${candidate.model.text(params)}</div>
+        <dl class="stats">
+          <div><dt class="label">R²</dt><dd>${formatR2(candidate.metrics.r2)}</dd></div>
+          <div><dt class="label">RMSE</dt><dd>${formatNumber(candidate.metrics.rmse)}</dd></div>
+          <div><dt class="label">Conf.</dt><dd>${Math.round(candidate.confidence * 100)}%</dd></div>
+          <div><dt class="label">Params</dt><dd>${candidate.metrics.k}</dd></div>
+        </dl>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:16px">
+          <span class="label">Parameters</span>
+          ${edited ? '<button id="btn-reset" style="font-size:11px;padding:0">Reset to fit</button>' : ""}
+        </div>
+        ${sliders}
+        ${edited ? '<p class="hint">Showing edited parameters. The statistics above describe the original fit.</p>' : ""}
+        <div style="margin-top:12px">
+          <canvas id="residuals" style="width:100%;height:96px"></canvas>
+          <p class="hint">Residuals. A shapeless band means the model fits; a visible arc means the wrong family, however high R² is.</p>
+        </div>
+      </div>` : ""}
+    <div style="border-top:1px solid var(--line)">
+      <div style="display:flex;justify-content:space-between;padding:8px 16px">
+        <span class="label">Candidates</span>
+        <span class="label numeric">${layer.candidates.length} shown</span>
+      </div>
+      ${rows}
+    </div>`;
+
+  if (candidate) drawResiduals(layer, candidate);
+}
+
+/**
+ * Residuals against x.
+ *
+ * R² says how much variance is explained; it cannot say the error is
+ * systematic. A quadratic fitted to a cubic posts a high R² while its
+ * residuals trace a clear arc — visible here immediately.
+ */
+function drawResiduals(layer, candidate) {
+  const element = document.getElementById("residuals");
+  if (!element || !layer.sample) return;
+
+  const ctx = element.getContext("2d");
+  const rect = element.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  element.width = Math.round(rect.width * ratio);
+  element.height = Math.round(96 * ratio);
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, rect.width, 96);
+
+  const xs = layer.sample.xs;
+  const residuals = candidate.metrics.residuals;
+  const count = Math.min(xs.length, residuals.length);
+  if (count === 0) return;
+
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const extreme = Math.max(...residuals.map(Math.abs), 1e-12);
+  const pad = { left: 8, right: 8, top: 10, bottom: 10 };
+  const plotWidth = Math.max(1, rect.width - pad.left - pad.right);
+  const plotHeight = Math.max(1, 96 - pad.top - pad.bottom);
+  // A symmetric range keeps zero centred, so bias reads as "the cloud sits
+  // above the line" rather than needing arithmetic.
+  const scaleY = plotHeight / 2 / (extreme * 1.15);
+
+  const sx = (v) => pad.left + ((v - minX) / Math.max(maxX - minX, 1e-12)) * plotWidth;
+  const sy = (v) => pad.top + plotHeight / 2 - v * scaleY;
+
+  ctx.strokeStyle = "#33363f";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.left, Math.round(sy(0)) + 0.5);
+  ctx.lineTo(rect.width - pad.right, Math.round(sy(0)) + 0.5);
+  ctx.stroke();
+
+  const rmse = Math.sqrt(residuals.reduce((sum, r) => sum + r * r, 0) / count);
+  ctx.strokeStyle = "#26282f";
+  ctx.setLineDash([2, 3]);
+  ctx.beginPath();
+  for (const sign of [1, -1]) {
+    ctx.moveTo(pad.left, Math.round(sy(sign * rmse)) + 0.5);
+    ctx.lineTo(rect.width - pad.right, Math.round(sy(sign * rmse)) + 0.5);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = layer.colour;
+  const radius = count > 300 ? 1 : 1.8;
+  for (let i = 0; i < count; i += 1) {
+    ctx.beginPath();
+    ctx.arc(sx(xs[i]), sy(residuals[i]), radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function refreshToolbar() {
+  document.getElementById("tool-draw").setAttribute("aria-pressed", String(state.tool === "draw"));
+  document.getElementById("tool-pan").setAttribute("aria-pressed", String(state.tool === "pan"));
+  document.getElementById("btn-snap").setAttribute("aria-pressed", String(state.snap));
+  document.getElementById("btn-undo").disabled = state.history.length === 0;
+  document.getElementById("empty-hint").hidden = state.layers.length > 0;
+}
+
+function render() {
+  renderLayers();
+  renderResults();
+  refreshToolbar();
+  markDirty();
+}
+
+/* =========================================================================
+   Event wiring
+   ========================================================================= */
+
+document.getElementById("layers").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (!button) return;
+  const layer = state.layers.find((l) => l.id === button.dataset.id);
+  if (!layer) return;
+
+  switch (button.dataset.action) {
+    case "toggle": pushHistory(); layer.visible = !layer.visible; break;
+    case "select": state.activeId = layer.id; break;
+    case "remove":
+      pushHistory();
+      state.layers = state.layers.filter((l) => l.id !== layer.id);
+      if (state.activeId === layer.id) state.activeId = state.layers[0]?.id ?? null;
+      break;
+  }
+  render();
+});
+
+document.getElementById("results").addEventListener("click", (event) => {
+  const layer = activeLayer();
+  if (!layer) return;
+
+  const candidateButton = event.target.closest(".cand");
+  if (candidateButton) {
+    layer.selectedKind = candidateButton.dataset.kind;
+    render();
+    return;
+  }
+  if (event.target.id === "btn-reset") {
+    const candidate = selectedCandidate(layer);
+    if (candidate) delete layer.overrides[candidate.model.kind];
+    render();
+  }
+});
+
+// Slider drags repaint the canvas directly and patch only the readout, rather
+// than re-rendering the panel — rebuilding the DOM mid-drag would destroy the
+// element the pointer is captured by.
+document.getElementById("results").addEventListener("input", (event) => {
+  const input = event.target;
+  if (!input.dataset.param) return;
+  const layer = activeLayer();
+  const candidate = layer && selectedCandidate(layer);
+  if (!candidate) return;
+
+  const index = Number(input.dataset.param);
+  const current = (layer.overrides[candidate.model.kind] ?? candidate.params).slice();
+  current[index] = Number(input.value);
+  layer.overrides[candidate.model.kind] = current;
+
+  const readout = input.parentElement.querySelector(".val");
+  if (readout) readout.textContent = formatNumber(current[index]);
+  const equation = document.querySelector(".equation");
+  if (equation) equation.innerHTML = `y = ${candidate.model.text(current)}`;
+  markDirty();
+});
+
+// `change` fires once the slider is released, when rebuilding the panel can no
+// longer interrupt the drag. This is what brings in the "edited parameters"
+// note and the reset control.
+document.getElementById("results").addEventListener("change", (event) => {
+  if (event.target.dataset.param) render();
+});
+
+// Toolbar
+document.getElementById("tool-draw").onclick = () => setTool("draw");
+document.getElementById("tool-pan").onclick = () => setTool("pan");
+document.getElementById("btn-snap").onclick = toggleSnap;
+document.getElementById("btn-fit-view").onclick = fitView;
+document.getElementById("btn-undo").onclick = undo;
+document.getElementById("btn-clear").onclick = () => {
+  pushHistory();
+  state.layers = [];
+  state.activeId = null;
+  render();
+};
+
+// Import tabs
+const PANES = { file: "pane-file", type: "pane-type", image: "pane-image" };
+for (const name of Object.keys(PANES)) {
+  document.getElementById(`tab-${name}`).onclick = () => {
+    for (const other of Object.keys(PANES)) {
+      document.getElementById(`tab-${other}`).classList.toggle("active", other === name);
+      document.getElementById(PANES[other]).hidden = other !== name;
+    }
+  };
+}
+
+function ingest(points, source, name, statusId, notes = []) {
+  const layer = addLayer(source, points, name);
+  fitToPoints(points);
+  runFit(layer);
+  const status = document.getElementById(statusId);
+  status.innerHTML =
+    `<p class="ok">Imported ${points.length} points</p>` +
+    (notes.length ? `<p class="warn">${escapeHtml(notes.join(" · "))}</p>` : "");
+}
+
+function readDataFile(file) {
+  const status = document.getElementById("file-status");
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const text = String(reader.result);
+      const trimmed = text.trimStart();
+      const parsed =
+        file.name.toLowerCase().endsWith(".json") || trimmed[0] === "[" || trimmed[0] === "{"
+          ? parseJsonData(text)
+          : parseDelimited(text);
+      ingest(parsed.points, "data", file.name.replace(/\.[^.]+$/, ""), "file-status", parsed.notes);
+    } catch (error) {
+      status.innerHTML = `<p class="err">${escapeHtml(error.message)}</p>`;
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById("btn-choose-file").onclick = () => document.getElementById("input-file").click();
+document.getElementById("input-file").onchange = (event) => {
+  if (event.target.files[0]) readDataFile(event.target.files[0]);
+};
+
+const dropzone = document.getElementById("dropzone");
+dropzone.addEventListener("dragover", (event) => { event.preventDefault(); dropzone.classList.add("over"); });
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("over"));
+dropzone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  dropzone.classList.remove("over");
+  if (event.dataTransfer.files[0]) readDataFile(event.dataTransfer.files[0]);
+});
+
+const manual = document.getElementById("manual");
+manual.addEventListener("input", () => {
+  document.getElementById("btn-manual").disabled = manual.value.trim().length === 0;
+});
+document.getElementById("btn-manual").onclick = () => {
+  const status = document.getElementById("manual-status");
+  try {
+    const parsed = parseDelimited(manual.value.replace(/[()]/g, " "));
+    ingest(parsed.points, "data", "Typed data", "manual-status", parsed.notes);
+  } catch (error) {
+    status.innerHTML = `<p class="err">${escapeHtml(error.message)}</p>`;
+  }
+};
+
+document.getElementById("btn-choose-image").onclick = () => document.getElementById("input-image").click();
+document.getElementById("input-image").onchange = (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const status = document.getElementById("image-status");
+  const unitsPerCell = Number(document.getElementById("units").value);
+  if (!Number.isFinite(unitsPerCell) || unitsPerCell <= 0) {
+    status.innerHTML = '<p class="err">Grid scale must be a positive number</p>';
+    return;
+  }
+
+  status.innerHTML = '<p class="hint">Reading image…</p>';
+  const image = new Image();
+  const url = URL.createObjectURL(file);
+  image.onload = () => {
+    // Very large screenshots cost time and buy no precision.
+    const scale = image.width > 1600 ? 1600 / image.width : 1;
+    const width = Math.round(image.width * scale);
+    const height = Math.round(image.height * scale);
+    const work = document.createElement("canvas");
+    work.width = width;
+    work.height = height;
+    const workContext = work.getContext("2d", { willReadFrequently: true });
+    workContext.drawImage(image, 0, 0, width, height);
+    URL.revokeObjectURL(url);
+
+    try {
+      const result = extractFromImage(workContext.getImageData(0, 0, width, height), unitsPerCell);
+      const longest = result.curves.sort((a, b) => b.length - a.length)[0];
+      if (!longest) {
+        status.innerHTML = `<p class="err">${escapeHtml(result.notes[0] ?? "No curve found")}</p>`;
+        return;
+      }
+      const extra = result.curves.length > 1 ? [`${result.curves.length} curves found, used the longest`] : [];
+      ingest(longest, "screenshot", file.name.replace(/\.[^.]+$/, ""), "image-status", [...result.notes, ...extra]);
+    } catch (error) {
+      status.innerHTML = `<p class="err">${escapeHtml(error.message)}</p>`;
+    }
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(url);
+    status.innerHTML = '<p class="err">Could not read that image</p>';
+  };
+  image.src = url;
+};
+
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+render();
+</script>
