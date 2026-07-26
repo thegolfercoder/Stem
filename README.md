@@ -18,6 +18,25 @@ editable.
 └────────────────────────────┴─────────────────┘
 ```
 
+## Standalone single-file version
+
+`standalone/reverse-desmos.html` is the whole application in one file — open it
+directly in a browser, no install and no servers. The Python engine is ported to
+JavaScript: Householder QR least squares, Levenberg-Marquardt with a numeric
+Jacobian, the same AICc ranking with the shared effective-sample-size
+correction, the same exact-form recovery, and the OpenCV screenshot pipeline
+rewritten against `ImageData`.
+
+It recovers the generating family on 11 of the same 12 synthetic curves as the
+Python engine, and runs a solve in ~300 ms rather than ~3 s, because the
+optimiser is leaner than SciPy's multi-start. Differences from the full stack:
+Excel import needs the bundled SheetJS in the Next.js app so only CSV/TSV/JSON
+are accepted, equations render as styled HTML rather than KaTeX, and undo is a
+single stack without redo.
+
+Use the full stack when you want the test suite, the typed API, and SymPy's
+symbolic guarantees; use the single file when you just want to open it.
+
 ## Running it
 
 Two processes. Both must be running.
