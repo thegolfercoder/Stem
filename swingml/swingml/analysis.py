@@ -21,15 +21,17 @@ back to a time and to the nearest original frame before it leaves.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import torch
 from pydantic import BaseModel, ConfigDict, Field
 
 from swingml.events import EventSequence, SwingEvent
-from swingml.features import FeatureConfig, extract_features, resample_pose
+from swingml.features import FeatureConfig, extract_features, normalise_pose, resample_pose
 from swingml.metrics.swing import MetricConfig, SwingMetrics, compute_metrics
 from swingml.model.decode import decode_events
+from swingml.model.refine import RefineConfig, hand_speed, refine_events
 from swingml.model.tcn import SwingEventNet
 from swingml.pose.base import PoseEstimator, PoseSequence
 from swingml.quantity import NoReading
@@ -43,6 +45,7 @@ class AnalysisConfig(BaseModel):
     handedness: Handedness = Handedness.RIGHT
     features: FeatureConfig = FeatureConfig()
     metrics: MetricConfig = MetricConfig()
+    refine: RefineConfig = RefineConfig()
     min_mean_confidence: float = Field(
         default=0.0,
         description=(
@@ -74,6 +77,14 @@ class SwingAnalysis(BaseModel):
     )
     metrics: SwingMetrics | NoReading
     handedness: Handedness
+    refinement_note: str = Field(
+        default="",
+        description=(
+            "What the motion-onset refinement did to the address event, including "
+            "declining to do anything. Reported rather than hidden, because a metric "
+            "that was adjusted and a metric that was not are different measurements."
+        ),
+    )
 
     def describe(self) -> str:
         lines: list[str] = []
@@ -178,6 +189,34 @@ def analyse_pose_sequence(
             handedness=config.handedness,
         )
 
+    # Address is the weakest of the eight events and the one tempo depends on
+    # most, so it is refined against the onset of motion in this clip's own
+    # landmarks before anything is measured from it.
+    coordinates, _, _ = normalise_pose(resampled, config.features)
+    speed = hand_speed(coordinates, resampled.timestamps_s)
+    refined_frames, refinement_note = refine_events(events.frames, speed, config.refine)
+    if refined_frames != events.frames:
+        refined_positions = list(
+            events.subframe
+            if events.subframe is not None
+            else tuple(float(f) for f in events.frames)
+        )
+        for index, (old, new) in enumerate(zip(events.frames, refined_frames, strict=True)):
+            if new != old:
+                refined_positions[index] = float(new)
+        for index in range(1, len(refined_positions)):
+            refined_positions[index] = max(
+                refined_positions[index], refined_positions[index - 1] + 1e-3
+            )
+        events = EventSequence(
+            frames=cast("tuple[int, int, int, int, int, int, int, int]", refined_frames),
+            confidence=events.confidence,
+            subframe=cast(
+                "tuple[float, float, float, float, float, float, float, float]",
+                tuple(refined_positions),
+            ),
+        )
+
     # Back into the caller's time base. The canonical grid is an internal detail,
     # and an event reported in its frame numbers is of no use to anyone.
     positions = np.array([events.position_of(e) for e in SwingEvent.ordered()])
@@ -198,6 +237,7 @@ def analyse_pose_sequence(
         event_source_frames=tuple(int(f) for f in source_frames),
         metrics=metrics,
         handedness=config.handedness,
+        refinement_note=refinement_note,
     )
 
 
