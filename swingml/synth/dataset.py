@@ -53,6 +53,21 @@ class SampleConfig(BaseModel):
     hand_radius_m: tuple[float, float] = (0.46, 0.55)
 
     body_scale: tuple[float, float] = (0.88, 1.12)
+    width_scale: tuple[float, float] = (0.55, 1.15)
+    """Independent scaling of the shoulder, hip and stance widths.
+
+    Deliberately wide, and the reason is worth recording. A pose estimator does
+    not report the width of the body it was shown: it reports where *it* believes
+    the joint centres are, using its own anatomical prior. Measured against this
+    generator on rendered video, MediaPipe placed the hips at roughly forty
+    percent of the modelled width and the shoulders at eighty, and the ratio moved
+    a long way with camera angle.
+
+    Matching that measurement would be fitting to one renderer on one swing. The
+    honest response to a gap whose true size is unknown is to train across a range
+    wide enough to contain it, so the model cannot come to depend on a body being
+    any particular shape.
+    """
     left_handed_probability: float = 0.15
 
     azimuth_spread_deg: float = Field(
@@ -67,7 +82,13 @@ class SampleConfig(BaseModel):
     vertical_fov_deg: tuple[float, float] = (48.0, 72.0)
     landscape_probability: float = 0.3
 
-    jitter_px: tuple[float, float] = (1.5, 9.0)
+    jitter_px: tuple[float, float] = (1.5, 20.0)
+    """Upper end raised after measurement. MediaPipe's lead-wrist path over a
+    rendered swing ran between 1.8 and 2.7 times longer than this generator's,
+    meaning the real estimator jitters considerably more than was being modelled.
+    A model trained on cleaner landmarks than it will meet is a model that has
+    learned to trust them."""
+    fast_landmark_multiplier: tuple[float, float] = (1.5, 3.5)
     correlation_frames: tuple[float, float] = (1.0, 8.0)
     dropout_probability: tuple[float, float] = (0.0, 0.03)
     frame_loss_probability: tuple[float, float] = (0.0, 0.012)
@@ -138,12 +159,16 @@ def generate_sample(
 
     scale = _uniform(rng, config.body_scale)
     base = BodyProportions()
-    body = BodyProportions(
-        **{
-            field: getattr(base, field) * scale * _uniform(rng, (0.94, 1.06))
-            for field in BodyProportions.model_fields
-        }
-    )
+    fields = {
+        field: getattr(base, field) * scale * _uniform(rng, (0.94, 1.06))
+        for field in BodyProportions.model_fields
+    }
+    # The widths vary far more than the lengths, because the estimator's own
+    # anatomical prior decides them rather than the body in front of it.
+    width_scale = _uniform(rng, config.width_scale)
+    for field in ("shoulder_width_m", "hip_width_m", "stance_width_m"):
+        fields[field] *= width_scale * _uniform(rng, (0.85, 1.15))
+    body = BodyProportions(**fields)
 
     left_handed = bool(rng.random() < config.left_handed_probability)
     capture_rate = float(rng.choice(CAPTURE_RATES_HZ))
@@ -180,6 +205,8 @@ def generate_sample(
     )
     noise = NoiseConfig(
         jitter_px=_uniform(rng, config.jitter_px),
+        fast_landmark_multiplier=_uniform(rng, config.fast_landmark_multiplier),
+        speed_jitter_px_per_body_length=_uniform(rng, (1.0, 4.5)),
         correlation_frames=_uniform(rng, config.correlation_frames),
         dropout_probability=_uniform(rng, config.dropout_probability),
         frame_loss_probability=_uniform(rng, config.frame_loss_probability),
