@@ -23,11 +23,13 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from swingml.analysis import AnalysisConfig, analyse_video, load_model
+from swingml.analysis import AnalysisConfig, analyse_pose_sequence, load_model
 from swingml.events import SwingEvent
 from swingml.pose.mediapipe_pose import MediaPipePoseEstimator
 from swingml.quantity import NoReading
+from swingml.report.overlay import swing_card
 from swingml.skeleton import Handedness
+from swingml.video.reader import VideoReader
 from synth.camera import CameraConfig
 from synth.render import render_swing_video, write_video
 from synth.swing import SwingTiming, generate_swing
@@ -41,6 +43,7 @@ def main() -> None:
     parser.add_argument("--tempo", type=float, default=3.0)
     parser.add_argument("--backswing", type=float, default=0.80)
     parser.add_argument("--keep", type=Path, default=None, help="keep the rendered clip here")
+    parser.add_argument("--cards", type=Path, default=Path("out/cards"))
     args = parser.parse_args()
 
     timing = SwingTiming(backswing_s=args.backswing, downswing_s=args.backswing / args.tempo)
@@ -69,8 +72,11 @@ def main() -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         write_video(frames, str(path), args.capture_fps)
 
-        analysis = analyse_video(
-            path, model, estimator, AnalysisConfig(handedness=Handedness.RIGHT)
+        with VideoReader(path) as reader:
+            read_frames, read_times, info = reader.read_all()
+        sequence = estimator.estimate(read_frames, read_times)
+        analysis = analyse_pose_sequence(
+            sequence, model, AnalysisConfig(handedness=Handedness.RIGHT), video=info
         )
 
         label = "face-on" if abs(azimuth) < 45 else "down the line"
@@ -97,6 +103,15 @@ def main() -> None:
                     f"{timing.tempo_ratio:.2f} generated "
                     f"({100 * (measured - timing.tempo_ratio) / timing.tempo_ratio:+.1f}%)"
                 )
+
+            card = swing_card(
+                analysis,
+                read_frames,
+                sequence,
+                args.cards / f"swing_az{int(azimuth)}.png",
+                title=f"generated swing, camera {azimuth:.0f} degrees ({label})",
+            )
+            print(f"  wrote {card}")
         print()
 
 
