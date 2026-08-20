@@ -1,0 +1,14 @@
+# Camera intrinsics.
+#
+# These are placeholder values for a 24 mm-equivalent lens at 1080p, used for
+# test design in the Python environment. The real intrinsics and the camera pose
+# come from a physical calibration on the device and overwrite this file. Pose
+# is never assumed.
+
+fx_px: 1280.0
+fy_px: 1280.0
+cx_px: 960.0
+cy_px: 540.0
+width_px: 1920
+height_px: 1080
+frame_rate_hz: 240.0

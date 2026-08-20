@@ -1,0 +1,37 @@
+# Per-club configuration.
+#
+# Every number in this file is PROVISIONAL. Lengths are nominal retail lengths;
+# radii are derived from them and are a calibration to be fitted against
+# reference data, not a measurement; launch-angle and spin priors are population
+# figures, not this golfer's. Nothing here carries an accuracy claim.
+#
+# spin_prior_rpm exists only because the trajectory model needs a spin input.
+# The device does not measure spin and never reports it. Any flight number
+# computed using this prior is MODELLED and carries the assumption with it.
+
+clubs:
+  - name: driver
+    length_m: 1.156
+    clubhead_radius_m: 1.156
+    launch_angle_prior_deg: 10.9
+    spin_prior_rpm: 2686
+  - name: 3-wood
+    length_m: 1.092
+    clubhead_radius_m: 1.092
+    launch_angle_prior_deg: 9.2
+    spin_prior_rpm: 3655
+  - name: 5-iron
+    length_m: 0.965
+    clubhead_radius_m: 0.965
+    launch_angle_prior_deg: 12.1
+    spin_prior_rpm: 5361
+  - name: 7-iron
+    length_m: 0.940
+    clubhead_radius_m: 0.940
+    launch_angle_prior_deg: 16.3
+    spin_prior_rpm: 7097
+  - name: pitching-wedge
+    length_m: 0.902
+    clubhead_radius_m: 0.902
+    launch_angle_prior_deg: 24.2
+    spin_prior_rpm: 9304
