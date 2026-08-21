@@ -1,94 +1,99 @@
-# Getting this running in VS Code
+# Open this in VS Code
 
-Two ways to get the code. Either works.
+## Get the code
 
-**Clone it** (preferred — you get the history and can pull updates):
+Either clone it:
 
 ```bash
 git clone https://github.com/thegolfercoder/Stem
 cd Stem
 git checkout claude/prompt-usage-0oy6wa
+code .
 ```
 
-**Or unzip the archive** you were sent, and open the folder in VS Code.
+Or unzip the archive you were sent and open that folder in VS Code.
 
-## What's in here
+## Install
 
-| Folder | What it is |
-|---|---|
-| `swingml/` | The swing analyser. Video in, swing metrics out. This is the live work. |
-| `launchmon-py/` | The earlier radar/Doppler work. Self-contained, still passing, not needed for swing analysis. |
-| `models/` | Where the MediaPipe pose model goes (not in the repo — it's 30 MB, see below). |
-
-## Setup
-
-Python 3.11 or newer. From the repo root:
+Python 3.11 or newer.
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate           # Windows: .venv\Scripts\activate
 pip install -e "swingml[dev]"
 ```
 
-That pulls in PyTorch, MediaPipe, OpenCV, NumPy, SciPy and the dev tools. On
-Linux, `pip install torch` fetches the CUDA build by default, which is several
-gigabytes. If you don't have an NVIDIA GPU, get the CPU build instead:
+On Linux, `pip install torch` pulls the CUDA build by default — several gigabytes
+you do not need without an NVIDIA card. If that applies, install the CPU build
+first:
 
 ```bash
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 ```
 
-## The pose model
+In VS Code, press <kbd>Ctrl/Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> →
+*Python: Select Interpreter* → pick `.venv`.
 
-MediaPipe's pose landmarker is a 30 MB file that isn't committed. Fetch it once:
+## Run it
 
 ```bash
-mkdir -p models
-curl -L -o models/pose_landmarker_heavy.task \
-  https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task
+swingml
 ```
 
-## Check it works
+That is the whole thing. It opens the application in your browser, downloads the
+pose model on first run (about 30 MB, once), and keeps your swings in
+`~/.swingml/`.
+
+Drag a clip in. Any video your phone makes — portrait or landscape, 30/60/240 fps,
+slow motion. Nothing needs measuring or lining up.
+
+Other commands:
+
+```bash
+swingml ui --port 8000 --no-open    # run the interface without opening a browser
+swingml analyse clip.mov            # one clip, results in the terminal
+swingml analyse swings/ --save      # a whole folder, recorded in the database
+swingml doctor                      # what is installed, what is missing
+swingml doctor --fix                # download anything missing
+```
+
+## Check everything works
 
 ```bash
 cd swingml
-PYTHONPATH=. python -m pytest tests/ -q      # 52 tests
+pytest tests/ -q                                             # 71 tests
 ruff check . && mypy --explicit-package-bases swingml synth scripts
 ```
 
-## Analyse a video
+## Try it without a clip of your own
 
 ```bash
 cd swingml
-PYTHONPATH=. python scripts/analyse.py /path/to/your/swing.mov \
-    --model out/events/swing_event_net.pt --handedness right
+python scripts/make_test_clips.py          # renders 15 synthetic clips
+swingml analyse out/testclips --save       # analyses them all
+swingml                                    # look at the results
 ```
 
-It takes any video the phone produces — portrait or landscape, 30/60/240 fps,
-slow-motion included. It reads the real frame timestamps rather than trusting a
-nominal frame rate, resamples internally to a fixed rate, and reports events back
-in the frame numbers of *your* file. Output is JSON, and every number carries how
-it was obtained.
+Three of those fifteen deliberately contain no swing. They should be refused with
+a reason rather than measured — that is the behaviour worth checking.
 
-If it can't find a swing it says so and explains why, rather than returning
-numbers. That's deliberate.
+## Where things live
 
-## See it work without a video
+| Path | What it is |
+|---|---|
+| `swingml/swingml/` | The package: analysis, metrics, model, web app, CLI |
+| `swingml/synth/` | The synthetic golfer used to generate training data |
+| `swingml/scripts/` | Training, dataset building, evaluation |
+| `swingml/tests/` | The test suite |
+| `~/.swingml/` | Your swings, uploaded clips, downloaded models |
+| `launchmon-py/` | Earlier radar work. Self-contained, unrelated to swing analysis. |
 
-```bash
-cd swingml
-PYTHONPATH=. python scripts/demo_end_to_end.py --azimuth 0 90
-```
+## Before trusting any number
 
-This generates a synthetic golfer, renders it to video, runs the real pose
-estimator over the render, analyses it, and scores the result against the truth
-it started from. It writes a summary card to `out/cards/`.
-
-## Read this before trusting any number
-
-`swingml/README.md` has the measured accuracy, and more importantly the places
-where it is *not* accurate. The short version: the model is trained on synthetic
-swings, so it works far better on synthetic pose than on real video, and the gap
-is the dominant error in the system. Nothing here has been measured against
-footage of an actual golfer, because there wasn't any. That's the next step and
-it needs your clips.
+`swingml/README.md` has the measured accuracy and, more usefully, where it is
+*not* accurate. The short version: the model is trained on synthetic swings, so
+it does better on those than on video of a real person, and nothing here has been
+measured against footage of an actual golfer because there wasn't any. Tempo and
+the event timings hold up well; anything angular under-reads and should be
+compared against your own swings from the same camera position rather than
+against a published figure.
