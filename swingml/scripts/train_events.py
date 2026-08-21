@@ -20,6 +20,7 @@ from torch.utils.data import DataLoader
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from swingml.features import CANONICAL_RATE_HZ, feature_dimension
+from swingml.model.augment import AugmentConfig
 from swingml.model.data import SwingDataset, collate, masked_soft_cross_entropy
 from swingml.model.evaluate import (
     EventAccuracy,
@@ -70,6 +71,11 @@ def main() -> None:
     parser.add_argument("--sigma-frames", type=float, default=2.0)
     parser.add_argument("--feature-noise", type=float, default=0.01)
     parser.add_argument("--threads", type=int, default=0)
+    parser.add_argument(
+        "--augment",
+        action="store_true",
+        help="vary speed, scale, occlusion and cropping during training",
+    )
     parser.add_argument("--out", type=Path, default=Path("out/events"))
     args = parser.parse_args()
 
@@ -87,7 +93,10 @@ def main() -> None:
 
     train_loader = DataLoader(
         SwingDataset(
-            train_samples, sigma_frames=args.sigma_frames, feature_noise=args.feature_noise
+            train_samples,
+            sigma_frames=args.sigma_frames,
+            feature_noise=args.feature_noise,
+            augment=AugmentConfig(enabled=args.augment),
         ),
         batch_size=args.batch_size,
         shuffle=True,
