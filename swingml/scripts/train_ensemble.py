@@ -44,6 +44,8 @@ from swingml.model.tcn import SwingEventNet
 from swingml.skeleton import Handedness
 from synth.dataset import Sample
 
+SPLIT_SEED = 17
+
 
 def load_detected(paths: list[Path]) -> list[Sample]:
     """Every cached real-domain clip, from however many files they were built in."""
@@ -77,12 +79,30 @@ def load_detected(paths: list[Path]) -> list[Sample]:
     return samples
 
 
-def split(samples: list[Sample], holdout: float, seed: int) -> tuple[list[Sample], list[Sample]]:
-    """A fixed split, the same for every member, so the ensemble is judged on clips
-    none of its members has seen."""
-    order = np.random.default_rng(seed).permutation(len(samples))
-    cut = int(len(samples) * (1.0 - holdout))
-    return [samples[i] for i in order[:cut]], [samples[i] for i in order[cut:]]
+def split(
+    samples: list[Sample], holdout: float, calibration: float, seed: int
+) -> tuple[list[int], list[int], list[int]]:
+    """Three disjoint sets of indices: train, validate, calibrate.
+
+    Two held-out sets rather than one, because they answer different questions and
+    sharing them would flatter the answer. The validation set picks each member's
+    best epoch, so by the end the members have been fitted to it - loosely, but
+    enough that the errors they make on it are smaller than the errors they will
+    make on a clip nobody has looked at. Error bands measured there would be too
+    tight, and a band that is too tight is the one failure the whole calibration
+    exists to avoid. So a third set is set aside at the start and touched by
+    nothing until the bands are measured.
+
+    The same permutation for every member, so the ensemble is judged on clips none
+    of its members has seen.
+    """
+    order = [int(i) for i in np.random.default_rng(seed).permutation(len(samples))]
+    n_calibration = int(len(samples) * calibration)
+    n_validation = int(len(samples) * holdout)
+    calibrate = order[:n_calibration]
+    validate = order[n_calibration : n_calibration + n_validation]
+    train = order[n_calibration + n_validation :]
+    return train, validate, calibrate
 
 
 def evaluate_model(
@@ -169,7 +189,21 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=45)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--learning-rate", type=float, default=6e-5)
-    parser.add_argument("--holdout", type=float, default=0.15)
+    parser.add_argument(
+        "--holdout",
+        type=float,
+        default=0.15,
+        help="fraction used to choose each member's best epoch",
+    )
+    parser.add_argument(
+        "--calibration",
+        type=float,
+        default=0.15,
+        help=(
+            "fraction set aside, and used for nothing during training, so that "
+            "error bands can be measured on clips no part of this run has seen"
+        ),
+    )
     parser.add_argument("--no-augment", action="store_true")
     args = parser.parse_args()
 
@@ -178,10 +212,15 @@ def main() -> None:
         print("no cached clips found; build some with make_detected_dataset.py", file=sys.stderr)
         raise SystemExit(1)
 
-    train_samples, validation = split(samples, args.holdout, seed=17)
+    train_index, validation_index, calibration_index = split(
+        samples, args.holdout, args.calibration, seed=SPLIT_SEED
+    )
+    train_samples = [samples[i] for i in train_index]
+    validation = [samples[i] for i in validation_index]
     print(
         f"{len(samples)} real-domain clips: {len(train_samples)} to train on, "
-        f"{len(validation)} held out"
+        f"{len(validation)} to choose epochs with, {len(calibration_index)} kept back "
+        f"untouched for measuring error bands"
     )
     azimuths = np.array([s.azimuth_deg for s in samples])
     print(
@@ -226,6 +265,22 @@ def main() -> None:
 
     (args.out / "members.json").write_text(
         json.dumps([f"member_{i}.pt" for i in range(len(members))], indent=2), encoding="utf-8"
+    )
+    # Written out rather than left to be recomputed. Reproducing this split in the
+    # calibration script would mean two places agreeing about a permutation, and
+    # the day they stopped agreeing the bands would quietly be measured on
+    # training data and come out too tight with nothing to show for it.
+    (args.out / "calibration_split.json").write_text(
+        json.dumps(
+            {
+                "files": [str(p) for p in args.data],
+                "seed": SPLIT_SEED,
+                "n_samples": len(samples),
+                "indices": calibration_index,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
     )
     print(f"\nwrote {args.out}")
 

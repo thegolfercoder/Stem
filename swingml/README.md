@@ -82,10 +82,62 @@ and landscape, at 30, 60 and 120 frames a second — twelve of twelve real swing
 read and all three no-swing clips refused. Tempo came back within a few percent of
 what was generated on most, with the extremes of tempo pulled toward the middle.
 
-**All of these figures come from synthetic swings**, rendered and then put through
-the real pose estimator. Nothing here has been measured against video of an actual
-golfer, because there wasn't any. The timings should hold up; the angular
+**Almost all of these figures come from synthetic swings**, rendered and then put
+through the real pose estimator. The timings should hold up; the angular
 measurements read low and would need reference data to calibrate.
+
+### The one real swing
+
+There is exactly one clip of an actual golfer in this repository — `tests/fixtures/
+real_swing_01.mov`, thirty frames a second, at night, on a phone — kept as a
+regression fixture. One clip proves nothing about the general case. What it does is
+catch a change that looks fine on generated data and breaks the real thing.
+
+On it, the model puts address on the frame the golfer starts moving, impact on the
+frame the ball leaves the tee, the top one frame late and the finish about three
+early. How each of those was established independently of the model is recorded in
+`real_swing_01.json` beside the clip.
+
+### Error bands
+
+Every event is reported with a band — `±33 ms`, `±83 ms` — and none of it is
+assumed. The model is run over clips that no part of training touched, the spread
+of its errors is recorded against the confidence it reported, and the band quoted
+for a new clip is the distance that contained the stated share of those held-out
+errors at that confidence. So a doubtful event gets a wider band than a certain
+one, and a band appears only where enough held-out clips landed at that confidence
+to measure one.
+
+Checked out of sample, bands claiming 80% contained **88.6%** of errors — wide
+rather than narrow, which is the safe direction and is what integer frame errors do
+to a quantile. The table lives in its own file rather than inside the checkpoint,
+because an error bar quoted for a model that has since been retrained is worse than
+no error bar at all; with no table, the analysis reports frames and no band.
+
+The bands are measured on rendered swings. They are not a claim about footage of a
+real golfer on grass, and every band carries the corpus it came from so that nobody
+has to take that on trust.
+
+## Things that were tried and did not work
+
+Kept because a negative result nobody wrote down gets re-discovered at full price.
+
+**Refining the address frame** by walking back to where hand speed crossed a
+threshold. It made address *worse* — mean error 14.5 frames to 20.5, tempo error
+31.7% to 54.8% — because the quiet before a swing is not actually quiet. Deleted.
+
+**Repairing landmark dropouts.** On the real clip MediaPipe loses the left arm for
+one to three frames around impact and puts the whole limb back where it was several
+frames earlier: elbow and wrist together, bone lengths intact, in the wrong place.
+It looked like a failure mode the synthetic data could not contain, so the plan was
+to detect it — the two hands are on one grip, so a large wrist separation is a
+tracking failure — and either repair it or train against it.
+
+Measuring first killed the idea. In feature units the real clip's worst grip
+separation is 0.441; across 860 rendered clips put through the same estimator, the
+median clip's worst is 0.425 and the 90th percentile is 0.564. The failure is
+already in the training data at the same magnitude, so neither a repair nor a
+bespoke augmentation would be adding anything. No code was written.
 
 ## How it works
 

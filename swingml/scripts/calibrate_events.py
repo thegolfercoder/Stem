@@ -15,6 +15,7 @@ overlap with training turns the answer into an underestimate.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -27,6 +28,7 @@ from swingml.analysis import load_model
 from swingml.events import NUM_EVENTS
 from swingml.model.calibration import build_calibration, measure_coverage
 from swingml.model.decode import decode_events
+from swingml.model.ensemble import EnsembleConfig, SwingEventEnsemble
 from swingml.quantity import NoReading
 
 
@@ -48,16 +50,27 @@ def load_clips(paths: list[Path]) -> list[tuple[np.ndarray, np.ndarray]]:
 
 
 def predict(
-    model: torch.nn.Module, clips: list[tuple[np.ndarray, np.ndarray]]
+    model: torch.nn.Module | SwingEventEnsemble, clips: list[tuple[np.ndarray, np.ndarray]]
 ) -> tuple[np.ndarray, np.ndarray, int]:
-    """Run the model over clips, returning confidence and error, and a refusal count."""
+    """Run the model over clips, returning confidence and error, and a refusal count.
+
+    The bands must be measured through whatever will actually run at inference. An
+    ensemble is more confident and more accurate than any of its members, so a
+    table built from one member and quoted for the ensemble would be wrong in both
+    directions at once.
+    """
     confidences: list[np.ndarray] = []
     errors: list[np.ndarray] = []
     refused = 0
-    model.eval()
+    if isinstance(model, torch.nn.Module):
+        model.eval()
     with torch.no_grad():
         for features, truth in clips:
-            logits = model(torch.from_numpy(features[None])).numpy()[0]
+            logits = (
+                model.logits(features)
+                if isinstance(model, SwingEventEnsemble)
+                else model(torch.from_numpy(features[None])).numpy()[0]
+            )
             decoded = decode_events(logits)
             if isinstance(decoded, NoReading):
                 refused += 1
@@ -69,16 +82,66 @@ def predict(
     return np.stack(confidences), np.stack(errors), refused
 
 
+def select_clips(args: argparse.Namespace) -> list[tuple[np.ndarray, np.ndarray]]:
+    """The clips to calibrate on, from the training run's own record where possible.
+
+    A split file names exactly the clips that run set aside, in the order it
+    pooled them, and is checked against the files and count it was written from -
+    so a data file added or rebuilt since then fails here rather than producing a
+    table measured partly on training data.
+    """
+    if args.split is None:
+        # Fallback: the tail of each file. Correct only if training took the head,
+        # which is what finetune_on_detected.py does and train_ensemble.py does not.
+        clips: list[tuple[np.ndarray, np.ndarray]] = []
+        for path in args.data:
+            one_file = load_clips([path])
+            cut = int(len(one_file) * (1.0 - args.holdout))
+            clips.extend(one_file[cut:])
+        print(f"{len(clips)} clips from the tail of {len(args.data)} files")
+        return clips
+
+    record = json.loads(args.split.read_text(encoding="utf-8"))
+    pooled = load_clips([Path(p) for p in record["files"]])
+    if len(pooled) != record["n_samples"]:
+        raise SystemExit(
+            f"the split file was written from {record['n_samples']} clips and these "
+            f"files hold {len(pooled)}; the data has changed since training"
+        )
+    chosen = [pooled[i] for i in record["indices"]]
+    print(f"{len(chosen)} clips set aside by the training run and used for nothing since")
+    return chosen
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, nargs="+", required=True)
-    parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument(
+        "--checkpoint",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="one checkpoint, or every member of the ensemble that will run",
+    )
     parser.add_argument("--out", type=Path, default=Path("out/calibration/events.json"))
+    parser.add_argument(
+        "--split",
+        type=Path,
+        default=None,
+        help=(
+            "calibration_split.json written by train_ensemble.py, naming exactly the "
+            "clips that run set aside. Strongly preferred over --holdout: it cannot "
+            "silently disagree with what the model actually trained on"
+        ),
+    )
     parser.add_argument(
         "--holdout",
         type=float,
         default=0.2,
-        help="the tail fraction of each file the model was held out from during training",
+        help=(
+            "fallback when there is no split file: the tail fraction of each data "
+            "file the model was held out from"
+        ),
     )
     parser.add_argument("--coverage", type=float, default=0.8)
     parser.add_argument("--bins", type=int, default=4)
@@ -91,17 +154,16 @@ def main() -> None:
 
     torch.manual_seed(0)
 
-    # Only the tail of each file was held out of fine-tuning, so only the tail may
-    # be used here. Taking the whole file would calibrate partly on training data
-    # and quietly promise a tighter band than the model can keep.
-    clips: list[tuple[np.ndarray, np.ndarray]] = []
-    for path in args.data:
-        one_file = load_clips([path])
-        split = int(len(one_file) * (1.0 - args.holdout))
-        clips.extend(one_file[split:])
-    print(f"{len(clips)} clips the model was held out from, across {len(args.data)} files")
+    clips = select_clips(args)
 
-    model = load_model(args.checkpoint)
+    if len(args.checkpoint) == 1:
+        model: torch.nn.Module | SwingEventEnsemble = load_model(args.checkpoint[0])
+        print(f"calibrating {args.checkpoint[0]}")
+    else:
+        model = SwingEventEnsemble.load(
+            list(args.checkpoint), EnsembleConfig(time_warps=(0.92, 1.0, 1.09))
+        )
+        print(f"calibrating an ensemble of {len(args.checkpoint)} members, with time warping")
     confidence, error, refused = predict(model, clips)
     print(f"{confidence.shape[0]} decoded, {refused} refused")
     if confidence.shape[0] < 4 * args.bins:
