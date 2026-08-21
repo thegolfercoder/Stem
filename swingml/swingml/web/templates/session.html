@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Consistency{% endblock %}
+{% block content %}
+
+<section class="swing-head">
+  <div>
+    <h1>Consistency</h1>
+    <p class="sub">
+      {% if n_analysed %}Across {{ n_analysed }} swing{{ '' if n_analysed == 1 else 's' }}{% if club %} with the {{ club }}{% endif %}.
+      {% else %}Nothing to compare yet.{% endif %}
+    </p>
+  </div>
+  <div class="head-actions">
+    <form method="get" class="filter">
+      <select name="club" onchange="this.form.submit()">
+        <option value="">All clubs</option>
+        {% for c in clubs %}<option value="{{ c }}" {% if c == club %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+    </form>
+  </div>
+</section>
+
+{% if not summary %}
+  <p class="empty">
+    Analyse a few swings and this page will show how much they varied. Two or three
+    is enough to see something; a dozen is better.
+  </p>
+{% else %}
+
+<section class="metrics">
+  <h2>Spread</h2>
+  <p class="section-sub">
+    Lower spread means more repeatable. These compare your swings with each other,
+    which is the comparison that means something without a calibrated camera.
+  </p>
+  <div class="metric-grid">
+    {% for spread in summary.spreads %}
+    <div class="metric">
+      <div class="metric-label">{{ spread.name.replace('_', ' ') }}</div>
+      <div class="metric-value">{{ '%.2f'|format(spread.mean) }}<span class="metric-unit">{{ spread.unit }}</span></div>
+      <div class="metric-foot">
+        <span class="metric-hint">
+          &plusmn;{{ '%.2f'|format(spread.standard_deviation) }} over {{ spread.n }} swing{{ '' if spread.n == 1 else 's' }}
+          {%- if spread.n_missing %} &middot; {{ spread.n_missing }} without a reading{% endif %}
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="listing">
+  <div class="listing-head"><h2>Swings</h2></div>
+  <table class="table">
+    <thead><tr><th>When</th><th>Name</th><th>Club</th><th>Tempo</th><th>Back</th><th>Down</th><th></th></tr></thead>
+    <tbody>
+    {% for s in swings %}
+      <tr class="{% if not s.ok %}row-refused{% endif %}">
+        <td>{{ s.created_at.strftime('%d %b %H:%M') }}</td>
+        <td><a href="{{ url_for('swing_page', swing_id=s.id) }}">{{ s.label or s.source_name }}</a></td>
+        <td>{{ s.club or '—' }}</td>
+        <td>{{ '%.2f'|format(s.tempo_ratio) if s.tempo_ratio else '—' }}</td>
+        <td>{{ '%.0f'|format(s.backswing_ms) if s.backswing_ms else '—' }}</td>
+        <td>{{ '%.0f'|format(s.downswing_ms) if s.downswing_ms else '—' }}</td>
+        <td class="muted">{% if not s.ok %}{{ s.refusal }}{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

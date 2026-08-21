@@ -19,25 +19,32 @@ frames would silently compress the time axis, and time is what tempo is measured
 from. Undetected frames keep the previous landmarks at near-zero confidence and
 are flagged, so the model sees a gap and the metrics can refuse a swing that had
 too many.
+
+**Frames are consumed one at a time and thrown away.** A minute of 1080p at
+sixty frames a second is about twenty gigabytes of pixels, and holding a clip in
+memory to analyse it puts a ceiling on clip length that has nothing to do with
+the problem. What survives a frame is thirty-three landmarks - a few hundred
+bytes - so the estimator takes an iterator, keeps one frame alive at a time, and
+will run over a clip of any length in a fixed amount of memory.
 """
 
 from __future__ import annotations
 
-import os
+from collections.abc import Callable, Iterable
 from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field
 
+from swingml.assets import POSE_MODEL_ENV_VAR as MODEL_ENV_VAR
+from swingml.assets import POSE_MODEL_URL as MODEL_URL
+from swingml.assets import ensure_pose_model, find_pose_model
 from swingml.pose.base import PoseSequence
 from swingml.skeleton import NUM_LANDMARKS
 
-MODEL_URL = (
-    "https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
-    "pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task"
-)
-MODEL_ENV_VAR = "SWINGML_POSE_MODEL"
+ProgressCallback = Callable[[int], None]
+"""Called with how many frames have been processed so far."""
 
 
 class MediaPipePoseConfig(BaseModel):
@@ -53,6 +60,9 @@ class MediaPipePoseConfig(BaseModel):
     min_detection_confidence: float = 0.5
     min_presence_confidence: float = 0.5
     min_tracking_confidence: float = 0.5
+    allow_download: bool = Field(
+        default=True, description="Fetch the landmarker bundle if it is not present."
+    )
     heavy_smoothing: bool = Field(
         default=False,
         description=(
@@ -63,22 +73,27 @@ class MediaPipePoseConfig(BaseModel):
     )
 
 
-def resolve_model_path(configured: Path | None) -> Path:
-    """Find the landmarker bundle, or say exactly how to get it."""
-    candidates = [
-        configured,
-        Path(os.environ[MODEL_ENV_VAR]) if MODEL_ENV_VAR in os.environ else None,
-        Path(__file__).resolve().parents[3] / "models" / "pose_landmarker_heavy.task",
-        Path("models/pose_landmarker_heavy.task"),
-    ]
-    for candidate in candidates:
-        if candidate is not None and candidate.exists():
-            return candidate
-    raise FileNotFoundError(
-        "no pose landmarker model found. Download it with:\n"
-        f"  curl -L -o models/pose_landmarker_heavy.task {MODEL_URL}\n"
-        f"or point ${MODEL_ENV_VAR} at an existing copy."
-    )
+def resolve_model_path(configured: Path | None, allow_download: bool = True) -> Path:
+    """Find the landmarker bundle, fetching it on first run if it is not here yet.
+
+    Downloading is the default because the alternative is telling a user to run a
+    curl command before the software will do anything, and that is not software.
+    A caller that must not touch the network can turn it off.
+    """
+    if configured is not None and Path(configured).is_file():
+        return Path(configured)
+
+    found = find_pose_model()
+    if found is not None:
+        return found
+
+    if not allow_download:
+        raise FileNotFoundError(
+            "no pose landmarker model found and downloading is disabled. Fetch it with:\n"
+            f"  curl -L -o models/{MODEL_URL.rsplit('/', 1)[1]} {MODEL_URL}\n"
+            f"or point ${MODEL_ENV_VAR} at an existing copy."
+        )
+    return ensure_pose_model()
 
 
 class MediaPipePoseEstimator:
@@ -86,22 +101,15 @@ class MediaPipePoseEstimator:
 
     def __init__(self, config: MediaPipePoseConfig | None = None) -> None:
         self.config = config or MediaPipePoseConfig()
-        self.model_path = resolve_model_path(self.config.model_path)
+        self.model_path = resolve_model_path(
+            self.config.model_path, allow_download=self.config.allow_download
+        )
 
-    def estimate(
-        self, frames: NDArray[np.uint8], timestamps_s: NDArray[np.float64]
-    ) -> PoseSequence:
-        """Landmarks for a stack of RGB frames, shape (T, H, W, 3)."""
-        import mediapipe as mp
+    def _options(self) -> object:
         from mediapipe.tasks import python as mp_python
         from mediapipe.tasks.python import vision
 
-        if frames.ndim != 4 or frames.shape[-1] != 3:
-            raise ValueError(f"expected (T, H, W, 3) RGB frames, got {frames.shape}")
-        if len(frames) != len(timestamps_s):
-            raise ValueError("one timestamp per frame is required")
-
-        options = vision.PoseLandmarkerOptions(
+        return vision.PoseLandmarkerOptions(
             base_options=mp_python.BaseOptions(model_asset_path=str(self.model_path)),
             running_mode=vision.RunningMode.VIDEO,
             num_poses=1,
@@ -111,60 +119,111 @@ class MediaPipePoseEstimator:
             output_segmentation_masks=False,
         )
 
-        n_frames, height, width = frames.shape[0], frames.shape[1], frames.shape[2]
-        xy = np.zeros((n_frames, NUM_LANDMARKS, 2), dtype=np.float32)
-        visibility = np.zeros((n_frames, NUM_LANDMARKS), dtype=np.float32)
-        world = np.zeros((n_frames, NUM_LANDMARKS, 3), dtype=np.float32)
-        detected = np.zeros(n_frames, dtype=bool)
+    def estimate_stream(
+        self,
+        frames: Iterable[tuple[NDArray[np.uint8], float]],
+        on_progress: ProgressCallback | None = None,
+    ) -> PoseSequence:
+        """Landmarks from an iterator of (RGB frame, timestamp), in fixed memory.
 
-        with vision.PoseLandmarker.create_from_options(options) as landmarker:
-            # MediaPipe's video mode wants integer milliseconds that strictly
-            # increase. Real timestamps can collide once rounded, so the counter
-            # is forced forward rather than allowed to repeat.
+        This is the path real video takes. One frame is alive at a time, so clip
+        length is bounded by patience rather than by RAM.
+
+        Args:
+            frames: yields each frame with its presentation time in seconds.
+            on_progress: called with the number of frames done so far, for a
+                caller that wants to show progress on a long clip.
+        """
+        import mediapipe as mp
+        from mediapipe.tasks.python import vision
+
+        xy_rows: list[NDArray[np.float32]] = []
+        visibility_rows: list[NDArray[np.float32]] = []
+        world_rows: list[NDArray[np.float32]] = []
+        detected_rows: list[bool] = []
+        times: list[float] = []
+        width = height = 0
+
+        with vision.PoseLandmarker.create_from_options(self._options()) as landmarker:
             last_ms = -1
-            for index in range(n_frames):
-                timestamp_ms = max(round(timestamps_s[index] * 1000.0), last_ms + 1)
+            for index, (frame, time_s) in enumerate(frames):
+                if frame.ndim != 3 or frame.shape[-1] != 3:
+                    raise ValueError(f"expected an (H, W, 3) RGB frame, got {frame.shape}")
+                if index == 0:
+                    height, width = int(frame.shape[0]), int(frame.shape[1])
+
+                timestamp_ms = max(round(time_s * 1000.0), last_ms + 1)
                 last_ms = timestamp_ms
 
-                image = mp.Image(
-                    image_format=mp.ImageFormat.SRGB,
-                    data=np.ascontiguousarray(frames[index]),
-                )
+                image = mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(frame))
                 result = landmarker.detect_for_video(image, timestamp_ms)
 
-                if not result.pose_landmarks:
-                    if index > 0:
-                        xy[index] = xy[index - 1]
-                        world[index] = world[index - 1]
-                    visibility[index] = 0.0
-                    continue
+                row_xy = np.zeros((NUM_LANDMARKS, 2), dtype=np.float32)
+                row_visibility = np.zeros(NUM_LANDMARKS, dtype=np.float32)
+                row_world = np.zeros((NUM_LANDMARKS, 3), dtype=np.float32)
+                found = bool(result.pose_landmarks)
 
-                detected[index] = True
-                for landmark_index, landmark in enumerate(result.pose_landmarks[0]):
-                    if landmark_index >= NUM_LANDMARKS:
-                        break
-                    xy[index, landmark_index] = (landmark.x, landmark.y)
-                    visibility[index, landmark_index] = float(
-                        min(
-                            getattr(landmark, "visibility", 1.0) or 1.0,
-                            getattr(landmark, "presence", 1.0) or 1.0,
-                        )
-                    )
-                if result.pose_world_landmarks:
-                    for landmark_index, landmark in enumerate(result.pose_world_landmarks[0]):
+                if found:
+                    for landmark_index, landmark in enumerate(result.pose_landmarks[0]):
                         if landmark_index >= NUM_LANDMARKS:
                             break
-                        world[index, landmark_index] = (landmark.x, landmark.y, landmark.z)
+                        row_xy[landmark_index] = (landmark.x, landmark.y)
+                        row_visibility[landmark_index] = float(
+                            min(
+                                getattr(landmark, "visibility", 1.0) or 1.0,
+                                getattr(landmark, "presence", 1.0) or 1.0,
+                            )
+                        )
+                    if result.pose_world_landmarks:
+                        for landmark_index, landmark in enumerate(result.pose_world_landmarks[0]):
+                            if landmark_index >= NUM_LANDMARKS:
+                                break
+                            row_world[landmark_index] = (landmark.x, landmark.y, landmark.z)
+                elif xy_rows:
+                    # Hold the last known pose so the time axis is never compressed,
+                    # but at zero confidence so nothing downstream mistakes it for
+                    # an observation.
+                    row_xy = xy_rows[-1].copy()
+                    row_world = world_rows[-1].copy()
 
-        times = np.asarray(timestamps_s, dtype=np.float64).copy()
-        times += np.arange(n_frames) * 1e-9  # guarantee strict increase
+                xy_rows.append(row_xy)
+                visibility_rows.append(row_visibility)
+                world_rows.append(row_world)
+                detected_rows.append(found)
+                times.append(time_s)
+
+                if on_progress is not None and index % 15 == 0:
+                    on_progress(index + 1)
+
+        if not xy_rows:
+            raise ValueError("no frames were supplied to the pose estimator")
+        if on_progress is not None:
+            on_progress(len(xy_rows))
+
+        timestamps = np.asarray(times, dtype=np.float64)
+        timestamps += np.arange(len(times)) * 1e-9  # guarantee strict increase
 
         return PoseSequence(
-            xy=xy,
-            visibility=visibility,
-            timestamps_s=times,
-            frame_width=int(width),
-            frame_height=int(height),
-            world_xyz=world,
-            detected=detected,
+            xy=np.stack(xy_rows),
+            visibility=np.stack(visibility_rows),
+            timestamps_s=timestamps,
+            frame_width=width,
+            frame_height=height,
+            world_xyz=np.stack(world_rows),
+            detected=np.asarray(detected_rows, dtype=bool),
         )
+
+    def estimate(
+        self, frames: NDArray[np.uint8], timestamps_s: NDArray[np.float64]
+    ) -> PoseSequence:
+        """Landmarks for a stack of RGB frames, shape (T, H, W, 3).
+
+        Convenience for callers that already hold every frame - the synthetic
+        renderer, and tests. Real video goes through `estimate_stream`, which this
+        delegates to so there is only one implementation to keep correct.
+        """
+        if frames.ndim != 4 or frames.shape[-1] != 3:
+            raise ValueError(f"expected (T, H, W, 3) RGB frames, got {frames.shape}")
+        if len(frames) != len(timestamps_s):
+            raise ValueError("one timestamp per frame is required")
+        return self.estimate_stream((frames[i], float(timestamps_s[i])) for i in range(len(frames)))

@@ -20,10 +20,12 @@ back to a time and to the nearest original frame before it leaves.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import numpy as np
 import torch
+from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field
 
 from swingml.events import EventSequence, SwingEvent
@@ -206,11 +208,37 @@ def analyse_video(
     model: SwingEventNet,
     estimator: PoseEstimator,
     config: AnalysisConfig | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> SwingAnalysis:
-    """Read a clip, find the body, find the swing, measure it."""
+    """Read a clip, find the body, find the swing, measure it.
+
+    Frames are streamed rather than loaded. A minute of phone video is tens of
+    gigabytes of pixels and only a few hundred kilobytes of landmarks, so holding
+    the clip in memory would cap the length of video this can accept for no
+    reason connected to the problem.
+
+    Args:
+        on_progress: called with (frames done, frames expected) as the clip is
+            read, so a caller can show something moving. The expected count comes
+            from the container and can be wrong or absent, in which case it is
+            reported as zero rather than guessed at.
+    """
     config = config or AnalysisConfig()
     with VideoReader(path) as reader:
-        frames, timestamps, info = reader.read_all(max_frames=config.max_frames)
+        expected = reader.declared_frames if reader.declared_frames > 0 else 0
+        limit = config.max_frames
 
-    sequence = estimator.estimate(frames, timestamps)
+        def limited() -> Iterator[tuple[NDArray[np.uint8], float]]:
+            for index, (frame, time_s) in enumerate(reader.frames()):
+                if limit is not None and index >= limit:
+                    break
+                yield frame, time_s
+
+        def relay(frames_done: int) -> None:
+            if on_progress is not None:
+                on_progress(frames_done, expected)
+
+        sequence = estimator.estimate_stream(limited(), on_progress=relay)
+        info = reader.describe_stream(sequence.n_frames, sequence.timestamps_s)
+
     return analyse_pose_sequence(sequence, model, config, video=info)

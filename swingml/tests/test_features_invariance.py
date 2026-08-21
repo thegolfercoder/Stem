@@ -197,3 +197,76 @@ def test_a_sequence_of_one_frame_is_returned_untouched() -> None:
     resampled, grid = resample_pose(pose, 60.0)
     assert resampled.n_frames == 1
     assert len(grid) == 1
+
+
+def test_world_landmarks_that_stretch_are_judged_unusable() -> None:
+    """A bone that changes length is the estimator's depth failing, not the body moving.
+
+    Measured on real footage, MediaPipe reported the shoulder line shrinking from
+    0.295 m to 0.048 m across one swing. Any angle computed from that output is
+    describing the same error, so the check has to catch it rather than let a
+    confident-looking number through.
+    """
+    import numpy as np
+
+    from swingml.metrics.swing import world_landmarks_are_rigid
+    from swingml.skeleton import NUM_LANDMARKS, Landmark
+
+    n = 60
+    world = np.zeros((n, NUM_LANDMARKS, 3), dtype=np.float32)
+    world[:, int(Landmark.LEFT_SHOULDER)] = [0.2, 0.0, 0.0]
+    world[:, int(Landmark.RIGHT_SHOULDER)] = [-0.2, 0.0, 0.0]
+    world[:, int(Landmark.LEFT_HIP)] = [0.15, -0.5, 0.0]
+    world[:, int(Landmark.RIGHT_HIP)] = [-0.15, -0.5, 0.0]
+
+    rigid, variation = world_landmarks_are_rigid(world, slice(0, n), 0.25)
+    assert rigid and variation < 1e-5
+
+    # Now collapse the shoulders the way a real estimator did.
+    world[30:, int(Landmark.LEFT_SHOULDER)] = [0.03, 0.0, 0.0]
+    world[30:, int(Landmark.RIGHT_SHOULDER)] = [-0.03, 0.0, 0.0]
+    rigid, variation = world_landmarks_are_rigid(world, slice(0, n), 0.25)
+    assert not rigid
+    assert variation > 0.5
+
+
+def test_turn_from_foreshortening_recovers_a_known_angle() -> None:
+    """A line of fixed length seen from an angle shortens by the cosine of it."""
+    import numpy as np
+
+    from swingml.metrics.swing import turn_from_foreshortening
+    from swingml.skeleton import NUM_LANDMARKS, Landmark
+
+    n = 40
+    xy = np.zeros((n, NUM_LANDMARKS, 2), dtype=np.float64)
+    visibility = np.ones((n, NUM_LANDMARKS), dtype=np.float32)
+
+    half = 0.10
+    for frame in range(n):
+        # Square to the camera at the start, turned 60 degrees by the end.
+        turned = np.radians(60.0 * frame / (n - 1))
+        xy[frame, int(Landmark.LEFT_SHOULDER)] = [0.5 + half * np.cos(turned), 0.4]
+        xy[frame, int(Landmark.RIGHT_SHOULDER)] = [0.5 - half * np.cos(turned), 0.4]
+
+    angle = turn_from_foreshortening(
+        xy, visibility, Landmark.LEFT_SHOULDER, Landmark.RIGHT_SHOULDER, slice(0, n), n - 1, 0.3
+    )
+    assert angle is not None
+    assert abs(angle - 60.0) < 1.5
+
+
+def test_turn_from_foreshortening_refuses_when_the_line_was_never_seen() -> None:
+    import numpy as np
+
+    from swingml.metrics.swing import turn_from_foreshortening
+    from swingml.skeleton import NUM_LANDMARKS, Landmark
+
+    n = 40
+    xy = np.zeros((n, NUM_LANDMARKS, 2), dtype=np.float64)
+    visibility = np.zeros((n, NUM_LANDMARKS), dtype=np.float32)
+    assert (
+        turn_from_foreshortening(
+            xy, visibility, Landmark.LEFT_SHOULDER, Landmark.RIGHT_SHOULDER, slice(0, n), 10, 0.3
+        )
+        is None
+    )

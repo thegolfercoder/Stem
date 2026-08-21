@@ -10,6 +10,7 @@ nothing else about how they were produced.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from typing import Protocol, Self
 
 import numpy as np
@@ -116,10 +117,24 @@ class PoseSequence(BaseModel):
 
 
 class PoseEstimator(Protocol):
-    """Anything that turns a clip into a `PoseSequence`."""
+    """Anything that turns a clip into a `PoseSequence`.
+
+    Both shapes of the same job. `estimate` is for callers that already hold
+    every frame, which in practice means the synthetic renderer and the tests.
+    `estimate_stream` is what real video uses, because a clip of any interesting
+    length does not fit in memory as pixels and does not need to.
+    """
 
     def estimate(
         self, frames: NDArray[np.uint8], timestamps_s: NDArray[np.float64]
     ) -> PoseSequence:
         """Landmarks for a stack of RGB frames, shape (T, H, W, 3)."""
+        ...
+
+    def estimate_stream(
+        self,
+        frames: Iterable[tuple[NDArray[np.uint8], float]],
+        on_progress: Callable[[int], None] | None = None,
+    ) -> PoseSequence:
+        """Landmarks from an iterator of (RGB frame, timestamp), in fixed memory."""
         ...

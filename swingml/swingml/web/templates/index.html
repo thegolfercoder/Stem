@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if not ready %}
+<section class="banner warn">
+  <h2>Not ready yet</h2>
+  <p>{{ why }}</p>
+</section>
+{% endif %}
+
+<section class="hero">
+  <h1>Drop in a swing</h1>
+  <p class="lede">
+    Any video your phone makes &mdash; portrait or landscape, normal or slow motion.
+    Nothing needs measuring, marking or lining up.
+  </p>
+</section>
+
+<form id="upload" class="dropzone" {% if not ready %}aria-disabled="true"{% endif %}>
+  <input type="file" id="file" name="video" accept="video/*" hidden>
+  <div class="drop-inner">
+    <div class="drop-icon" aria-hidden="true"></div>
+    <p class="drop-main">Drag a video here, or <button type="button" id="browse" class="linklike">choose a file</button></p>
+    <p class="drop-sub">.mov .mp4 .m4v .avi .mkv &middot; up to 2&nbsp;GB</p>
+  </div>
+
+  <div class="options">
+    <label>Handedness
+      <select name="handedness" id="handedness">
+        <option value="right" selected>Right-handed</option>
+        <option value="left">Left-handed</option>
+      </select>
+    </label>
+    <label>Club <span class="opt">optional</span>
+      <input type="text" name="club" id="club" list="clublist" placeholder="7 iron" autocomplete="off">
+      <datalist id="clublist">
+        {% for c in clubs %}<option value="{{ c }}">{% endfor %}
+      </datalist>
+    </label>
+    <label>Note <span class="opt">optional</span>
+      <input type="text" name="label" id="label" placeholder="range session" autocomplete="off">
+    </label>
+  </div>
+</form>
+
+<div id="queue" class="queue" hidden></div>
+
+<section class="listing">
+  <div class="listing-head">
+    <h2>Your swings</h2>
+    {% if total %}<p class="count">{{ ok_count }} of {{ total }} produced a reading</p>{% endif %}
+  </div>
+
+  {% if not swings %}
+    <p class="empty">Nothing yet. The first clip you drop in will appear here.</p>
+  {% else %}
+  <div class="grid">
+    {% for s in swings %}
+    <a class="card {% if not s.ok %}card-refused{% endif %}" href="{{ url_for('swing_page', swing_id=s.id) }}">
+      <div class="card-top">
+        <span class="card-name">{{ s.label or s.source_name }}</span>
+        {% if s.club %}<span class="chip">{{ s.club }}</span>{% endif %}
+      </div>
+      {% if s.ok %}
+        <div class="card-stat">
+          <span class="stat-value">{{ '%.2f'|format(s.tempo_ratio) if s.tempo_ratio else '—' }}</span>
+          <span class="stat-unit">tempo</span>
+        </div>
+        <div class="card-sub">
+          {% if s.backswing_ms %}{{ '%.0f'|format(s.backswing_ms) }} ms back &middot; {{ '%.0f'|format(s.downswing_ms) }} ms down{% endif %}
+        </div>
+      {% else %}
+        <div class="card-stat"><span class="stat-refused">no reading</span></div>
+        <div class="card-sub">{{ s.refusal }}</div>
+      {% endif %}
+      <div class="card-foot">{{ s.created_at.strftime('%d %b, %H:%M') }}</div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='upload.js') }}"></script>
+{% endblock %}

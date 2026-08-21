@@ -80,6 +80,12 @@ class VideoReader:
                 "HEVC, which needs an OpenCV build with the codec available."
             )
 
+        self.rotation_degrees = 0
+        if hasattr(cv2, "CAP_PROP_ORIENTATION_META"):
+            meta = self.capture.get(cv2.CAP_PROP_ORIENTATION_META)
+            if np.isfinite(meta):
+                self.rotation_degrees = int(meta) % 360
+
         self.rotation_applied = False
         if apply_rotation and hasattr(cv2, "CAP_PROP_ORIENTATION_AUTO"):
             self.rotation_applied = bool(self.capture.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1))
@@ -119,6 +125,36 @@ class VideoReader:
             rgb = np.asarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), dtype=np.uint8)
             yield rgb, time_s
             index += 1
+
+    def describe_stream(self, n_frames: int, timestamps: NDArray[np.float64]) -> VideoInfo:
+        """Describe a clip that was streamed rather than held in memory.
+
+        The frame size comes from the capture properties rather than from a
+        decoded frame, because by the time this is called the frames are gone -
+        which is the point of streaming them.
+        """
+        width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        if self.rotation_applied and self.rotation_degrees in (90, 270):
+            width, height = height, width
+
+        duration = float(timestamps[-1] - timestamps[0]) if len(timestamps) > 1 else 0.0
+        gaps = np.diff(timestamps) if len(timestamps) > 1 else np.array([1.0 / self.nominal_fps])
+        median_gap = float(np.median(gaps))
+        measured = 1.0 / median_gap if median_gap > 0 else self.nominal_fps
+        uniform = bool(np.std(gaps) < 0.25 * median_gap) if len(gaps) > 1 else True
+
+        return VideoInfo(
+            path=str(self.path),
+            width=width,
+            height=height,
+            n_frames=int(n_frames),
+            nominal_fps=self.nominal_fps,
+            measured_fps=measured,
+            duration_s=duration,
+            rotation_applied=self.rotation_applied,
+            timestamps_uniform=uniform,
+        )
 
     def read_all(
         self, max_frames: int | None = None

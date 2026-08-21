@@ -40,6 +40,14 @@ class MetricConfig(BaseModel):
         default=0.75,
         description="Share of frames needing a body found before any metric is reported.",
     )
+    max_world_length_variation: float = Field(
+        default=0.25,
+        description=(
+            "How much the estimator's three-dimensional shoulder or hip line may "
+            "change length across a swing before its depth output is judged unusable. "
+            "A quarter is already generous for something that is anatomically fixed."
+        ),
+    )
     min_key_visibility: float = Field(
         default=0.4,
         description="Mean confidence required on the shoulders and hips over the swing.",
@@ -74,6 +82,8 @@ class SwingMetrics(BaseModel):
     shoulder_turn_3d: Reading
     hip_turn_3d: Reading
     separation_3d: Reading
+    shoulder_turn_foreshortened: Reading
+    hip_turn_foreshortened: Reading
 
     head_movement: Reading
     pelvis_sway: Reading
@@ -132,6 +142,89 @@ def _rotation_about_vertical(
     """
     line = world[:, int(a), :] - world[:, int(b), :]
     return np.asarray(np.degrees(np.unwrap(np.arctan2(line[:, 2], line[:, 0]))))
+
+
+def world_landmarks_are_rigid(
+    world: NDArray[np.float32],
+    window: slice,
+    tolerance: float,
+) -> tuple[bool, float]:
+    """Whether the estimator's depth output holds the body together.
+
+    A shoulder line is a bone. Its length does not change while somebody swings a
+    golf club, so if the estimator's three-dimensional output says it did, that
+    output is not describing the body - and every angle computed from it is
+    describing the same thing the length was.
+
+    This is worth checking rather than assuming. Measured on a real clip, the
+    shoulder line's world length ran from 0.295 m down to 0.048 m through one
+    swing, a factor of six, while the shoulders in the image merely foreshortened
+    as they should. The turn computed from that output came out at one and a half
+    degrees for a full backswing, which is not a small error, it is a number about
+    nothing.
+
+    Returns whether it held together, and the worst relative variation seen.
+    """
+    worst = 0.0
+    for a, b in (
+        (Landmark.LEFT_SHOULDER, Landmark.RIGHT_SHOULDER),
+        (Landmark.LEFT_HIP, Landmark.RIGHT_HIP),
+    ):
+        lengths = np.linalg.norm(world[window, int(a), :] - world[window, int(b), :], axis=1)
+        usable = lengths[lengths > 1e-6]
+        if usable.size < 3:
+            return False, 1.0
+        reference = float(np.median(usable))
+        if reference <= 1e-6:
+            return False, 1.0
+        variation = float(np.max(np.abs(usable - reference)) / reference)
+        worst = max(worst, variation)
+    return worst <= tolerance, worst
+
+
+def turn_from_foreshortening(
+    square_xy: NDArray[np.float64],
+    visibility: NDArray[np.float32],
+    a: Landmark,
+    b: Landmark,
+    window: slice,
+    frame: int,
+    min_visibility: float,
+) -> float | None:
+    """How far a body line has turned away from the camera, from how short it looks.
+
+    A line of fixed length seen from an angle appears shortened by the cosine of
+    that angle. So the shoulders' apparent width, measured against the widest they
+    appear anywhere in the swing, gives the angle they have turned through -
+    without knowing the focal length, the distance, or anything else about the
+    camera.
+
+    Two honest limitations. The sign is not recoverable: turning away from the
+    camera and turning towards it shorten the line identically, and only the
+    magnitude is reported. And the reference is the widest the line appeared in
+    *this* clip, so it assumes the body was square to the camera at some point
+    during it - true for a swing filmed face-on or down the line, and not true if
+    the camera sat at forty-five degrees throughout.
+
+    Returns None when the line was never seen clearly enough to trust.
+    """
+    pair = [int(a), int(b)]
+    seen = np.min(visibility[window][:, pair], axis=1) >= min_visibility
+    if np.count_nonzero(seen) < 5:
+        return None
+
+    widths = np.linalg.norm(square_xy[window, int(a)] - square_xy[window, int(b)], axis=1)
+    widths = widths[seen]
+    # The widest the line appeared, taken as a high percentile rather than the
+    # maximum so that one bad frame cannot set the reference.
+    reference = float(np.percentile(widths, 95))
+    if reference <= 1e-6:
+        return None
+
+    if visibility[frame, pair].min() < min_visibility:
+        return None
+    here = float(np.linalg.norm(square_xy[frame, int(a)] - square_xy[frame, int(b)]))
+    return float(np.degrees(np.arccos(np.clip(here / reference, 0.0, 1.0))))
 
 
 def _reading(
@@ -255,6 +348,9 @@ def compute_metrics(
     )
     projection_provenance = Provenance.PROJECTED
 
+    swing_window = slice(address, min(finish + 1, sequence.n_frames))
+
+    world_depth_usable = False
     shoulder_turn_3d: Reading = NoReading(
         reason="the pose estimator returned no three-dimensional landmarks", source="pose"
     )
@@ -262,35 +358,94 @@ def compute_metrics(
     separation_3d: Reading = shoulder_turn_3d
     if sequence.world_xyz is not None and np.any(sequence.world_xyz):
         world = sequence.world_xyz
-        shoulder_3d = _rotation_about_vertical(
-            world, Landmark.LEFT_SHOULDER, Landmark.RIGHT_SHOULDER
+        rigid, variation = world_landmarks_are_rigid(
+            world, swing_window, config.max_world_length_variation
         )
-        hip_3d = _rotation_about_vertical(world, Landmark.LEFT_HIP, Landmark.RIGHT_HIP)
-        estimate_note = (
-            "from the pose estimator's inferred depth, which is a network's opinion "
-            "about a single view rather than a triangulated measurement",
+        if not rigid:
+            refusal = NoReading(
+                reason=(
+                    "the estimator's three-dimensional output does not hold the body "
+                    f"together - the shoulder or hip line changed length by "
+                    f"{100 * variation:.0f} percent during the swing, and a bone does "
+                    "not do that. Any angle taken from it would be describing the same "
+                    "error"
+                ),
+                source="pose",
+            )
+            shoulder_turn_3d = hip_turn_3d = separation_3d = refusal
+        else:
+            world_depth_usable = True
+            shoulder_3d = _rotation_about_vertical(
+                world, Landmark.LEFT_SHOULDER, Landmark.RIGHT_SHOULDER
+            )
+            hip_3d = _rotation_about_vertical(world, Landmark.LEFT_HIP, Landmark.RIGHT_HIP)
+            estimate_note = (
+                "from the pose estimator's inferred depth, which is a network's opinion "
+                "about a single view rather than a triangulated measurement",
+            )
+            shoulder_turn_3d = _reading(
+                abs(shoulder_3d[top] - shoulder_3d[address]),
+                "deg",
+                Provenance.ESTIMATED_3D,
+                "pose",
+                estimate_note,
+            )
+            hip_turn_3d = _reading(
+                abs(hip_3d[top] - hip_3d[address]),
+                "deg",
+                Provenance.ESTIMATED_3D,
+                "pose",
+                estimate_note,
+            )
+            separation_3d = _reading(
+                abs((shoulder_3d[top] - shoulder_3d[address]) - (hip_3d[top] - hip_3d[address])),
+                "deg",
+                Provenance.ESTIMATED_3D,
+                "pose",
+                estimate_note,
+            )
+
+    # Turn measured from foreshortening. This is the one rotation measure that a
+    # single uncalibrated camera can genuinely support, so it is computed whether
+    # or not the estimator's depth output survived the check above.
+    square = sequence.square_xy().astype(np.float64)
+    fore_note = (
+        "from how much the shoulder line foreshortens, so it is the angle away from "
+        "square to the camera and carries no sign - a turn towards the camera and a "
+        "turn away look identical",
+    )
+    shoulder_turn_foreshortened: Reading = NoReading(
+        reason="the shoulders were never seen clearly enough to measure foreshortening",
+        source="pose",
+    )
+    hip_turn_foreshortened: Reading = NoReading(
+        reason="the hips were never seen clearly enough to measure foreshortening",
+        source="pose",
+    )
+    shoulder_fore = turn_from_foreshortening(
+        square,
+        sequence.visibility,
+        Landmark.LEFT_SHOULDER,
+        Landmark.RIGHT_SHOULDER,
+        swing_window,
+        top,
+        config.min_key_visibility,
+    )
+    hip_fore = turn_from_foreshortening(
+        square,
+        sequence.visibility,
+        Landmark.LEFT_HIP,
+        Landmark.RIGHT_HIP,
+        swing_window,
+        top,
+        config.min_key_visibility,
+    )
+    if shoulder_fore is not None:
+        shoulder_turn_foreshortened = _reading(
+            shoulder_fore, "deg", Provenance.PROJECTED, "pose", fore_note
         )
-        shoulder_turn_3d = _reading(
-            abs(shoulder_3d[top] - shoulder_3d[address]),
-            "deg",
-            Provenance.ESTIMATED_3D,
-            "pose",
-            estimate_note,
-        )
-        hip_turn_3d = _reading(
-            abs(hip_3d[top] - hip_3d[address]),
-            "deg",
-            Provenance.ESTIMATED_3D,
-            "pose",
-            estimate_note,
-        )
-        separation_3d = _reading(
-            abs((shoulder_3d[top] - shoulder_3d[address]) - (hip_3d[top] - hip_3d[address])),
-            "deg",
-            Provenance.ESTIMATED_3D,
-            "pose",
-            estimate_note,
-        )
+    if hip_fore is not None:
+        hip_turn_foreshortened = _reading(hip_fore, "deg", Provenance.PROJECTED, "pose", fore_note)
 
     body_note = (
         "in units of the golfer's own body length, so it needs no calibration and "
@@ -350,7 +505,13 @@ def compute_metrics(
     # by whichever way the noise pushed it, and the ordering of the peaks becomes
     # close to random. Which source was used is reported, because they are not
     # equally trustworthy.
-    if sequence.world_xyz is not None and np.any(sequence.world_xyz):
+    # The kinematic sequence must come from the same judgement as the rotation
+    # metrics. Refusing to report a turn because the estimator's depth output does
+    # not hold the body together, and then in the next breath ordering the body's
+    # segments using that same output, would be incoherent - and the ordering is
+    # the more delicate of the two, because it turns on differences of tens of
+    # milliseconds between three tracks.
+    if sequence.world_xyz is not None and np.any(sequence.world_xyz) and world_depth_usable:
         world = sequence.world_xyz
         lead_arm_3d = (
             world[:, int(handedness.lead_wrist), :] - world[:, int(handedness.lead_shoulder), :]
@@ -400,6 +561,8 @@ def compute_metrics(
         separation_projected=_reading(
             abs(shoulder_turn - hip_turn), "deg", projection_provenance, "pose", projected_note
         ),
+        shoulder_turn_foreshortened=shoulder_turn_foreshortened,
+        hip_turn_foreshortened=hip_turn_foreshortened,
         shoulder_turn_3d=shoulder_turn_3d,
         hip_turn_3d=hip_turn_3d,
         separation_3d=separation_3d,

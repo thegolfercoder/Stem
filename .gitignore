@@ -8,3 +8,4 @@ out/
 models/
 *.mp4
 *.mov
+*.egg-info/
