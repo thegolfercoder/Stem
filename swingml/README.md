@@ -108,9 +108,10 @@ errors at that confidence. So a doubtful event gets a wider band than a certain
 one, and a band appears only where enough held-out clips landed at that confidence
 to measure one.
 
-Checked out of sample, bands claiming 80% contained **88.6%** of errors — wide
-rather than narrow, which is the safe direction and is what integer frame errors do
-to a quantile. The table lives in its own file rather than inside the checkpoint,
+The procedure is cross-validated before any table ships: every held-out event is
+checked against a table built without it. Bands claiming 80% contained **87.9%** of
+errors — wide rather than narrow, which is the safe direction and is what integer
+frame errors do to a quantile. The table lives in its own file rather than inside the checkpoint,
 because an error bar quoted for a model that has since been retrained is worse than
 no error bar at all; with no table, the analysis reports frames and no band.
 

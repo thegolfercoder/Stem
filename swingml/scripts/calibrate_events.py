@@ -144,7 +144,13 @@ def main() -> None:
         ),
     )
     parser.add_argument("--coverage", type=float, default=0.8)
-    parser.add_argument("--bins", type=int, default=4)
+    parser.add_argument("--bins", type=int, default=3)
+    parser.add_argument(
+        "--folds",
+        type=int,
+        default=5,
+        help="folds for cross-checking the procedure before the final table is built",
+    )
     parser.add_argument(
         "--measured-on",
         default="rendered swings put through the same pose estimator",
@@ -169,32 +175,70 @@ def main() -> None:
     if confidence.shape[0] < 4 * args.bins:
         raise SystemExit("too few clips to calibrate anything meaningful")
 
-    # Split by clip, not by event: the eight events of one clip share its footage
-    # and its difficulty, so scattering them across both halves would let the
-    # table see the check's data through the back door.
+    # Two things happen here, and they answer different questions.
+    #
+    # First the *procedure* is checked, by cross-validation. Each fold builds a
+    # table from four fifths of the clips and measures how many of the remaining
+    # fifth's errors land inside it; pooling the folds gives a coverage figure in
+    # which every clip was checked against a table that had never seen it. A
+    # single held-out half would do the same job in principle and cannot here: at
+    # this corpus size half the clips leaves each bin below the count a band is
+    # allowed to rest on, so the check would come back empty rather than
+    # reassuring. Folds keep each fit large enough to answer.
+    #
+    # Then the table that ships is built from all of the clips. The procedure has
+    # been shown to hold, so what the shipped table wants is the most data behind
+    # each number, not a second and thinner demonstration of something already
+    # demonstrated. This is worth saying out loud because the coverage figure
+    # printed above belongs to the fold tables and not to this one.
+    #
+    # Folds are over clips, never over events: the eight events of one clip share
+    # its footage and its difficulty, so splitting them apart would let a fold's
+    # table see its own test data through the back door.
     order = np.random.default_rng(0).permutation(confidence.shape[0])
-    half = len(order) // 2
-    fit, check = order[:half], order[half:]
+    folds = np.array_split(order, args.folds)
+    inside = 0
+    counted = 0
+    thin = 0
+    for held_out in folds:
+        rest = np.setdiff1d(order, held_out)
+        fold_table = build_calibration(
+            confidence[rest],
+            error[rest],
+            measured_on=args.measured_on,
+            n_clips=len(rest),
+            coverage=args.coverage,
+            n_bins=args.bins,
+        )
+        result = measure_coverage(fold_table, confidence[held_out], error[held_out])
+        if not result["n"]:
+            thin += 1
+            continue
+        inside += result["all"] * result["n"]
+        counted += result["n"]
+
+    print(f"\nthe procedure, cross-validated over {args.folds} folds:")
+    if counted:
+        print(
+            f"  {100 * inside / counted:5.1f}% of {int(counted)} events fell inside a band "
+            f"built without them"
+        )
+        print(f"  {100 * args.coverage:5.1f}% claimed")
+    else:
+        print("  no fold held enough clips per bin to check; the corpus is too small")
+    if thin:
+        print(f"  {thin} of {args.folds} folds were too thin to contribute")
 
     calibration = build_calibration(
-        confidence[fit],
-        error[fit],
+        confidence,
+        error,
         measured_on=args.measured_on,
-        n_clips=len(fit),
+        n_clips=confidence.shape[0],
         coverage=args.coverage,
         n_bins=args.bins,
     )
-    print()
+    print(f"\nthe table that ships, from all {confidence.shape[0]} clips:")
     print(calibration.report())
-
-    observed = measure_coverage(calibration, confidence[check], error[check])
-    print(f"\ncoverage on {len(check)} clips the table was not built from:")
-    for label, value in observed.items():
-        if label in {"all", "n"}:
-            continue
-        print(f"  {label:<22} {100 * value:5.1f}%")
-    print(f"  {'all':<22} {100 * observed['all']:5.1f}%  over {int(observed['n'])} events")
-    print(f"  {'claimed':<22} {100 * args.coverage:5.1f}%")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(calibration.model_dump_json(indent=2), encoding="utf-8")
