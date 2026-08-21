@@ -53,7 +53,10 @@ def build_one(
 
     backswing = _uniform(rng, config.backswing_s)
     timing = SwingTiming(
-        address_hold_s=_uniform(rng, (0.2, 0.7)),
+        address_hold_s=_uniform(rng, (0.2, 1.4)),
+        waggle_count=int(rng.integers(config.waggle_count[0], config.waggle_count[1] + 1)),
+        waggle_amplitude_deg=_uniform(rng, (3.0, 11.0)),
+        waggle_period_s=_uniform(rng, (0.35, 0.8)),
         backswing_s=backswing,
         downswing_s=backswing / _uniform(rng, config.tempo_ratio),
         follow_through_s=_uniform(rng, config.follow_through_s),

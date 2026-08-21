@@ -32,7 +32,21 @@ class SwingTiming(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    address_hold_s: float = Field(default=0.5, description="Still at address before starting.")
+    address_hold_s: float = Field(default=0.5, description="At address before the takeaway.")
+    waggle_count: int = Field(
+        default=0,
+        description=(
+            "Small rehearsal movements of the hands before the takeaway.\n\n"
+            "Address is measurably the hardest of the eight events to place, and part "
+            "of the reason is visible in this generator: without a waggle the golfer "
+            "is perfectly still and then suddenly is not, which makes the takeaway "
+            "trivial to find and teaches the model nothing about the real problem. A "
+            "real golfer fidgets, rehearses and regrips, and the model has to learn "
+            "which movement is the swing starting and which is not."
+        ),
+    )
+    waggle_amplitude_deg: float = Field(default=7.0)
+    waggle_period_s: float = Field(default=0.55)
     backswing_s: float = Field(default=0.75)
     downswing_s: float = Field(default=0.25)
     follow_through_s: float = Field(default=0.45, description="Impact to the finish position.")
@@ -209,20 +223,35 @@ def generate_swing(
     t_impact = t_top + timing.downswing_s
     t_finish = t_impact + timing.follow_through_s
 
-    phase = np.radians(
-        _smooth_track(
-            times,
-            [0.0, t_address, t_top, t_impact, t_finish, timing.total_s],
-            [
-                geometry.address_phase_deg,
-                geometry.address_phase_deg,
-                geometry.top_phase_deg,
-                geometry.address_phase_deg,
-                geometry.finish_phase_deg,
-                geometry.finish_phase_deg,
-            ],
-        )
+    phase_deg = _smooth_track(
+        times,
+        [0.0, t_address, t_top, t_impact, t_finish, timing.total_s],
+        [
+            geometry.address_phase_deg,
+            geometry.address_phase_deg,
+            geometry.top_phase_deg,
+            geometry.address_phase_deg,
+            geometry.finish_phase_deg,
+            geometry.finish_phase_deg,
+        ],
     )
+
+    if timing.waggle_count > 0 and t_address > 0:
+        # A rehearsal movement, fading out as the golfer settles. It lives entirely
+        # before the takeaway, so the address event stays where the timing puts it
+        # and the model has to learn to tell this motion from the real thing.
+        waggle_span = min(t_address, timing.waggle_count * timing.waggle_period_s)
+        start = t_address - waggle_span
+        inside = (times >= start) & (times < t_address)
+        local = times[inside] - start
+        settle = 1.0 - local / max(waggle_span, 1e-6)
+        phase_deg[inside] += (
+            timing.waggle_amplitude_deg
+            * settle
+            * np.sin(2.0 * np.pi * local / timing.waggle_period_s)
+        )
+
+    phase = np.radians(phase_deg)
 
     # The wrists hinge going back, hold much of that hinge into the downswing, and
     # release through impact. `lag_retention` decides how late the release is,

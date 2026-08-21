@@ -91,3 +91,48 @@ def test_the_pelvis_leads_the_thorax() -> None:
     pelvis = peak_frame(Landmark.LEFT_HIP, Landmark.RIGHT_HIP)
     thorax = peak_frame(Landmark.LEFT_SHOULDER, Landmark.RIGHT_SHOULDER)
     assert pelvis < thorax
+
+
+def test_waggle_moves_the_hands_without_moving_the_takeaway() -> None:
+    """Rehearsal movement before the swing must not shift where the swing starts.
+
+    Address is the hardest of the eight events to place, and a generator where the
+    golfer is perfectly still and then abruptly is not makes it artificially easy.
+    Adding a waggle only helps if the label stays put: if the event moved with the
+    fidgeting, the model would be learning to find the fidgeting.
+    """
+    import numpy as np
+
+    from swingml.events import SwingEvent
+    from synth.swing import SwingTiming, generate_swing
+
+    still = generate_swing(timing=SwingTiming(address_hold_s=1.2), frame_rate_hz=60.0)
+    waggled = generate_swing(
+        timing=SwingTiming(address_hold_s=1.2, waggle_count=2), frame_rate_hz=60.0
+    )
+
+    assert still.truth.event_frames == waggled.truth.event_frames
+
+    address = still.truth.frame_of(SwingEvent.ADDRESS)
+    still_motion = float(np.abs(np.diff(still.pose.hands_xyz[:address], axis=0)).sum())
+    waggled_motion = float(np.abs(np.diff(waggled.pose.hands_xyz[:address], axis=0)).sum())
+    assert still_motion < 1e-6
+    assert waggled_motion > 0.1
+
+
+def test_waggle_stays_out_of_the_swing_itself() -> None:
+    """The oscillation lives before the takeaway and nowhere else."""
+    import numpy as np
+
+    from swingml.events import SwingEvent
+    from synth.swing import SwingTiming, generate_swing
+
+    timing = SwingTiming(address_hold_s=1.2, waggle_count=3, waggle_amplitude_deg=11.0)
+    still = generate_swing(timing=SwingTiming(address_hold_s=1.2), frame_rate_hz=60.0)
+    waggled = generate_swing(timing=timing, frame_rate_hz=60.0)
+
+    address = waggled.truth.frame_of(SwingEvent.ADDRESS)
+    after = np.abs(
+        waggled.pose.hand_phase_rad[address:] - still.pose.hand_phase_rad[address:]
+    ).max()
+    assert after < 1e-9

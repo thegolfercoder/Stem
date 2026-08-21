@@ -38,6 +38,7 @@ class SampleConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    waggle_count: tuple[int, int] = (0, 3)
     backswing_s: tuple[float, float] = (0.60, 1.05)
     tempo_ratio: tuple[float, float] = (2.1, 4.0)
     follow_through_s: tuple[float, float] = (0.30, 0.60)
