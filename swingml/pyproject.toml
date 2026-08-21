@@ -25,7 +25,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.package-data]
-swingml = ["web/templates/*.html", "web/static/*", "data/*.pt"]
+swingml = ["web/templates/*.html", "web/static/*", "data/*.pt", "data/*.json"]
 
 [tool.setuptools.packages.find]
 include = ["swingml*", "synth*"]

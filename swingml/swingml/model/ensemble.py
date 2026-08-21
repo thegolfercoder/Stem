@@ -31,6 +31,16 @@ from swingml.features import feature_layout
 from swingml.model.augment import time_warp
 from swingml.model.tcn import SwingEventNet
 
+SERVING_TIME_WARPS: tuple[float, ...] = (0.92, 1.0, 1.09)
+"""The speeds an ensemble is shown each clip at when it answers for real.
+
+Named once because it is not a free parameter any more. The measured error bands
+were taken through an ensemble evaluated at exactly these speeds, and a different
+set makes different predictions, so a caller that picked its own would be quoting
+bands that describe something else. It used to be written out at each call site,
+in two of them, which is the arrangement where that eventually goes wrong.
+"""
+
 
 class EnsembleConfig(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")

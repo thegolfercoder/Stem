@@ -24,8 +24,8 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from swingml.analysis import AnalysisConfig, load_model
-from swingml.assets import find_event_calibration, find_event_model
+from swingml.analysis import AnalysisConfig, load_model, model_fingerprint
+from swingml.assets import find_event_calibrations, find_event_model
 from swingml.features import FeatureConfig, feature_layout
 from swingml.model.calibration import load_calibration
 from swingml.model.tcn import SwingEventNet
@@ -108,15 +108,32 @@ def main() -> None:
         "source_model": str(path),
     }
 
-    # The browser quotes the same measured bands as the desktop app, or none.
-    # Inventing a table on the other side would be the exact failure the
-    # calibration exists to prevent, so absence is carried across as absence.
-    calibration_path = args.calibration or find_event_calibration()
-    if calibration_path is not None:
-        payload["calibration"] = load_calibration(calibration_path).model_dump()
-        print(f"including error bands from {calibration_path}")
+    # The page runs this one exported network, so it may only carry bands that
+    # were measured through this one exported network. The desktop app usually
+    # runs an ensemble and has an ensemble's table sitting on disk beside it; that
+    # table describes a different set of predictions and embedding it here would
+    # print error bars the page cannot keep. Checked rather than trusted, because
+    # the tables are found by searching a path and nothing about finding one says
+    # it belongs to what is being exported.
+    digest = model_fingerprint(model)
+    candidates = [args.calibration] if args.calibration else find_event_calibrations()
+    for candidate_path in candidates:
+        candidate = load_calibration(candidate_path)
+        if candidate.matches(digest):
+            payload["calibration"] = candidate.model_dump()
+            print(f"including error bands measured through these weights: {candidate_path}")
+            break
     else:
-        print("no calibration found; the page will report frames with no error band")
+        if candidates:
+            print(
+                f"none of the {len(candidates)} calibration table(s) on this machine were "
+                "measured through these weights, so the page will report no error bands. "
+                "Measure one with scripts/calibrate_events.py --checkpoint "
+                f"{path}",
+                file=sys.stderr,
+            )
+        else:
+            print("no calibration found; the page will report frames with no error band")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(payload), encoding="utf-8")

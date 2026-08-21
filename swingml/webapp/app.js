@@ -307,13 +307,27 @@ function showBandNote(calibration, decoded) {
 }
 
 
-const card = (label, value, unit, note, provenance) => `
+const card = (label, value, unit, note, provenance, range) => `
   <div class="metric">
     <div class="metric-label">${label}</div>
     <div class="metric-value">${value}<span class="metric-unit">${unit || ""}</span></div>
+    ${range || ""}
     <div class="metric-foot"><span class="prov prov-${provenance}">${provenance.replace("_", " ")}</span>
       ${note ? `<span class="metric-hint">${note}</span>` : ""}</div>
   </div>`;
+
+/* The measured spread on the tempo ratio, or nothing where none was measured.
+ * Never a range of zero: absent and exact are not the same statement. */
+function tempoRange(calibration, tempo) {
+  const band = calibration && calibration.tempo;
+  if (!band) return "";
+  const spread = Math.abs(tempo) * band.half_width_fraction;
+  const note = `+/-${Math.round(100 * band.half_width_fraction)}% for ` +
+    `${Math.round(100 * band.coverage)}% of ${band.n_calibration} held-out swings on ` +
+    band.measured_on;
+  return `<div class="metric-range" title="${note}">measured spread ` +
+    `${(tempo - spread).toFixed(2)} &ndash; ${(tempo + spread).toFixed(2)}</div>`;
+}
 
 function showMetrics(m, decoded, detectionRate, sequence) {
   el("summary").textContent =
@@ -321,7 +335,8 @@ function showMetrics(m, decoded, detectionRate, sequence) {
     `body found in ${Math.round(detectionRate * 100)}% of them`;
 
   el("tempo-cards").innerHTML =
-    card("Tempo ratio", m.tempoRatio.toFixed(2), "", "backswing ÷ downswing", "derived") +
+    card("Tempo ratio", m.tempoRatio.toFixed(2), "", "backswing ÷ downswing", "derived",
+         tempoRange(state.payload.calibration, m.tempoRatio)) +
     card("Backswing", Math.round(m.backswingMs), "ms", "address → top", "measured") +
     card("Downswing", Math.round(m.downswingMs), "ms", "top → impact", "measured") +
     card("Whole swing", Math.round(m.wholeMs), "ms", "address → finish", "measured") +

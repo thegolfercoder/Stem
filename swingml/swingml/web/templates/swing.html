@@ -113,6 +113,11 @@
       <div class="metric-label">{{ m.label }}</div>
       {% if m.ok %}
         <div class="metric-value">{{ format_number(m.value, m.unit) }}<span class="metric-unit">{{ m.unit }}</span></div>
+        {% if m.range_low is defined and m.range_low is not none %}
+        <div class="metric-range" title="{{ m.range_note }}">
+          measured spread {{ '%.2f'|format(m.range_low) }} &ndash; {{ '%.2f'|format(m.range_high) }}
+        </div>
+        {% endif %}
         <div class="metric-foot">
           <span class="prov prov-{{ m.provenance }}">{{ m.provenance.replace('_', ' ') }}</span>
           {% if m.hint %}<span class="metric-hint">{{ m.hint }}</span>{% endif %}

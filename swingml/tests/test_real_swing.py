@@ -32,11 +32,14 @@ from swingml.analysis import (
     AnalysisConfig,
     SwingAnalysis,
     analyse_pose_sequence,
-    load_model,
+    model_fingerprint,
+    resolve_model,
 )
 from swingml.assets import find_event_calibration, find_event_model
 from swingml.events import SwingEvent
+from swingml.features import feature_dimension
 from swingml.model.calibration import ErrorBand, load_calibration
+from swingml.model.tcn import SwingEventNet
 from swingml.pose.base import PoseSequence
 from swingml.quantity import NoReading
 from swingml.skeleton import Handedness
@@ -100,19 +103,27 @@ def sequence() -> PoseSequence:
 
 @pytest.fixture(scope="module")
 def analysis(sequence: PoseSequence) -> SwingAnalysis:
-    path = find_event_model()
-    assert path is not None
-    calibration_path = find_event_calibration()
+    """Analysed through whatever this installation would actually run.
+
+    Deliberately not a checkpoint picked out here. The point of the fixture is to
+    catch a regression in the thing a user gets, and a test that loads a different
+    model from the application is testing something nobody runs. It also means the
+    error bands are attached only when they were measured through these weights,
+    which is the behaviour worth exercising rather than working around.
+    """
+    resolved = resolve_model()
+    assert resolved is not None
     return analyse_pose_sequence(
         sequence,
-        load_model(path),
-        AnalysisConfig(
-            handedness=Handedness.RIGHT,
-            calibration=(
-                load_calibration(calibration_path) if calibration_path is not None else None
-            ),
-        ),
+        resolved.model,
+        AnalysisConfig(handedness=Handedness.RIGHT)
+        if resolved.calibration is None
+        else AnalysisConfig(handedness=Handedness.RIGHT, calibration=resolved.calibration),
     )
+
+
+def has_bands(analysis: SwingAnalysis) -> bool:
+    return any(isinstance(b, ErrorBand) for b in analysis.event_uncertainty)
 
 
 def test_a_real_swing_is_not_refused(analysis: SwingAnalysis) -> None:
@@ -189,16 +200,26 @@ def test_foreshortening_still_gives_a_turn(analysis: SwingAnalysis) -> None:
     assert 15.0 <= turn.value <= 90.0
 
 
-@pytest.mark.skipif(find_event_calibration() is None, reason="needs a measured calibration")
-def test_the_error_bands_contain_the_truth_on_this_clip(
+def test_the_error_bands_mostly_contain_the_truth_on_this_clip(
     analysis: SwingAnalysis, truth: Truth
 ) -> None:
-    """The bands are a claim about held-out clips, and this is a held-out clip.
+    """Most of the four independently established events land inside their bands.
 
-    Not proof they are correct - four events on one clip could fall inside four
-    wrong bands by luck - but a band that misses the ball leaving the tee is
-    wrong for certain, and this is where that would show.
+    Most, not all, and the distinction is the point. The bands claim to hold four
+    times in five, so demanding four out of four would be demanding better than
+    advertised, and a test that insisted on it would fail the day the bands
+    started telling the truth. Three of four is what an eighty percent band
+    predicts on four draws.
+
+    What this catches is the failure that matters: bands so tight that a real
+    clip falls outside them repeatedly, which would mean they were measured on
+    something easier than the footage people actually shoot.
     """
+    if not has_bands(analysis):
+        pytest.skip("no error bands were measured for the model this installation runs")
+
+    inside = []
+    outside = []
     for event, key in (
         (SwingEvent.ADDRESS, "address"),
         (SwingEvent.TOP, "top"),
@@ -210,23 +231,87 @@ def test_the_error_bands_contain_the_truth_on_this_clip(
         assert isinstance(band, ErrorBand), f"{event.label}: {band}"
         error = abs(analysis.event_source_frames[index] - truth.events[key])
         # The clip is 30 fps and the bands are in canonical 60 Hz frames, so the
-        # source-frame error is compared against half the band.
-        assert error <= band.half_width_frames / 2.0 + 0.5, (
-            f"{event.label}: off by {error} source frames, "
-            f"outside a band of {band.half_width_frames:.0f} canonical frames"
+        # band is halved to compare against an error counted in source frames.
+        report = f"{event.label} off by {error}, band {band.half_width_frames / 2:.1f}"
+        (inside if error <= band.half_width_frames / 2.0 + 0.5 else outside).append(report)
+
+    assert len(inside) >= 3, f"only {len(inside)} of 4 inside; outside: {outside}"
+
+
+def test_impact_lands_inside_its_band(analysis: SwingAnalysis, truth: Truth) -> None:
+    """Held on its own because impact's truth is not a judgement call.
+
+    The ball is on the tee in one frame and gone in the next. Every other event
+    on this clip rests on an inference about when motion started or settled;
+    this one rests on the ball. A band that misses it is wrong, and no argument
+    about the vagueness of the event can rescue it.
+    """
+    if not has_bands(analysis):
+        pytest.skip("no error bands were measured for the model this installation runs")
+
+    index = int(SwingEvent.IMPACT)
+    band = analysis.event_uncertainty[index]
+    assert isinstance(band, ErrorBand)
+    error = abs(analysis.event_source_frames[index] - truth.events["impact"])
+    assert error <= band.half_width_frames / 2.0 + 0.5
+
+
+def test_the_vague_events_get_the_wider_bands(analysis: SwingAnalysis) -> None:
+    """Address and the finish are the two events whose truth is a judgement call.
+
+    Every other event is a shape the body passes through. These two are the
+    boundaries of the swing, and the ground-truth notes for this clip say as much
+    about both: address had to be found from where stillness ended, and the finish
+    from where motion settled, neither of which happens on a particular frame.
+
+    The model never saw those notes and is least sure at exactly those two points.
+    That the bands come out wider there is the whole claim that they measure
+    something, so it is asserted as a property rather than as two numbers - which
+    of the pair is widest is a detail of one model on one clip, and changed when
+    the ensemble replaced a single network.
+    """
+    if not has_bands(analysis):
+        pytest.skip("no error bands were measured for the model this installation runs")
+
+    widths = [b.half_width_frames for b in analysis.event_uncertainty if isinstance(b, ErrorBand)]
+    assert len(widths) == len(analysis.event_uncertainty)
+    boundary = {int(SwingEvent.ADDRESS), int(SwingEvent.FINISH)}
+    interior = max(w for i, w in enumerate(widths) if i not in boundary)
+    for index in boundary:
+        assert widths[index] > interior, (
+            f"{SwingEvent.ordered()[index].label} band is {widths[index]}, no wider than "
+            f"the widest interior event at {interior}"
         )
 
 
-@pytest.mark.skipif(find_event_calibration() is None, reason="needs a measured calibration")
-def test_the_vaguest_event_gets_the_widest_band(analysis: SwingAnalysis) -> None:
-    """The finish is the event whose truth was hardest to pin down on this clip.
+def test_a_calibration_measured_for_another_model_is_not_quoted(
+    sequence: PoseSequence,
+) -> None:
+    """The check that stops one model's error bars appearing beside another's.
 
-    The ground-truth notes say so in as many words - motion falls back toward the
-    noise floor rather than arriving at an instant - and the model, which never
-    saw those notes, is least confident there too. An uncertainty estimate that
-    did not reproduce that ordering would not be measuring anything.
+    The table is found by searching a path, so nothing about finding it says it
+    belongs to the model that got loaded - and during development that mismatch
+    happened by accident, with the bundled single model picking up bands measured
+    through the ensemble. A wrong error bar is worse than none, so a mismatch has
+    to produce a refusal rather than a number.
     """
-    bands = [b for b in analysis.event_uncertainty if isinstance(b, ErrorBand)]
-    assert len(bands) == len(analysis.event_uncertainty)
-    widest = max(range(len(bands)), key=lambda i: bands[i].half_width_frames)
-    assert widest == int(SwingEvent.FINISH)
+    calibration_path = find_event_calibration()
+    if calibration_path is None:
+        pytest.skip("needs a measured calibration to mismatch against")
+
+    calibration = load_calibration(calibration_path)
+    untrained = SwingEventNet(feature_dimension())
+    assert not calibration.matches(model_fingerprint(untrained))
+
+    analysis = analyse_pose_sequence(
+        sequence,
+        untrained,
+        AnalysisConfig(handedness=Handedness.RIGHT, calibration=calibration),
+    )
+    if isinstance(analysis.events, NoReading):
+        # An untrained model may well refuse the clip, which is its own correct
+        # answer; the mismatch is then moot and there is nothing left to check.
+        return
+    assert all(isinstance(b, NoReading) for b in analysis.event_uncertainty)
+    assert "different weights" in analysis.event_uncertainty[0].reason
+    assert analysis.tempo_uncertainty is None

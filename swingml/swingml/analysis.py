@@ -31,9 +31,19 @@ from pydantic import BaseModel, ConfigDict, Field
 from swingml.events import EventSequence, SwingEvent
 from swingml.features import FeatureConfig, extract_features, resample_pose
 from swingml.metrics.swing import MetricConfig, SwingMetrics, compute_metrics
-from swingml.model.calibration import ErrorBand, EventCalibration
+from swingml.model.calibration import (
+    ErrorBand,
+    ModelCalibration,
+    RelativeBand,
+    fingerprint_state,
+    load_calibration,
+)
 from swingml.model.decode import decode_events
-from swingml.model.ensemble import SwingEventEnsemble
+from swingml.model.ensemble import (
+    SERVING_TIME_WARPS,
+    EnsembleConfig,
+    SwingEventEnsemble,
+)
 from swingml.model.tcn import SwingEventNet
 from swingml.pose.base import PoseEstimator, PoseSequence
 from swingml.quantity import NoReading
@@ -47,7 +57,7 @@ class AnalysisConfig(BaseModel):
     handedness: Handedness = Handedness.RIGHT
     features: FeatureConfig = FeatureConfig()
     metrics: MetricConfig = MetricConfig()
-    calibration: EventCalibration | None = Field(
+    calibration: ModelCalibration | None = Field(
         default=None,
         description=(
             "Measured error bands for the model being run, if they have been "
@@ -126,6 +136,15 @@ class SwingAnalysis(BaseModel):
             "honest state rather than a default of zero."
         ),
     )
+    tempo_uncertainty: RelativeBand | None = Field(
+        default=None,
+        description=(
+            "Measured spread on the tempo ratio, as a fraction of it. Kept here "
+            "rather than on the Quantity itself because a Quantity deliberately has "
+            "no slot for an error bar: an optional field is an invitation to fill it "
+            "with a guess, and this one has to come from measured data or not exist."
+        ),
+    )
 
     def describe(self) -> str:
         lines: list[str] = []
@@ -182,6 +201,12 @@ class SwingAnalysis(BaseModel):
 
         m = self.metrics
         lines.append("  swing:")
+        if self.tempo_uncertainty is not None and not isinstance(m.tempo_ratio, NoReading):
+            low, high = self.tempo_uncertainty.interval(m.tempo_ratio.value)
+            lines.append(
+                f"    {'tempo ratio':20s} {m.tempo_ratio.value:.2f}, and between "
+                f"{low:.1f} and {high:.1f} on {self.tempo_uncertainty}"
+            )
         for label, reading in (
             ("tempo ratio", m.tempo_ratio),
             ("backswing", m.backswing_duration),
@@ -274,6 +299,109 @@ def _implausible_timing(
             f"to {high:.1f} a golf swing produces"
         )
     return None
+
+
+def model_fingerprint(model: SwingEventNet | SwingEventEnsemble) -> str:
+    """The digest a calibration is checked against.
+
+    An ensemble folds in every member and the settings that change its answers,
+    because those are part of what was measured: the same five members averaged
+    with a different set of time warps make different predictions and deserve
+    different bands.
+    """
+    if isinstance(model, SwingEventEnsemble):
+        parts: list[tuple[str, NDArray[np.float32]]] = []
+        for index, member in enumerate(model.members):
+            for name, tensor in member.state_dict().items():
+                parts.append((f"{index}.{name}", tensor.detach().numpy()))
+        warps = ",".join(f"{w:.6f}" for w in model.config.time_warps)
+        return fingerprint_state(
+            [
+                *parts,
+                (
+                    "time_warps",
+                    np.frombuffer(warps.encode("utf-8"), dtype=np.uint8).astype(np.float32),
+                ),
+            ]
+        )
+    return fingerprint_state(
+        (name, tensor.detach().numpy()) for name, tensor in model.state_dict().items()
+    )
+
+
+class ResolvedModel(BaseModel):
+    """The model that will run, and where it came from.
+
+    Three places used to work this out for themselves - the web service, the
+    command line, and the tests - and they had drifted: the service preferred an
+    ensemble and the others took the first single checkpoint they found. That was
+    survivable while a model was just a model. It stopped being survivable when
+    error bands arrived, because bands are measured through one particular set of
+    weights and the answer to "which model runs" has to be the same everywhere or
+    they are quoted against the wrong one.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid", arbitrary_types_allowed=True)
+
+    model: SwingEventNet | SwingEventEnsemble
+    paths: tuple[Path, ...]
+    calibration: ModelCalibration | None
+
+    @property
+    def description(self) -> str:
+        if len(self.paths) > 1:
+            return f"an ensemble of {len(self.paths)} models"
+        return str(self.paths[0])
+
+
+def resolve_model(
+    explicit: Path | None = None, ensemble_config: EnsembleConfig | None = None
+) -> ResolvedModel | None:
+    """Load whichever model this installation should run, with its bands if they fit.
+
+    An explicitly named checkpoint wins. Otherwise an ensemble if one has been
+    trained, and a single model if not, because members disagree in different
+    places and averaging them removes error none of them could remove alone.
+
+    The calibration is attached only when it was measured through these exact
+    weights. Found on disk by searching a path, a table has no way of knowing what
+    it will be asked to describe, so the check happens here rather than being left
+    to each caller to remember.
+    """
+    from swingml.assets import find_event_calibrations, find_event_ensemble, find_event_model
+
+    paths: tuple[Path, ...]
+    if explicit is not None:
+        paths = (Path(explicit),)
+        model: SwingEventNet | SwingEventEnsemble = load_model(explicit)
+    else:
+        members = find_event_ensemble()
+        if members:
+            paths = tuple(members)
+            model = SwingEventEnsemble.load(
+                list(members),
+                ensemble_config or EnsembleConfig(time_warps=SERVING_TIME_WARPS),
+            )
+        else:
+            single = find_event_model()
+            if single is None:
+                return None
+            paths = (single,)
+            model = load_model(single)
+
+    # Whichever table was measured through these weights, if any of them was.
+    # Choosing by fingerprint rather than by where the file sits means a machine
+    # holding several tables cannot quote the wrong one, and a machine holding a
+    # stale one quotes nothing.
+    calibration = None
+    digest = model_fingerprint(model)
+    for candidate_path in find_event_calibrations():
+        candidate = load_calibration(candidate_path)
+        if candidate.matches(digest):
+            calibration = candidate
+            break
+
+    return ResolvedModel(model=model, paths=paths, calibration=calibration)
 
 
 def analyse_pose_sequence(
@@ -375,8 +503,27 @@ def analyse_pose_sequence(
     # errors measured on clips it was held out from. Without a table there is no
     # band, rather than a band of zero.
     uncertainty: tuple[ErrorBand | NoReading, ...] = ()
+    tempo_band: RelativeBand | None = None
     if config.calibration is not None:
-        uncertainty = config.calibration.bands(events.confidence)
+        # A table found by searching a path is not necessarily a table for the
+        # model that got loaded. Quoting one model's error bars beside another
+        # model's answers is worse than quoting none, so the weights are checked
+        # and a mismatch reports the mismatch.
+        if config.calibration.matches(model_fingerprint(model)):
+            uncertainty = config.calibration.events.bands(events.confidence)
+            tempo_band = config.calibration.tempo
+        else:
+            uncertainty = tuple(
+                NoReading(
+                    reason=(
+                        "the error bands on disk were measured through different "
+                        "weights than the model that ran, so they do not describe "
+                        "this answer"
+                    ),
+                    source="calibration",
+                )
+                for _ in SwingEvent.ordered()
+            )
 
     return SwingAnalysis(
         video=video,
@@ -388,6 +535,7 @@ def analyse_pose_sequence(
         metrics=metrics,
         handedness=config.handedness,
         event_uncertainty=uncertainty,
+        tempo_uncertainty=tempo_band,
     )
 
 

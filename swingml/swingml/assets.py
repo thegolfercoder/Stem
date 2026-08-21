@@ -101,28 +101,44 @@ def find_event_model() -> Path | None:
     return None
 
 
-def find_event_calibration() -> Path | None:
-    """The measured error bands for the model in use, if they have been measured.
+def find_event_calibrations() -> list[Path]:
+    """Every measured error-band table on this machine, most specific first.
 
-    Deliberately optional and deliberately separate from the checkpoint. A table
-    of errors belongs to one model measured on one corpus, so it must not be
-    carried along by a checkpoint that was retrained after it was made - an error
-    bar quoted for the wrong model is worse than none at all. Absent, the analysis
-    reports frames with no band and says why.
+    All of them rather than the first one, because path order is the wrong way to
+    choose. A machine can easily hold a table for the bundled single model and
+    another for an ensemble trained here, and which of the two describes the model
+    that got loaded is a question about weights, not directories. The caller picks
+    by comparing fingerprints; this only says where to look.
+
+    Deliberately separate from the checkpoint. A table of errors belongs to one
+    model measured on one corpus, so it must not be carried along by a checkpoint
+    retrained after it was made - an error bar quoted for the wrong model is worse
+    than none at all.
     """
     root = _repo_root() / "swingml"
+    found: list[Path] = []
     for path in _search_paths(
         EVENT_CALIBRATION_NAME,
         EVENT_CALIBRATION_ENV_VAR,
         [
-            root / "swingml" / "data" / EVENT_CALIBRATION_NAME,
             root / "out" / "calibration" / EVENT_CALIBRATION_NAME,
             Path("out") / "calibration" / EVENT_CALIBRATION_NAME,
+            root / "swingml" / "data" / EVENT_CALIBRATION_NAME,
         ],
     ):
-        if path.is_file():
-            return path
-    return None
+        if path.is_file() and path not in found:
+            found.append(path)
+    return found
+
+
+def find_event_calibration() -> Path | None:
+    """The first table on this machine, for callers that only need somewhere to look.
+
+    Says nothing about whether it describes any particular model; anything about
+    to quote it should go through `find_event_calibrations` and check.
+    """
+    tables = find_event_calibrations()
+    return tables[0] if tables else None
 
 
 def find_event_ensemble() -> list[Path]:

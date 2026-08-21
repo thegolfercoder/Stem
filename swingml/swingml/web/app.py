@@ -30,7 +30,7 @@ from flask import (
 from swingml.analysis import SwingAnalysis
 from swingml.assets import find_event_model, home
 from swingml.events import CLUB_DEFINED_EVENTS, SwingEvent
-from swingml.model.calibration import ErrorBand
+from swingml.model.calibration import ErrorBand, RelativeBand
 from swingml.quantity import NoReading, Quantity
 from swingml.session import summarise_session
 from swingml.skeleton import Handedness
@@ -47,7 +47,9 @@ ALLOWED_SUFFIXES = {".mov", ".mp4", ".m4v", ".avi", ".mkv", ".webm"}
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
 
 
-def _reading_to_dict(reading: object, label: str, hint: str = "") -> dict[str, Any]:
+def _reading_to_dict(
+    reading: object, label: str, hint: str = "", band: RelativeBand | None = None
+) -> dict[str, Any]:
     """Flatten a reading for the template, refusals included.
 
     A refused metric is rendered as a refusal with its reason rather than being
@@ -62,6 +64,7 @@ def _reading_to_dict(reading: object, label: str, hint: str = "") -> dict[str, A
             "hint": hint,
         }
     if isinstance(reading, Quantity):
+        low, high = band.interval(reading.value) if band else (None, None)
         return {
             "label": label,
             "ok": True,
@@ -70,6 +73,11 @@ def _reading_to_dict(reading: object, label: str, hint: str = "") -> dict[str, A
             "provenance": reading.provenance.value,
             "assumptions": list(reading.assumptions),
             "hint": hint,
+            # None where nothing was measured. A missing range and a range of
+            # zero width say opposite things about how well this is known.
+            "range_low": low,
+            "range_high": high,
+            "range_note": str(band) if band else None,
         }
     return {"label": label, "ok": False, "reason": "not computed", "hint": hint}
 
@@ -95,7 +103,12 @@ def metric_groups(analysis: SwingAnalysis) -> list[dict[str, Any]]:
             "title": "Tempo",
             "blurb": "How long each half of the swing took, straight from the frame times.",
             "items": [
-                _reading_to_dict(metrics.tempo_ratio, "Tempo ratio", "backswing ÷ downswing"),
+                _reading_to_dict(
+                    metrics.tempo_ratio,
+                    "Tempo ratio",
+                    "backswing ÷ downswing",
+                    band=analysis.tempo_uncertainty,
+                ),
                 _reading_to_dict(metrics.backswing_duration, "Backswing", "address → top"),
                 _reading_to_dict(metrics.downswing_duration, "Downswing", "top → impact"),
                 _reading_to_dict(metrics.swing_duration, "Total", "address → finish"),

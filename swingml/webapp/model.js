@@ -235,18 +235,19 @@ export function decodeEvents(logits, n, classes, minMeanConfidence) {
 export const MIN_BIN_COUNT = 40;
 
 export function errorBand(calibration, event, confidence) {
-  if (!calibration) return null;
-  const edges = calibration.confidence_edges[event];
+  const table = calibration && calibration.events;
+  if (!table) return null;
+  const edges = table.confidence_edges[event];
   let bin = 0;
   while (bin < edges.length && confidence >= edges[bin]) bin++;
-  const count = calibration.counts[event][bin];
+  const count = table.counts[event][bin];
   if (count < MIN_BIN_COUNT) return null;
-  const frames = calibration.half_width_frames[event][bin];
+  const frames = table.half_width_frames[event][bin];
   return {
     frames,
-    ms: (1000 * frames) / calibration.canonical_rate_hz,
-    coverage: calibration.coverage,
+    ms: (1000 * frames) / table.canonical_rate_hz,
+    coverage: table.coverage,
     n: count,
-    measuredOn: calibration.measured_on,
+    measuredOn: table.measured_on,
   };
 }

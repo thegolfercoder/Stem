@@ -70,17 +70,26 @@ looked into.
 
 ## Measured accuracy
 
-On held-out clips that have been through the real pose estimator, event timings
-land **within one frame 77% of the time and within two frames 92%** — two frames
-being 33 ms. Top of the backswing and mid-downswing are the sharpest at around half
-a frame of mean error; address is the weakest at about two frames, because address
-is not a shape but the moment before a shape starts changing.
+On 174 clips that no part of training touched, event timings land **within one
+frame 80% of the time and within two frames 94%** — two frames being 33 ms. Top of
+the backswing, mid-downswing and impact are the sharpest at around half a frame of
+mean error; address and the finish are the weakest at about one and a half, because
+neither is a shape the body passes through — they are the moments before one shape
+starts changing and after the last one settles.
 
 Across fifteen clips shaped like real footage — face on, down the line, at
 forty-five degrees, tilted phone, left handed, near, far, feet cut off, portrait
-and landscape, at 30, 60 and 120 frames a second — twelve of twelve real swings
+and landscape, at 30, 60 and 120 frames a second — eleven of twelve real swings
 read and all three no-swing clips refused. Tempo came back within a few percent of
 what was generated on most, with the extremes of tempo pulled toward the middle.
+
+The twelfth is worth describing rather than rounding away. On one down-the-line
+render the pose estimator finds a body in only 76% of frames, and on those
+landmarks the model puts address far too early and reads a tempo near 6 when the
+clip was generated at 3. The plausibility gate catches it and the clip is refused.
+An earlier single model *read* that clip — and reported 6.05, wrong by a factor of
+two, having landed just inside the gate. Counting that as a success made the
+figure twelve of twelve; it should always have been eleven.
 
 **Almost all of these figures come from synthetic swings**, rendered and then put
 through the real pose estimator. The timings should hold up; the angular
@@ -93,10 +102,17 @@ real_swing_01.mov`, thirty frames a second, at night, on a phone — kept as a
 regression fixture. One clip proves nothing about the general case. What it does is
 catch a change that looks fine on generated data and breaks the real thing.
 
-On it, the model puts address on the frame the golfer starts moving, impact on the
-frame the ball leaves the tee, the top one frame late and the finish about three
-early. How each of those was established independently of the model is recorded in
-`real_swing_01.json` beside the clip.
+On it, the model puts address on the frame the golfer starts moving, impact within
+a frame of the ball leaving the tee, the top one frame late and the finish about
+four late. How each of those was established independently of the model is recorded
+in `real_swing_01.json` beside the clip.
+
+Worth stating plainly: the five-model ensemble, which is clearly better across 174
+held-out rendered clips, is *very slightly worse* on this one real clip than the
+single model it replaced — impact moved from exact to one frame late. Four events on
+one clip settle nothing either way, and 174 clips outweigh it, so the ensemble ships.
+But it is the kind of result that gets quietly dropped, and this is where it would
+have been.
 
 ### Error bands
 
@@ -109,9 +125,24 @@ one, and a band appears only where enough held-out clips landed at that confiden
 to measure one.
 
 The procedure is cross-validated before any table ships: every held-out event is
-checked against a table built without it. Bands claiming 80% contained **87.9%** of
+checked against a table built without it. Bands claiming 80% contained **92%** of
 errors — wide rather than narrow, which is the safe direction and is what integer
-frame errors do to a quantile. The table lives in its own file rather than inside the checkpoint,
+frame errors do to a quantile.
+
+**Tempo carries a band too, and it is the one worth reading.** Tempo is a quotient
+of two durations, one of them short: at thirty frames a second a downswing is nine
+or ten frames, so an event landing one frame out moves the ratio by ten percent. The
+measured spread is **±14% at 80% coverage**, with a median error of 7%. That is not
+propagated from the event bands — the errors on the top and on impact are correlated
+and propagation would assume they are not — it is measured directly on held-out
+swings, where it comes out at 79.9% against the 80% claimed. A reader comparing two
+sessions needs it: a 5% change in tempo is smaller than the measurement.
+
+**Bands are tied to the weights they were measured through.** The table records a
+digest of the model, and a model that does not match gets no bands rather than
+someone else's. This is not hypothetical — during development the bundled single
+model silently picked up bands measured through the ensemble, which is exactly the
+mistake keeping the table in its own file was supposed to prevent and did not. The table lives in its own file rather than inside the checkpoint,
 because an error bar quoted for a model that has since been retrained is worse than
 no error bar at all; with no table, the analysis reports frames and no band.
 

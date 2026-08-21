@@ -25,7 +25,6 @@ from pathlib import Path
 from swingml.assets import (
     describe_setup,
     ensure_pose_model,
-    find_event_calibration,
     find_event_model,
     find_pose_model,
     home,
@@ -87,8 +86,7 @@ def command_ui(args: argparse.Namespace) -> int:
 
 
 def command_analyse(args: argparse.Namespace) -> int:
-    from swingml.analysis import AnalysisConfig, analyse_pose_sequence, load_model
-    from swingml.model.calibration import load_calibration
+    from swingml.analysis import AnalysisConfig, analyse_pose_sequence, resolve_model
     from swingml.pose.mediapipe_pose import MediaPipePoseEstimator
     from swingml.quantity import NoReading
     from swingml.session import summarise_session
@@ -101,8 +99,8 @@ def command_analyse(args: argparse.Namespace) -> int:
         print(f"no videos found at {args.target}", file=sys.stderr)
         return 1
 
-    model_path = args.model or find_event_model()
-    if model_path is None:
+    resolved = resolve_model(args.model)
+    if resolved is None:
         print(
             "no trained swing model found. Train one with "
             "'python scripts/train_events.py', or pass --model.",
@@ -113,13 +111,17 @@ def command_analyse(args: argparse.Namespace) -> int:
     if find_pose_model() is None:
         _download_with_progress()
 
-    model = load_model(Path(model_path))
+    model = resolved.model
     estimator = MediaPipePoseEstimator()
-    calibration_path = find_event_calibration()
     config = AnalysisConfig(
         handedness=Handedness.LEFT if args.left_handed else Handedness.RIGHT,
-        calibration=load_calibration(calibration_path) if calibration_path else None,
+        calibration=resolved.calibration,
     )
+    if resolved.calibration is None:
+        print(
+            "  no measured error bands for this model; events will be reported without them",
+            file=sys.stderr,
+        )
     store = SwingStore(args.database) if args.save else None
 
     analyses = []

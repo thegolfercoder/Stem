@@ -24,11 +24,21 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from swingml.analysis import load_model
-from swingml.events import NUM_EVENTS
-from swingml.model.calibration import build_calibration, measure_coverage
+from swingml.analysis import load_model, model_fingerprint
+from swingml.events import NUM_EVENTS, SwingEvent
+from swingml.model.calibration import (
+    ModelCalibration,
+    build_calibration,
+    build_tempo_calibration,
+    measure_coverage,
+    measure_tempo_coverage,
+)
 from swingml.model.decode import decode_events
-from swingml.model.ensemble import EnsembleConfig, SwingEventEnsemble
+from swingml.model.ensemble import (
+    SERVING_TIME_WARPS,
+    EnsembleConfig,
+    SwingEventEnsemble,
+)
 from swingml.quantity import NoReading
 
 
@@ -49,9 +59,24 @@ def load_clips(paths: list[Path]) -> list[tuple[np.ndarray, np.ndarray]]:
     return clips
 
 
+def tempo_of(frames: np.ndarray) -> float:
+    """Backswing over downswing, in whatever units the frames are counted in.
+
+    The canonical grid is uniform, so frame counts stand in for durations here and
+    the ratio is the same number the pipeline reports.
+    """
+    address, top, impact = (
+        int(SwingEvent.ADDRESS),
+        int(SwingEvent.TOP),
+        int(SwingEvent.IMPACT),
+    )
+    downswing = frames[impact] - frames[top]
+    return float(frames[top] - frames[address]) / float(max(downswing, 1))
+
+
 def predict(
     model: torch.nn.Module | SwingEventEnsemble, clips: list[tuple[np.ndarray, np.ndarray]]
-) -> tuple[np.ndarray, np.ndarray, int]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, int]:
     """Run the model over clips, returning confidence and error, and a refusal count.
 
     The bands must be measured through whatever will actually run at inference. An
@@ -61,6 +86,8 @@ def predict(
     """
     confidences: list[np.ndarray] = []
     errors: list[np.ndarray] = []
+    tempo_predicted: list[float] = []
+    tempo_true: list[float] = []
     refused = 0
     if isinstance(model, torch.nn.Module):
         model.eval()
@@ -77,9 +104,18 @@ def predict(
                 continue
             confidences.append(np.asarray(decoded.confidence, dtype=np.float64))
             errors.append(np.abs(np.asarray(decoded.frames) - np.asarray(truth)).astype(np.float64))
+            tempo_predicted.append(tempo_of(np.asarray(decoded.frames)))
+            tempo_true.append(tempo_of(np.asarray(truth)))
     if not confidences:
-        return np.empty((0, NUM_EVENTS)), np.empty((0, NUM_EVENTS)), refused
-    return np.stack(confidences), np.stack(errors), refused
+        empty = np.empty((0, NUM_EVENTS))
+        return empty, empty, np.empty(0), np.empty(0), refused
+    return (
+        np.stack(confidences),
+        np.stack(errors),
+        np.asarray(tempo_predicted),
+        np.asarray(tempo_true),
+        refused,
+    )
 
 
 def select_clips(args: argparse.Namespace) -> list[tuple[np.ndarray, np.ndarray]]:
@@ -167,10 +203,10 @@ def main() -> None:
         print(f"calibrating {args.checkpoint[0]}")
     else:
         model = SwingEventEnsemble.load(
-            list(args.checkpoint), EnsembleConfig(time_warps=(0.92, 1.0, 1.09))
+            list(args.checkpoint), EnsembleConfig(time_warps=SERVING_TIME_WARPS)
         )
         print(f"calibrating an ensemble of {len(args.checkpoint)} members, with time warping")
-    confidence, error, refused = predict(model, clips)
+    confidence, error, tempo_predicted, tempo_true, refused = predict(model, clips)
     print(f"{confidence.shape[0]} decoded, {refused} refused")
     if confidence.shape[0] < 4 * args.bins:
         raise SystemExit("too few clips to calibrate anything meaningful")
@@ -197,9 +233,11 @@ def main() -> None:
     # table see its own test data through the back door.
     order = np.random.default_rng(0).permutation(confidence.shape[0])
     folds = np.array_split(order, args.folds)
-    inside = 0
-    counted = 0
+    inside = 0.0
+    counted = 0.0
     thin = 0
+    tempo_inside = 0.0
+    tempo_counted = 0
     for held_out in folds:
         rest = np.setdiff1d(order, held_out)
         fold_table = build_calibration(
@@ -211,11 +249,22 @@ def main() -> None:
             n_bins=args.bins,
         )
         result = measure_coverage(fold_table, confidence[held_out], error[held_out])
-        if not result["n"]:
+        if result["n"]:
+            inside += result["all"] * result["n"]
+            counted += result["n"]
+        else:
             thin += 1
-            continue
-        inside += result["all"] * result["n"]
-        counted += result["n"]
+
+        fold_tempo = build_tempo_calibration(
+            tempo_predicted[rest],
+            tempo_true[rest],
+            measured_on=args.measured_on,
+            coverage=args.coverage,
+        )
+        tempo_inside += measure_tempo_coverage(
+            fold_tempo, tempo_predicted[held_out], tempo_true[held_out]
+        ) * len(held_out)
+        tempo_counted += len(held_out)
 
     print(f"\nthe procedure, cross-validated over {args.folds} folds:")
     if counted:
@@ -228,8 +277,13 @@ def main() -> None:
         print("  no fold held enough clips per bin to check; the corpus is too small")
     if thin:
         print(f"  {thin} of {args.folds} folds were too thin to contribute")
+    if tempo_counted:
+        print(
+            f"  tempo: {100 * tempo_inside / tempo_counted:5.1f}% of {tempo_counted} swings "
+            f"fell inside a band built without them"
+        )
 
-    calibration = build_calibration(
+    events = build_calibration(
         confidence,
         error,
         measured_on=args.measured_on,
@@ -237,8 +291,18 @@ def main() -> None:
         coverage=args.coverage,
         n_bins=args.bins,
     )
-    print(f"\nthe table that ships, from all {confidence.shape[0]} clips:")
-    print(calibration.report())
+    tempo = build_tempo_calibration(
+        tempo_predicted,
+        tempo_true,
+        measured_on=args.measured_on,
+        coverage=args.coverage,
+    )
+    calibration = ModelCalibration(events=events, tempo=tempo, fingerprint=model_fingerprint(model))
+    print(f"\nthe tables that ship, from all {confidence.shape[0]} clips:")
+    print(events.report())
+    median = float(np.median(np.abs(tempo_predicted - tempo_true) / tempo_true))
+    print(f"\n  tempo ratio           {tempo}")
+    print(f"    median relative error {100 * median:.1f}%")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(calibration.model_dump_json(indent=2), encoding="utf-8")

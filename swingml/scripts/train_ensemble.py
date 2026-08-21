@@ -38,7 +38,7 @@ from swingml.analysis import load_model, save_model
 from swingml.features import feature_dimension
 from swingml.model.augment import AugmentConfig
 from swingml.model.data import SwingDataset, collate, masked_soft_cross_entropy
-from swingml.model.ensemble import EnsembleConfig, SwingEventEnsemble
+from swingml.model.ensemble import SERVING_TIME_WARPS, EnsembleConfig, SwingEventEnsemble
 from swingml.model.evaluate import EventAccuracy, decode_batch, evaluate_predictions
 from swingml.model.tcn import SwingEventNet
 from swingml.skeleton import Handedness
@@ -257,7 +257,7 @@ def main() -> None:
     for index, model in enumerate(members):
         print(f"  member {index}: {evaluate_model(model, validation)}")
 
-    for warps in ((1.0,), (0.92, 1.0, 1.09)):
+    for warps in ((1.0,), SERVING_TIME_WARPS):
         ensemble = SwingEventEnsemble(members, EnsembleConfig(time_warps=warps))
         label = "ensemble" if warps == (1.0,) else "ensemble + test-time warping"
         print(f"\n{label}:")

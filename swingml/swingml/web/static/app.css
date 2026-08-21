@@ -211,6 +211,8 @@ input[type=text]:focus, select:focus { outline: 2px solid var(--accent); outline
 .metric-none { font-size: 16px; color: var(--warn); }
 .metric-foot { margin-top: 7px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .metric-hint { color: var(--ink-faint); font-size: 12px; }
+.metric-range { color: var(--ink-faint); font-size: 12px; margin-top: 3px;
+                font-variant-numeric: tabular-nums; cursor: help; }
 .metric-refused { border-style: dashed; }
 .prov { font-size: 10.5px; padding: 2px 7px; border-radius: 999px; letter-spacing: .04em;
         text-transform: uppercase; border: 1px solid var(--line); white-space: nowrap; }

@@ -36,19 +36,19 @@ from numpy.typing import NDArray
 
 from swingml.analysis import (
     AnalysisConfig,
+    ResolvedModel,
     SwingAnalysis,
     analyse_pose_sequence,
-    load_model,
+    resolve_model,
 )
 from swingml.assets import (
-    find_event_calibration,
-    find_event_ensemble,
-    find_event_model,
     home,
 )
 from swingml.events import SwingEvent
-from swingml.model.calibration import EventCalibration, load_calibration
-from swingml.model.ensemble import EnsembleConfig, SwingEventEnsemble
+from swingml.model.calibration import ModelCalibration
+from swingml.model.ensemble import (
+    SwingEventEnsemble,
+)
 from swingml.model.tcn import SwingEventNet
 from swingml.pose.base import PoseSequence
 from swingml.pose.mediapipe_pose import MediaPipePoseEstimator
@@ -131,30 +131,30 @@ class AnalysisService:
 
     def __init__(self, store: SwingStore, model_path: Path | None = None) -> None:
         self.store = store
-        # An explicitly named model wins; otherwise an ensemble if one was trained,
-        # and a single model if not.
-        self.ensemble_paths = [] if model_path else find_event_ensemble()
-        self.model_path = model_path or (
-            self.ensemble_paths[0] if self.ensemble_paths else find_event_model()
-        )
+        self.explicit_model_path = model_path
         self._jobs: dict[str, Job] = {}
         self._jobs_lock = threading.Lock()
         self._model_lock = threading.Lock()
         self._run_lock = threading.Lock()
-        self._model: SwingEventNet | SwingEventEnsemble | None = None
+        # Which model runs, and whether the bands on disk describe it, are decided
+        # in one place for the whole program. Resolved at startup so a table that
+        # will not parse fails loudly here rather than silently on every upload.
+        self._resolved: ResolvedModel | None = resolve_model(model_path)
         self._estimator: MediaPipePoseEstimator | None = None
-        # Resolved once, at startup, so a table that will not parse is a loud
-        # failure here rather than a silent absence on every later upload.
-        self.calibration: EventCalibration | None = None
-        calibration_path = find_event_calibration()
-        if calibration_path is not None:
-            self.calibration = load_calibration(calibration_path)
+
+    @property
+    def model_path(self) -> Path | None:
+        return self._resolved.paths[0] if self._resolved else None
+
+    @property
+    def calibration(self) -> ModelCalibration | None:
+        return self._resolved.calibration if self._resolved else None
 
     # -- readiness ---------------------------------------------------------
 
     def ready(self) -> tuple[bool, str]:
         """Whether an analysis could run right now, and what is missing if not."""
-        if self.model_path is None or not Path(self.model_path).is_file():
+        if self._resolved is None:
             return False, (
                 "No trained swing model found. Train one with "
                 "'python scripts/train_events.py', or set $SWINGML_EVENT_MODEL."
@@ -167,21 +167,13 @@ class AnalysisService:
 
     def _ensure_loaded(self) -> tuple[SwingEventNet | SwingEventEnsemble, MediaPipePoseEstimator]:
         with self._model_lock:
-            if self._model is None:
-                ok, why = self.ready()
-                if not ok:
-                    raise RuntimeError(why)
-                if self.ensemble_paths:
-                    self._model = SwingEventEnsemble.load(
-                        list(self.ensemble_paths), EnsembleConfig(time_warps=(0.92, 1.0, 1.09))
-                    )
-                else:
-                    assert self.model_path is not None
-                    self._model = load_model(Path(self.model_path))
+            ok, why = self.ready()
+            if not ok:
+                raise RuntimeError(why)
             if self._estimator is None:
                 self._estimator = MediaPipePoseEstimator()
-        assert self._estimator is not None
-        return self._model, self._estimator
+        assert self._resolved is not None
+        return self._resolved.model, self._estimator
 
     # -- jobs --------------------------------------------------------------
 

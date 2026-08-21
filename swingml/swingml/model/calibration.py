@@ -34,7 +34,9 @@ reader mistakes it for a claim about golfers on real grass.
 
 from __future__ import annotations
 
+import hashlib
 import math
+from collections.abc import Iterable
 from itertools import pairwise
 from pathlib import Path
 from typing import Self
@@ -303,10 +305,146 @@ def measure_coverage(
     return per_event
 
 
-def load_calibration(path: Path | str) -> EventCalibration:
-    """Read a table from disk, validating it rather than trusting it.
+class RelativeBand(BaseModel):
+    """A measured spread on a ratio, as a fraction of the ratio itself.
+
+    Tempo is the number this software leads with, and it is a quotient of two
+    durations one of which is short: at thirty frames a second a downswing is
+    nine or ten frames, so an event landing one frame out moves the ratio by ten
+    percent. That error is real whatever the events' own bands say, and quoting
+    the quotient to three figures without it invites somebody to read a change
+    between two sessions that is smaller than the measurement noise.
+
+    In frames rather than percent would be meaningless here - a ratio has no
+    frames - so the band is relative, and the reported figure is a fraction.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    half_width_fraction: float = Field(ge=0.0)
+    coverage: float = Field(gt=0.0, lt=1.0)
+    n_calibration: int = Field(ge=1)
+    measured_on: str
+
+    @property
+    def half_width_percent(self) -> float:
+        return 100.0 * self.half_width_fraction
+
+    def interval(self, value: float) -> tuple[float, float]:
+        """The value's band, as a pair a reader can compare two sessions with."""
+        spread = abs(value) * self.half_width_fraction
+        return value - spread, value + spread
+
+    def __str__(self) -> str:
+        return (
+            f"+/-{self.half_width_percent:.0f}% for {100 * self.coverage:.0f}% of "
+            f"{self.n_calibration} held-out swings on {self.measured_on}"
+        )
+
+
+class ModelCalibration(BaseModel):
+    """Everything measured about one model's error, on one corpus.
+
+    A container rather than a bag of separate files because the parts are only
+    meaningful together: they describe the same model measured on the same clips,
+    and a tempo band from one run beside event bands from another would be two
+    claims about two different things wearing one name.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    events: EventCalibration
+    tempo: RelativeBand | None = Field(
+        default=None,
+        description=(
+            "Measured spread on the tempo ratio. Optional because it is measured "
+            "separately and its absence must read as absence rather than as zero."
+        ),
+    )
+    fingerprint: str = Field(
+        default="",
+        description=(
+            "Digest of the weights these bands were measured through.\n\n"
+            "Keeping the table in its own file stops a retrained checkpoint from "
+            "dragging a stale error bar along with it, and stops nothing at all from "
+            "quoting one model's bands for another model's answers - which is the "
+            "same fault wearing different clothes and turns out to be easy to do by "
+            "accident, since the file is found by searching a path. This is what "
+            "makes that detectable: a caller compares it against the model actually "
+            "loaded, and on a mismatch reports no bands rather than wrong ones.\n\n"
+            "Empty in tables written before this existed, which read as unknown "
+            "rather than as matching."
+        ),
+    )
+
+    def matches(self, model_fingerprint: str) -> bool:
+        """Whether these bands were measured through these weights."""
+        return bool(self.fingerprint) and self.fingerprint == model_fingerprint
+
+
+def build_tempo_calibration(
+    predicted: NDArray[np.float64],
+    truth: NDArray[np.float64],
+    *,
+    measured_on: str,
+    coverage: float = 0.8,
+) -> RelativeBand:
+    """Measure the spread of relative tempo error on held-out swings.
+
+    Not propagated from the event bands, measured directly. Propagation would need
+    the errors on the top of the backswing and on impact to be independent, and
+    they are not: a model that reads the whole downswing late makes both errors in
+    the same direction, which partly cancels in the difference. Assuming otherwise
+    would produce a band that is wrong, and confidently so.
+
+    Nor is it conditioned on the model's confidence, as the event bands are. On
+    held-out clips confidence predicts tempo error only weakly - a rank
+    correlation of about -0.2, against -0.4 for the events themselves - so binning
+    by it would divide the data without buying accuracy. One measured number that
+    rests on every clip beats three that rest on a third each.
+    """
+    if predicted.shape != truth.shape:
+        raise ValueError("predicted and true tempo must be the same shape")
+    if predicted.size == 0:
+        raise ValueError("cannot measure a band from no swings")
+    if np.any(truth <= 0):
+        raise ValueError("a true tempo ratio must be positive")
+    relative = np.abs(predicted - truth) / truth
+    return RelativeBand(
+        half_width_fraction=conformal_quantile(relative, coverage),
+        coverage=coverage,
+        n_calibration=int(relative.size),
+        measured_on=measured_on,
+    )
+
+
+def measure_tempo_coverage(
+    band: RelativeBand, predicted: NDArray[np.float64], truth: NDArray[np.float64]
+) -> float:
+    """The share of a fresh set that lands inside the band."""
+    relative = np.abs(predicted - truth) / truth
+    return float(np.mean(relative <= band.half_width_fraction))
+
+
+def load_calibration(path: Path | str) -> ModelCalibration:
+    """Read a calibration from disk, validating it rather than trusting it.
 
     A hand-edited or half-written table would otherwise surface as a wrong error
     bar, which is the one failure this whole module exists to prevent.
     """
-    return EventCalibration.model_validate_json(Path(path).read_text(encoding="utf-8"))
+    return ModelCalibration.model_validate_json(Path(path).read_text(encoding="utf-8"))
+
+
+def fingerprint_state(tensors: Iterable[tuple[str, NDArray[np.float32]]]) -> str:
+    """A digest of a model's weights, stable across processes and machines.
+
+    Over the parameter bytes rather than the file, because the same weights saved
+    twice are the same model and two checkpoints of it should not look different.
+    Names are folded in as well, so a model whose layers were rearranged without
+    changing any number is not mistaken for the original.
+    """
+    digest = hashlib.blake2b(digest_size=16)
+    for name, tensor in sorted(tensors, key=lambda pair: pair[0]):
+        digest.update(name.encode("utf-8"))
+        digest.update(np.ascontiguousarray(tensor, dtype=np.float32).tobytes())
+    return digest.hexdigest()
