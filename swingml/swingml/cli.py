@@ -25,6 +25,7 @@ from pathlib import Path
 from swingml.assets import (
     describe_setup,
     ensure_pose_model,
+    find_event_calibration,
     find_event_model,
     find_pose_model,
     home,
@@ -87,6 +88,7 @@ def command_ui(args: argparse.Namespace) -> int:
 
 def command_analyse(args: argparse.Namespace) -> int:
     from swingml.analysis import AnalysisConfig, analyse_pose_sequence, load_model
+    from swingml.model.calibration import load_calibration
     from swingml.pose.mediapipe_pose import MediaPipePoseEstimator
     from swingml.quantity import NoReading
     from swingml.session import summarise_session
@@ -113,7 +115,11 @@ def command_analyse(args: argparse.Namespace) -> int:
 
     model = load_model(Path(model_path))
     estimator = MediaPipePoseEstimator()
-    config = AnalysisConfig(handedness=Handedness.LEFT if args.left_handed else Handedness.RIGHT)
+    calibration_path = find_event_calibration()
+    config = AnalysisConfig(
+        handedness=Handedness.LEFT if args.left_handed else Handedness.RIGHT,
+        calibration=load_calibration(calibration_path) if calibration_path else None,
+    )
     store = SwingStore(args.database) if args.save else None
 
     analyses = []

@@ -30,6 +30,7 @@ from flask import (
 from swingml.analysis import SwingAnalysis
 from swingml.assets import find_event_model, home
 from swingml.events import CLUB_DEFINED_EVENTS, SwingEvent
+from swingml.model.calibration import ErrorBand
 from swingml.quantity import NoReading, Quantity
 from swingml.session import summarise_session
 from swingml.skeleton import Handedness
@@ -201,6 +202,9 @@ def event_rows(analysis: SwingAnalysis, files: dict[str, str]) -> list[dict[str,
     rows = []
     for event in SwingEvent.ordered():
         index = int(event)
+        band = (
+            analysis.event_uncertainty[index] if index < len(analysis.event_uncertainty) else None
+        )
         rows.append(
             {
                 "name": event.name,
@@ -210,6 +214,11 @@ def event_rows(analysis: SwingAnalysis, files: dict[str, str]) -> list[dict[str,
                 "confidence": analysis.events.confidence[index],
                 "image": files.get(event.name),
                 "club_defined": event in CLUB_DEFINED_EVENTS,
+                # None where no calibration was measured, so the template shows
+                # nothing rather than an error bar of zero.
+                "band_ms": band.half_width_ms if isinstance(band, ErrorBand) else None,
+                "band_frames": band.half_width_frames if isinstance(band, ErrorBand) else None,
+                "band_note": str(band) if isinstance(band, ErrorBand) else None,
             }
         )
     return rows
@@ -338,8 +347,11 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
         files = event_frame_files(swing_id)
         refusal = analysis.events.reason if isinstance(analysis.events, NoReading) else None
         advice = advice_for(refusal) if refusal else None
+        band = next((b for b in analysis.event_uncertainty if isinstance(b, ErrorBand)), None)
         return render_template(
             "swing.html",
+            band_corpus=band.measured_on if band else None,
+            band_coverage=round(100 * band.coverage) if band else None,
             swing=stored,
             analysis=analysis,
             sequence=sequence_manifest(swing_id),

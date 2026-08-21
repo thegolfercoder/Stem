@@ -34,8 +34,9 @@ from swingml.analysis import (
     analyse_pose_sequence,
     load_model,
 )
-from swingml.assets import find_event_model
+from swingml.assets import find_event_calibration, find_event_model
 from swingml.events import SwingEvent
+from swingml.model.calibration import ErrorBand, load_calibration
 from swingml.pose.base import PoseSequence
 from swingml.quantity import NoReading
 from swingml.skeleton import Handedness
@@ -101,8 +102,17 @@ def sequence() -> PoseSequence:
 def analysis(sequence: PoseSequence) -> SwingAnalysis:
     path = find_event_model()
     assert path is not None
-    model = load_model(path)
-    return analyse_pose_sequence(sequence, model, AnalysisConfig(handedness=Handedness.RIGHT))
+    calibration_path = find_event_calibration()
+    return analyse_pose_sequence(
+        sequence,
+        load_model(path),
+        AnalysisConfig(
+            handedness=Handedness.RIGHT,
+            calibration=(
+                load_calibration(calibration_path) if calibration_path is not None else None
+            ),
+        ),
+    )
 
 
 def test_a_real_swing_is_not_refused(analysis: SwingAnalysis) -> None:
@@ -177,3 +187,46 @@ def test_foreshortening_still_gives_a_turn(analysis: SwingAnalysis) -> None:
     turn = metrics.shoulder_turn_foreshortened
     assert not isinstance(turn, NoReading)
     assert 15.0 <= turn.value <= 90.0
+
+
+@pytest.mark.skipif(find_event_calibration() is None, reason="needs a measured calibration")
+def test_the_error_bands_contain_the_truth_on_this_clip(
+    analysis: SwingAnalysis, truth: Truth
+) -> None:
+    """The bands are a claim about held-out clips, and this is a held-out clip.
+
+    Not proof they are correct - four events on one clip could fall inside four
+    wrong bands by luck - but a band that misses the ball leaving the tee is
+    wrong for certain, and this is where that would show.
+    """
+    for event, key in (
+        (SwingEvent.ADDRESS, "address"),
+        (SwingEvent.TOP, "top"),
+        (SwingEvent.IMPACT, "impact"),
+        (SwingEvent.FINISH, "finish"),
+    ):
+        index = int(event)
+        band = analysis.event_uncertainty[index]
+        assert isinstance(band, ErrorBand), f"{event.label}: {band}"
+        error = abs(analysis.event_source_frames[index] - truth.events[key])
+        # The clip is 30 fps and the bands are in canonical 60 Hz frames, so the
+        # source-frame error is compared against half the band.
+        assert error <= band.half_width_frames / 2.0 + 0.5, (
+            f"{event.label}: off by {error} source frames, "
+            f"outside a band of {band.half_width_frames:.0f} canonical frames"
+        )
+
+
+@pytest.mark.skipif(find_event_calibration() is None, reason="needs a measured calibration")
+def test_the_vaguest_event_gets_the_widest_band(analysis: SwingAnalysis) -> None:
+    """The finish is the event whose truth was hardest to pin down on this clip.
+
+    The ground-truth notes say so in as many words - motion falls back toward the
+    noise floor rather than arriving at an instant - and the model, which never
+    saw those notes, is least confident there too. An uncertainty estimate that
+    did not reproduce that ordering would not be measuring anything.
+    """
+    bands = [b for b in analysis.event_uncertainty if isinstance(b, ErrorBand)]
+    assert len(bands) == len(analysis.event_uncertainty)
+    widest = max(range(len(bands)), key=lambda i: bands[i].half_width_frames)
+    assert widest == int(SwingEvent.FINISH)

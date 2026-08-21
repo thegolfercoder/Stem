@@ -31,6 +31,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from swingml.events import EventSequence, SwingEvent
 from swingml.features import FeatureConfig, extract_features, resample_pose
 from swingml.metrics.swing import MetricConfig, SwingMetrics, compute_metrics
+from swingml.model.calibration import ErrorBand, EventCalibration
 from swingml.model.decode import decode_events
 from swingml.model.ensemble import SwingEventEnsemble
 from swingml.model.tcn import SwingEventNet
@@ -46,6 +47,15 @@ class AnalysisConfig(BaseModel):
     handedness: Handedness = Handedness.RIGHT
     features: FeatureConfig = FeatureConfig()
     metrics: MetricConfig = MetricConfig()
+    calibration: EventCalibration | None = Field(
+        default=None,
+        description=(
+            "Measured error bands for the model being run, if they have been "
+            "measured. Optional because a table belongs to one model on one "
+            "corpus: supplying the wrong one would quote an error bar the model "
+            "cannot keep, and supplying none reports frames without a band."
+        ),
+    )
     min_mean_confidence: float = Field(
         default=0.30,
         description=(
@@ -108,6 +118,14 @@ class SwingAnalysis(BaseModel):
     )
     metrics: SwingMetrics | NoReading
     handedness: Handedness
+    event_uncertainty: tuple[ErrorBand | NoReading, ...] = Field(
+        default=(),
+        description=(
+            "Per event, how far from the truth a prediction like this one has been "
+            "observed to fall. Empty when no calibration was supplied, which is the "
+            "honest state rather than a default of zero."
+        ),
+    )
 
     def describe(self) -> str:
         lines: list[str] = []
@@ -135,10 +153,27 @@ class SwingAnalysis(BaseModel):
         lines.append("  events:")
         for event in SwingEvent.ordered():
             index = int(event)
+            band = ""
+            if index < len(self.event_uncertainty):
+                measured = self.event_uncertainty[index]
+                band = (
+                    f"  +/-{measured.half_width_frames:.0f} frames "
+                    f"({measured.half_width_ms:.0f} ms)"
+                    if isinstance(measured, ErrorBand)
+                    else "  (no measured band)"
+                )
             lines.append(
                 f"    {event.label:20s} frame {self.event_source_frames[index]:5d}  "
                 f"t={self.event_times_s[index]:7.3f}s  "
-                f"confidence {self.events.confidence[index]:.2f}"
+                f"confidence {self.events.confidence[index]:.2f}{band}"
+            )
+        measured_on = next(
+            (b.measured_on for b in self.event_uncertainty if isinstance(b, ErrorBand)), None
+        )
+        if measured_on is not None:
+            coverage = next(b.coverage for b in self.event_uncertainty if isinstance(b, ErrorBand))
+            lines.append(
+                f"    bands hold for {100 * coverage:.0f}% of held-out events on {measured_on}"
             )
 
         if isinstance(self.metrics, NoReading):
@@ -336,6 +371,13 @@ def analyse_pose_sequence(
 
     metrics = compute_metrics(resampled, events, config.handedness, config.metrics)
 
+    # The band comes from the model's own confidence, looked up in a table of
+    # errors measured on clips it was held out from. Without a table there is no
+    # band, rather than a band of zero.
+    uncertainty: tuple[ErrorBand | NoReading, ...] = ()
+    if config.calibration is not None:
+        uncertainty = config.calibration.bands(events.confidence)
+
     return SwingAnalysis(
         video=video,
         detection_rate=detection_rate,
@@ -345,6 +387,7 @@ def analyse_pose_sequence(
         event_source_frames=tuple(int(f) for f in source_frames),
         metrics=metrics,
         handedness=config.handedness,
+        event_uncertainty=uncertainty,
     )
 
 

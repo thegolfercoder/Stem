@@ -27,11 +27,13 @@ POSE_MODEL_URL = (
 )
 POSE_MODEL_NAME = "pose_landmarker_heavy.task"
 EVENT_MODEL_NAME = "swing_event_net.pt"
+EVENT_CALIBRATION_NAME = "event_calibration.json"
 
 HOME_ENV_VAR = "SWINGML_HOME"
 POSE_MODEL_ENV_VAR = "SWINGML_POSE_MODEL"
 EVENT_MODEL_ENV_VAR = "SWINGML_EVENT_MODEL"
 ENSEMBLE_ENV_VAR = "SWINGML_EVENT_ENSEMBLE"
+EVENT_CALIBRATION_ENV_VAR = "SWINGML_EVENT_CALIBRATION"
 
 
 def home() -> Path:
@@ -92,6 +94,30 @@ def find_event_model() -> Path | None:
             root / "out" / "events" / EVENT_MODEL_NAME,
             Path("out") / "finetuned" / EVENT_MODEL_NAME,
             Path("out") / "events" / EVENT_MODEL_NAME,
+        ],
+    ):
+        if path.is_file():
+            return path
+    return None
+
+
+def find_event_calibration() -> Path | None:
+    """The measured error bands for the model in use, if they have been measured.
+
+    Deliberately optional and deliberately separate from the checkpoint. A table
+    of errors belongs to one model measured on one corpus, so it must not be
+    carried along by a checkpoint that was retrained after it was made - an error
+    bar quoted for the wrong model is worse than none at all. Absent, the analysis
+    reports frames with no band and says why.
+    """
+    root = _repo_root() / "swingml"
+    for path in _search_paths(
+        EVENT_CALIBRATION_NAME,
+        EVENT_CALIBRATION_ENV_VAR,
+        [
+            root / "swingml" / "data" / EVENT_CALIBRATION_NAME,
+            root / "out" / "calibration" / EVENT_CALIBRATION_NAME,
+            Path("out") / "calibration" / EVENT_CALIBRATION_NAME,
         ],
     ):
         if path.is_file():

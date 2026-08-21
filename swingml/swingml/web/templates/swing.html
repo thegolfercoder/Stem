@@ -49,11 +49,25 @@
       <figcaption>
         <span class="frame-label">{{ e.label }}{% if e.club_defined %}<span class="asterisk" title="Defined by the club shaft, which the pose estimator cannot see. Inferred from the body.">*</span>{% endif %}</span>
         <span class="frame-time">{{ '%.3f'|format(e.time_s) }} s</span>
+        {% if e.band_ms is not none %}
+        <span class="frame-band" title="{{ e.band_note }}">&plusmn;{{ '%.0f'|format(e.band_ms) }} ms</span>
+        {% endif %}
         <span class="conf" style="--c: {{ e.confidence }}"><i></i></span>
       </figcaption>
     </figure>
     {% endfor %}
   </div>
+  {% if band_corpus %}
+  <p class="footnote">
+    The &plusmn; figures are measured, not assumed. This model was run over
+    {{ band_corpus }}, and the spread of its errors recorded. Each figure is the
+    distance that contained
+    {{ band_coverage }}% of those errors at the confidence the model reported here, so a
+    doubtful event gets a wider band than a certain one. A band appears only where
+    enough held-out clips landed at that confidence to measure one, and none of this is
+    a claim about footage of a real golfer on grass.
+  </p>
+  {% endif %}
   <p class="footnote">
     <span class="asterisk">*</span> Toe-up and mid-follow-through are defined by the club
     shaft being horizontal. A body-pose estimator does not see the club, so these two

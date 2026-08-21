@@ -40,8 +40,14 @@ from swingml.analysis import (
     analyse_pose_sequence,
     load_model,
 )
-from swingml.assets import find_event_ensemble, find_event_model, home
+from swingml.assets import (
+    find_event_calibration,
+    find_event_ensemble,
+    find_event_model,
+    home,
+)
 from swingml.events import SwingEvent
+from swingml.model.calibration import EventCalibration, load_calibration
 from swingml.model.ensemble import EnsembleConfig, SwingEventEnsemble
 from swingml.model.tcn import SwingEventNet
 from swingml.pose.base import PoseSequence
@@ -137,6 +143,12 @@ class AnalysisService:
         self._run_lock = threading.Lock()
         self._model: SwingEventNet | SwingEventEnsemble | None = None
         self._estimator: MediaPipePoseEstimator | None = None
+        # Resolved once, at startup, so a table that will not parse is a loud
+        # failure here rather than a silent absence on every later upload.
+        self.calibration: EventCalibration | None = None
+        calibration_path = find_event_calibration()
+        if calibration_path is not None:
+            self.calibration = load_calibration(calibration_path)
 
     # -- readiness ---------------------------------------------------------
 
@@ -226,7 +238,7 @@ class AnalysisService:
                 analysis = analyse_pose_sequence(
                     sequence,
                     model,
-                    AnalysisConfig(handedness=handedness),
+                    AnalysisConfig(handedness=handedness, calibration=self.calibration),
                     video=video_info,
                 )
 

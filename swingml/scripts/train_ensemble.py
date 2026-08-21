@@ -52,19 +52,26 @@ def load_detected(paths: list[Path]) -> list[Sample]:
         if not path.is_file():
             continue
         data = np.load(path)
+        # Every member of this archive is pulled out once. Indexing an npz
+        # decompresses the whole member on each access, so reading them inside
+        # the loop turns a hundred megabytes into tens of gigabytes of churn.
+        features = data["features"]
+        events = data["events"]
+        left_handed = data["left_handed"]
+        tempo_ratio = data["tempo_ratio"]
+        capture_rate_hz = data["capture_rate_hz"]
+        azimuth_deg = data["azimuth_deg"]
         lengths = data["lengths"]
         offsets = np.concatenate(([0], np.cumsum(lengths)))
         for index, length in enumerate(lengths):
             samples.append(
                 Sample(
-                    features=data["features"][offsets[index] : offsets[index] + length],
-                    event_frames=data["events"][index],
-                    handedness=(
-                        Handedness.LEFT if data["left_handed"][index] > 0.5 else Handedness.RIGHT
-                    ),
-                    tempo_ratio=float(data["tempo_ratio"][index]),
-                    capture_rate_hz=float(data["capture_rate_hz"][index]),
-                    azimuth_deg=float(data["azimuth_deg"][index]),
+                    features=features[offsets[index] : offsets[index] + length],
+                    event_frames=events[index],
+                    handedness=(Handedness.LEFT if left_handed[index] > 0.5 else Handedness.RIGHT),
+                    tempo_ratio=float(tempo_ratio[index]),
+                    capture_rate_hz=float(capture_rate_hz[index]),
+                    azimuth_deg=float(azimuth_deg[index]),
                 )
             )
     return samples
