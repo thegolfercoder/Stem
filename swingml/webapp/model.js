@@ -224,3 +224,29 @@ export function decodeEvents(logits, n, classes, minMeanConfidence) {
   }
   return { ok: true, frames: Array.from(frames), confidence, subframe, meanConfidence };
 }
+
+/* Measured error bands, looked up exactly as the Python does.
+ *
+ * The table is built and checked on the desktop side and carried over whole, so
+ * the only thing that happens here is the lookup. Any arithmetic reinvented on
+ * this side is arithmetic that can disagree with the numbers the bands were
+ * validated against, which would make the page quote a bound nobody measured.
+ */
+export const MIN_BIN_COUNT = 40;
+
+export function errorBand(calibration, event, confidence) {
+  if (!calibration) return null;
+  const edges = calibration.confidence_edges[event];
+  let bin = 0;
+  while (bin < edges.length && confidence >= edges[bin]) bin++;
+  const count = calibration.counts[event][bin];
+  if (count < MIN_BIN_COUNT) return null;
+  const frames = calibration.half_width_frames[event][bin];
+  return {
+    frames,
+    ms: (1000 * frames) / calibration.canonical_rate_hz,
+    coverage: calibration.coverage,
+    n: count,
+    measuredOn: calibration.measured_on,
+  };
+}

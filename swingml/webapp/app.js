@@ -11,7 +11,7 @@
 
 import { PoseSequence, resamplePose, extractFeatures, normalisePose,
          BONES, EVENT_NAMES, CLUB_DEFINED } from "./engine.js";
-import { SwingEventNet, decodeEvents } from "./model.js";
+import { SwingEventNet, decodeEvents, errorBand } from "./model.js";
 import { computeMetrics, implausible } from "./metrics.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
@@ -263,6 +263,7 @@ async function renderFrames(file, sourceFrames, sequence, decoded, metrics, dete
     caption.innerHTML =
       `<span class="frame-label">${EVENT_NAMES[e]}${CLUB_DEFINED.has(e) ? '<span class="ast">*</span>' : ""}</span>` +
       `<span class="frame-time">${metrics.eventTimes[e].toFixed(3)} s</span>` +
+      bandMarkup(state.payload.calibration, e, decoded.confidence[e]) +
       `<span class="conf"><i style="width:${(decoded.confidence[e] * 100).toFixed(0)}%"></i></span>`;
     figure.appendChild(caption);
     strip.appendChild(figure);
@@ -270,10 +271,41 @@ async function renderFrames(file, sourceFrames, sequence, decoded, metrics, dete
   }
   URL.revokeObjectURL(video.src);
 
+  showBandNote(state.payload.calibration, decoded);
   showMetrics(metrics, decoded, detectionRate, sequence);
   el("results").hidden = false;
   el("results").scrollIntoView({ behavior: "smooth", block: "start" });
 }
+
+/* An event's measured error band, or nothing at all where none was measured.
+ * Never a zero: a missing band and a band of zero mean opposite things. */
+function bandMarkup(calibration, event, confidence) {
+  const band = errorBand(calibration, event, confidence);
+  if (!band) return "";
+  const title = `+/-${band.frames.toFixed(1)} frames (${band.ms.toFixed(0)} ms) for ` +
+    `${Math.round(band.coverage * 100)}% of ${band.n} held-out events on ${band.measuredOn}`;
+  return `<span class="frame-band" title="${title}">&plusmn;${band.ms.toFixed(0)} ms</span>`;
+}
+
+
+/* Where the bands came from, said once beneath the strip rather than eight times.
+ * Hidden entirely when no table was measured, so the page never implies one. */
+function showBandNote(calibration, decoded) {
+  const note = el("band-note");
+  let band = null;
+  for (let e = 0; e < 8 && !band; e++) band = errorBand(calibration, e, decoded.confidence[e]);
+  note.hidden = !band;
+  if (!band) return;
+  note.innerHTML =
+    `The &plusmn; figures are measured, not assumed. This model was run over ` +
+    `${band.measuredOn}, and the spread of its errors recorded. Each figure is the ` +
+    `distance that contained ${Math.round(band.coverage * 100)}% of those errors at the ` +
+    `confidence the model reported here, so a doubtful event gets a wider band than a ` +
+    `certain one. A band appears only where enough held-out clips landed at that ` +
+    `confidence to measure one, and none of this is a claim about footage of a real ` +
+    `golfer on grass.`;
+}
+
 
 const card = (label, value, unit, note, provenance) => `
   <div class="metric">

@@ -25,8 +25,9 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from swingml.analysis import AnalysisConfig, load_model
-from swingml.assets import find_event_model
+from swingml.assets import find_event_calibration, find_event_model
 from swingml.features import FeatureConfig, feature_layout
+from swingml.model.calibration import load_calibration
 from swingml.model.tcn import SwingEventNet
 
 
@@ -54,6 +55,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path, default=None)
     parser.add_argument("--out", type=Path, default=Path("out/web/model.json"))
+    parser.add_argument("--calibration", type=Path, default=None)
     args = parser.parse_args()
 
     path = args.model or find_event_model()
@@ -105,6 +107,16 @@ def main() -> None:
         },
         "source_model": str(path),
     }
+
+    # The browser quotes the same measured bands as the desktop app, or none.
+    # Inventing a table on the other side would be the exact failure the
+    # calibration exists to prevent, so absence is carried across as absence.
+    calibration_path = args.calibration or find_event_calibration()
+    if calibration_path is not None:
+        payload["calibration"] = load_calibration(calibration_path).model_dump()
+        print(f"including error bands from {calibration_path}")
+    else:
+        print("no calibration found; the page will report frames with no error band")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(payload), encoding="utf-8")

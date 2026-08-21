@@ -61,10 +61,13 @@ h2.section{font-size:19px;margin:28px 0 4px;letter-spacing:-.01em}
 .frame{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:11px;overflow:hidden}
 .frame canvas{width:100%;display:block;background:#000}
 .frame figcaption{padding:8px 9px 9px;display:grid;gap:3px}
-.frame-label{font-size:12px;font-weight:600;line-height:1.25}
+/* Two lines' worth whether the name needs them or not, so one long label does
+   not push its card's time and error band out of line with the rest. */
+.frame-label{font-size:12px;font-weight:600;line-height:1.25;min-height:calc(2 * 1.25em)}
 .frame-time{font-size:11px;color:var(--ink-faint);font-family:var(--mono)}
 .conf{height:3px;border-radius:999px;background:var(--panel-2);overflow:hidden;margin-top:2px}
 .conf>i{display:block;height:100%;background:linear-gradient(90deg,var(--warn),var(--good))}
+.frame-band{color:var(--ink-faint);font-size:11px;font-variant-numeric:tabular-nums;cursor:help}
 .ast{color:var(--accent-warm)}
 .footnote{color:var(--ink-faint);font-size:12.5px;margin-top:12px;max-width:76ch}
 .metric-grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
@@ -149,6 +152,7 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
     <h2 class="section">The eight positions</h2>
     <p class="section-sub" id="summary"></p>
     <div class="strip" id="strip"></div>
+    <p class="footnote" id="band-note" hidden></p>
     <p class="footnote"><span class="ast">*</span> Toe-up and mid-follow-through are defined
       by the club shaft being horizontal. A body-pose estimator does not see the club, so
       these two are placed from the body's motion rather than observed directly.</p>
