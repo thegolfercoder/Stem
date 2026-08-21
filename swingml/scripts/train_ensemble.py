@@ -34,7 +34,7 @@ from torch.utils.data import DataLoader
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from swingml.analysis import load_model
+from swingml.analysis import load_model, save_model
 from swingml.features import feature_dimension
 from swingml.model.augment import AugmentConfig
 from swingml.model.data import SwingDataset, collate, masked_soft_cross_entropy
@@ -201,7 +201,7 @@ def main() -> None:
             augment=augment,
         )
         path = args.out / f"member_{index}.pt"
-        torch.save({"state_dict": model.state_dict(), "in_features": feature_dimension()}, path)
+        save_model(model, path)
         members.append(model)
         print(f"    saved {path}\n")
 

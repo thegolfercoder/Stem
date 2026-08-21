@@ -29,8 +29,7 @@ from torch.utils.data import DataLoader
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from swingml.analysis import load_model
-from swingml.features import CANONICAL_RATE_HZ
+from swingml.analysis import load_model, save_model
 from swingml.model.data import SwingDataset, collate, masked_soft_cross_entropy
 from swingml.model.evaluate import decode_batch, evaluate_predictions
 from swingml.skeleton import Handedness
@@ -148,17 +147,7 @@ def main() -> None:
 
         if score > best:
             best = score
-            torch.save(
-                {
-                    "state_dict": model.state_dict(),
-                    "in_features": model.in_features,
-                    "channels": model.channels,
-                    "canonical_rate_hz": CANONICAL_RATE_HZ,
-                    "epoch": epoch,
-                    "pce_2": score,
-                },
-                args.out / "swing_event_net.pt",
-            )
+            save_model(model, args.out / "swing_event_net.pt")
 
     after = evaluate(model, val_loader)
     print("\nafter fine-tuning, on the same held-out detected clips:")

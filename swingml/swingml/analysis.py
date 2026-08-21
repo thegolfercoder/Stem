@@ -166,13 +166,46 @@ class SwingAnalysis(BaseModel):
         return "\n".join(lines)
 
 
-def load_model(checkpoint_path: Path | str) -> SwingEventNet:
-    """Rebuild the trained model from a checkpoint."""
-    checkpoint = torch.load(str(checkpoint_path), map_location="cpu", weights_only=False)
-    model = SwingEventNet(
-        in_features=int(checkpoint["in_features"]), channels=int(checkpoint["channels"])
+def save_model(model: SwingEventNet, path: Path | str) -> None:
+    """Write a checkpoint that `load_model` can rebuild without being told anything.
+
+    Paired with the loader deliberately. Three training scripts were writing this
+    format by hand and one of them omitted the channel count, which produced
+    checkpoints that trained perfectly and could not be loaded afterwards - a fault
+    that costs however long the training run took to discover.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "state_dict": model.state_dict(),
+            "in_features": int(model.input_projection.in_channels),
+            "channels": int(model.channels),
+            "dilations": list(model.dilations),
+        },
+        str(path),
     )
-    model.load_state_dict(checkpoint["state_dict"])
+
+
+def load_model(checkpoint_path: Path | str) -> SwingEventNet:
+    """Rebuild the trained model from a checkpoint.
+
+    Tolerant of a checkpoint that predates a field, because a model that took an
+    hour to train should not become unloadable over a missing dictionary key.
+    """
+    checkpoint = torch.load(str(checkpoint_path), map_location="cpu", weights_only=False)
+    state = checkpoint["state_dict"]
+
+    in_features = int(checkpoint.get("in_features", state["input_projection.weight"].shape[1]))
+    channels = int(checkpoint.get("channels", state["input_projection.weight"].shape[0]))
+    dilations = checkpoint.get("dilations")
+
+    model = (
+        SwingEventNet(in_features=in_features, channels=channels, dilations=tuple(dilations))
+        if dilations
+        else SwingEventNet(in_features=in_features, channels=channels)
+    )
+    model.load_state_dict(state)
     model.eval()
     return model
 

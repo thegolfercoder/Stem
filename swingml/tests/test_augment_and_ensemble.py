@@ -181,3 +181,42 @@ def test_test_time_warping_keeps_the_original_frame_count(
 def test_an_empty_ensemble_is_refused() -> None:
     with pytest.raises(ValueError, match="at least one"):
         SwingEventEnsemble([])
+
+
+def test_a_saved_model_reloads_without_being_told_its_shape(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """The loader must rebuild the architecture from the checkpoint alone.
+
+    Three training scripts were writing this format by hand and one omitted the
+    channel count, producing checkpoints that trained fine and could not be loaded
+    afterwards. That fault costs exactly as long as the training run took to find.
+    """
+    from swingml.analysis import load_model, save_model
+
+    model = SwingEventNet(feature_dimension(), channels=64, dilations=(1, 2, 4))
+    path = tmp_path / "m.pt"
+    save_model(model, path)
+
+    reloaded = load_model(path)
+    assert reloaded.channels == 64
+    assert tuple(reloaded.dilations) == (1, 2, 4)
+    # A loaded model is ready to use, which means dropout off.
+    assert not reloaded.training
+
+    model.eval()
+    features = np.zeros((64, feature_dimension()), dtype=np.float32)
+    with torch.no_grad():
+        before = model(torch.from_numpy(features)[None, ...])
+        after = reloaded(torch.from_numpy(features)[None, ...])
+    assert torch.allclose(before, after)
+
+
+def test_a_checkpoint_missing_its_metadata_still_loads(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """Shape can be recovered from the weights, so an old checkpoint is not lost."""
+    from swingml.analysis import load_model
+
+    model = SwingEventNet(feature_dimension(), channels=64)
+    path = tmp_path / "bare.pt"
+    torch.save({"state_dict": model.state_dict()}, path)
+
+    reloaded = load_model(path)
+    assert reloaded.channels == 64

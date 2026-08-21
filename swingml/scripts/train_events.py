@@ -19,6 +19,7 @@ from torch.utils.data import DataLoader
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from swingml.analysis import save_model
 from swingml.features import CANONICAL_RATE_HZ, feature_dimension
 from swingml.model.augment import AugmentConfig
 from swingml.model.data import SwingDataset, collate, masked_soft_cross_entropy
@@ -166,17 +167,7 @@ def main() -> None:
 
         if score > best_score:
             best_score = score
-            torch.save(
-                {
-                    "state_dict": model.state_dict(),
-                    "in_features": feature_dimension(),
-                    "channels": args.channels,
-                    "canonical_rate_hz": CANONICAL_RATE_HZ,
-                    "epoch": epoch,
-                    "pce_2": score,
-                },
-                args.out / "swing_event_net.pt",
-            )
+            save_model(model, args.out / "swing_event_net.pt")
 
     dp, greedy, _ = run_validation(model, val_loader)
     print("\nfinal, ordered decoding:")
