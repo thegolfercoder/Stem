@@ -27,6 +27,39 @@
   </p>
 {% else %}
 
+{% if trends %}
+<section class="trends">
+  <h2>Over the session</h2>
+  <p class="section-sub">
+    Oldest first. The band is one standard deviation either side of your average,
+    so a point outside it is a swing that was not like your others.
+  </p>
+  <div class="trend-grid">
+    {% for t in trends %}
+    <figure class="trend" data-points='{{ t.points|tojson }}' data-unit="{{ t.unit }}">
+      <figcaption>
+        <span class="trend-label">{{ t.label }}</span>
+        <span class="trend-mean">avg {{ '%.2f'|format(t.mean) }}{{ ' ' ~ t.unit if t.unit }}
+          &plusmn;{{ '%.2f'|format(t.deviation) }}</span>
+      </figcaption>
+      <svg viewBox="-8 -12 {{ t.width + 16 }} {{ t.height + 30 }}" preserveAspectRatio="none"
+           role="img" aria-label="{{ t.label }} across the session">
+        <rect class="trend-band" x="0" y="{{ t.band_top }}" width="{{ t.width }}"
+              height="{{ t.band_height }}" rx="2"></rect>
+        <line class="trend-mean-line" x1="0" y1="{{ t.mean_y }}" x2="{{ t.width }}"
+              y2="{{ t.mean_y }}"></line>
+        <path class="trend-line" d="{{ t.path }}"></path>
+        {% for p in t.points %}
+        <circle class="trend-dot" cx="{{ p.x }}" cy="{{ p.y }}" r="4"></circle>
+        {% endfor %}
+      </svg>
+      <div class="trend-tip" hidden></div>
+    </figure>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <section class="metrics">
   <h2>Spread</h2>
   <p class="section-sub">
@@ -36,7 +69,7 @@
   <div class="metric-grid">
     {% for spread in summary.spreads %}
     <div class="metric">
-      <div class="metric-label">{{ spread.name.replace('_', ' ') }}</div>
+      <div class="metric-label">{{ pretty(spread.name) }}</div>
       <div class="metric-value">{{ '%.2f'|format(spread.mean) }}<span class="metric-unit">{{ spread.unit }}</span></div>
       <div class="metric-foot">
         <span class="metric-hint">
@@ -69,4 +102,8 @@
     </tbody>
   </table>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='session.js') }}"></script>
 {% endblock %}

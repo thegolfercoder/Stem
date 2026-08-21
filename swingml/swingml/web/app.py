@@ -146,6 +146,55 @@ def metric_groups(analysis: SwingAnalysis) -> list[dict[str, Any]]:
     ]
 
 
+ADVICE: list[tuple[str, str]] = [
+    (
+        "body was found in only",
+        "Make sure the golfer is fully in shot for the whole clip and reasonably "
+        "well lit. Standing further back so the whole body fits is better than "
+        "filling the frame and losing the feet at the top of the backswing.",
+    ),
+    (
+        "mean confidence",
+        "The model could not find a swing it was sure about. This is most often a "
+        "clip that stops before the finish, or one filmed from behind the golfer "
+        "where the body hides itself. Filming face on, square to the target line, "
+        "is what it handles best.",
+    ),
+    (
+        "backswing would have lasted",
+        "The clip probably does not contain a whole swing. Start recording before "
+        "the takeaway and keep going until the finish is held.",
+    ),
+    (
+        "tempo of",
+        "The two halves of the swing did not come out in a sensible proportion, "
+        "which usually means one end of the swing is missing from the clip. Record "
+        "from address through to a held finish.",
+    ),
+    (
+        "no complete",
+        "The clip is too short to analyse. A second or so either side of the swing is enough.",
+    ),
+]
+
+
+def advice_for(reason: str) -> str:
+    """What to try next, chosen from the refusal itself.
+
+    A refusal that explains itself is better than a wrong number, and a refusal
+    that also says what to do about it is better again. Somebody standing on a
+    range with a phone does not want a diagnosis, they want the next clip to work.
+    """
+    lowered = reason.lower()
+    for marker, text in ADVICE:
+        if marker in lowered:
+            return text
+    return (
+        "Record from address through to a held finish, with the whole body in shot. "
+        "Face on, square to where the ball is going, is the angle this handles best."
+    )
+
+
 def event_rows(analysis: SwingAnalysis, files: dict[str, str]) -> list[dict[str, Any]]:
     if isinstance(analysis.events, NoReading):
         return []
@@ -164,6 +213,94 @@ def event_rows(analysis: SwingAnalysis, files: dict[str, str]) -> list[dict[str,
             }
         )
     return rows
+
+
+PRETTY_NAMES: dict[str, str] = {
+    "tempo_ratio": "Tempo ratio",
+    "backswing_duration": "Backswing",
+    "downswing_duration": "Downswing",
+    "swing_duration": "Whole swing",
+    "time_to_peak_hand_speed": "Peak hand speed",
+    "shoulder_turn_foreshortened": "Shoulder turn",
+    "hip_turn_foreshortened": "Hip turn",
+    "shoulder_turn_projected": "Shoulder line tilt",
+    "hip_turn_projected": "Hip line tilt",
+    "separation_projected": "Separation on screen",
+    "head_movement": "Head movement",
+    "pelvis_sway": "Pelvis sway",
+    "pelvis_lift": "Pelvis lift",
+}
+
+
+def pretty_name(name: str) -> str:
+    """A label a person would use, falling back to the field name made readable."""
+    return PRETTY_NAMES.get(name, name.replace("_", " ").capitalize())
+
+
+TREND_METRICS: list[tuple[str, str, str]] = [
+    ("tempo_ratio", "Tempo ratio", ""),
+    ("backswing_ms", "Backswing", "ms"),
+    ("downswing_ms", "Downswing", "ms"),
+]
+
+
+def build_trend(
+    rows: list[StoredSwing], attribute: str, label: str, unit: str
+) -> dict[str, Any] | None:
+    """One metric across a session, oldest first, with its mean and spread.
+
+    Spread alone says how repeatable somebody is; it cannot say whether they are
+    getting better. Both belong on the page, and the band around the mean is what
+    lets a reader see at a glance whether a swing sat inside their normal range or
+    outside it.
+    """
+    usable = [row for row in reversed(rows) if row.ok and getattr(row, attribute) is not None]
+    if len(usable) < 2:
+        return None
+
+    values: list[float] = [float(getattr(row, attribute)) for row in usable]
+    mean = sum(values) / len(values)
+    deviation = (sum((v - mean) ** 2 for v in values) / len(values)) ** 0.5
+
+    low = min(min(values), mean - deviation)
+    high = max(max(values), mean + deviation)
+    pad = (high - low) * 0.12 or max(abs(high) * 0.05, 0.5)
+    low, high = low - pad, high + pad
+    span = high - low
+
+    width, height = 640.0, 132.0
+    step = width / max(1, len(values) - 1)
+
+    def to_y(value: float) -> float:
+        return float(round(height - (value - low) / span * height, 2))
+
+    points: list[dict[str, Any]] = [
+        {
+            "value": value,
+            "name": row.label or row.source_name,
+            "when": row.created_at.strftime("%d %b %H:%M"),
+            "x": round(index * step, 2),
+            "y": to_y(value),
+        }
+        for index, (row, value) in enumerate(zip(usable, values, strict=True))
+    ]
+
+    return {
+        "key": attribute,
+        "label": label,
+        "unit": unit,
+        "points": points,
+        "path": " ".join(
+            ("M" if i == 0 else "L") + f"{p['x']},{p['y']}" for i, p in enumerate(points)
+        ),
+        "mean": mean,
+        "mean_y": to_y(mean),
+        "band_top": to_y(mean + deviation),
+        "band_height": abs(to_y(mean - deviation) - to_y(mean + deviation)),
+        "deviation": deviation,
+        "width": width,
+        "height": height,
+    }
 
 
 def create_app(store: SwingStore | None = None, model_path: Path | None = None) -> Flask:
@@ -200,6 +337,7 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
         analysis = SwingAnalysis.model_validate(stored.analysis)
         files = event_frame_files(swing_id)
         refusal = analysis.events.reason if isinstance(analysis.events, NoReading) else None
+        advice = advice_for(refusal) if refusal else None
         return render_template(
             "swing.html",
             swing=stored,
@@ -208,6 +346,7 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
             events=event_rows(analysis, files),
             groups=metric_groups(analysis),
             refusal=refusal,
+            advice=advice,
             clubs=swing_store.clubs(),
             format_number=_format_number,
         )
@@ -218,9 +357,16 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
         stored = swing_store.recent(limit=200, club=club)
         analyses = [SwingAnalysis.model_validate(s.analysis) for s in stored if s.ok]
         summary = summarise_session(analyses) if analyses else None
+        trends = [
+            trend
+            for attribute, label, unit in TREND_METRICS
+            if (trend := build_trend(stored, attribute, label, unit)) is not None
+        ]
         return render_template(
             "session.html",
             summary=summary,
+            trends=trends,
+            pretty=pretty_name,
             swings=stored,
             club=club,
             clubs=swing_store.clubs(),

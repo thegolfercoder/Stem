@@ -25,6 +25,8 @@ TRACKED_METRICS: tuple[str, ...] = (
     "backswing_duration",
     "downswing_duration",
     "swing_duration",
+    "shoulder_turn_foreshortened",
+    "hip_turn_foreshortened",
     "shoulder_turn_projected",
     "hip_turn_projected",
     "separation_projected",

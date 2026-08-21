@@ -124,6 +124,26 @@ def _angle_series(vectors: NDArray[np.float64]) -> NDArray[np.float64]:
     return np.asarray(np.degrees(np.unwrap(np.arctan2(vectors[:, 1], vectors[:, 0]))))
 
 
+def _line_tilt_change(angles: NDArray[np.float64], start: int, end: int) -> float:
+    """Change in the tilt of a *line* between two frames, wrapped to plus or minus 90.
+
+    A shoulder line is a line, not an arrow. Which end the estimator calls left and
+    which right is its business, and when the body turns edge-on the two swap over
+    in the image, flipping the vector by a full half turn. Unwrapping a series that
+    does that produces changes of a hundred and eighty degrees or more out of a
+    body that merely rotated a little, and a session average of a hundred and
+    fifty-three degrees give or take a hundred and seventy-four, which is what this
+    was quietly reporting before.
+
+    Treating it as a line and wrapping into a quadrant either way removes the
+    flip. It also caps what the metric can express at ninety degrees, which is
+    honest: beyond that a line in an image is indistinguishable from its own
+    reflection.
+    """
+    change = float(angles[end] - angles[start])
+    return float((change + 90.0) % 180.0 - 90.0)
+
+
 def _smooth(values: NDArray[np.float64], width: int) -> NDArray[np.float64]:
     if width <= 1:
         return values
@@ -339,8 +359,8 @@ def compute_metrics(
     shoulder_angle = _angle_series(shoulder_line.astype(np.float64))
     hip_angle = _angle_series(hip_line.astype(np.float64))
 
-    shoulder_turn = shoulder_angle[top] - shoulder_angle[address]
-    hip_turn = hip_angle[top] - hip_angle[address]
+    shoulder_turn = _line_tilt_change(shoulder_angle, address, top)
+    hip_turn = _line_tilt_change(hip_angle, address, top)
 
     projected_note = (
         "measured in the image plane, so it is a projection of the real turn and "

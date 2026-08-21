@@ -41,7 +41,11 @@ from synth.swing import SwingTiming, generate_swing
 
 
 def build_one(
-    seed: int, estimator: MediaPipePoseEstimator, config: SampleConfig, height: int
+    seed: int,
+    estimator: MediaPipePoseEstimator,
+    config: SampleConfig,
+    height: int,
+    azimuth_range: tuple[float, float] | None = None,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, float]] | None:
     """Render one randomised swing, detect it, return features and true event frames."""
     rng = np.random.default_rng(seed)
@@ -85,11 +89,14 @@ def build_one(
         left_handed=left_handed,
     )
 
-    azimuth = (
-        _uniform(rng, (-20.0, 115.0))
-        if rng.random() < config.azimuth_uniform_probability
-        else float(rng.choice((0.0, 90.0))) + float(rng.normal(0.0, config.azimuth_spread_deg))
-    )
+    if azimuth_range is not None:
+        azimuth = _uniform(rng, azimuth_range)
+    else:
+        azimuth = (
+            _uniform(rng, (-20.0, 115.0))
+            if rng.random() < config.azimuth_uniform_probability
+            else float(rng.choice((0.0, 90.0))) + float(rng.normal(0.0, config.azimuth_spread_deg))
+        )
     if left_handed:
         azimuth = -azimuth
 
@@ -148,6 +155,17 @@ def main() -> None:
         help="render height; the estimator's cost scales with pixel count",
     )
     parser.add_argument("--out", type=Path, default=Path("out/detected/train.npz"))
+    parser.add_argument(
+        "--azimuth",
+        type=float,
+        nargs=2,
+        default=None,
+        metavar=("MIN", "MAX"),
+        help=(
+            "restrict camera azimuth to this range, for building extra data at an "
+            "angle the model handles badly"
+        ),
+    )
     args = parser.parse_args()
 
     estimator = MediaPipePoseEstimator()
@@ -162,7 +180,13 @@ def main() -> None:
     attempts = 0
     while len(all_features) < args.n and attempts < args.n * 3:
         attempts += 1
-        result = build_one(seed, estimator, config, args.height)
+        result = build_one(
+            seed,
+            estimator,
+            config,
+            args.height,
+            tuple(args.azimuth) if args.azimuth else None,
+        )
         seed += 1
         if result is None:
             continue

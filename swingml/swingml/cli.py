@@ -86,11 +86,13 @@ def command_ui(args: argparse.Namespace) -> int:
 
 
 def command_analyse(args: argparse.Namespace) -> int:
-    from swingml.analysis import AnalysisConfig, analyse_video, load_model
+    from swingml.analysis import AnalysisConfig, analyse_pose_sequence, load_model
     from swingml.pose.mediapipe_pose import MediaPipePoseEstimator
     from swingml.quantity import NoReading
     from swingml.session import summarise_session
     from swingml.store import SwingStore
+    from swingml.video.reader import VideoReader
+    from swingml.web.service import record_swing
 
     videos = _collect(args.target)
     if not videos:
@@ -125,13 +127,29 @@ def command_analyse(args: argparse.Namespace) -> int:
             sys.stderr.write("\r" + line.ljust(width))
             sys.stderr.flush()
 
-        analysis = analyse_video(video, model, estimator, config, on_progress=progress)
+        with VideoReader(video) as reader:
+            expected = max(0, reader.declared_frames)
+
+            def relay(done: int, total: int = expected) -> None:
+                progress(done, total)
+
+            sequence = estimator.estimate_stream(reader.frames(), on_progress=relay)
+            info = reader.describe_stream(sequence.n_frames, sequence.timestamps_s)
         sys.stderr.write("\r" + " " * width + "\r")
+
+        analysis = analyse_pose_sequence(sequence, model, config, video=info)
         analyses.append(analysis)
         print(analysis.describe())
         print()
         if store is not None:
-            store.add(analysis, source_name=video.name, video_path=video, club=args.club)
+            record_swing(
+                store,
+                analysis,
+                sequence,
+                video.resolve(),
+                source_name=video.name,
+                club=args.club,
+            )
 
     readings = [a for a in analyses if not isinstance(a.events, NoReading)]
     if len(readings) > 1:

@@ -46,12 +46,43 @@ class AnalysisConfig(BaseModel):
     features: FeatureConfig = FeatureConfig()
     metrics: MetricConfig = MetricConfig()
     min_mean_confidence: float = Field(
-        default=0.0,
+        default=0.30,
         description=(
-            "Confidence below which no swing is reported. Left at zero, meaning off, "
-            "because the right value is a measurement on clips that contain no swing "
-            "and that measurement has not been made. A guess here would be worse "
-            "than leaving it open."
+            "Mean event confidence below which no swing is reported.\n\n"
+            "This was left switched off until there was something to set it from, "
+            "because a guessed threshold is worse than none. Measured over a set of "
+            "clips built to contain no swing - somebody standing at address, a swing "
+            "cut off at the top, an empty frame - the model returned 0.02, 0.27 and "
+            "0.15. Over clips that did contain a swing, filmed face on, down the "
+            "line, at forty-five degrees, tilted, left handed, near, far, and at "
+            "three frame rates, it returned 0.38 at worst and 0.89 or better on "
+            "eleven of twelve. The gap is wide and this sits in it, close enough to "
+            "the bad group to keep the hardest real angle."
+        ),
+    )
+    min_detection_rate: float = Field(
+        default=0.5,
+        description=(
+            "Share of frames in which a body must have been found. A clip where the "
+            "estimator saw nobody most of the time cannot contain a measurable swing, "
+            "whatever the event model then makes of the empty landmarks it was handed."
+        ),
+    )
+    plausible_backswing_s: tuple[float, float] = Field(
+        default=(0.30, 2.50),
+        description=(
+            "How long a backswing can take. Not a tuned parameter - the bounds are "
+            "loose enough to hold any golfer and tight enough to reject a clip whose "
+            "'backswing' lasted nineteen milliseconds, which is what a clip of "
+            "somebody standing still produced."
+        ),
+    )
+    plausible_downswing_s: tuple[float, float] = Field(default=(0.10, 1.00))
+    plausible_tempo: tuple[float, float] = Field(
+        default=(1.2, 6.0),
+        description=(
+            "Backswing over downswing. Tour players sit near three; club golfers "
+            "spread either side. A clip cut off at the top produced thirty-four."
         ),
     )
     max_frames: int | None = Field(
@@ -145,6 +176,37 @@ def load_model(checkpoint_path: Path | str) -> SwingEventNet:
     return model
 
 
+def _implausible_timing(
+    backswing_s: float, downswing_s: float, tempo: float, config: AnalysisConfig
+) -> str | None:
+    """Why this is not a golf swing, or None if nothing rules it out.
+
+    Deliberately about durations rather than about the model's confidence. The two
+    catch different failures: confidence catches a clip the model found confusing,
+    these catch a clip the model was confident about and wrong.
+    """
+    low, high = config.plausible_backswing_s
+    if not low <= backswing_s <= high:
+        return (
+            f"the backswing would have lasted {backswing_s * 1000:.0f} ms, outside the "
+            f"{low * 1000:.0f} to {high * 1000:.0f} ms a golf swing takes. Whatever is "
+            "in this clip, it is not a swing being made"
+        )
+    low, high = config.plausible_downswing_s
+    if not low <= downswing_s <= high:
+        return (
+            f"the downswing would have lasted {downswing_s * 1000:.0f} ms, outside the "
+            f"{low * 1000:.0f} to {high * 1000:.0f} ms a golf swing takes"
+        )
+    low, high = config.plausible_tempo
+    if not low <= tempo <= high:
+        return (
+            f"the two halves imply a tempo of {tempo:.1f} to one, outside the {low:.1f} "
+            f"to {high:.1f} a golf swing produces"
+        )
+    return None
+
+
 def analyse_pose_sequence(
     sequence: PoseSequence,
     model: SwingEventNet,
@@ -167,6 +229,27 @@ def analyse_pose_sequence(
     with torch.no_grad():
         logits = model(torch.from_numpy(features).unsqueeze(0))[0].numpy()
 
+    if detection_rate < config.min_detection_rate:
+        refusal = NoReading(
+            reason=(
+                f"a body was found in only {100 * detection_rate:.0f} percent of frames, "
+                f"below the {100 * config.min_detection_rate:.0f} percent a swing needs. "
+                "There may be nobody in shot, or the golfer may be too small, too dark "
+                "or too far outside the frame to follow"
+            ),
+            source="pose",
+        )
+        return SwingAnalysis(
+            video=video,
+            detection_rate=detection_rate,
+            canonical_frames=resampled.n_frames,
+            events=refusal,
+            event_times_s=(),
+            event_source_frames=(),
+            metrics=refusal,
+            handedness=config.handedness,
+        )
+
     events = decode_events(logits, config.min_mean_confidence)
     if isinstance(events, NoReading):
         return SwingAnalysis(
@@ -177,6 +260,31 @@ def analyse_pose_sequence(
             event_times_s=(),
             event_source_frames=(),
             metrics=events,
+            handedness=config.handedness,
+        )
+
+    # Whether what was found is shaped like a golf swing at all. The event model
+    # will always return eight frames in order, because the decoder makes it - so
+    # ordering alone proves nothing about a clip of somebody standing still. What
+    # does prove something is how long the halves lasted. Nineteen milliseconds is
+    # not a backswing and a tempo of thirty-four is not a swing, and both of those
+    # came back confidently from clips containing no swing at all.
+    grid_rate = config.features.canonical_rate_hz
+    backswing_s = events.duration_frames(SwingEvent.ADDRESS, SwingEvent.TOP) / grid_rate
+    downswing_s = events.duration_frames(SwingEvent.TOP, SwingEvent.IMPACT) / grid_rate
+    tempo = backswing_s / downswing_s if downswing_s > 0 else float("inf")
+
+    implausible = _implausible_timing(backswing_s, downswing_s, tempo, config)
+    if implausible is not None:
+        refusal = NoReading(reason=implausible, source="events")
+        return SwingAnalysis(
+            video=video,
+            detection_rate=detection_rate,
+            canonical_frames=resampled.n_frames,
+            events=refusal,
+            event_times_s=(),
+            event_source_frames=(),
+            metrics=refusal,
             handedness=config.handedness,
         )
 

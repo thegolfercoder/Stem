@@ -34,7 +34,12 @@ from typing import IO
 import numpy as np
 from numpy.typing import NDArray
 
-from swingml.analysis import AnalysisConfig, SwingAnalysis, analyse_pose_sequence, load_model
+from swingml.analysis import (
+    AnalysisConfig,
+    SwingAnalysis,
+    analyse_pose_sequence,
+    load_model,
+)
 from swingml.assets import find_event_model, home
 from swingml.events import SwingEvent
 from swingml.model.tcn import SwingEventNet
@@ -216,37 +221,15 @@ class AnalysisService:
 
                 job.state = JobState.RENDERING
                 job.message = "saving the key frames"
-                swing_id = self.store.add(
+                swing_id = record_swing(
+                    self.store,
                     analysis,
+                    sequence,
+                    upload_path,
                     source_name=original_name,
-                    video_path=upload_path,
                     label=label,
                     club=club,
                 )
-                if not isinstance(analysis.events, NoReading):
-                    # A missing thumbnail is a cosmetic failure; the analysis is
-                    # already stored and is the thing that matters.
-                    directory = frames_dir() / str(swing_id)
-                    with contextlib.suppress(Exception):
-                        extract_event_frames(
-                            upload_path,
-                            sequence,
-                            analysis.event_source_frames,
-                            directory,
-                        )
-                    with contextlib.suppress(Exception):
-                        events = analysis.event_source_frames
-                        manifest = extract_sequence_frames(
-                            upload_path,
-                            sequence,
-                            first_frame=events[0],
-                            last_frame=events[-1],
-                            destination=directory,
-                            crop_frames=list(events),
-                        )
-                        (directory / "sequence.json").write_text(
-                            json.dumps(manifest), encoding="utf-8"
-                        )
 
                 job.swing_id = swing_id
                 job.state = JobState.DONE
@@ -273,6 +256,45 @@ class AnalysisService:
             sequence = estimator.estimate_stream(frames(), on_progress=progress)
             info = reader.describe_stream(sequence.n_frames, sequence.timestamps_s)
         return sequence, info
+
+
+def record_swing(
+    store: SwingStore,
+    analysis: SwingAnalysis,
+    sequence: PoseSequence,
+    video_path: Path,
+    source_name: str,
+    label: str | None = None,
+    club: str | None = None,
+) -> int:
+    """Store an analysis and write the images the interface needs to show it.
+
+    Shared by the web upload and the command line so that a swing analysed either
+    way looks the same afterwards. Having the terminal produce a row the interface
+    then renders without pictures is the kind of small inconsistency that makes
+    software feel unfinished.
+    """
+    swing_id = store.add(
+        analysis, source_name=source_name, video_path=video_path, label=label, club=club
+    )
+    if isinstance(analysis.events, NoReading):
+        return swing_id
+
+    directory = frames_dir() / str(swing_id)
+    with contextlib.suppress(Exception):
+        extract_event_frames(video_path, sequence, analysis.event_source_frames, directory)
+    with contextlib.suppress(Exception):
+        events = analysis.event_source_frames
+        manifest = extract_sequence_frames(
+            video_path,
+            sequence,
+            first_frame=events[0],
+            last_frame=events[-1],
+            destination=directory,
+            crop_frames=list(events),
+        )
+        (directory / "sequence.json").write_text(json.dumps(manifest), encoding="utf-8")
+    return swing_id
 
 
 def save_upload(stream: IO[bytes], original_name: str) -> Path:

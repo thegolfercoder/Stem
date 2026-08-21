@@ -26,10 +26,11 @@
 <section class="banner warn">
   <h2>No swing was found in this clip</h2>
   <p>{{ refusal }}</p>
+  {% if advice %}<p class="advice"><strong>What to try:</strong> {{ advice }}</p>{% endif %}
   <p class="hint">
-    It is better to be told this than to be handed numbers from a clip that did not
-    contain a swing. Most often it means the golfer was out of shot for part of the
-    motion, or the clip stops before the finish.
+    Being told this is better than being handed numbers from a clip that did not
+    contain a swing, because a wrong number gets acted on and a missing one gets
+    looked into.
   </p>
 </section>
 {% else %}
