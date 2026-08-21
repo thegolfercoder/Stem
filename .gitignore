@@ -10,3 +10,8 @@ models/
 *.mov
 *.egg-info/
 swingml/out/
+
+# Footage is ignored by default so stray captures never land in the repository.
+# The one exception is the real-swing regression fixture, which is checked in on
+# purpose: without it there is nothing here but generated data.
+!swingml/tests/fixtures/*.mov
