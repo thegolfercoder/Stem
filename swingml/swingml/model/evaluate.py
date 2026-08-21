@@ -41,21 +41,40 @@ class EventAccuracy(BaseModel):
     median_absolute_error_frames: tuple[float, ...]
     ordering_violations: int
 
+    @property
+    def within_1(self) -> float:
+        return self.correct_rate.get(1, 0.0)
+
+    @property
+    def within_2(self) -> float:
+        return self.correct_rate.get(2, 0.0)
+
     def summary(self) -> str:
-        lines = [f"clips {self.n_clips}, refused {self.n_refused}"]
-        for tolerance in self.tolerance_frames:
-            ms = 1000.0 * tolerance / CANONICAL_RATE_HZ
-            lines.append(
-                f"  within +/-{tolerance} frames ({ms:.0f} ms): "
-                f"{100 * self.correct_rate[tolerance]:.1f}%"
-            )
-        lines.append("  per event, mean |error| in frames:")
+        """One line, for watching training go by."""
+        rates = "  ".join(
+            f"±{t}f ({1000.0 * t / CANONICAL_RATE_HZ:.0f} ms) "
+            f"{100 * self.correct_rate.get(t, 0.0):5.1f}%"
+            for t in self.tolerance_frames
+        )
+        refused = f", {self.n_refused} refused" if self.n_refused else ""
+        return f"{self.n_clips} clips{refused}:  {rates}"
+
+    def report(self) -> str:
+        """The whole thing, laid out to be read rather than parsed."""
+        lines = [self.summary(), "  per event, mean absolute error in frames:"]
         for event in SwingEvent.ordered():
+            index = int(event)
             lines.append(
-                f"    {event.label:20s} {self.mean_absolute_error_frames[int(event)]:6.2f} "
-                f"(median {self.median_absolute_error_frames[int(event)]:5.2f})"
+                f"    {event.label:<20} {self.mean_absolute_error_frames[index]:5.2f}"
+                f"  (median {self.median_absolute_error_frames[index]:4.1f})"
+                f"  ±1f {100 * self.correct_rate_per_event[1][index]:5.1f}%"
             )
+        if self.ordering_violations:
+            lines.append(f"  ordering violations: {self.ordering_violations}")
         return "\n".join(lines)
+
+    def __str__(self) -> str:
+        return self.summary()
 
 
 def evaluate_predictions(

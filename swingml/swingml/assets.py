@@ -31,6 +31,7 @@ EVENT_MODEL_NAME = "swing_event_net.pt"
 HOME_ENV_VAR = "SWINGML_HOME"
 POSE_MODEL_ENV_VAR = "SWINGML_POSE_MODEL"
 EVENT_MODEL_ENV_VAR = "SWINGML_EVENT_MODEL"
+ENSEMBLE_ENV_VAR = "SWINGML_EVENT_ENSEMBLE"
 
 
 def home() -> Path:
@@ -98,6 +99,32 @@ def find_event_model() -> Path | None:
     return None
 
 
+def find_event_ensemble() -> list[Path]:
+    """Every member of a trained ensemble, or an empty list if there is not one.
+
+    Preferred over a single model wherever both exist. Members disagree in
+    different places and averaging them removes error that no single one of them
+    could remove on its own, at a cost of a few milliseconds per clip.
+    """
+    roots = [
+        home() / "models" / "ensemble",
+        _repo_root() / "swingml" / "swingml" / "data" / "ensemble",
+        _repo_root() / "swingml" / "out" / "ensemble",
+        Path("out") / "ensemble",
+    ]
+    configured = os.environ.get(ENSEMBLE_ENV_VAR)
+    if configured:
+        roots.insert(0, Path(configured).expanduser())
+
+    for root in roots:
+        if not root.is_dir():
+            continue
+        members = sorted(root.glob("member_*.pt"))
+        if members:
+            return members
+    return []
+
+
 def download_pose_model(
     destination: Path | None = None,
     on_progress: Callable[[int, int], None] | None = None,
@@ -149,9 +176,12 @@ def describe_setup() -> str:
     """A short report on what is present and what is missing."""
     pose = find_pose_model()
     event = find_event_model()
+    ensemble = find_event_ensemble()
     lines = [
         f"swingml home       {home()}",
         f"pose model         {pose if pose else 'MISSING (will download on first run)'}",
         f"swing event model  {event if event else 'MISSING'}",
     ]
+    if ensemble:
+        lines.append(f"ensemble           {len(ensemble)} members in {ensemble[0].parent}")
     return "\n".join(lines)

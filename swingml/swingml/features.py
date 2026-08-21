@@ -298,6 +298,76 @@ def extract_features(
     return np.asarray(cleaned, dtype=np.float32)
 
 
+class FeatureLayout(BaseModel):
+    """Where each block of channels sits in the feature matrix, and what it means.
+
+    Written down rather than left implicit because augmentation needs it. Stretching
+    a swing in time is only correct if the channels measured *per second* are
+    rescaled while the ones measuring a shape are not - a velocity halves when a
+    swing is played at half speed and a joint position does not. Without this the
+    two get treated alike and the model learns from sequences that could not have
+    come from a body.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    positions: tuple[int, int]
+    velocities: tuple[int, int]
+    speeds: tuple[int, int]
+    visibility: tuple[int, int]
+    angles: tuple[int, int]
+    hands_relative: tuple[int, int]
+    hand_velocity: tuple[int, int]
+    hand_speed: tuple[int, int]
+    widths: tuple[int, int]
+    total: int
+
+    @property
+    def per_second_spans(self) -> tuple[tuple[int, int], ...]:
+        """Channels whose units carry a 'per second', which time warping must rescale."""
+        return (self.velocities, self.speeds, self.hand_velocity, self.hand_speed)
+
+    @property
+    def positional_spans(self) -> tuple[tuple[int, int], ...]:
+        """Channels measured in body lengths, which spatial jitter may perturb."""
+        return (self.positions, self.hands_relative)
+
+
+def feature_layout() -> FeatureLayout:
+    """The channel layout `extract_features` produces."""
+    n = len(SWING_LANDMARK_INDICES)
+    cursor = 0
+
+    def take(width: int) -> tuple[int, int]:
+        nonlocal cursor
+        span = (cursor, cursor + width)
+        cursor += width
+        return span
+
+    positions = take(n * 2)
+    velocities = take(n * 2)
+    speeds = take(n)
+    visibility = take(n)
+    angles = take(2 * 5)
+    hands_relative = take(2)
+    hand_velocity = take(2)
+    hand_speed = take(1)
+    widths = take(3)
+
+    return FeatureLayout(
+        positions=positions,
+        velocities=velocities,
+        speeds=speeds,
+        visibility=visibility,
+        angles=angles,
+        hands_relative=hands_relative,
+        hand_velocity=hand_velocity,
+        hand_speed=hand_speed,
+        widths=widths,
+        total=cursor,
+    )
+
+
 def feature_dimension() -> int:
     """Width of the feature matrix, so the model can be built before any data exists."""
     n = len(SWING_LANDMARK_INDICES)

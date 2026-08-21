@@ -33,7 +33,10 @@ def main() -> None:
     parser.add_argument("--expect-tempo", type=float, default=3.0)
     args = parser.parse_args()
 
-    model = load_model(args.model or find_event_model())
+    model_path = args.model or find_event_model()
+    if model_path is None:
+        raise SystemExit("no trained model found")
+    model = load_model(model_path)
     estimator = MediaPipePoseEstimator()
 
     videos = sorted(args.clips.glob("*.mp4"))

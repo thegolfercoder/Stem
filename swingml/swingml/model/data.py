@@ -24,6 +24,8 @@ from numpy.typing import NDArray
 from torch.utils.data import Dataset
 
 from swingml.events import BACKGROUND_CLASS, NUM_CLASSES, NUM_EVENTS
+from swingml.features import feature_layout
+from swingml.model.augment import AugmentConfig, augment_sample
 from synth.dataset import Sample
 
 
@@ -52,6 +54,7 @@ class SwingDataset(Dataset[dict[str, torch.Tensor]]):
         feature_noise: float = 0.0,
         max_frames: int | None = None,
         rng_seed: int = 0,
+        augment: AugmentConfig | None = None,
     ) -> None:
         self.samples = samples
         self.sigma_frames = sigma_frames
@@ -59,6 +62,8 @@ class SwingDataset(Dataset[dict[str, torch.Tensor]]):
         self.feature_noise = feature_noise
         self.max_frames = max_frames
         self.rng = np.random.default_rng(rng_seed)
+        self.augment = augment or AugmentConfig()
+        self.layout = feature_layout()
 
     def __len__(self) -> int:
         return len(self.samples)
@@ -67,6 +72,17 @@ class SwingDataset(Dataset[dict[str, torch.Tensor]]):
         sample = self.samples[index]
         features = sample.features
         events = sample.event_frames
+
+        if self.augment.enabled:
+            # A fresh generator per item, seeded from the item, so that two workers
+            # loading the same index do not diverge and a run stays reproducible.
+            features, events = augment_sample(
+                features.copy(),
+                events.copy(),
+                np.random.default_rng(int(self.rng.integers(0, 2**31))),
+                self.augment,
+                self.layout,
+            )
 
         if self.max_frames is not None and features.shape[0] > self.max_frames:
             # Crop, but never through an event: a window that cuts the finish off

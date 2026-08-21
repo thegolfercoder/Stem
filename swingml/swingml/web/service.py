@@ -40,8 +40,9 @@ from swingml.analysis import (
     analyse_pose_sequence,
     load_model,
 )
-from swingml.assets import find_event_model, home
+from swingml.assets import find_event_ensemble, find_event_model, home
 from swingml.events import SwingEvent
+from swingml.model.ensemble import EnsembleConfig, SwingEventEnsemble
 from swingml.model.tcn import SwingEventNet
 from swingml.pose.base import PoseSequence
 from swingml.pose.mediapipe_pose import MediaPipePoseEstimator
@@ -124,12 +125,17 @@ class AnalysisService:
 
     def __init__(self, store: SwingStore, model_path: Path | None = None) -> None:
         self.store = store
-        self.model_path = model_path or find_event_model()
+        # An explicitly named model wins; otherwise an ensemble if one was trained,
+        # and a single model if not.
+        self.ensemble_paths = [] if model_path else find_event_ensemble()
+        self.model_path = model_path or (
+            self.ensemble_paths[0] if self.ensemble_paths else find_event_model()
+        )
         self._jobs: dict[str, Job] = {}
         self._jobs_lock = threading.Lock()
         self._model_lock = threading.Lock()
         self._run_lock = threading.Lock()
-        self._model: SwingEventNet | None = None
+        self._model: SwingEventNet | SwingEventEnsemble | None = None
         self._estimator: MediaPipePoseEstimator | None = None
 
     # -- readiness ---------------------------------------------------------
@@ -147,14 +153,19 @@ class AnalysisService:
         """Build the model and estimator now rather than on the first upload."""
         self._ensure_loaded()
 
-    def _ensure_loaded(self) -> tuple[SwingEventNet, MediaPipePoseEstimator]:
+    def _ensure_loaded(self) -> tuple[SwingEventNet | SwingEventEnsemble, MediaPipePoseEstimator]:
         with self._model_lock:
             if self._model is None:
                 ok, why = self.ready()
                 if not ok:
                     raise RuntimeError(why)
-                assert self.model_path is not None
-                self._model = load_model(Path(self.model_path))
+                if self.ensemble_paths:
+                    self._model = SwingEventEnsemble.load(
+                        list(self.ensemble_paths), EnsembleConfig(time_warps=(0.92, 1.0, 1.09))
+                    )
+                else:
+                    assert self.model_path is not None
+                    self._model = load_model(Path(self.model_path))
             if self._estimator is None:
                 self._estimator = MediaPipePoseEstimator()
         assert self._estimator is not None
@@ -205,7 +216,7 @@ class AnalysisService:
                 job.state = JobState.READING
                 job.message = "loading the model"
                 model, _ = self._ensure_loaded()
-                assert isinstance(model, SwingEventNet)
+                assert isinstance(model, SwingEventNet | SwingEventEnsemble)
 
                 job.message = "finding the body in each frame"
                 sequence, video_info = self._extract_pose(upload_path, job)

@@ -32,6 +32,7 @@ from swingml.events import EventSequence, SwingEvent
 from swingml.features import FeatureConfig, extract_features, resample_pose
 from swingml.metrics.swing import MetricConfig, SwingMetrics, compute_metrics
 from swingml.model.decode import decode_events
+from swingml.model.ensemble import SwingEventEnsemble
 from swingml.model.tcn import SwingEventNet
 from swingml.pose.base import PoseEstimator, PoseSequence
 from swingml.quantity import NoReading
@@ -209,7 +210,7 @@ def _implausible_timing(
 
 def analyse_pose_sequence(
     sequence: PoseSequence,
-    model: SwingEventNet,
+    model: SwingEventNet | SwingEventEnsemble,
     config: AnalysisConfig | None = None,
     video: VideoInfo | None = None,
 ) -> SwingAnalysis:
@@ -226,8 +227,11 @@ def analyse_pose_sequence(
     detection_rate = float(np.mean(resampled.detected)) if resampled.detected is not None else 1.0
 
     features = extract_features(resampled, config.handedness, config.features)
-    with torch.no_grad():
-        logits = model(torch.from_numpy(features).unsqueeze(0))[0].numpy()
+    if isinstance(model, SwingEventEnsemble):
+        logits = model.logits(features)
+    else:
+        with torch.no_grad():
+            logits = model(torch.from_numpy(features).unsqueeze(0))[0].numpy()
 
     if detection_rate < config.min_detection_rate:
         refusal = NoReading(
@@ -313,7 +317,7 @@ def analyse_pose_sequence(
 
 def analyse_video(
     path: Path | str,
-    model: SwingEventNet,
+    model: SwingEventNet | SwingEventEnsemble,
     estimator: PoseEstimator,
     config: AnalysisConfig | None = None,
     on_progress: Callable[[int, int], None] | None = None,
