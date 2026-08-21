@@ -1,160 +1,168 @@
-# swingml — machine-learning golf swing analysis from one iPhone camera
+# Swing analysis
 
-Point a phone at a golfer, get their swing back as numbers. No calibration, no
-markers, no second camera, no measurement of where the phone was standing.
+Golf swing analysis from a single phone camera. No sensors, no markers, no
+calibration, no setup. Point a phone at a golfer, drop the clip in, and get the
+swing back broken into its eight positions with the timings and body movement
+measured.
 
-```
-video ──► pose estimation ──► resample to a canonical rate ──► scale-free features
-                                                                      │
-                            events ◄── ordered decoding ◄── temporal convolutional net
-                               │
-                               └──► tempo, rotation, movement, kinematic sequence
-```
-
-## What it produces
-
-Per swing, the eight canonical swing events — **address, toe-up, mid-backswing,
-top, mid-downswing, impact, mid-follow-through, finish** — located in the source
-clip's own frame numbers and times, plus:
-
-| Metric | How | Standing |
-|---|---|---|
-| Tempo ratio (backswing ÷ downswing) | From the event times | derived |
-| Backswing, downswing, total duration | From real frame timestamps | measured |
-| Time of peak hand speed vs impact | Pose | measured |
-| Shoulder turn, hip turn, separation | Image plane | **projected** |
-| Shoulder turn, hip turn, separation | Estimator's inferred depth | **estimated 3D** |
-| Head movement, pelvis sway, pelvis lift | Pose, in body lengths | projected |
-| Kinematic sequence (pelvis → thorax → arm) | Peak angular speeds | observed order |
-
-Per session: mean, median, spread and coefficient of variation of every metric,
-the count of swings that produced no reading, and how often each kinematic
-ordering was observed.
-
-## The three ideas it is built on
-
-**No calibration, by construction.** Every metric is a ratio, an angle, or a
-length in units of the golfer's own body. Landmarks are recentred on the pelvis,
-divided by a body length measured from the golfer, and de-rolled using the median
-body axis so a phone propped at an angle stops mattering. The invariance is
-tested, not asserted: `tests/test_features_invariance.py` renders the same swing
-from different distances, positions and tilts and checks the features agree.
-
-**One model for 30, 60 and 240 fps.** A temporal convolution's receptive field is
-counted in frames, so the same swing at three capture rates would otherwise be
-three different problems. Every clip is resampled onto a canonical 60 Hz grid on
-its *real timestamp axis* before the model sees it, and predictions are mapped
-back afterwards. iPhone slow-motion clips, which are commonly captured at 240 and
-written to play at 30, are handled without being told what they are.
-
-**The events happen in order, and the decoder knows it.** Taking the highest
-scoring frame for each event independently can put impact before the top of the
-backswing, and does so exactly when the model is least certain — on the hardest
-footage, where a plausible wrong answer does most damage. Because the ordering is
-a hard constraint, the best sequence *subject to it* can be found exactly by
-dynamic programming in time linear in the clip length. No beam, no threshold, no
-possibility of an invalid result.
-
-## What it will not tell you
-
-Nothing about the club. A body-pose estimator does not see one, so there is no
-clubhead speed, no face angle, no club path, no attack angle and no swing plane
-here, and there will not be. Two of the eight events — toe-up and
-mid-follow-through — are *defined* by the shaft being horizontal, so the model
-places them from where they fall relative to the body rather than from anything
-it observed. They are flagged as such in every result.
-
-Rotation in degrees is reported twice and neither figure is a body angle. The
-projected one is a real measurement of the image and changes if the phone moves.
-The 3D one comes from the pose estimator's inferred depth, which is a network's
-opinion about a single view rather than anything triangulated. Comparing a
-golfer against themselves from the same camera position is what the projected
-figure is good for; comparing two golfers filmed differently is not.
-
-Anything the pipeline cannot measure returns a refusal carrying its reason, never
-a substituted guess. Film in portrait and cut the golfer's feet off, and pelvis
-sway comes back as *"the feet are not in shot, so there is no fixed reference to
-measure body movement against; the hips cannot serve as one because they move"*
-— while tempo, which does not need the feet, still reports.
-
-## Training data
-
-There are no labelled golf videos here, and hand-labelling the frame of impact is
-slow, subjective at the boundaries, and yields a few hundred examples at best. So
-the training data is generated: an articulated golfer whose hands travel a circle
-on an inclined swing plane, with the club extending from them, arms and legs
-solved by inverse kinematics, projected through a virtual camera and degraded the
-way a real pose estimator degrades.
-
-Because the generator knows where the club is, all eight events have exact ground
-truth — including the two that no pose estimator can see. Because it knows the
-timing, the tempo ratio is correct by construction.
-
-What is randomised: body proportions, handedness, swing plane, spine tilt, wrist
-hinge and lag, turn amplitudes, tempo, camera azimuth from face-on through down
-the line and past it, elevation, distance, roll, field of view, portrait and
-landscape, capture rate, and a noise model with time-correlated landmark error
-that scales with each landmark's own image-plane speed — because the hands blur
-worst exactly at impact, which is where accuracy matters most.
-
-What it cannot contain is anything nobody thought to model. This is an argument
-for training on generated swings **and then measuring on real footage**, never for
-skipping the second part.
-
-## Running it
+Everything runs locally. No clip leaves the machine.
 
 ```bash
-python -m venv .venv && .venv/bin/pip install -e "swingml[dev]"
-curl -L -o models/pose_landmarker_heavy.task \
-  https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task
-
-cd swingml
-PYTHONPATH=. ../.venv/bin/python scripts/train_events.py            # train the event model
-PYTHONPATH=. ../.venv/bin/python scripts/analyse.py my_swing.mov    # analyse a clip
-PYTHONPATH=. ../.venv/bin/python scripts/analyse.py swings/         # a whole session
-PYTHONPATH=. ../.venv/bin/python scripts/demo_end_to_end.py         # full stack on rendered video
-PYTHONPATH=. ../.venv/bin/python -m pytest tests/ -q
+pip install -e "swingml[dev]"
+swingml
 ```
 
-MediaPipe needs `libEGL` and `libGLESv2` present (`apt install libegl1 libgles2`).
+![the eight positions, a scrubber, and the metrics](docs/swing-page.png)
+
+## What it measures
+
+**Timing**, from the real frame timestamps — tempo ratio, backswing, downswing,
+whole-swing duration, and when the hands reached their fastest relative to impact.
+These are the strongest numbers here and the ones worth acting on.
+
+**Rotation at the top**, from how much the shoulder and hip lines foreshorten. A
+line of fixed length seen from an angle shortens by the cosine of that angle, which
+is the one rotation measurement a single uncalibrated camera can honestly support.
+It has no sign — turning towards the camera and away from it look identical — and it
+reads low against reality, so use it to compare your own swings from the same
+camera position rather than against a published figure.
+
+**Stability** — head movement, pelvis sway and lift, all in units of the golfer's
+own body length so no calibration is needed and no conversion to centimetres is
+possible without one.
+
+**Kinematic sequence** — the order in which the pelvis, chest and lead arm reached
+their fastest. Reported as observed, not scored.
+
+**Consistency and trend** across a session, which is the comparison that means
+something when the camera is uncalibrated: your swings against each other.
+
+## What it does not measure, and will not
+
+Ball speed, spin rate, spin axis, launch angle, carry, club path, face angle,
+attack angle. These are ball and club measurements. This looks at a body. A camera
+pointed at a golfer cannot see the ball leave at 70 metres per second or the face
+angle at a 500-microsecond impact, and software claiming otherwise is guessing.
+
+If you want those numbers you want a launch monitor, and this is not one. What this
+does that a launch monitor does not is tell you about the swing rather than the
+strike.
+
+## When it refuses
+
+A clip that does not contain a measurable swing produces no numbers and a reason,
+never a plausible-looking guess. Three independent checks:
+
+- a body must be found in at least half the frames
+- the model's mean confidence across the eight events must clear 0.30
+- the halves of the swing must last a plausible length of time
+
+Those thresholds are measured rather than chosen. On clips built to contain no
+swing — somebody standing at address, a swing cut off at the top, an empty frame —
+the model returned confidences of 0.02, 0.27 and 0.15. On clips containing one,
+filmed from every angle and frame rate, it returned 0.89 or better on eleven of
+twelve. The threshold sits in that gap.
+
+This matters more than it sounds. Before those checks existed, a clip of somebody
+standing still produced a tempo ratio of 0.21 and a clip cut off at the top
+produced 34.7, both confidently. A wrong number gets acted on; a missing one gets
+looked into.
+
+## Measured accuracy
+
+On held-out clips that have been through the real pose estimator, event timings
+land **within one frame 77% of the time and within two frames 92%** — two frames
+being 33 ms. Top of the backswing and mid-downswing are the sharpest at around half
+a frame of mean error; address is the weakest at about two frames, because address
+is not a shape but the moment before a shape starts changing.
+
+Across fifteen clips shaped like real footage — face on, down the line, at
+forty-five degrees, tilted phone, left handed, near, far, feet cut off, portrait
+and landscape, at 30, 60 and 120 frames a second — twelve of twelve real swings
+read and all three no-swing clips refused. Tempo came back within a few percent of
+what was generated on most, with the extremes of tempo pulled toward the middle.
+
+**All of these figures come from synthetic swings**, rendered and then put through
+the real pose estimator. Nothing here has been measured against video of an actual
+golfer, because there wasn't any. The timings should hold up; the angular
+measurements read low and would need reference data to calibrate.
+
+## How it works
+
+```
+video ─► pose estimation ─► resample to 60 Hz ─► features ─► temporal CNN ─► ordered decode ─► metrics
+        (MediaPipe, streamed)   (real timestamps)  (scale-free)  (ensemble)      (DP)
+```
+
+**Frames are streamed and discarded.** A minute of phone video is tens of gigabytes
+of pixels and a few hundred kilobytes of landmarks, so clip length is bounded by
+patience rather than memory.
+
+**Everything is resampled to a fixed rate on the real timestamp axis**, so 30, 60
+and 240 frames a second are the same swing to the model, and slow motion needs no
+special handling.
+
+**Features are scale and position invariant** — landmarks recentred on the pelvis,
+divided by a body length taken from the golfer, with camera roll removed. Nothing
+needs to know the focal length or the distance, which is why there is no
+calibration step.
+
+**The events are decoded under an ordering constraint.** A swing's eight events
+occur exactly once each in a fixed order, so the decoder finds the best sequence
+satisfying that rather than taking eight independent maxima. An impossible answer
+cannot be returned.
+
+**Several models answer together**, each shown the clip at three speeds, averaged
+in probability space.
+
+## Training
+
+The model is trained on synthetic swings: an articulated golfer whose hands travel
+a circle on an inclined swing plane, with the club extending from them, so the two
+events defined by a horizontal shaft have exact ground truth rather than a label.
+
+The important part is what it is fine-tuned on. Training on the generator's own
+landmarks and running on the pose estimator's turned out to be the largest error in
+the whole pipeline — the two disagree systematically, and no amount of noise
+modelling fixes a difference of convention. So swings are rendered to video, the
+real estimator is run over them, and *its* output is the training input, with the
+exact labels kept.
+
+```bash
+python scripts/make_detected_dataset.py --n 300      # render, detect, cache
+python scripts/train_ensemble.py --members 5         # fine-tune an ensemble
+python scripts/evaluate_clips.py                     # score it on the test corpus
+```
 
 ## Layout
 
-```
-swingml/
-  swingml/
-    events.py      the eight events; an out-of-order sequence cannot be constructed
-    quantity.py    provenance carried by the number itself
-    skeleton.py    landmark topology, handedness
-    features.py    resampling, normalisation, the feature matrix
-    analysis.py    video in, swing out
-    session.py     spread across a session
-    video/         iPhone-aware reading: rotation, real timestamps, variable rate
-    pose/          the estimator seam, and a MediaPipe implementation behind it
-    model/         the network, the ordered decoder, batching, evaluation
-    metrics/       tempo, rotation, movement, kinematic sequence
-  synth/           the generator: rig, swing, camera, dataset, renderer
-  tests/
-  scripts/
-```
+| Path | What |
+|---|---|
+| `swingml/analysis.py` | The pipeline: pose in, swing out |
+| `swingml/features.py` | Scale-free features, and the channel layout augmentation needs |
+| `swingml/metrics/` | Tempo, rotation, stability, kinematic sequence |
+| `swingml/model/` | The network, ordered decoding, augmentation, ensembling |
+| `swingml/web/` | The local application |
+| `swingml/cli.py` | `swingml ui`, `analyse`, `doctor` |
+| `synth/` | The articulated golfer and the renderer |
+| `scripts/` | Dataset building, training, evaluation |
 
-## Honest limitations
+## A note on provenance
 
-- **The kinematic sequence is the least reliable output.** From projected 2D
-  angles the ordering of the segment peaks is close to random when the camera is
-  down the line, because the shoulder line is then edge-on. Using the estimator's
-  3D output recovers the generated ordering about 79% of the time on synthetic
-  data. It is reported with its source attached, and should be treated as
-  indicative.
-- **Velocities cannot be reconstructed from 30 fps.** Positions resample cleanly
-  from any capture rate; velocity is a derivative and a 30 fps clip does not carry
-  the detail. Pinned by a test so it is not mistaken for invariance. Film at 60 or
-  above where it matters.
-- **The no-swing gate is uncalibrated.** A clip containing no swing still has a
-  best-scoring ordered sequence. The confidence floor that would reject it needs
-  measuring on real negatives, which has not been done, so it defaults to off
-  rather than to a guess.
-- **Accuracy figures here are on generated swings only.** The pose estimator has
-  been exercised end to end on rendered video, which validates the wiring, not
-  the accuracy. No number in this repository is a claim about real golfers until
-  it has been measured on real footage.
+Every number carries how it was obtained — measured, derived, projected, estimated
+in 3D — and anything resting on an assumption says what the assumption was. This is
+not decoration. A shoulder turn measured in the image plane and one triangulated
+from two cameras are different claims, and presenting both as a bare number invites
+the reader to trust them equally.
+
+Where a number cannot be obtained honestly it is refused with the reason. During
+development the pose estimator's own 3D output was found to have the shoulder line
+shrinking from 0.295 m to 0.048 m across a single swing — a bone changing length
+sixfold — and every angle derived from it was noise wearing a confident face. Those
+are now refused, with that measurement in the reason.
+
+## Legal note
+
+Overlaying motion metrics on swing video sits within claims asserted in Blast
+Motion's patent portfolio, including US 9,039,527. This is a university research
+prototype, which is fine. Nobody should assume it is safe to sell.
