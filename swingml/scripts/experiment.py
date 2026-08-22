@@ -65,6 +65,17 @@ class Setup:
     seed: int
     ema_decay: float
     label_smoothing: float
+    data: tuple[str, ...] = ()
+    """The archives the splits were taken over."""
+    extra_train: tuple[str, ...] = ()
+    """Archives added to training only, never to validation or test.
+
+    Recorded because it was not. Which clips a run trained on is the single most
+    important thing about it, and the only place it appeared was in whatever was
+    typed into --notes, so a checkpoint on disk could not be traced back to its
+    data at all. Two runs that differ in their corpus and agree in every recorded
+    field look, in the log, like a reproducibility problem.
+    """
     edge_padding: bool = False
     """Replicate the ends of a clip rather than padding them with zeros.
 
@@ -318,6 +329,8 @@ def main() -> None:
     setup = Setup(
         name=args.name,
         notes=args.notes,
+        data=tuple(str(path) for path in args.data),
+        extra_train=tuple(str(path) for path in args.extra_train),
         channels=args.channels,
         dilations=tuple(args.dilations),
         kernel_size=args.kernel_size,
@@ -342,6 +355,7 @@ def main() -> None:
     corpus = build_corpus(args.data)
     if args.limit_train:
         corpus = corpus.model_copy(update={"train": corpus.train[: args.limit_train]})
+        setup.notes = f"{setup.notes} [first {args.limit_train} training clips]".strip()
     extra = load_samples(args.extra_train) if args.extra_train else []
     print(
         f"{setup.name}: {corpus.describe()}"

@@ -39,6 +39,7 @@ from swingml.model.ensemble import (
     EnsembleConfig,
     SwingEventEnsemble,
 )
+from swingml.model.tcn import SwingEventNet
 from swingml.quantity import NoReading
 
 
@@ -75,7 +76,7 @@ def tempo_of(frames: np.ndarray) -> float:
 
 
 def predict(
-    model: torch.nn.Module | SwingEventEnsemble, clips: list[tuple[np.ndarray, np.ndarray]]
+    model: SwingEventNet | SwingEventEnsemble, clips: list[tuple[np.ndarray, np.ndarray]]
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, int]:
     """Run the model over clips, returning confidence and error, and a refusal count.
 
@@ -199,7 +200,7 @@ def main() -> None:
     clips = select_clips(args)
 
     if len(args.checkpoint) == 1:
-        model: torch.nn.Module | SwingEventEnsemble = load_model(args.checkpoint[0])
+        model: SwingEventNet | SwingEventEnsemble = load_model(args.checkpoint[0])
         print(f"calibrating {args.checkpoint[0]}")
     else:
         model = SwingEventEnsemble.load(

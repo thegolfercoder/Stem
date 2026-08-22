@@ -29,7 +29,13 @@ jobs:
           ruff check .
           ruff format --check .
       - name: types
-        run: mypy -p swingml -p synth
+        # The scripts are checked too. They are where the training runs, the
+        # calibration and the dataset builds live, and a fault in one of those
+        # costs however long the run took to discover - which is the argument for
+        # checking them, not against.
+        run: |
+          mypy -p swingml -p synth
+          mypy scripts
       - name: tests
         # The browser and parity tests skip themselves when the built page and
         # the exported weights are absent, which they are in a fresh checkout -

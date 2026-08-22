@@ -36,7 +36,7 @@ import torch
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict
 
-from swingml.events import NUM_EVENTS, SwingEvent
+from swingml.events import NUM_EVENTS, EventSequence, SwingEvent
 from swingml.features import CANONICAL_RATE_HZ
 from swingml.model.decode import decode_events
 from swingml.model.ensemble import SwingEventEnsemble
@@ -165,6 +165,22 @@ def tempo_of(frames: NDArray[np.int64] | Sequence[int]) -> float:
     return float(int(frames[top]) - int(frames[address])) / float(max(downswing, 1))
 
 
+def tempo_of_positions(positions: NDArray[np.float64] | Sequence[float]) -> float:
+    """The same ratio from sub-frame positions, which is what the interface shows.
+
+    Worth having separately because the two can disagree, and for a while the
+    benchmark measured one while the application reported the other. A downswing
+    is about fifteen frames at the canonical rate, so a third of a frame either
+    side of the top is two percent of the tempo - the same size as the differences
+    whole experiments have turned on.
+    """
+    address = int(SwingEvent.ADDRESS)
+    top = int(SwingEvent.TOP)
+    impact = int(SwingEvent.IMPACT)
+    downswing = float(positions[impact]) - float(positions[top])
+    return (float(positions[top]) - float(positions[address])) / max(downswing, 1e-6)
+
+
 class Score(BaseModel):
     """What one model did on one set of clips."""
 
@@ -178,6 +194,15 @@ class Score(BaseModel):
     median_error: tuple[float, ...]
     tempo_median_relative_error: float
     tempo_p80_relative_error: float
+    tempo_subframe_median_relative_error: float = float("nan")
+    tempo_subframe_p80_relative_error: float = float("nan")
+    """Tempo from the decoder's sub-frame refinement rather than whole frames.
+
+    The number the interface leads with is computed this way, so this is the one
+    that describes what a person sees. It defaults to not-a-number because the
+    results logged before it existed do not have it, and a zero there would read
+    as a perfect score.
+    """
 
     @property
     def headline(self) -> float:
@@ -193,6 +218,11 @@ class Score(BaseModel):
             f"{self.n_clips} clips{refused}:  {parts}   "
             f"tempo med {100 * self.tempo_median_relative_error:4.1f}% "
             f"p80 {100 * self.tempo_p80_relative_error:4.1f}%"
+            + (
+                ""
+                if np.isnan(self.tempo_subframe_median_relative_error)
+                else f"   sub-frame med {100 * self.tempo_subframe_median_relative_error:4.1f}%"
+            )
         )
 
     def report(self) -> str:
@@ -208,11 +238,11 @@ class Score(BaseModel):
         return "\n".join(lines)
 
 
-def predict_frames(
+def predict_events(
     model: torch.nn.Module | SwingEventEnsemble, samples: Iterable[Sample]
-) -> list[NDArray[np.int64] | None]:
-    """Decoded event frames for each clip, or None where the model refused."""
-    out: list[NDArray[np.int64] | None] = []
+) -> list[EventSequence | None]:
+    """The decoder's full answer for each clip, or None where the model refused."""
+    out: list[EventSequence | None] = []
     if isinstance(model, torch.nn.Module):
         model.eval()
     with torch.no_grad():
@@ -222,16 +252,35 @@ def predict_frames(
             else:
                 logits = model(torch.from_numpy(sample.features).unsqueeze(0))[0].numpy()
             decoded = decode_events(logits)
-            out.append(None if isinstance(decoded, NoReading) else np.asarray(decoded.frames))
+            out.append(None if isinstance(decoded, NoReading) else decoded)
     return out
 
 
-def score(predicted: Sequence[NDArray[np.int64] | None], samples: Sequence[Sample]) -> Score:
+def predict_frames(
+    model: torch.nn.Module | SwingEventEnsemble, samples: Iterable[Sample]
+) -> list[NDArray[np.int64] | None]:
+    """Decoded event frames for each clip, or None where the model refused."""
+    return [
+        None if decoded is None else np.asarray(decoded.frames)
+        for decoded in predict_events(model, samples)
+    ]
+
+
+def subframe_positions(decoded: EventSequence) -> NDArray[np.float64]:
+    return np.array([decoded.position_of(event) for event in SwingEvent.ordered()])
+
+
+def score(
+    predicted: Sequence[NDArray[np.int64] | None],
+    samples: Sequence[Sample],
+    positions: Sequence[NDArray[np.float64] | None] | None = None,
+) -> Score:
     """Turn predictions into the numbers experiments are compared on."""
     errors: list[NDArray[np.int64]] = []
     tempo_errors: list[float] = []
+    subframe_errors: list[float] = []
     refused = 0
-    for prediction, sample in zip(predicted, samples, strict=True):
+    for index, (prediction, sample) in enumerate(zip(predicted, samples, strict=True)):
         if prediction is None:
             refused += 1
             continue
@@ -239,6 +288,11 @@ def score(predicted: Sequence[NDArray[np.int64] | None], samples: Sequence[Sampl
         errors.append(np.abs(prediction - truth))
         true_tempo = tempo_of(truth)
         tempo_errors.append(abs(tempo_of(prediction) - true_tempo) / max(true_tempo, 1e-9))
+        refined = None if positions is None else positions[index]
+        if refined is not None:
+            subframe_errors.append(
+                abs(tempo_of_positions(refined) - true_tempo) / max(true_tempo, 1e-9)
+            )
 
     if not errors:
         zeros = tuple(0.0 for _ in range(NUM_EVENTS))
@@ -266,11 +320,22 @@ def score(predicted: Sequence[NDArray[np.int64] | None], samples: Sequence[Sampl
         median_error=tuple(float(v) for v in np.median(stacked, axis=0)),
         tempo_median_relative_error=float(np.median(tempo)),
         tempo_p80_relative_error=float(np.percentile(tempo, 80)),
+        tempo_subframe_median_relative_error=(
+            float(np.median(subframe_errors)) if subframe_errors else float("nan")
+        ),
+        tempo_subframe_p80_relative_error=(
+            float(np.percentile(subframe_errors, 80)) if subframe_errors else float("nan")
+        ),
     )
 
 
 def evaluate(model: torch.nn.Module | SwingEventEnsemble, samples: Sequence[Sample]) -> Score:
-    return score(predict_frames(model, samples), samples)
+    decoded = predict_events(model, samples)
+    return score(
+        [None if d is None else np.asarray(d.frames) for d in decoded],
+        samples,
+        [None if d is None else subframe_positions(d) for d in decoded],
+    )
 
 
 def slice_report(model: torch.nn.Module | SwingEventEnsemble, samples: Sequence[Sample]) -> str:
