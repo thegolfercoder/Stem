@@ -21,6 +21,26 @@ const POSE_MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmar
 const el = (id) => document.getElementById(id);
 const state = { net: null, landmarker: null, busy: false, last: null };
 
+/* Show and hide, without caring which of the two mechanisms the markup used.
+ *
+ * This page had both: a `.hidden` class that sets display:none, and the `hidden`
+ * attribute that browsers honour natively. The JavaScript set the attribute and
+ * two of the panels carried the class, so removing the attribute changed nothing
+ * and they stayed invisible. Those two panels were the progress bar and the error
+ * banner - which is to say, everything the page had to say about what it was
+ * doing and everything it had to say about what had gone wrong.
+ *
+ * The visible symptom was a page that did nothing at all when given a file: no
+ * progress, no result, no error, whatever actually happened underneath. Both are
+ * cleared here, so it cannot come back by editing the markup.
+ */
+function show(id, visible) {
+  const node = el(id);
+  node.hidden = !visible;
+  node.classList.toggle("hidden", !visible);
+}
+
+
 function status(text, detail) {
   el("status").textContent = text;
   el("status-detail").textContent = detail || "";
@@ -29,97 +49,324 @@ function progress(fraction) {
   el("bar").style.width = `${Math.max(0, Math.min(1, fraction)) * 100}%`;
 }
 
+/* Give up on a promise after a while, saying what it was waiting for.
+ *
+ * The page is one file and everything in it is local except the pose estimator,
+ * which is fetched from a CDN because it is thirty megabytes and cannot be
+ * inlined. That fetch is the one thing here that can be slow, blocked or simply
+ * never answered - a corporate network, an offline laptop, a firewall - and an
+ * unanswered fetch is a promise that never settles. Every await on it is bounded
+ * so that "no network" reads as "no network" rather than as a page doing nothing.
+ */
+function deadline(promise, ms, message) {
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("timed out")), ms));
+  // Both the timeout and an outright refusal get the explanation. A fetch that is
+  // blocked fails in milliseconds rather than hanging, and "Failed to fetch
+  // dynamically imported module https://cdn.jsdelivr.net/..." tells a person
+  // nothing about what to do next. The original is kept on the end for anyone
+  // who wants it.
+  return Promise.race([promise, timeout]).catch((error) => {
+    const detail = (error && error.message) || String(error);
+    throw new Error(`${message}\n\n(${detail})`);
+  });
+}
+
+const NO_ESTIMATOR =
+  "Could not load the pose estimator.\n\n" +
+  "The page itself is self-contained, but the body-tracking model is about 30 MB " +
+  "and is fetched from the internet the first time you use it, then cached by " +
+  "your browser. So this needs a working connection on the first run, and a " +
+  "network that does not block cdn.jsdelivr.net or storage.googleapis.com.";
+
 async function ready() {
   if (state.landmarker) return;
   status("Loading the pose estimator", "about 30 MB, once - your browser will cache it");
-  const vision = await import(`${MEDIAPIPE}/vision_bundle.mjs`);
-  const files = await vision.FilesetResolver.forVisionTasks(`${MEDIAPIPE}/wasm`);
-  state.landmarker = await vision.PoseLandmarker.createFromOptions(files, {
+
+  const vision = await deadline(
+    import(`${MEDIAPIPE}/vision_bundle.mjs`), 60000, NO_ESTIMATOR);
+  const files = await deadline(
+    vision.FilesetResolver.forVisionTasks(`${MEDIAPIPE}/wasm`), 120000, NO_ESTIMATOR);
+
+  // The GPU path is faster and is not everywhere: a machine without WebGL, or a
+  // browser that has switched it off, fails here rather than falling back on its
+  // own. Trying the processor afterwards costs one retry and turns a dead page
+  // into a slow one.
+  const options = {
     baseOptions: { modelAssetPath: POSE_MODEL, delegate: "GPU" },
     runningMode: "VIDEO",
     numPoses: 1,
     minPoseDetectionConfidence: 0.5,
     minPosePresenceConfidence: 0.5,
     minTrackingConfidence: 0.5,
+  };
+  try {
+    state.landmarker = await deadline(
+      vision.PoseLandmarker.createFromOptions(files, options), 180000, NO_ESTIMATOR);
+  } catch (error) {
+    if (String(error.message).startsWith("Could not load")) throw error;
+    status("Loading the pose estimator", "no graphics acceleration; using the processor");
+    state.landmarker = await deadline(
+      vision.PoseLandmarker.createFromOptions(files, {
+        ...options,
+        baseOptions: { modelAssetPath: POSE_MODEL, delegate: "CPU" },
+      }), 180000, NO_ESTIMATOR);
+  }
+}
+
+/* Waiting on a video element, with the waiting made survivable.
+ *
+ * Every one of these used to be a bare promise that resolved on an event and had
+ * no other way out. That is fine while the browser can decode what it was given
+ * and a disaster when it cannot: a clip the browser will not open fires neither
+ * "loadedmetadata" nor "error" in some builds, so the promise never settles, the
+ * catch never runs, and the page sits there looking like it is thinking. A user
+ * reported exactly that and had no way of knowing what had gone wrong, which is
+ * the worst failure this page can have - worse than a wrong answer, because a
+ * wrong answer at least tells you something.
+ *
+ * So nothing waits forever any more. Each wait has a deadline and a message that
+ * says what did not happen.
+ */
+function waitFor(target, event, { timeout, what }) {
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const finish = (fn, arg) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      target.removeEventListener(event, onEvent);
+      target.removeEventListener("error", onError);
+      fn(arg);
+    };
+    const onEvent = () => finish(resolve);
+    const onError = () => finish(reject, new Error(what));
+    const timer = setTimeout(() => finish(reject, new Error(what)), timeout);
+    target.addEventListener(event, onEvent, { once: true });
+    target.addEventListener("error", onError, { once: true });
   });
 }
 
+const UNREADABLE =
+  "Your browser could not open that video.\n\n" +
+  "iPhones record in HEVC (H.265) by default, and most browsers on Windows and " +
+  "Linux cannot decode it. Safari can, and Chrome on a Mac usually can.\n\n" +
+  "Two ways round it: set the phone to Settings \u203a Camera \u203a Formats \u203a " +
+  "Most Compatible before recording, or open this page in Safari.";
+
 /* Step the whole clip, one frame at a time, collecting landmarks and throwing the
- * pixels away. Only the frames the interface will actually show are kept. */
+ * pixels away. Only the frames the interface will actually show are kept.
+ *
+ * Two ways of stepping, because the good one is not everywhere. Chrome and Safari
+ * have requestVideoFrameCallback, which hands over each frame as it is decoded
+ * along with the exact time it belongs to - that is the one to use, because the
+ * time comes from the container rather than being assumed. Firefox does not have
+ * it at all, and there are builds where it exists and never fires. Seeking frame
+ * by frame works everywhere, so that is the fallback, and the page says which one
+ * it used rather than quietly producing worse numbers.
+ */
 async function extractPose(file, wanted) {
   const video = el("scratch-video");
-  video.src = URL.createObjectURL(file);
   video.muted = true;
-  await new Promise((resolve, reject) => {
-    video.onloadedmetadata = resolve;
-    video.onerror = () => reject(new Error(
-      "That video could not be decoded. iPhone clips are sometimes saved as HEVC, " +
-      "which not every browser can read - Safari can, and Chrome usually can. " +
-      "Recording in 'Most Compatible' rather than 'High Efficiency' avoids it."));
-  });
+  video.playsInline = true;
+  video.preload = "auto";
+  const url = URL.createObjectURL(file);
+  video.src = url;
+  video.load();
+
+  try {
+    await waitFor(video, "loadedmetadata", { timeout: 20000, what: UNREADABLE });
+  } catch (error) {
+    URL.revokeObjectURL(url);
+    throw error;
+  }
+
+  if (!video.videoWidth || !video.videoHeight) {
+    URL.revokeObjectURL(url);
+    throw new Error(UNREADABLE);
+  }
+  if (!(video.duration > 0) || !isFinite(video.duration)) {
+    URL.revokeObjectURL(url);
+    throw new Error(
+      "That file has no readable duration, so it cannot be stepped through frame " +
+      "by frame. Re-exporting it from Photos usually fixes it.");
+  }
 
   const canvas = el("scratch-canvas");
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   const context = canvas.getContext("2d", { willReadFrequently: true });
+  const collected = { xy: [], visibility: [], world: [], detected: [], times: [] };
 
-  const xy = [], visibility = [], world = [], detected = [], times = [];
-  const duration = video.duration || 0;
-  let lastMs = -1;
+  const record = (time) => {
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    let stamp = Math.round(time * 1000);
+    if (stamp <= collected.lastMs) stamp = collected.lastMs + 1;
+    collected.lastMs = stamp;
 
-  await new Promise((resolve) => {
+    let result = null;
+    try { result = state.landmarker.detectForVideo(canvas, stamp); } catch { result = null; }
+
+    const marks = result && result.landmarks && result.landmarks[0];
+    const found = Boolean(marks);
+    const previous = collected.xy.length ? collected.xy[collected.xy.length - 1] : null;
+
+    // An undetected frame keeps the last known pose at zero confidence rather
+    // than being dropped: dropping it would compress the time axis, and time is
+    // what tempo is measured from.
+    collected.xy.push(found ? marks.map((m) => [m.x, m.y])
+                            : (previous || Array.from({ length: 33 }, () => [0, 0])));
+    collected.visibility.push(found
+      ? marks.map((m) => Math.min(m.visibility ?? 1, m.presence ?? 1))
+      : new Array(33).fill(0));
+    const w = result && result.worldLandmarks && result.worldLandmarks[0];
+    collected.world.push(w ? w.map((m) => [m.x, m.y, m.z]) : new Array(33).fill([0, 0, 0]));
+    collected.detected.push(found);
+    collected.times.push(time + collected.times.length * 1e-9);
+
+    const index = collected.times.length - 1;
+    if (wanted && wanted.has(index)) {
+      const keep = document.createElement("canvas");
+      keep.width = canvas.width; keep.height = canvas.height;
+      keep.getContext("2d").drawImage(canvas, 0, 0);
+      wanted.set(index, keep);
+    }
+
+    progress(0.05 + 0.75 * Math.min(1, time / video.duration));
+    status("Finding the body in each frame", `${collected.times.length} frames`);
+  };
+  collected.lastMs = -1;
+
+  const hasFrameCallback = typeof video.requestVideoFrameCallback === "function";
+  let how = hasFrameCallback ? "played" : "stepped";
+  if (hasFrameCallback) {
+    await playThrough(video, record);
+    // It exists and produced nothing, which happens. Seeking still might work.
+    if (collected.times.length < 2) {
+      how = "stepped";
+      collected.xy.length = 0; collected.visibility.length = 0; collected.world.length = 0;
+      collected.detected.length = 0; collected.times.length = 0; collected.lastMs = -1;
+    }
+  }
+  if (how === "stepped") await seekThrough(video, record);
+
+  URL.revokeObjectURL(url);
+  if (collected.times.length < 2) {
+    throw new Error(
+      "The video opened but no frames could be read from it. That usually means the " +
+      "browser can display it but cannot decode it fast enough to step through. " +
+      "Safari handles iPhone clips best.");
+  }
+  return {
+    sequence: new PoseSequence(collected.xy, collected.visibility, collected.world,
+                               collected.detected, collected.times,
+                               video.videoWidth, video.videoHeight),
+    video,
+    how,
+  };
+}
+
+/* Play the clip and take each frame the decoder hands over.
+ *
+ * The watchdog is the point. If frames stop arriving - the decoder gives up
+ * halfway, the tab is backgrounded, the callback simply never fires - this
+ * returns with whatever it has instead of waiting for an event that is not
+ * coming. Whatever it has is either enough to analyse or few enough that the
+ * caller falls back to seeking.
+ */
+function playThrough(video, record) {
+  return new Promise((resolve) => {
+    let last = performance.now();
+    let finished = false;
+    const stop = () => { if (!finished) { finished = true; clearInterval(watchdog); resolve(); } };
+    const watchdog = setInterval(() => {
+      if (performance.now() - last > 8000) stop();
+    }, 1000);
+
+    /* Pausing inside the frame callback is the whole technique - it is what stops
+     * frames being dropped while the estimator thinks - and it rejects whichever
+     * play() is still outstanding with an AbortError. That abort is this code's
+     * own doing and means nothing has gone wrong. Treating it as a failure ends
+     * the loop after a single frame, and the clip then falls through to the slow
+     * path and comes back with different numbers, which is how it was found. */
+    const resume = () => video.play().catch((error) => {
+      if (error && error.name === "AbortError") return;
+      stop();
+    });
+
     const onFrame = (_now, meta) => {
+      if (finished) return;
       video.pause();
-      const time = meta.mediaTime;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      let stamp = Math.round(time * 1000);
-      if (stamp <= lastMs) stamp = lastMs + 1;
-      lastMs = stamp;
-
-      let result = null;
-      try { result = state.landmarker.detectForVideo(canvas, stamp); } catch { result = null; }
-
-      const marks = result && result.landmarks && result.landmarks[0];
-      const found = Boolean(marks);
-      const previous = xy.length ? xy[xy.length - 1] : null;
-
-      // An undetected frame keeps the last known pose at zero confidence rather
-      // than being dropped: dropping it would compress the time axis, and time is
-      // what tempo is measured from.
-      xy.push(found ? marks.map((m) => [m.x, m.y])
-                    : (previous || Array.from({ length: 33 }, () => [0, 0])));
-      visibility.push(found
-        ? marks.map((m) => Math.min(m.visibility ?? 1, m.presence ?? 1))
-        : new Array(33).fill(0));
-      const w = result && result.worldLandmarks && result.worldLandmarks[0];
-      world.push(w ? w.map((m) => [m.x, m.y, m.z]) : new Array(33).fill([0, 0, 0]));
-      detected.push(found);
-      times.push(time + times.length * 1e-9);
-
-      if (wanted && wanted.has(times.length - 1)) {
-        const keep = document.createElement("canvas");
-        keep.width = canvas.width; keep.height = canvas.height;
-        keep.getContext("2d").drawImage(canvas, 0, 0);
-        wanted.set(times.length - 1, keep);
+      last = performance.now();
+      try {
+        record(meta.mediaTime);
+      } catch (error) {
+        console.error(error);
+        stop();
+        return;
       }
-
-      if (duration) progress(0.05 + 0.75 * (time / duration));
-      status("Finding the body in each frame", `${times.length} frames`);
-
-      if (video.ended || (duration && time >= duration - 1e-3)) { resolve(); return; }
+      if (video.ended || meta.mediaTime >= video.duration - 1e-3) { stop(); return; }
       video.requestVideoFrameCallback(onFrame);
-      video.play().catch(() => resolve());
+      resume();
     };
-    video.requestVideoFrameCallback(onFrame);
-    video.play().catch(() => resolve());
-    video.onended = resolve;
-  });
 
-  URL.revokeObjectURL(video.src);
-  if (!times.length) throw new Error("No frames could be read from that video.");
-  return { sequence: new PoseSequence(xy, visibility, world, detected, times,
-                                      video.videoWidth, video.videoHeight), video };
+    video.onended = stop;
+    video.onerror = stop;
+    video.requestVideoFrameCallback(onFrame);
+    resume();
+  });
+}
+
+/* Walk the clip by seeking, for browsers with no frame callback.
+ *
+ * Nothing here can ask a video element what its frame rate is, so the clip is
+ * sampled at a fixed sixty per second - fast enough not to miss a frame of
+ * anything a phone records. A thirty-frame clip is therefore visited twice per
+ * frame, and the second visit has to be thrown away rather than recorded.
+ *
+ * Thrown away by looking at the picture, because the obvious test does not work:
+ * after a seek, currentTime reads back the time that was asked for rather than
+ * the time of the frame actually being shown, so consecutive samples never look
+ * like duplicates however duplicated they are. Recording them anyway held every
+ * frame for two samples, which turned smooth motion into a staircase, put a
+ * sawtooth through every velocity the model reads, and moved the tempo it
+ * returned by a quarter. Comparing a sixteen-by-sixteen thumbnail of each frame
+ * against the last one costs nothing and settles it on what is actually on
+ * screen.
+ */
+async function seekThrough(video, record) {
+  const step = 1 / 60;
+  const limit = performance.now() + 180000;
+  const thumb = document.createElement("canvas");
+  thumb.width = 16;
+  thumb.height = 16;
+  const thumbContext = thumb.getContext("2d", { willReadFrequently: true });
+  let previous = null;
+
+  for (let t = 0; t < video.duration - 1e-3; t += step) {
+    if (performance.now() > limit) break;
+    const seeked = waitFor(video, "seeked", { timeout: 8000, what: "seek stalled" });
+    video.currentTime = Math.min(t, video.duration - 1e-3);
+    try {
+      await seeked;
+    } catch {
+      break;
+    }
+
+    thumbContext.drawImage(video, 0, 0, thumb.width, thumb.height);
+    const signature = thumbContext.getImageData(0, 0, thumb.width, thumb.height).data;
+    if (previous && sameFrame(previous, signature)) continue;
+    previous = signature.slice();
+    record(t);
+  }
+}
+
+function sameFrame(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
 }
 
 function drawPose(canvas, coordsFrame, visibilityFrame) {
@@ -149,9 +396,9 @@ function drawPose(canvas, coordsFrame, visibilityFrame) {
 async function analyse(file) {
   if (state.busy) return;
   state.busy = true;
-  el("results").hidden = true;
-  el("refusal").hidden = true;
-  el("working").hidden = false;
+  show("results", false);
+  show("refusal", false);
+  show("working", true);
   progress(0.02);
 
   try {
@@ -159,7 +406,8 @@ async function analyse(file) {
     status("Reading the clip", file.name);
 
     const wanted = new Map();
-    const { sequence } = await extractPose(file, wanted);
+    const { sequence, how } = await extractPose(file, wanted);
+    state.how = how;
 
     progress(0.84);
     status("Finding the swing", "");
@@ -214,36 +462,86 @@ async function analyse(file) {
     await renderFrames(file, sourceFrames, sequence, decoded, metrics, detectionRate);
     progress(1);
   } catch (error) {
-    refuse(error.message || String(error), "");
+    console.error(error);
+    failed(error);
   } finally {
     state.busy = false;
-    el("working").hidden = true;
+    show("working", false);
   }
 }
 
-function refuse(reason, advice) {
-  el("results").hidden = true;
-  el("refusal").hidden = false;
+/* Say what happened, under a heading that matches what happened.
+ *
+ * The banner used to be headed "No swing was found in this clip" whatever it was
+ * reporting, which is right for a clip the model declined and wrong - actively
+ * misleading - for a video the browser could not open or an estimator that never
+ * downloaded. Those are not the user's swing being rejected, they are the tool
+ * failing, and telling someone their swing was not found when the real problem is
+ * a codec sends them off to re-record for nothing.
+ */
+function refuse(reason, advice, title) {
+  show("results", false);
+  show("refusal", true);
+  el("refusal-title").textContent = title || "No swing was found in this clip";
   el("refusal-reason").textContent = reason;
+  show("refusal-advice-line", Boolean(advice));
   el("refusal-advice").textContent = advice || "";
+  // The note about a refusal being better than a wrong number is true of a clip
+  // the model declined and false of the tool falling over, so it goes away for
+  // the second kind.
+  show("refusal-footnote", !title);
+  show("refusal-diagnostics", Boolean(title));
+  el("refusal-diagnostics").textContent = title ? diagnostics() : "";
+  el("refusal").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+/* A failure of the tool rather than a judgement about the swing. */
+function failed(error) {
+  const message = (error && error.message) || String(error);
+  refuse(message, "", "This could not be analysed");
+}
+
+/* One line describing this browser, shown whenever the tool itself fails.
+ *
+ * Because the last time this page failed, the whole report anybody could give was
+ * "nothing happened" - which was accurate and left nothing to work with. What
+ * decides most of these failures is which codecs the browser has and whether it
+ * can step video frame by frame, and neither is something a person can be
+ * expected to know. So the page says.
+ */
+function diagnostics() {
+  const probe = document.createElement("video");
+  const can = (type) => probe.canPlayType(type) || "no";
+  const parts = [
+    `frame callback: ${typeof probe.requestVideoFrameCallback === "function" ? "yes" : "no"}`,
+    `h264: ${can('video/mp4; codecs="avc1.42E01E"')}`,
+    `hevc: ${can('video/mp4; codecs="hvc1"')}`,
+    `quicktime: ${can("video/quicktime")}`,
+    navigator.userAgent,
+  ];
+  return parts.join(" \u00b7 ");
 }
 
 /* Fetch back only the frames worth looking at. The clip was streamed and thrown
  * away, which is what lets it be any length; eight seeks is cheap. */
 async function renderFrames(file, sourceFrames, sequence, decoded, metrics, detectionRate) {
   const video = el("scratch-video");
-  video.src = URL.createObjectURL(file);
-  await new Promise((resolve) => { video.onloadeddata = resolve; });
+  const url = URL.createObjectURL(file);
+  video.src = url;
+  video.load();
+  await waitFor(video, "loadeddata", { timeout: 20000, what: UNREADABLE });
 
   const strip = el("strip");
   strip.innerHTML = "";
   for (let e = 0; e < 8; e++) {
     const frameIndex = sourceFrames[e];
     const time = sequence.times[Math.min(frameIndex, sequence.times.length - 1)];
-    await new Promise((resolve) => {
-      video.onseeked = resolve;
-      video.currentTime = Math.min(time, video.duration - 1e-3);
+    const seeked = waitFor(video, "seeked", {
+      timeout: 8000,
+      what: "The clip stopped responding while its key frames were being fetched.",
     });
+    video.currentTime = Math.min(time, video.duration - 1e-3);
+    await seeked;
 
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth; canvas.height = video.videoHeight;
@@ -273,7 +571,7 @@ async function renderFrames(file, sourceFrames, sequence, decoded, metrics, dete
 
   showBandNote(state.payload.calibration, decoded);
   showMetrics(metrics, decoded, detectionRate, sequence);
-  el("results").hidden = false;
+  show("results", true);
   el("results").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -294,7 +592,7 @@ function showBandNote(calibration, decoded) {
   const note = el("band-note");
   let band = null;
   for (let e = 0; e < 8 && !band; e++) band = errorBand(calibration, e, decoded.confidence[e]);
-  note.hidden = !band;
+  show("band-note", Boolean(band));
   if (!band) return;
   note.innerHTML =
     `The &plusmn; figures are measured, not assumed. This model was run over ` +
@@ -332,7 +630,10 @@ function tempoRange(calibration, tempo) {
 function showMetrics(m, decoded, detectionRate, sequence) {
   el("summary").textContent =
     `${sequence.width}×${sequence.height}, ${sequence.n} frames, ` +
-    `body found in ${Math.round(detectionRate * 100)}% of them`;
+    `body found in ${Math.round(detectionRate * 100)}% of them` +
+    (state.how === "stepped"
+      ? " \u00b7 read by seeking, because this browser has no frame callback"
+      : "");
 
   el("tempo-cards").innerHTML =
     card("Tempo ratio", m.tempoRatio.toFixed(2), "", "backswing ÷ downswing", "derived",

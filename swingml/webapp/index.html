@@ -96,6 +96,12 @@ details.tips summary{padding:13px 18px;cursor:pointer;color:var(--ink-dim);font-
 footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-faint);
   font-size:12.5px;border-top:1px solid var(--line)}
 .hidden{display:none}
+[hidden]{display:none}
+/* Messages here are written as paragraphs with blank lines between them,
+   because a codec problem needs more than one sentence to explain. */
+#refusal-reason{white-space:pre-line}
+#refusal-diagnostics{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;
+                     opacity:.75;word-break:break-word}
 </style>
 </head>
 <body>
@@ -142,11 +148,13 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
   </div>
 
   <div class="banner warn hidden" id="refusal">
-    <h2>No swing was found in this clip</h2>
+    <h2 id="refusal-title">No swing was found in this clip</h2>
     <p id="refusal-reason"></p>
-    <p class="advice"><strong>What to try:</strong> <span id="refusal-advice"></span></p>
-    <p class="footnote">Being told this is better than being handed numbers from a clip
-      that did not contain a swing. A wrong number gets acted on; a missing one gets looked into.</p>
+    <p class="advice" id="refusal-advice-line"><strong>What to try:</strong> <span id="refusal-advice"></span></p>
+    <p class="footnote" id="refusal-footnote">Being told this is better than being handed numbers
+      from a clip that did not contain a swing. A wrong number gets acted on; a missing one gets
+      looked into.</p>
+    <p class="footnote" id="refusal-diagnostics" hidden></p>
   </div>
 
   <div id="results" hidden>
