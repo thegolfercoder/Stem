@@ -19,8 +19,9 @@ Video of a swing goes in. Out comes the eight positions of the swing with a time
 for each, the tempo ratio, rotation at the top and movement against the ground -
 each carrying a measured error band and a label saying how it was arrived at.
 
-Accuracy on clips no part of training touched: **80% of events within one frame
-and 94% within two**, with tempo carrying a measured spread of **±14%**. Those
+Accuracy on a freshly generated holdout no model has trained on: **83% of events
+within one frame and 93% within two**, with tempo carrying a measured spread of
+**±12%**. Those
 figures come from rendered swings put through the real pose estimator, and
 `swingml/README.md` is explicit about that and about the one real clip in the
 repository.

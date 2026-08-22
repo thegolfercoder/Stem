@@ -70,12 +70,29 @@ looked into.
 
 ## Measured accuracy
 
-On 174 clips that no part of training touched, event timings land **within one
-frame 80% of the time and within two frames 94%** — two frames being 33 ms. Top of
-the backswing, mid-downswing and impact are the sharpest at around half a frame of
-mean error; address and the finish are the weakest at about one and a half, because
-neither is a shape the body passes through — they are the moments before one shape
-starts changing and after the last one settles.
+On a freshly generated holdout of 160 clips that no model has trained on, event
+timings land **within one frame 83% of the time and within two frames 93%** — two
+frames being 33 ms. The previous model scored 76% and 89% on the same clips.
+
+Where the error is has been measured rather than assumed. The four interior
+events — top, mid-downswing, impact, mid-follow-through — land within one frame
+94 to 98 percent of the time. Everything else is address, toe-up, mid-backswing
+and the finish, and those four fail for two different reasons that want opposite
+treatments. Address and mid-backswing score seventeen and twenty-one points
+better on training clips than held-out ones, which is a generalisation gap and
+answers to more data. The finish scores 61 percent on clips the model trained on,
+so it cannot fit it at all: hand speed decays smoothly through the labelled frame
+with no feature there, because the finish is defined by the swing's timing rather
+than by any geometry. It is intrinsically imprecise, and it is the one event
+tempo does not depend on.
+
+The corpus behind all of this is 1,610 rendered swings put through the real pose
+estimator, of which 1,262 are used for training. Adding the most recent 450 —
+which also widened the tempo range from 2.1-4.0 to 1.5-5.2, where the corpus had
+never gone although the plausibility gate accepts 1.2-6.0 — is what produced the
+improvement above. On the fresh holdout the previous model's tempo error is 10.5%
+on swings outside the range it was trained on against 7.1% inside; the current one
+is 7.9% and 6.4%.
 
 Across fifteen clips shaped like real footage — face on, down the line, at
 forty-five degrees, tilted phone, left handed, near, far, feet cut off, portrait
@@ -107,12 +124,22 @@ a frame of the ball leaving the tee, the top one frame late and the finish about
 four late. How each of those was established independently of the model is recorded
 in `real_swing_01.json` beside the clip.
 
-Worth stating plainly: the five-model ensemble, which is clearly better across 174
-held-out rendered clips, is *very slightly worse* on this one real clip than the
-single model it replaced — impact moved from exact to one frame late. Four events on
-one clip settle nothing either way, and 174 clips outweigh it, so the ensemble ships.
-But it is the kind of result that gets quietly dropped, and this is where it would
-have been.
+**And this is where the current model is weakest, which is worth stating plainly.**
+The ensemble that ships now is better than its predecessor on 160 freshly generated
+clips by seven points within one frame, with a tempo improvement significant at 95%
+in every slice. On this one real clip it is *worse*: it puts the top one frame later
+and impact one frame earlier than the model it replaced, which compresses a
+ten-frame downswing to seven and takes tempo from 2.20 to **3.08** where the clip's
+own evidence says about 2.1 to 2.4. All five members agree on impact at frame 114,
+so this is systematic rather than one member misfiring.
+
+At thirty frames a second a downswing is ten frames and one frame is ten percent,
+which is exactly the fragility the ±12% band exists to report — but 3.08 ± 12% does
+not reach 2.44, so on this clip the band does not cover the truth either. One clip
+against a hundred and sixty is not close as evidence, and the newer model ships. It
+is recorded here because it is the single clearest piece of evidence that the
+synthetic corpus is not the same thing as real footage, and because a result like
+this is the kind that quietly disappears.
 
 ### Error bands
 
@@ -132,7 +159,7 @@ frame errors do to a quantile.
 **Tempo carries a band too, and it is the one worth reading.** Tempo is a quotient
 of two durations, one of them short: at thirty frames a second a downswing is nine
 or ten frames, so an event landing one frame out moves the ratio by ten percent. The
-measured spread is **±14% at 80% coverage**, with a median error of 7%. That is not
+measured spread is **±12% at 80% coverage**, with a median error of 6%. That is not
 propagated from the event bands — the errors on the top and on impact are correlated
 and propagation would assume they are not — it is measured directly on held-out
 swings, where it comes out at 79.9% against the 80% claimed. A reader comparing two
@@ -157,6 +184,28 @@ Kept because a negative result nobody wrote down gets re-discovered at full pric
 **Refining the address frame** by walking back to where hand speed crossed a
 threshold. It made address *worse* — mean error 14.5 frames to 20.5, tempo error
 31.7% to 54.8% — because the quiet before a swing is not actually quiet. Deleted.
+
+**Cheap synthetic landmarks.** Clips can be generated straight from the swing
+model in thirteen milliseconds each, against eighteen seconds for one that is
+rendered and put through the pose estimator — so twelve thousand of them cost a
+few minutes. They are nearly useless. A model trained on 12,000 of them scores
+87.5% within one frame on clips of the same kind and **28%** on clips that went
+through MediaPipe. Mixing 6,000 of them into the 812 real-domain clips made
+things *worse* than using the 812 alone, because the cheap clips outnumber the
+real ones nine to one and the model drifts to their conventions. The generator's
+landmarks and the estimator's landmarks are near-disjoint domains.
+
+Worth knowing before someone spends a night generating more of them, and worth
+separating from a related result that points the other way: the *task* is equally
+hard in both domains. Trained and scored on the generator's own noise-free
+landmarks the model gets 78.4/93.3; on MediaPipe's, 78.1/92.2. Pose noise is not
+the bottleneck, which the README used to assume it was.
+
+**Four ways of regularising, none of which helped.** A moving average of the
+weights, dropout raised from 0.1 to 0.25, label smoothing, and a third more
+channels were each tried against an identical baseline on identical splits. All
+four landed between 82.5 and 83.3 against the baseline's 84.1. Data is the lever
+here; tuning is not.
 
 **Repairing landmark dropouts.** On the real clip MediaPipe loses the left arm for
 one to three frames around impact and puts the whole limb back where it was several
