@@ -74,8 +74,14 @@ class SwingDataset(Dataset[dict[str, torch.Tensor]]):
         events = sample.event_frames
 
         if self.augment.enabled:
-            # A fresh generator per item, seeded from the item, so that two workers
-            # loading the same index do not diverge and a run stays reproducible.
+            # A fresh generator per item, drawn from the dataset's own stream. That
+            # makes a run reproducible while the loader is single-process, which it
+            # is, and only while it is: the seed comes from how many items have been
+            # asked for rather than from which item, so several worker processes
+            # would each get their own copy of the counter and augment the same clip
+            # differently. Seeding from the index and a per-index draw count would
+            # hold under workers, and is a change that moves every result, so it
+            # waits for a moment when nothing is mid-comparison.
             features, events = augment_sample(
                 features.copy(),
                 events.copy(),
