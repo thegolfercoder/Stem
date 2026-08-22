@@ -369,6 +369,13 @@ def feature_layout() -> FeatureLayout:
 
 
 def feature_dimension() -> int:
-    """Width of the feature matrix, so the model can be built before any data exists."""
-    n = len(SWING_LANDMARK_INDICES)
-    return n * 2 + n * 2 + n + n + 2 * 5 + 2 + 2 + 1 + 1 + 1 + 1
+    """Width of the feature matrix, so the model can be built before any data exists.
+
+    Read off the layout rather than recomputed. It was the same sum written a
+    second way, and the two agreeing was luck maintained by hand: a channel added
+    to one and not the other builds a network of the wrong width, which fails at
+    the first batch, or - worse - hands augmentation a layout that no longer says
+    which channels are measured per second, which fails silently by warping the
+    wrong ones.
+    """
+    return feature_layout().total

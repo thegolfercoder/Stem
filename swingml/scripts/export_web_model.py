@@ -74,6 +74,12 @@ def main() -> None:
             "channels": int(model.channels),
             "dilations": list(model.dilations),
             "kernel_size": int(model.kernel_size),
+            # What the convolutions read beyond the ends of the clip. A property
+            # of the trained weights, not a choice the browser gets to make: a
+            # model trained against one boundary and served against the other is
+            # a different model, and the difference is largest at address and the
+            # finish, which sit closest to the ends.
+            "padding_mode": str(model.padding_mode),
             "groups": 8,
             "classes": 9,
         },

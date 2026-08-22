@@ -318,3 +318,22 @@ def test_a_calibration_measured_for_another_model_is_not_quoted(
     assert all(isinstance(b, NoReading) for b in analysis.event_uncertainty)
     assert "different weights" in analysis.event_uncertainty[0].reason
     assert analysis.tempo_uncertainty is None
+
+
+def test_a_model_still_in_training_mode_does_not_answer_at_random(
+    sequence: PoseSequence,
+) -> None:
+    """Dropout left switched on is a wrong answer that looks like a right one.
+
+    `load_model` puts a checkpoint into evaluation mode, so nothing a user runs
+    was ever affected. A model handed straight over from a training script was:
+    its dropout is still on, the analysis does not fail, it simply returns
+    something different every time it is asked. Found by a parity test that
+    disagreed with itself between two runs of the same clip.
+    """
+    untrained = SwingEventNet(feature_dimension())
+    untrained.train()
+    config = AnalysisConfig(handedness=Handedness.RIGHT)
+    first = analyse_pose_sequence(sequence, untrained, config)
+    second = analyse_pose_sequence(sequence, untrained, config)
+    assert str(first.events) == str(second.events)

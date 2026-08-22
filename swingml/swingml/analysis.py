@@ -440,6 +440,12 @@ def analyse_pose_sequence(
     if isinstance(model, SwingEventEnsemble):
         logits = model.logits(features)
     else:
+        # Asked for explicitly rather than assumed. `load_model` does it, so the
+        # shipped path was fine, but a model handed straight over from training is
+        # still in training mode and its dropout is still on - which does not fail,
+        # it just answers differently every time it is asked. That was found by a
+        # parity test disagreeing with itself between two runs.
+        model.eval()
         with torch.no_grad():
             logits = model(torch.from_numpy(features).unsqueeze(0))[0].numpy()
 

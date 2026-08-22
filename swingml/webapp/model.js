@@ -26,10 +26,17 @@ export class SwingEventNet {
   }
 
   /* Channels-first throughout, matching PyTorch, so the weight layout can be used
-   * as it comes out rather than being transposed on the way in. */
+   * as it comes out rather than being transposed on the way in.
+   *
+   * Beyond the ends of the clip the network reads either zeros or a held copy of
+   * the first and last frames, and which one is a property of the weights rather
+   * than a choice made here: a model trained against one boundary and served
+   * against the other is a different model. The exported architecture says which,
+   * and the parity harness checks this against PyTorch to five decimal places. */
   _conv1d(input, channelsIn, channelsOut, n, weight, bias, kernel, dilation) {
     const out = new Float32Array(channelsOut * n);
     const pad = (dilation * (kernel - 1)) / 2;
+    const replicate = this.arch.padding_mode === "replicate";
     for (let co = 0; co < channelsOut; co++) {
       const base = co * n;
       const b = bias[co];
@@ -43,6 +50,16 @@ export class SwingEventNet {
           const from = Math.max(0, -shift);
           const to = Math.min(n, n - shift);
           for (let t = from; t < to; t++) out[base + t] += w * input[inBase + t + shift];
+          if (!replicate) continue;
+          /* The positions the loop above skipped, reading the nearest real frame.
+           * Both bounds are clamped into the clip because a dilation of 32 over a
+           * clip of 16 frames leaves every position outside it. */
+          const head = Math.min(Math.max(from, 0), n);
+          const tail = Math.min(Math.max(to, 0), n);
+          const first = input[inBase];
+          const last = input[inBase + n - 1];
+          for (let t = 0; t < head; t++) out[base + t] += w * first;
+          for (let t = tail; t < n; t++) out[base + t] += w * last;
         }
       }
     }

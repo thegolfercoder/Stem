@@ -29,14 +29,16 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from swingml.analysis import AnalysisConfig, analyse_pose_sequence, load_model
+from swingml.analysis import AnalysisConfig, analyse_pose_sequence, load_model, save_model
 from swingml.events import NUM_EVENTS, SwingEvent
 from swingml.model.decode import decode_events
+from swingml.model.tcn import SwingEventNet
 from swingml.pose.base import PoseSequence
 from swingml.quantity import NoReading, Quantity
 from swingml.skeleton import Handedness
@@ -47,6 +49,7 @@ HARNESS = HERE / "js" / "parity.mjs"
 # Written by scripts/export_web_model.py, and the same file the built page embeds.
 PAYLOAD = HERE.parent / "out" / "web" / "model.json"
 DECODE_HARNESS = HERE / "js" / "decode_parity.mjs"
+EXPORT = HERE.parent / "scripts" / "export_web_model.py"
 
 TIGHT = 5e-5
 """Bound on any single value the two sides both compute.
@@ -94,10 +97,9 @@ def python_side(sequence: PoseSequence):  # type: ignore[no-untyped-def]
     return analyse_pose_sequence(sequence, model, AnalysisConfig(handedness=Handedness.RIGHT))
 
 
-@pytest.fixture(scope="module")
-def browser_side(sequence: PoseSequence, tmp_path_factory: pytest.TempPathFactory) -> dict:
-    """The same clip through the JavaScript, run under node."""
-    job = tmp_path_factory.mktemp("parity") / "job.json"
+def run_browser(sequence: PoseSequence, payload: Path, workdir: Path) -> dict:
+    """One clip through the JavaScript, against one exported payload."""
+    job = workdir / "job.json"
     job.write_text(
         json.dumps(
             {
@@ -113,7 +115,7 @@ def browser_side(sequence: PoseSequence, tmp_path_factory: pytest.TempPathFactor
                 "width": sequence.frame_width,
                 "height": sequence.frame_height,
                 "handedness": "right",
-                "payload": str(PAYLOAD),
+                "payload": str(payload),
             }
         ),
         encoding="utf-8",
@@ -128,6 +130,12 @@ def browser_side(sequence: PoseSequence, tmp_path_factory: pytest.TempPathFactor
     if finished.returncode != 0:
         pytest.fail(f"the browser pipeline would not run:\n{finished.stderr[-2000:]}")
     return dict(json.loads(finished.stdout))
+
+
+@pytest.fixture(scope="module")
+def browser_side(sequence: PoseSequence, tmp_path_factory: pytest.TempPathFactory) -> dict:
+    """The same clip through the JavaScript, against the payload the page carries."""
+    return run_browser(sequence, PAYLOAD, tmp_path_factory.mktemp("parity"))
 
 
 def test_both_sides_agree_that_there_is_a_swing(python_side, browser_side: dict) -> None:  # type: ignore[no-untyped-def]
@@ -378,3 +386,59 @@ def test_the_decoder_agrees_on_confidence_and_sub_frame_position(decoded_pairs) 
         assert ours.subframe is not None
         assert np.allclose(theirs["confidence"], ours.confidence, rtol=0, atol=TIGHT), index
         assert np.allclose(theirs["subframe"], ours.subframe, rtol=0, atol=TIGHT), index
+
+
+def test_the_browser_agrees_when_the_network_holds_its_edges(
+    sequence: PoseSequence, tmp_path: Path
+) -> None:
+    """The other boundary a network can be trained against, ported and checked.
+
+    A convolution at the first frame reads frames that do not exist. Zeros was the
+    original answer and holding the first and last frames is the alternative, and
+    which one a model was trained against is a property of its weights rather than
+    a preference: served against the wrong one it is a different model, and the
+    difference is largest at address and the finish, which sit closest to the ends.
+
+    So the port has to implement both, and a port of an arithmetic detail that
+    nothing exercises is a port that is wrong. The shipped weights are re-homed
+    into a replicating network - the same numbers, a different boundary - because
+    an untrained one would be refused by both sides for want of confidence and the
+    comparison would be between two refusals.
+    """
+    payload = json.loads(PAYLOAD.read_text(encoding="utf-8"))
+    source = load_model(Path(payload["source_model"]))
+    replicating = SwingEventNet(
+        source.in_features,
+        channels=source.channels,
+        dilations=source.dilations,
+        kernel_size=source.kernel_size,
+        padding_mode="replicate",
+    )
+    replicating.load_state_dict(source.state_dict())
+    replicating.eval()
+
+    checkpoint = tmp_path / "replicate.pt"
+    save_model(replicating, checkpoint)
+    exported = tmp_path / "model.json"
+    built = subprocess.run(
+        [sys.executable, str(EXPORT), "--model", str(checkpoint), "--out", str(exported)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if built.returncode != 0:
+        pytest.fail(f"the export would not run:\n{built.stderr[-2000:]}")
+    assert json.loads(exported.read_text(encoding="utf-8"))["architecture"]["padding_mode"] == (
+        "replicate"
+    ), "the browser cannot know which boundary to use unless the export says"
+
+    browser = run_browser(sequence, exported, tmp_path)
+    desktop = analyse_pose_sequence(
+        sequence, replicating, AnalysisConfig(handedness=Handedness.RIGHT)
+    )
+    assert browser["ok"] is not isinstance(desktop.events, NoReading)
+    assert not isinstance(desktop.events, NoReading)
+    assert list(browser["frames"]) == list(desktop.events.frames)
+    assert np.allclose(browser["confidence"], desktop.events.confidence, rtol=0, atol=TIGHT), (
+        f"browser {browser['confidence']}\npython {desktop.events.confidence}"
+    )
