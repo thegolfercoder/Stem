@@ -53,6 +53,33 @@ VALIDATION_FRACTION = 0.15
 
 TOLERANCES = (1, 2, 5)
 
+BENCHMARK_ARCHIVES = (
+    "down_the_line.npz",
+    "extra_a.npz",
+    "extra_dtl2.npz",
+    "train.npz",
+)
+"""The archives the splits are taken over, named rather than globbed.
+
+A glob over a directory was the original arrangement and it is a trap, because
+the directory grows. Every recorded result was measured on the validation and
+test clips that fall out of pooling exactly these four archives in exactly this
+order and permuting them with `SPLIT_SEED`; drop a fifth archive into the
+directory and the pool lengthens, the permutation lands elsewhere, and clips move
+between training and test. Nothing fails. The numbers simply stop being
+comparable with the ones above them in the log, and there is no way to notice.
+
+So the corpus is a list. New footage is added to training through
+`--extra-train`, which never touches validation or test - which also means the
+held-out sets stay the ones every earlier number was measured on, and a
+comparison across the whole history of the project stays honest.
+"""
+
+
+def benchmark_paths(root: Path = Path("out/detected")) -> list[Path]:
+    """The benchmark corpus, in the order the splits were taken in."""
+    return [root / name for name in BENCHMARK_ARCHIVES]
+
 
 class Corpus(BaseModel):
     """The detected clips, split three ways and kept that way."""

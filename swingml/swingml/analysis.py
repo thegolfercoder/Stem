@@ -44,7 +44,7 @@ from swingml.model.ensemble import (
     EnsembleConfig,
     SwingEventEnsemble,
 )
-from swingml.model.tcn import SwingEventNet
+from swingml.model.tcn import DEFAULT_DILATIONS, PaddingMode, SwingEventNet
 from swingml.pose.base import PoseEstimator, PoseSequence
 from swingml.quantity import NoReading
 from swingml.skeleton import Handedness
@@ -233,6 +233,11 @@ def save_model(model: SwingEventNet, path: Path | str) -> None:
     format by hand and one of them omitted the channel count, which produced
     checkpoints that trained perfectly and could not be loaded afterwards - a fault
     that costs however long the training run took to discover.
+
+    Every argument the constructor takes is written, including the two that were
+    missing here for the same reason as the original bug: the experiment script
+    offers a kernel size and a padding mode, and a run that changed either wrote a
+    checkpoint that quietly came back as a different network.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -242,6 +247,8 @@ def save_model(model: SwingEventNet, path: Path | str) -> None:
             "in_features": int(model.input_projection.in_channels),
             "channels": int(model.channels),
             "dilations": list(model.dilations),
+            "kernel_size": int(model.kernel_size),
+            "padding_mode": str(model.padding_mode),
         },
         str(path),
     )
@@ -260,10 +267,17 @@ def load_model(checkpoint_path: Path | str) -> SwingEventNet:
     channels = int(checkpoint.get("channels", state["input_projection.weight"].shape[0]))
     dilations = checkpoint.get("dilations")
 
-    model = (
-        SwingEventNet(in_features=in_features, channels=channels, dilations=tuple(dilations))
-        if dilations
-        else SwingEventNet(in_features=in_features, channels=channels)
+    # A checkpoint from before either field was written is a zero-padded network
+    # with a kernel of three, because that is what every script that could write
+    # one was using at the time.
+    replicated = checkpoint.get("padding_mode") == "replicate"
+    padding_mode: PaddingMode = "replicate" if replicated else "zeros"
+    model = SwingEventNet(
+        in_features=in_features,
+        channels=channels,
+        dilations=tuple(int(d) for d in dilations) if dilations else DEFAULT_DILATIONS,
+        kernel_size=int(checkpoint.get("kernel_size", 3)),
+        padding_mode=padding_mode,
     )
     model.load_state_dict(state)
     model.eval()

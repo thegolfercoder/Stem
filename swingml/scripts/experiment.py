@@ -18,6 +18,7 @@ import json
 import sys
 import time
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -29,7 +30,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from swingml.analysis import load_model, save_model
 from swingml.features import feature_dimension
 from swingml.model.augment import AugmentConfig
-from swingml.model.benchmark import Corpus, Score, build_corpus, evaluate, load_samples, record
+from swingml.model.benchmark import (
+    Corpus,
+    Score,
+    benchmark_paths,
+    build_corpus,
+    evaluate,
+    load_samples,
+    record,
+)
 from swingml.model.data import SwingDataset, collate, masked_soft_cross_entropy
 from swingml.model.tcn import SwingEventNet
 from synth.dataset import Sample
@@ -56,6 +65,14 @@ class Setup:
     seed: int
     ema_decay: float
     label_smoothing: float
+    edge_padding: bool = False
+    """Replicate the ends of a clip rather than padding them with zeros.
+
+    One flag for two halves of the same idea: the network's convolutions read
+    beyond the ends of the clip, and the batch collation decides what is beyond
+    the end of a short clip in a batch. Setting one without the other trains a
+    network against a boundary it will not meet when it runs.
+    """
     init_from: Path | None = None
     validate_every: int = 1
     extra_only: bool = False
@@ -93,7 +110,7 @@ def loaders(
             dataset,
             batch_size=setup.batch_size,
             shuffle=True,
-            collate_fn=collate,
+            collate_fn=partial(collate, edge_pad=setup.edge_padding),
             drop_last=False,
         ),
         corpus.validation,
@@ -134,7 +151,7 @@ class Averaged:
 
 def train(
     corpus: Corpus, setup: Setup, out: Path | None, extra: list[Sample] | None = None
-) -> tuple[SwingEventNet, Score, dict]:
+) -> tuple[SwingEventNet, Score, dict[str, object]]:
     torch.manual_seed(setup.seed)
     np.random.seed(setup.seed)
 
@@ -154,6 +171,7 @@ def train(
             dilations=setup.dilations,
             kernel_size=setup.kernel_size,
             dropout=setup.dropout,
+            padding_mode="replicate" if setup.edge_padding else "zeros",
         )
     loader, validation = loaders(corpus, setup, extra)
     optimiser = torch.optim.AdamW(
@@ -248,9 +266,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--name", required=True)
     parser.add_argument("--notes", default="")
-    parser.add_argument(
-        "--data", type=Path, nargs="+", default=sorted(Path("out/detected").glob("*.npz"))
-    )
+    parser.add_argument("--data", type=Path, nargs="+", default=benchmark_paths())
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument("--log", type=Path, default=Path("out/experiments/log.json"))
     parser.add_argument("--channels", type=int, default=96)
@@ -268,6 +284,14 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--ema-decay", type=float, default=0.0)
     parser.add_argument("--label-smoothing", type=float, default=0.0)
+    parser.add_argument(
+        "--edge-padding",
+        action="store_true",
+        help=(
+            "hold the first and last frames beyond the ends of the clip rather "
+            "than padding with zeros, in both the network and the batch"
+        ),
+    )
     parser.add_argument("--init-from", type=Path, default=None, help="start from these weights")
     parser.add_argument("--validate-every", type=int, default=1)
     parser.add_argument(
@@ -309,6 +333,7 @@ def main() -> None:
         seed=args.seed,
         ema_decay=args.ema_decay,
         label_smoothing=args.label_smoothing,
+        edge_padding=args.edge_padding,
         init_from=args.init_from,
         validate_every=args.validate_every,
         extra_only=args.extra_only,

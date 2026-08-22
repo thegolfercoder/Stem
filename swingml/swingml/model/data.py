@@ -111,13 +111,26 @@ class SwingDataset(Dataset[dict[str, torch.Tensor]]):
         }
 
 
-def collate(batch: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
+def collate(
+    batch: list[dict[str, torch.Tensor]], edge_pad: bool = False
+) -> dict[str, torch.Tensor]:
     """Pad to the longest sequence in the batch and mark what is padding.
 
-    Padding is zeros and is excluded from the loss by the mask. It is not edge
-    padding: repeating the final frame would put a long stretch of a held finish
-    position into every short clip, and the model would learn that stillness at
-    the end of a sequence is meaningful when it is an artefact of batching.
+    Padding is excluded from the loss by the mask either way; what it holds is
+    what the convolutions see beyond the end of a short clip, and that has to
+    match what they see beyond the end of the only clip in the batch at serving
+    time, where there is no batch padding at all and the network's own
+    `padding_mode` decides.
+
+    With zeros - the original choice - the argument against edge padding was that
+    repeating the final frame puts a long stretch of held finish into every short
+    clip, so the model learns that stillness at the end of a sequence means
+    something when it is an artefact of batching. That argument holds only while
+    the network zero-pads too. Set against a network that replicates, the
+    reasoning inverts: the held finish is exactly what it will see when it runs
+    for real, and zeros here are the artefact. So `edge_pad` is not an independent
+    knob - it travels with the network's padding mode, and the experiment script
+    sets both from one flag.
     """
     lengths = torch.stack([item["length"] for item in batch])
     longest = int(lengths.max())
@@ -136,6 +149,11 @@ def collate(batch: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
         target[i, :n] = item["target"]
         weight[i, :n] = item["weight"]
         mask[i, :n] = True
+        if edge_pad and n < longest:
+            # The target and the weight stay as they are: the padding is still
+            # background and still carries no loss. Only what the convolutions
+            # read is changed.
+            features[i, n:] = item["features"][-1]
 
     return {
         "features": features,

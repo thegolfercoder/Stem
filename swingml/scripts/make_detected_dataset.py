@@ -32,118 +32,47 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from swingml.features import FeatureConfig, extract_features, resample_pose
 from swingml.pose.mediapipe_pose import MediaPipePoseEstimator
-from swingml.skeleton import Handedness
-from synth.camera import CameraConfig
-from synth.dataset import SampleConfig, _uniform
+from synth.dataset import SampleConfig, SwingDraw, draw_swing, label_frames
 from synth.render import RenderConfig, render_swing_video
-from synth.rig import BodyProportions, SwingGeometry
-from synth.swing import SwingTiming, generate_swing
+
+MIN_DETECTION_RATE = 0.6
+"""Below this the estimator lost the golfer often enough that the clip is not
+evidence about a swing. Rejecting is cheap here and the alternative is training
+on interpolation."""
 
 
 def build_one(
-    seed: int,
-    estimator: MediaPipePoseEstimator,
-    config: SampleConfig,
-    height: int,
-    azimuth_range: tuple[float, float] | None = None,
+    draw: SwingDraw, estimator: MediaPipePoseEstimator, long_edge: int
 ) -> tuple[np.ndarray, np.ndarray, dict[str, float]] | None:
-    """Render one randomised swing, detect it, return features and true event frames."""
-    rng = np.random.default_rng(seed)
+    """Render one drawn swing, detect it, return features and true event frames.
+
+    The expensive half. Everything random about the clip was decided by
+    `draw_swing`; what happens here is the part that costs seconds - drawing the
+    frames and running a real pose estimator over them - and the part that can
+    fail, because a rendered figure can go off the edge of the frame or come out
+    too small for the estimator to find.
+    """
     features_config = FeatureConfig()
-
-    backswing = _uniform(rng, config.backswing_s)
-    timing = SwingTiming(
-        address_hold_s=_uniform(rng, (0.2, 1.4)),
-        waggle_count=int(rng.integers(config.waggle_count[0], config.waggle_count[1] + 1)),
-        waggle_amplitude_deg=_uniform(rng, (3.0, 11.0)),
-        waggle_period_s=_uniform(rng, (0.35, 0.8)),
-        backswing_s=backswing,
-        downswing_s=backswing / _uniform(rng, config.tempo_ratio),
-        follow_through_s=_uniform(rng, config.follow_through_s),
-        finish_hold_s=_uniform(rng, (0.25, 0.7)),
-    )
-    geometry = SwingGeometry(
-        plane_inclination_deg=_uniform(rng, config.plane_inclination_deg),
-        spine_tilt_deg=_uniform(rng, config.spine_tilt_deg),
-        top_phase_deg=_uniform(rng, config.top_phase_deg),
-        finish_phase_deg=_uniform(rng, config.finish_phase_deg),
-        max_wrist_hinge_deg=_uniform(rng, config.wrist_hinge_deg),
-        lag_retention=_uniform(rng, config.lag_retention),
-        hand_radius_m=_uniform(rng, config.hand_radius_m),
-        sway_amplitude_m=_uniform(rng, (0.01, 0.08)),
-        lift_amplitude_m=_uniform(rng, (0.0, 0.06)),
-        head_drift_m=_uniform(rng, (0.0, 0.09)),
-    )
-    scale = _uniform(rng, config.body_scale)
-    body = BodyProportions(
-        **{
-            field: getattr(BodyProportions(), field) * scale
-            for field in BodyProportions.model_fields
-        }
-    )
-
-    left_handed = bool(rng.random() < config.left_handed_probability)
-    capture_rate = float(rng.choice((30.0, 60.0, 120.0)))
-    swing = generate_swing(
-        timing=timing,
-        geometry=geometry,
-        body=body,
-        frame_rate_hz=capture_rate,
-        left_handed=left_handed,
-    )
-
-    if azimuth_range is not None:
-        azimuth = _uniform(rng, azimuth_range)
-    else:
-        azimuth = (
-            _uniform(rng, (-20.0, 115.0))
-            if rng.random() < config.azimuth_uniform_probability
-            else float(rng.choice((0.0, 90.0))) + float(rng.normal(0.0, config.azimuth_spread_deg))
-        )
-    if left_handed:
-        azimuth = -azimuth
-
-    width = round(height * 9 / 16)
-    camera = CameraConfig(
-        azimuth_deg=azimuth,
-        elevation_deg=_uniform(rng, config.elevation_deg),
-        distance_m=_uniform(rng, config.distance_m),
-        roll_deg=_uniform(rng, config.roll_deg),
-        frame_width=width,
-        frame_height=height,
-        vertical_fov_deg=_uniform(rng, config.vertical_fov_deg),
-        look_at_height_m=_uniform(rng, (0.9, 1.5)),
-    )
-
-    frames = render_swing_video(swing, camera, RenderConfig(), seed=seed)
+    swing = draw.swing()
+    frames = render_swing_video(swing, draw.camera(long_edge), RenderConfig(), seed=draw.seed)
     sequence = estimator.estimate(frames, swing.times_s)
-    if sequence.detected is None or float(np.mean(sequence.detected)) < 0.6:
+    if sequence.detected is None or float(np.mean(sequence.detected)) < MIN_DETECTION_RATE:
         return None
 
     resampled, grid = resample_pose(sequence, features_config.canonical_rate_hz)
     if resampled.n_frames < 32:
         return None
 
-    handedness = Handedness.LEFT if left_handed else Handedness.RIGHT
-    features = extract_features(resampled, handedness, features_config)
-
-    event_frames = np.rint(
-        (np.asarray(swing.truth.event_times_s) - grid[0]) * features_config.canonical_rate_hz
-    ).astype(np.int64)
-    event_frames = np.clip(event_frames, 0, resampled.n_frames - 1)
-    if np.any(np.diff(event_frames) <= 0) or event_frames[-1] >= resampled.n_frames - 1:
+    event_frames = label_frames(swing, grid, features_config.canonical_rate_hz, resampled.n_frames)
+    if event_frames is None:
         return None
 
+    meta = draw.metadata()
+    meta["detection_rate"] = float(np.mean(sequence.detected))
     return (
-        features,
+        extract_features(resampled, draw.handedness, features_config),
         event_frames,
-        {
-            "tempo_ratio": timing.tempo_ratio,
-            "azimuth_deg": azimuth,
-            "capture_rate_hz": capture_rate,
-            "left_handed": float(left_handed),
-            "detection_rate": float(np.mean(sequence.detected)),
-        },
+        meta,
     )
 
 
@@ -152,10 +81,15 @@ def main() -> None:
     parser.add_argument("--n", type=int, default=300)
     parser.add_argument("--seed-offset", type=int, default=500_000)
     parser.add_argument(
-        "--height",
+        "--long-edge",
         type=int,
         default=854,
-        help="render height; the estimator's cost scales with pixel count",
+        help=(
+            "the long side of the rendered frame; the short side is 9/16 of it. "
+            "The estimator's cost scales with pixel count, and sizing by the long "
+            "edge rather than the height keeps a landscape clip as cheap as a "
+            "portrait one instead of three times the price"
+        ),
     )
     parser.add_argument("--out", type=Path, default=Path("out/detected/train.npz"))
     parser.add_argument(
@@ -182,11 +116,16 @@ def main() -> None:
     args = parser.parse_args()
 
     estimator = MediaPipePoseEstimator()
+    # 240 Hz is left out deliberately. It is eight times the frames to render and
+    # to detect as 30 Hz and it is the easy case - the measured accuracy at 120 is
+    # already the best of the three rates in the corpus.
+    rates = (30.0, 60.0, 120.0)
     config = (
-        SampleConfig(tempo_ratio=(1.5, 5.2), backswing_s=(0.45, 1.35))
+        SampleConfig(capture_rates_hz=rates, tempo_ratio=(1.5, 5.2), backswing_s=(0.45, 1.35))
         if args.wide_tempo
-        else SampleConfig()
+        else SampleConfig(capture_rates_hz=rates)
     )
+    azimuth = tuple(args.azimuth) if args.azimuth else None
 
     all_features: list[np.ndarray] = []
     all_events: list[np.ndarray] = []
@@ -197,13 +136,7 @@ def main() -> None:
     attempts = 0
     while len(all_features) < args.n and attempts < args.n * 3:
         attempts += 1
-        result = build_one(
-            seed,
-            estimator,
-            config,
-            args.height,
-            tuple(args.azimuth) if args.azimuth else None,
-        )
+        result = build_one(draw_swing(seed, config, azimuth), estimator, args.long_edge)
         seed += 1
         if result is None:
             continue
@@ -222,15 +155,26 @@ def main() -> None:
             )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
+
+    def column(key: str) -> np.ndarray:
+        return np.array([m[key] for m in all_meta])
+
     np.savez_compressed(
         args.out,
         lengths=np.array([f.shape[0] for f in all_features]),
         features=np.concatenate(all_features, axis=0),
         events=np.stack(all_events),
-        tempo_ratio=np.array([m["tempo_ratio"] for m in all_meta]),
-        azimuth_deg=np.array([m["azimuth_deg"] for m in all_meta]),
-        capture_rate_hz=np.array([m["capture_rate_hz"] for m in all_meta]),
-        left_handed=np.array([m["left_handed"] for m in all_meta]),
+        # The seed is what makes a cached clip identifiable after the fact. Without
+        # it there is no way to tell whether two batches overlap, and an overlap
+        # between a training batch and a held-out one is the one mistake that makes
+        # every number downstream of it a lie.
+        seeds=column("seed").astype(np.int64),
+        tempo_ratio=column("tempo_ratio"),
+        azimuth_deg=column("azimuth_deg"),
+        capture_rate_hz=column("capture_rate_hz"),
+        left_handed=column("left_handed"),
+        landscape=column("landscape"),
+        detection_rate=column("detection_rate"),
     )
     print(
         f"wrote {args.out}: {len(all_features)} clips from {attempts} attempts "
