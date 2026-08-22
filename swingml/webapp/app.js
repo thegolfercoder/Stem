@@ -41,6 +41,21 @@ function show(id, visible) {
 }
 
 
+/* Which of the four named stages is running, so the wait has a shape.
+ *
+ * The bar alone could not distinguish "downloading thirty megabytes" from
+ * "halfway through a long clip" from "wedged", and those want very different
+ * reactions from whoever is watching.
+ */
+function stage(index) {
+  const steps = document.querySelectorAll("#steps .step");
+  steps.forEach((node, i) => {
+    node.dataset.state = i < index ? "done" : i === index ? "active" : "";
+    node.querySelector(".dot").textContent = i < index ? "\u2713" : String(i + 1);
+  });
+}
+
+
 function status(text, detail) {
   el("status").textContent = text;
   el("status-detail").textContent = detail || "";
@@ -81,6 +96,7 @@ const NO_ESTIMATOR =
 
 async function ready() {
   if (state.landmarker) return;
+  stage(0);
   status("Loading the pose estimator", "about 30 MB, once - your browser will cache it");
 
   const vision = await deadline(
@@ -399,10 +415,18 @@ async function analyse(file) {
   show("results", false);
   show("refusal", false);
   show("working", true);
+  stage(0);
+  // Confirm what was picked. Without it the panel looks identical whether the
+  // file was taken or silently ignored, which is exactly the ambiguity that made
+  // the last failure so hard to describe.
+  el("drop-main").textContent = file.name;
+  el("drop-sub").textContent =
+    `${(file.size / 1e6).toFixed(1)} MB \u00b7 choose another to start again`;
   progress(0.02);
 
   try {
     await ready();
+    stage(1);
     status("Reading the clip", file.name);
 
     const wanted = new Map();
@@ -410,6 +434,7 @@ async function analyse(file) {
     state.how = how;
 
     progress(0.84);
+    stage(2);
     status("Finding the swing", "");
     await new Promise((r) => setTimeout(r, 30));
 
@@ -426,7 +451,7 @@ async function analyse(file) {
         "Standing further back so the whole body fits beats filling the frame and losing the feet.");
     }
 
-    const handedness = el("handedness").value;
+    const handedness = state.handedness;
     const { features, n, width } = extractFeatures(resampled, handedness, config);
     const logits = state.net.forward(features, n, width);
     const decoded = decodeEvents(logits, n, state.payload.architecture.classes,
@@ -457,10 +482,12 @@ async function analyse(file) {
     });
 
     progress(0.92);
+    stage(3);
     status("Drawing the key frames", "");
     const coords = normalisePose(resampled, config);
     await renderFrames(file, sourceFrames, sequence, decoded, metrics, detectionRate);
     progress(1);
+    stage(4);
   } catch (error) {
     console.error(error);
     failed(error);
@@ -533,6 +560,7 @@ async function renderFrames(file, sourceFrames, sequence, decoded, metrics, dete
 
   const strip = el("strip");
   strip.innerHTML = "";
+  const frames = [];
   for (let e = 0; e < 8; e++) {
     const frameIndex = sourceFrames[e];
     const time = sequence.times[Math.min(frameIndex, sequence.times.length - 1)];
@@ -550,6 +578,18 @@ async function renderFrames(file, sourceFrames, sequence, decoded, metrics, dete
 
     const figure = document.createElement("figure");
     figure.className = "frame";
+    figure.tabIndex = 0;
+    figure.setAttribute("role", "button");
+    figure.setAttribute("aria-label", `${EVENT_NAMES[e]}, see full size`);
+    // The full-resolution canvas never goes into the strip - only a thumbnail
+    // drawn from it does - so it is free to be handed to the lightbox and
+    // costs nothing to keep.
+    frames.push({ canvas, label: EVENT_NAMES[e], time: metrics.eventTimes[e] });
+    const open = () => openFrame(e);
+    figure.addEventListener("click", open);
+    figure.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); }
+    });
     const shrunk = document.createElement("canvas");
     const scale = Math.min(1, 420 / canvas.height);
     shrunk.width = Math.round(canvas.width * scale);
@@ -568,6 +608,7 @@ async function renderFrames(file, sourceFrames, sequence, decoded, metrics, dete
     progress(0.92 + 0.08 * ((e + 1) / 8));
   }
   URL.revokeObjectURL(video.src);
+  state.frames = frames;
 
   showBandNote(state.payload.calibration, decoded);
   showMetrics(metrics, decoded, detectionRate, sequence);
@@ -670,15 +711,75 @@ function showMetrics(m, decoded, detectionRate, sequence) {
   };
 }
 
+/* One position, full size, with the arrow keys to walk the swing.
+ *
+ * Eight frames across a laptop makes each about the size of a stamp - enough to
+ * check the model picked the right instant, not enough to look at a swing. The
+ * canvases are already drawn at the video's own resolution, so this only has to
+ * put one on screen.
+ */
+function openFrame(index) {
+  const frames = state.frames || [];
+  if (!frames.length) return;
+  state.frameIndex = ((index % frames.length) + frames.length) % frames.length;
+  const item = frames[state.frameIndex];
+
+  const holder = el("lb-canvas");
+  holder.innerHTML = "";
+  holder.appendChild(item.canvas);
+  el("lb-label").textContent = item.label;
+  el("lb-time").textContent = `${item.time.toFixed(3)} s`;
+  show("lightbox", true);
+  el("lb-close").focus();
+}
+
+function closeFrame() {
+  show("lightbox", false);
+  el("lb-canvas").innerHTML = "";
+}
+
+function wireLightbox() {
+  el("lb-close").onclick = closeFrame;
+  el("lb-prev").onclick = () => openFrame(state.frameIndex - 1);
+  el("lb-next").onclick = () => openFrame(state.frameIndex + 1);
+  el("lightbox").addEventListener("click", (event) => {
+    if (event.target === el("lightbox")) closeFrame();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (el("lightbox").hidden) return;
+    if (event.key === "Escape") closeFrame();
+    if (event.key === "ArrowLeft") openFrame(state.frameIndex - 1);
+    if (event.key === "ArrowRight") openFrame(state.frameIndex + 1);
+  });
+}
+
+
 export function boot(payload) {
   state.payload = payload;
   state.net = new SwingEventNet(payload);
+  state.handedness = "right";
+  wireLightbox();
 
   const input = el("file");
-  el("browse").onclick = () => input.click();
+  const pick = () => input.click();
+  el("browse").onclick = (e) => { e.stopPropagation(); pick(); };
   input.onchange = () => { if (input.files[0]) analyse(input.files[0]); input.value = ""; };
 
+  // Two choices, so two buttons rather than a dropdown: the state is visible
+  // without opening anything, and it is one click instead of three.
+  const group = el("handedness");
+  group.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-value]");
+    if (!button) return;
+    state.handedness = button.dataset.value;
+    group.querySelectorAll("button").forEach((b) =>
+      b.setAttribute("aria-pressed", String(b === button)));
+  });
+
   const zone = el("drop");
+  // The whole panel is the target, not just the button in it. Somebody who reads
+  // "Drop a swing here" and clicks the middle of the box has done nothing wrong.
+  zone.addEventListener("click", pick);
   ["dragenter", "dragover"].forEach((type) =>
     zone.addEventListener(type, (e) => { e.preventDefault(); zone.classList.add("over"); }));
   ["dragleave", "drop"].forEach((type) =>
@@ -686,4 +787,11 @@ export function boot(payload) {
   zone.addEventListener("drop", (e) => {
     if (e.dataTransfer.files[0]) analyse(e.dataTransfer.files[0]);
   });
+
+  for (const id of ["again", "again-bottom"]) {
+    el(id).onclick = () => {
+      el("drop").scrollIntoView({ behavior: "smooth", block: "center" });
+      pick();
+    };
+  }
 }
