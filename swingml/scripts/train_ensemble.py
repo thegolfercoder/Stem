@@ -37,6 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from swingml.analysis import load_model, save_model
 from swingml.features import feature_dimension
 from swingml.model.augment import AugmentConfig
+from swingml.model.benchmark import build_corpus
 from swingml.model.data import SwingDataset, collate, masked_soft_cross_entropy
 from swingml.model.ensemble import SERVING_TIME_WARPS, EnsembleConfig, SwingEventEnsemble
 from swingml.model.evaluate import EventAccuracy, decode_batch, evaluate_predictions
@@ -82,27 +83,21 @@ def load_detected(paths: list[Path]) -> list[Sample]:
 def split(
     samples: list[Sample], holdout: float, calibration: float, seed: int
 ) -> tuple[list[int], list[int], list[int]]:
-    """Three disjoint sets of indices: train, validate, calibrate.
+    """Kept only so old checkpoints' split files can still be read.
 
-    Two held-out sets rather than one, because they answer different questions and
-    sharing them would flatter the answer. The validation set picks each member's
-    best epoch, so by the end the members have been fitted to it - loosely, but
-    enough that the errors they make on it are smaller than the errors they will
-    make on a clip nobody has looked at. Error bands measured there would be too
-    tight, and a band that is too tight is the one failure the whole calibration
-    exists to avoid. So a third set is set aside at the start and touched by
-    nothing until the bands are measured.
-
-    The same permutation for every member, so the ensemble is judged on clips none
-    of its members has seen.
+    New runs go through `swingml.model.benchmark`, which is the single definition
+    of how this corpus is divided. Two functions splitting the same clips by their
+    own rules is how a model ends up evaluated on its own training data, and this
+    one had already drifted from the benchmark's seed and proportions.
     """
     order = [int(i) for i in np.random.default_rng(seed).permutation(len(samples))]
     n_calibration = int(len(samples) * calibration)
     n_validation = int(len(samples) * holdout)
-    calibrate = order[:n_calibration]
-    validate = order[n_calibration : n_calibration + n_validation]
-    train = order[n_calibration + n_validation :]
-    return train, validate, calibrate
+    return (
+        order[n_calibration + n_validation :],
+        order[n_calibration : n_calibration + n_validation],
+        order[:n_calibration],
+    )
 
 
 def evaluate_model(
@@ -212,11 +207,14 @@ def main() -> None:
         print("no cached clips found; build some with make_detected_dataset.py", file=sys.stderr)
         raise SystemExit(1)
 
-    train_index, validation_index, calibration_index = split(
-        samples, args.holdout, args.calibration, seed=SPLIT_SEED
-    )
-    train_samples = [samples[i] for i in train_index]
-    validation = [samples[i] for i in validation_index]
+    # One definition of how this corpus is divided, shared with every experiment
+    # and every benchmark figure. The test split is the calibration split: clips
+    # that neither gradients nor epoch selection ever touch, so the error bands
+    # measured on them describe footage the ensemble has genuinely not seen.
+    corpus = build_corpus(args.data)
+    train_samples = corpus.train
+    validation = corpus.validation
+    calibration_index = list(corpus.test_indices)
     print(
         f"{len(samples)} real-domain clips: {len(train_samples)} to train on, "
         f"{len(validation)} to choose epochs with, {len(calibration_index)} kept back "

@@ -148,10 +148,24 @@ def collate(batch: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
 
 
 def masked_soft_cross_entropy(
-    logits: torch.Tensor, target: torch.Tensor, weight: torch.Tensor, mask: torch.Tensor
+    logits: torch.Tensor,
+    target: torch.Tensor,
+    weight: torch.Tensor,
+    mask: torch.Tensor,
+    label_smoothing: float = 0.0,
 ) -> torch.Tensor:
-    """Cross-entropy against a soft target, weighted per frame, ignoring padding."""
+    """Cross-entropy against a soft target, weighted per frame, ignoring padding.
+
+    `label_smoothing` mixes a little of the uniform distribution into the target.
+    The target is already soft in time - a bump rather than a spike - so this is
+    smoothing of a different kind: it caps how confident the network is rewarded
+    for being about the *class*, which is what keeps the probabilities usable as
+    the input to a measured error band rather than saturating at one.
+    """
     log_probabilities = torch.log_softmax(logits, dim=-1)
+    if label_smoothing > 0.0:
+        classes = target.shape[-1]
+        target = target * (1.0 - label_smoothing) + label_smoothing / classes
     per_frame = -(target * log_probabilities).sum(dim=-1)
     weighted = per_frame * weight * mask
     return weighted.sum() / weight.mul(mask).sum().clamp_min(1.0)

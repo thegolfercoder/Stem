@@ -159,6 +159,16 @@ def main() -> None:
     )
     parser.add_argument("--out", type=Path, default=Path("out/detected/train.npz"))
     parser.add_argument(
+        "--wide-tempo",
+        action="store_true",
+        help=(
+            "draw tempo from 1.5 to 5.2 rather than 2.1 to 4.0. The corpus has "
+            "never held a swing outside the narrow band while the plausibility "
+            "gate accepts 1.2 to 6.0, so everything between is a hole the model "
+            "has never been shown"
+        ),
+    )
+    parser.add_argument(
         "--azimuth",
         type=float,
         nargs=2,
@@ -172,7 +182,11 @@ def main() -> None:
     args = parser.parse_args()
 
     estimator = MediaPipePoseEstimator()
-    config = SampleConfig()
+    config = (
+        SampleConfig(tempo_ratio=(1.5, 5.2), backswing_s=(0.45, 1.35))
+        if args.wide_tempo
+        else SampleConfig()
+    )
 
     all_features: list[np.ndarray] = []
     all_events: list[np.ndarray] = []
