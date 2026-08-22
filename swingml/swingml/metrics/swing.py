@@ -22,6 +22,8 @@ moment the phone moves, and it was never a body angle.
 
 from __future__ import annotations
 
+from typing import NamedTuple
+
 import numpy as np
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field
@@ -255,6 +257,293 @@ def _reading(
     )
 
 
+class _Turn(NamedTuple):
+    """Everything the three ways of measuring rotation produced.
+
+    Three, because a single uncalibrated camera supports three different claims
+    about the same movement and they are not interchangeable. The projected angle
+    is what the shoulder line appears to do on screen. The foreshortened angle is
+    how far from square to the camera the line has turned, read from how much it
+    shortens, which is the one an uncalibrated camera can genuinely support. The
+    third comes from the estimator's own depth output and exists only when that
+    output holds the body together.
+
+    `world_depth_usable` travels with them because the kinematic sequence has to
+    make the same judgement: refusing to report a turn from depth that does not
+    hold a bone at constant length, and then in the next breath ordering the
+    body's segments from that same output, would be incoherent.
+    """
+
+    projected: tuple[Reading, Reading, Reading]
+    foreshortened: tuple[Reading, Reading]
+    estimated_3d: tuple[Reading, Reading, Reading]
+    world_depth_usable: bool
+    shoulder_angle: NDArray[np.float64]
+    hip_angle: NDArray[np.float64]
+
+
+class _Stability(NamedTuple):
+    """Head movement and pelvis sway and lift, or the reason there are none."""
+
+    head: Reading
+    sway: Reading
+    lift: Reading
+
+
+class _Kinematics(NamedTuple):
+    """Which body segment peaked when, and which angles that was read from."""
+
+    order: tuple[str, ...]
+    peak_times_ms: dict[str, float]
+    source: str
+
+
+PROJECTED_NOTE = (
+    "measured in the image plane, so it is a projection of the real turn and "
+    "depends on where the camera stood",
+)
+FORESHORTENED_NOTE = (
+    "from how much the shoulder line foreshortens, so it is the angle away from "
+    "square to the camera and carries no sign - a turn towards the camera and a "
+    "turn away look identical",
+)
+ESTIMATED_3D_NOTE = (
+    "from the pose estimator's inferred depth, which is a network's opinion "
+    "about a single view rather than a triangulated measurement",
+)
+BODY_LENGTH_NOTE = (
+    "in units of the golfer's own body length, so it needs no calibration and "
+    "cannot be converted to centimetres without one",
+)
+
+
+def _event_time(events: EventSequence, times: NDArray[np.float64], event: SwingEvent) -> float:
+    """Time of an event, interpolated between frames where the decoder refined it.
+
+    At sixty frames a second half a frame is three percent of a downswing, and
+    tempo is one duration divided by another, so the fraction is worth carrying.
+    """
+    position = events.position_of(event)
+    lower = int(np.floor(position))
+    upper = min(lower + 1, len(times) - 1)
+    return float(times[lower] + (position - lower) * (times[upper] - times[lower]))
+
+
+def _turn_metrics(
+    sequence: PoseSequence,
+    config: MetricConfig,
+    coords: NDArray[np.float32],
+    square: NDArray[np.float64],
+    address: int,
+    top: int,
+    swing_window: slice,
+) -> _Turn:
+    """Rotation at the top, by each of the three routes that can support a claim."""
+    shoulder_line = coords[:, int(Landmark.LEFT_SHOULDER)] - coords[:, int(Landmark.RIGHT_SHOULDER)]
+    hip_line = coords[:, int(Landmark.LEFT_HIP)] - coords[:, int(Landmark.RIGHT_HIP)]
+    shoulder_angle = _angle_series(shoulder_line.astype(np.float64))
+    hip_angle = _angle_series(hip_line.astype(np.float64))
+
+    shoulder_turn = _line_tilt_change(shoulder_angle, address, top)
+    hip_turn = _line_tilt_change(hip_angle, address, top)
+    projected = (
+        _reading(abs(shoulder_turn), "deg", Provenance.PROJECTED, "pose", PROJECTED_NOTE),
+        _reading(abs(hip_turn), "deg", Provenance.PROJECTED, "pose", PROJECTED_NOTE),
+        _reading(
+            abs(shoulder_turn - hip_turn), "deg", Provenance.PROJECTED, "pose", PROJECTED_NOTE
+        ),
+    )
+
+    absent: Reading = NoReading(
+        reason="the pose estimator returned no three-dimensional landmarks", source="pose"
+    )
+    estimated_3d: tuple[Reading, Reading, Reading] = (absent, absent, absent)
+    world_depth_usable = False
+    if sequence.world_xyz is not None and np.any(sequence.world_xyz):
+        world = sequence.world_xyz
+        rigid, variation = world_landmarks_are_rigid(
+            world, swing_window, config.max_world_length_variation
+        )
+        if not rigid:
+            refusal = NoReading(
+                reason=(
+                    "the estimator's three-dimensional output does not hold the body "
+                    f"together - the shoulder or hip line changed length by "
+                    f"{100 * variation:.0f} percent during the swing, and a bone does "
+                    "not do that. Any angle taken from it would be describing the same "
+                    "error"
+                ),
+                source="pose",
+            )
+            estimated_3d = (refusal, refusal, refusal)
+        else:
+            world_depth_usable = True
+            shoulder_3d = _rotation_about_vertical(
+                world, Landmark.LEFT_SHOULDER, Landmark.RIGHT_SHOULDER
+            )
+            hip_3d = _rotation_about_vertical(world, Landmark.LEFT_HIP, Landmark.RIGHT_HIP)
+            shoulder_swept = shoulder_3d[top] - shoulder_3d[address]
+            hip_swept = hip_3d[top] - hip_3d[address]
+            estimated_3d = tuple(  # type: ignore[assignment]
+                _reading(abs(value), "deg", Provenance.ESTIMATED_3D, "pose", ESTIMATED_3D_NOTE)
+                for value in (shoulder_swept, hip_swept, shoulder_swept - hip_swept)
+            )
+
+    # Computed whether or not the depth output survived, because this is the one
+    # rotation an uncalibrated camera can honestly support.
+    foreshortened: list[Reading] = []
+    for left, right, part in (
+        (Landmark.LEFT_SHOULDER, Landmark.RIGHT_SHOULDER, "shoulders"),
+        (Landmark.LEFT_HIP, Landmark.RIGHT_HIP, "hips"),
+    ):
+        angle = turn_from_foreshortening(
+            square, sequence.visibility, left, right, swing_window, top, config.min_key_visibility
+        )
+        foreshortened.append(
+            NoReading(
+                reason=f"the {part} were never seen clearly enough to measure foreshortening",
+                source="pose",
+            )
+            if angle is None
+            else _reading(angle, "deg", Provenance.PROJECTED, "pose", FORESHORTENED_NOTE)
+        )
+
+    return _Turn(
+        projected=projected,
+        foreshortened=(foreshortened[0], foreshortened[1]),
+        estimated_3d=estimated_3d,
+        world_depth_usable=world_depth_usable,
+        shoulder_angle=shoulder_angle,
+        hip_angle=hip_angle,
+    )
+
+
+def _stability_metrics(
+    sequence: PoseSequence,
+    config: MetricConfig,
+    square: NDArray[np.float64],
+    scale: float,
+    roll: float,
+    window: slice,
+    address: int,
+    impact: int,
+) -> _Stability:
+    """Movement against the ground, or a refusal when there is no ground in shot.
+
+    The pelvis cannot be the reference: the normalised coordinates are centred on
+    it, so its own displacement is zero by construction. The feet are the only
+    fixed thing in a golf swing. When they are out of frame the honest answer is
+    that this cannot be measured, rather than a number relative to a moving hip.
+    """
+    ankles_seen = float(
+        np.mean(
+            sequence.visibility[window][:, [int(Landmark.LEFT_ANKLE), int(Landmark.RIGHT_ANKLE)]]
+        )
+    )
+    if ankles_seen < config.min_key_visibility:
+        no_reference = NoReading(
+            reason=(
+                "the feet are not in shot, so there is no fixed reference to measure body "
+                "movement against; the hips cannot serve as one because they move"
+            ),
+            source="pose",
+        )
+        return _Stability(no_reference, no_reference, no_reference)
+
+    ankles = 0.5 * (square[:, int(Landmark.LEFT_ANKLE)] + square[:, int(Landmark.RIGHT_ANKLE)])
+    grounded = (square - ankles[:, None, :]) / scale
+    if roll != 0.0:
+        cos, sin = np.cos(-roll), np.sin(-roll)
+        grounded = grounded @ np.array([[cos, -sin], [sin, cos]]).T
+
+    head = 0.5 * (grounded[:, int(Landmark.LEFT_EAR)] + grounded[:, int(Landmark.RIGHT_EAR)])
+    pelvis = 0.5 * (grounded[:, int(Landmark.LEFT_HIP)] + grounded[:, int(Landmark.RIGHT_HIP)])
+    unit = "body lengths"
+    return _Stability(
+        head=_reading(
+            float(np.linalg.norm(head[impact] - head[address])),
+            unit,
+            Provenance.PROJECTED,
+            "pose",
+            BODY_LENGTH_NOTE,
+        ),
+        sway=_reading(
+            float(abs(pelvis[impact, 0] - pelvis[address, 0])),
+            unit,
+            Provenance.PROJECTED,
+            "pose",
+            BODY_LENGTH_NOTE,
+        ),
+        lift=_reading(
+            float(abs(pelvis[impact, 1] - pelvis[address, 1])),
+            unit,
+            Provenance.PROJECTED,
+            "pose",
+            BODY_LENGTH_NOTE,
+        ),
+    )
+
+
+def _kinematic_sequence(
+    sequence: PoseSequence,
+    handedness: Handedness,
+    config: MetricConfig,
+    coords: NDArray[np.float32],
+    times: NDArray[np.float64],
+    turn: _Turn,
+    top: int,
+    impact: int,
+) -> _Kinematics:
+    """The order the body's segments reached peak angular speed through the downswing.
+
+    Read from the estimator's depth output where that output was usable. The
+    projected angles will not do for this: viewed down the line the shoulder line
+    is nearly edge-on, so its apparent angle is dominated by whichever way the
+    noise pushed it and the ordering of the peaks becomes close to random. Which
+    source was used is reported, because they are not equally trustworthy.
+    """
+    if turn.world_depth_usable:
+        assert sequence.world_xyz is not None  # implied by world_depth_usable
+        world = sequence.world_xyz
+        lead_arm = (
+            world[:, int(handedness.lead_wrist), :] - world[:, int(handedness.lead_shoulder), :]
+        )
+        segments = {
+            "pelvis": _rotation_about_vertical(world, Landmark.LEFT_HIP, Landmark.RIGHT_HIP),
+            "thorax": _rotation_about_vertical(
+                world, Landmark.LEFT_SHOULDER, Landmark.RIGHT_SHOULDER
+            ),
+            "lead arm": np.degrees(
+                np.unwrap(np.arctan2(lead_arm[:, 1], lead_arm[:, 0]).astype(np.float64))
+            ),
+        }
+        source = "estimated_3d"
+    else:
+        lead_arm_2d = (
+            coords[:, int(handedness.lead_wrist)] - coords[:, int(handedness.lead_shoulder)]
+        )
+        segments = {
+            "pelvis": turn.hip_angle,
+            "thorax": turn.shoulder_angle,
+            "lead arm": _angle_series(lead_arm_2d.astype(np.float64)),
+        }
+        source = "projected"
+
+    dt = np.gradient(times)
+    downswing = slice(top, impact + 1)
+    peak_times: dict[str, float] = {}
+    for name, track in segments.items():
+        speed = np.abs(_smooth(np.gradient(track) / dt, config.velocity_smoothing_frames))
+        peak_frame = top + int(np.argmax(speed[downswing]))
+        peak_times[name] = float(1000.0 * (times[peak_frame] - times[impact]))
+
+    return _Kinematics(
+        order=tuple(sorted(peak_times, key=lambda name: peak_times[name])),
+        peak_times_ms=peak_times,
+        source=source,
+    )
+
+
 def compute_metrics(
     sequence: PoseSequence,
     events: EventSequence,
@@ -314,252 +603,33 @@ def compute_metrics(
         )
 
     times = sequence.timestamps_s
-
-    def time_at(event: SwingEvent) -> float:
-        """Time of an event, interpolated between frames where the decoder refined it."""
-        position = events.position_of(event)
-        lower = int(np.floor(position))
-        upper = min(lower + 1, len(times) - 1)
-        fraction = position - lower
-        return float(times[lower] + fraction * (times[upper] - times[lower]))
-
-    backswing_s = time_at(SwingEvent.TOP) - time_at(SwingEvent.ADDRESS)
-    downswing_s = time_at(SwingEvent.IMPACT) - time_at(SwingEvent.TOP)
-    swing_s = time_at(SwingEvent.FINISH) - time_at(SwingEvent.ADDRESS)
-
+    backswing_s = _event_time(events, times, SwingEvent.TOP) - _event_time(
+        events, times, SwingEvent.ADDRESS
+    )
+    downswing_s = _event_time(events, times, SwingEvent.IMPACT) - _event_time(
+        events, times, SwingEvent.TOP
+    )
+    swing_s = _event_time(events, times, SwingEvent.FINISH) - _event_time(
+        events, times, SwingEvent.ADDRESS
+    )
     if downswing_s <= 0.0:
         return NoReading(reason="downswing has no duration", source="metrics")
 
     coords, scale, roll = normalise_pose(sequence, FeatureConfig())
-
-    # Body movement needs a reference that does not move, and the pelvis is not
-    # one - the normalised coordinates are centred on it, so its own displacement
-    # is zero by construction. The feet are the only fixed thing in a golf swing,
-    # so sway, lift and head movement are measured against the ankles. When the
-    # feet are out of shot there is no such reference, and the honest answer is
-    # that these cannot be measured rather than a number relative to a moving hip.
-    ankle_visibility = float(
-        np.mean(
-            sequence.visibility[window][:, [int(Landmark.LEFT_ANKLE), int(Landmark.RIGHT_ANKLE)]]
-        )
-    )
-    feet_in_shot = ankle_visibility >= config.min_key_visibility
-    if feet_in_shot:
-        square = sequence.square_xy().astype(np.float64)
-        ankles = 0.5 * (square[:, int(Landmark.LEFT_ANKLE)] + square[:, int(Landmark.RIGHT_ANKLE)])
-        grounded = (square - ankles[:, None, :]) / scale
-        if roll != 0.0:
-            cos, sin = np.cos(-roll), np.sin(-roll)
-            grounded = grounded @ np.array([[cos, -sin], [sin, cos]]).T
-    else:
-        grounded = None
-
-    shoulder_line = coords[:, int(Landmark.LEFT_SHOULDER)] - coords[:, int(Landmark.RIGHT_SHOULDER)]
-    hip_line = coords[:, int(Landmark.LEFT_HIP)] - coords[:, int(Landmark.RIGHT_HIP)]
-    shoulder_angle = _angle_series(shoulder_line.astype(np.float64))
-    hip_angle = _angle_series(hip_line.astype(np.float64))
-
-    shoulder_turn = _line_tilt_change(shoulder_angle, address, top)
-    hip_turn = _line_tilt_change(hip_angle, address, top)
-
-    projected_note = (
-        "measured in the image plane, so it is a projection of the real turn and "
-        "depends on where the camera stood",
-    )
-    projection_provenance = Provenance.PROJECTED
-
+    square = sequence.square_xy().astype(np.float64)
     swing_window = slice(address, min(finish + 1, sequence.n_frames))
 
-    world_depth_usable = False
-    shoulder_turn_3d: Reading = NoReading(
-        reason="the pose estimator returned no three-dimensional landmarks", source="pose"
-    )
-    hip_turn_3d: Reading = shoulder_turn_3d
-    separation_3d: Reading = shoulder_turn_3d
-    if sequence.world_xyz is not None and np.any(sequence.world_xyz):
-        world = sequence.world_xyz
-        rigid, variation = world_landmarks_are_rigid(
-            world, swing_window, config.max_world_length_variation
-        )
-        if not rigid:
-            refusal = NoReading(
-                reason=(
-                    "the estimator's three-dimensional output does not hold the body "
-                    f"together - the shoulder or hip line changed length by "
-                    f"{100 * variation:.0f} percent during the swing, and a bone does "
-                    "not do that. Any angle taken from it would be describing the same "
-                    "error"
-                ),
-                source="pose",
-            )
-            shoulder_turn_3d = hip_turn_3d = separation_3d = refusal
-        else:
-            world_depth_usable = True
-            shoulder_3d = _rotation_about_vertical(
-                world, Landmark.LEFT_SHOULDER, Landmark.RIGHT_SHOULDER
-            )
-            hip_3d = _rotation_about_vertical(world, Landmark.LEFT_HIP, Landmark.RIGHT_HIP)
-            estimate_note = (
-                "from the pose estimator's inferred depth, which is a network's opinion "
-                "about a single view rather than a triangulated measurement",
-            )
-            shoulder_turn_3d = _reading(
-                abs(shoulder_3d[top] - shoulder_3d[address]),
-                "deg",
-                Provenance.ESTIMATED_3D,
-                "pose",
-                estimate_note,
-            )
-            hip_turn_3d = _reading(
-                abs(hip_3d[top] - hip_3d[address]),
-                "deg",
-                Provenance.ESTIMATED_3D,
-                "pose",
-                estimate_note,
-            )
-            separation_3d = _reading(
-                abs((shoulder_3d[top] - shoulder_3d[address]) - (hip_3d[top] - hip_3d[address])),
-                "deg",
-                Provenance.ESTIMATED_3D,
-                "pose",
-                estimate_note,
-            )
-
-    # Turn measured from foreshortening. This is the one rotation measure that a
-    # single uncalibrated camera can genuinely support, so it is computed whether
-    # or not the estimator's depth output survived the check above.
-    square = sequence.square_xy().astype(np.float64)
-    fore_note = (
-        "from how much the shoulder line foreshortens, so it is the angle away from "
-        "square to the camera and carries no sign - a turn towards the camera and a "
-        "turn away look identical",
-    )
-    shoulder_turn_foreshortened: Reading = NoReading(
-        reason="the shoulders were never seen clearly enough to measure foreshortening",
-        source="pose",
-    )
-    hip_turn_foreshortened: Reading = NoReading(
-        reason="the hips were never seen clearly enough to measure foreshortening",
-        source="pose",
-    )
-    shoulder_fore = turn_from_foreshortening(
-        square,
-        sequence.visibility,
-        Landmark.LEFT_SHOULDER,
-        Landmark.RIGHT_SHOULDER,
-        swing_window,
-        top,
-        config.min_key_visibility,
-    )
-    hip_fore = turn_from_foreshortening(
-        square,
-        sequence.visibility,
-        Landmark.LEFT_HIP,
-        Landmark.RIGHT_HIP,
-        swing_window,
-        top,
-        config.min_key_visibility,
-    )
-    if shoulder_fore is not None:
-        shoulder_turn_foreshortened = _reading(
-            shoulder_fore, "deg", Provenance.PROJECTED, "pose", fore_note
-        )
-    if hip_fore is not None:
-        hip_turn_foreshortened = _reading(hip_fore, "deg", Provenance.PROJECTED, "pose", fore_note)
-
-    body_note = (
-        "in units of the golfer's own body length, so it needs no calibration and "
-        "cannot be converted to centimetres without one",
-    )
-    no_reference = NoReading(
-        reason=(
-            "the feet are not in shot, so there is no fixed reference to measure body "
-            "movement against; the hips cannot serve as one because they move"
-        ),
-        source="pose",
-    )
-    head_reading: Reading = no_reference
-    sway_reading: Reading = no_reference
-    lift_reading: Reading = no_reference
-    if grounded is not None:
-        head_g = 0.5 * (grounded[:, int(Landmark.LEFT_EAR)] + grounded[:, int(Landmark.RIGHT_EAR)])
-        pelvis_g = 0.5 * (
-            grounded[:, int(Landmark.LEFT_HIP)] + grounded[:, int(Landmark.RIGHT_HIP)]
-        )
-        head_reading = _reading(
-            float(np.linalg.norm(head_g[impact] - head_g[address])),
-            "body lengths",
-            Provenance.PROJECTED,
-            "pose",
-            body_note,
-        )
-        sway_reading = _reading(
-            float(abs(pelvis_g[impact, 0] - pelvis_g[address, 0])),
-            "body lengths",
-            Provenance.PROJECTED,
-            "pose",
-            body_note,
-        )
-        lift_reading = _reading(
-            float(abs(pelvis_g[impact, 1] - pelvis_g[address, 1])),
-            "body lengths",
-            Provenance.PROJECTED,
-            "pose",
-            body_note,
-        )
+    turn = _turn_metrics(sequence, config, coords, square, address, top, swing_window)
+    stability = _stability_metrics(sequence, config, square, scale, roll, window, address, impact)
+    kinematics = _kinematic_sequence(sequence, handedness, config, coords, times, turn, top, impact)
 
     hands = 0.5 * (coords[:, int(Landmark.LEFT_WRIST)] + coords[:, int(Landmark.RIGHT_WRIST)])
-    dt = np.gradient(times)
-    hand_speed = np.linalg.norm(np.gradient(hands.astype(np.float64), axis=0) / dt[:, None], axis=1)
-    downswing_window = slice(top, impact + 1)
-    peak_hand_frame = top + int(
-        np.argmax(_smooth(hand_speed, config.velocity_smoothing_frames)[downswing_window])
+    hand_speed = np.linalg.norm(
+        np.gradient(hands.astype(np.float64), axis=0) / np.gradient(times)[:, None], axis=1
     )
-
-    lead_arm = coords[:, int(handedness.lead_wrist)] - coords[:, int(handedness.lead_shoulder)]
-    arm_angle = _angle_series(lead_arm.astype(np.float64))
-
-    # Angular velocities are read from the estimator's three-dimensional output
-    # where it exists. The projected angles are unusable for this: viewed down the
-    # line the shoulder line is nearly edge-on, so its apparent angle is dominated
-    # by whichever way the noise pushed it, and the ordering of the peaks becomes
-    # close to random. Which source was used is reported, because they are not
-    # equally trustworthy.
-    # The kinematic sequence must come from the same judgement as the rotation
-    # metrics. Refusing to report a turn because the estimator's depth output does
-    # not hold the body together, and then in the next breath ordering the body's
-    # segments using that same output, would be incoherent - and the ordering is
-    # the more delicate of the two, because it turns on differences of tens of
-    # milliseconds between three tracks.
-    if sequence.world_xyz is not None and np.any(sequence.world_xyz) and world_depth_usable:
-        world = sequence.world_xyz
-        lead_arm_3d = (
-            world[:, int(handedness.lead_wrist), :] - world[:, int(handedness.lead_shoulder), :]
-        )
-        segments = {
-            "pelvis": _rotation_about_vertical(world, Landmark.LEFT_HIP, Landmark.RIGHT_HIP),
-            "thorax": _rotation_about_vertical(
-                world, Landmark.LEFT_SHOULDER, Landmark.RIGHT_SHOULDER
-            ),
-            "lead arm": np.degrees(
-                np.unwrap(np.arctan2(lead_arm_3d[:, 1], lead_arm_3d[:, 0]).astype(np.float64))
-            ),
-        }
-        sequence_source = "estimated_3d"
-    else:
-        segments = {
-            "pelvis": hip_angle,
-            "thorax": shoulder_angle,
-            "lead arm": arm_angle,
-        }
-        sequence_source = "projected"
-    peak_times: dict[str, float] = {}
-    for name, track in segments.items():
-        angular_speed = np.abs(_smooth(np.gradient(track) / dt, config.velocity_smoothing_frames))
-        peak_frame = top + int(np.argmax(angular_speed[downswing_window]))
-        peak_times[name] = float(1000.0 * (times[peak_frame] - times[impact]))
-
-    order = tuple(sorted(peak_times, key=lambda name: peak_times[name]))
+    peak_hand_frame = top + int(
+        np.argmax(_smooth(hand_speed, config.velocity_smoothing_frames)[slice(top, impact + 1)])
+    )
 
     return SwingMetrics(
         tempo_ratio=_reading(backswing_s / downswing_s, "", Provenance.DERIVED, "events"),
@@ -572,26 +642,20 @@ def compute_metrics(
             Provenance.MEASURED,
             "pose",
         ),
-        shoulder_turn_projected=_reading(
-            abs(shoulder_turn), "deg", projection_provenance, "pose", projected_note
-        ),
-        hip_turn_projected=_reading(
-            abs(hip_turn), "deg", projection_provenance, "pose", projected_note
-        ),
-        separation_projected=_reading(
-            abs(shoulder_turn - hip_turn), "deg", projection_provenance, "pose", projected_note
-        ),
-        shoulder_turn_foreshortened=shoulder_turn_foreshortened,
-        hip_turn_foreshortened=hip_turn_foreshortened,
-        shoulder_turn_3d=shoulder_turn_3d,
-        hip_turn_3d=hip_turn_3d,
-        separation_3d=separation_3d,
-        head_movement=head_reading,
-        pelvis_sway=sway_reading,
-        pelvis_lift=lift_reading,
-        kinematic_sequence=order,
-        kinematic_peak_times_ms=peak_times,
-        kinematic_sequence_source=sequence_source,
+        shoulder_turn_projected=turn.projected[0],
+        hip_turn_projected=turn.projected[1],
+        separation_projected=turn.projected[2],
+        shoulder_turn_foreshortened=turn.foreshortened[0],
+        hip_turn_foreshortened=turn.foreshortened[1],
+        shoulder_turn_3d=turn.estimated_3d[0],
+        hip_turn_3d=turn.estimated_3d[1],
+        separation_3d=turn.estimated_3d[2],
+        head_movement=stability.head,
+        pelvis_sway=stability.sway,
+        pelvis_lift=stability.lift,
+        kinematic_sequence=kinematics.order,
+        kinematic_peak_times_ms=kinematics.peak_times_ms,
+        kinematic_sequence_source=kinematics.source,
         low_confidence_events=tuple(sorted(e.label for e in CLUB_DEFINED_EVENTS)),
         detection_rate=detection_rate,
         frames_analysed=int(finish - address + 1),
