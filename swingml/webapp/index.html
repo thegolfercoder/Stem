@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Swing analysis</title>
+<style>
+:root {
+  --bg:#0e1014; --panel:#161a21; --panel-2:#1c212a; --line:#262d38;
+  --ink:#e8ecf2; --ink-dim:#98a3b3; --ink-faint:#6b7688;
+  --accent:#4fc3f7; --accent-warm:#ffb84d; --good:#5ad19a; --warn:#f2b544;
+  --radius:14px;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: light) {
+  :root { --bg:#f6f7f9; --panel:#fff; --panel-2:#f0f2f5; --line:#dfe3e9;
+          --ink:#161a21; --ink-dim:#58616f; --ink-faint:#8b94a3;
+          --accent:#0d7fb0; --accent-warm:#b46a00; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+main{max-width:1120px;margin:0 auto;padding:0 20px 70px}
+header{max-width:1120px;margin:0 auto;padding:20px;display:flex;align-items:center;gap:10px}
+.mark{width:18px;height:18px;border-radius:50%;border:1px solid var(--line);
+  background:radial-gradient(circle at 32% 30%,var(--accent),transparent 62%),
+             radial-gradient(circle at 68% 72%,var(--accent-warm),transparent 60%)}
+header b{font-weight:650;letter-spacing:-.01em}
+h1{font-size:34px;letter-spacing:-.02em;margin:18px 0 8px;font-weight:660}
+.lede{color:var(--ink-dim);margin:0 0 20px;max-width:62ch;font-size:16px}
+/* The drop zone. It used to be a 320px box with one line of text adrift in the
+   middle of it and the real action - choosing a file - dressed as an underlined
+   footnote. Now it is sized to its contents, the button looks like the button,
+   and the whole panel is clickable as well as droppable. */
+.drop{border:1.5px dashed var(--line);border-radius:var(--radius);background:var(--panel);
+  padding:26px 24px;transition:border-color .15s,background .15s,transform .12s;
+  text-align:center;cursor:pointer}
+.drop:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.drop.over{border-color:var(--accent);background:var(--panel-2);transform:scale(1.006)}
+.drop-icon{width:38px;height:38px;margin:0 auto 12px;display:block;color:var(--ink-faint)}
+.drop.over .drop-icon{color:var(--accent)}
+.drop-main{margin:0 0 6px;font-size:16px;font-weight:560}
+.drop-sub{margin:0;color:var(--ink-faint);font-size:13px}
+.btn-primary{background:var(--accent);border:1px solid transparent;
+  color:#06131a;padding:10px 20px;border-radius:10px;cursor:pointer;font:inherit;
+  font-size:14.5px;font-weight:600;margin-top:14px}
+.btn-primary:hover{filter:brightness(1.08)}
+@media (prefers-color-scheme: light){ .btn-primary{color:#fff} }
+
+/* Settings sit beside the action rather than inside the drop target: handedness
+   is not part of dropping a file, and putting it under a divider in there made
+   the panel look like a form somebody had abandoned halfway. */
+.options{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
+.options-label{font-size:13px;color:var(--ink-dim)}
+.segmented{display:inline-flex;background:var(--panel-2);border:1px solid var(--line);
+  border-radius:10px;padding:3px;gap:3px}
+.segmented button{background:none;border:0;color:var(--ink-dim);font:inherit;font-size:13.5px;
+  padding:6px 14px;border-radius:7px;cursor:pointer}
+.segmented button[aria-pressed="true"]{background:var(--panel);color:var(--ink);font-weight:560;
+  box-shadow:0 1px 2px rgba(0,0,0,.18)}
+.first-run{margin:12px 0 0;color:var(--ink-faint);font-size:12.5px}
+.working{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 18px;margin-top:16px}
+.working-top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+#status{font-weight:600}
+#status-detail{color:var(--ink-faint);font-size:13px;font-family:var(--mono)}
+.bar{height:5px;background:var(--panel-2);border-radius:999px;margin-top:10px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s ease;border-radius:999px}
+
+/* Four named stages rather than one moving bar. Reading a clip frame by frame
+   takes a while and the first run also fetches thirty megabytes, so a bar on its
+   own leaves somebody watching a rectangle with no idea whether it is nearly
+   done, stuck, or has quietly given up. Naming the stages makes the wait legible
+   and makes a stall obvious. */
+.steps{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap}
+.step{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-faint);
+  padding:5px 10px;border-radius:999px;border:1px solid transparent}
+.step .dot{width:15px;height:15px;border-radius:50%;border:1.5px solid currentColor;
+  flex:0 0 auto;display:grid;place-items:center;font-size:9px;font-weight:700}
+.step[data-state="active"]{color:var(--ink);border-color:var(--line);background:var(--panel-2)}
+.step[data-state="active"] .dot{border-color:var(--accent);color:var(--accent);
+  animation:pulse 1.4s ease-in-out infinite}
+.step[data-state="done"]{color:var(--good)}
+.step[data-state="done"] .dot{border-color:var(--good)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion: reduce){.step[data-state="active"] .dot{animation:none}}
+.banner{border-radius:var(--radius);padding:18px 20px;margin-top:18px;border:1px solid var(--line);background:var(--panel)}
+.banner.warn{border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.banner h2{margin:0 0 6px;font-size:16px}
+.banner p{margin:0 0 6px;color:var(--ink-dim)}
+.banner .advice strong{color:var(--accent)}
+h2.section{font-size:19px;margin:28px 0 4px;letter-spacing:-.01em}
+.section-sub{color:var(--ink-dim);margin:0 0 14px;font-size:14px;max-width:70ch}
+.strip{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
+@media(max-width:900px){.strip{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:520px){.strip{grid-template-columns:repeat(2,1fr)}}
+.frame{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.frame canvas{width:100%;display:block;background:#000}
+.frame figcaption{padding:8px 9px 9px;display:grid;gap:3px}
+/* Two lines' worth whether the name needs them or not, so one long label does
+   not push its card's time and error band out of line with the rest. */
+.frame-label{font-size:12px;font-weight:600;line-height:1.25;min-height:calc(2 * 1.25em)}
+.frame-time{font-size:11px;color:var(--ink-faint);font-family:var(--mono)}
+.conf{height:3px;border-radius:999px;background:var(--panel-2);overflow:hidden;margin-top:2px}
+.conf>i{display:block;height:100%;background:linear-gradient(90deg,var(--warn),var(--good))}
+.frame-band{color:var(--ink-faint);font-size:11px;font-variant-numeric:tabular-nums;cursor:help}
+.metric-range{color:var(--ink-faint);font-size:12px;margin-top:3px;font-variant-numeric:tabular-nums;cursor:help}
+.ast{color:var(--accent-warm)}
+.footnote{color:var(--ink-faint);font-size:12.5px;margin-top:12px;max-width:76ch}
+.metric-grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+/* A column with the foot pushed down, so the provenance chips line up across a
+   row whatever height the value and its spread take above them. */
+.metric{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 15px;
+  display:flex;flex-direction:column}
+.metric-foot{margin-top:auto}
+.metric-label{font-size:12px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.05em}
+.metric-value{font-size:26px;font-weight:640;letter-spacing:-.02em;margin-top:4px}
+.metric-unit{font-size:13px;color:var(--ink-faint);margin-left:4px;font-weight:400}
+.metric-foot{padding-top:9px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.metric-hint{color:var(--ink-faint);font-size:12px}
+.prov{font-size:10.5px;padding:2px 7px;border-radius:999px;letter-spacing:.04em;
+  text-transform:uppercase;border:1px solid var(--line);white-space:nowrap}
+.prov-measured{color:var(--good)}
+.prov-derived{color:var(--accent)}
+.prov-projected{color:var(--accent-warm)}
+.empty{color:var(--ink-dim);background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);padding:18px;margin:0}
+.btn{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);padding:8px 14px;
+  border-radius:9px;cursor:pointer;font:inherit;font-size:13.5px}
+.btn:hover{border-color:var(--accent)}
+.result-actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+/* A line saying what was read, and the way back to reading another. Both sat at
+   the very bottom before, under four sections of numbers, so the only obvious
+   way to try a second clip was to scroll past everything or reload the page. */
+.verdict{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  flex-wrap:wrap;margin-top:22px;padding:12px 15px;background:var(--panel);
+  border:1px solid var(--line);border-radius:var(--radius)}
+.verdict-clip{margin:0;color:var(--ink-dim);font-size:13.5px}
+.btn:hover{border-color:var(--accent)}
+details.tips{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+details.tips summary{padding:13px 18px;cursor:pointer;color:var(--ink-dim);font-size:14px}
+.tips-body{padding:0 18px 16px;color:var(--ink-dim);font-size:14px}
+.tips-body li{margin-bottom:7px}
+.tips-body strong{color:var(--ink)}
+footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-faint);
+  font-size:12.5px;border-top:1px solid var(--line)}
+/* Full-size look at one position. The strip has eight frames across, so on a
+   laptop each is about the size of a stamp - fine for checking the model got
+   the right instant, useless for looking at the swing. */
+.lightbox{position:fixed;inset:0;z-index:50;background:rgba(6,8,11,.86);
+  display:grid;place-items:center;padding:24px;backdrop-filter:blur(3px)}
+/* Width follows the picture, so the caption under a portrait clip sits under the
+   clip rather than being stretched to the width of the box around it. */
+.lightbox figure{margin:0;width:fit-content;max-width:min(94vw,760px);max-height:92vh;
+  display:flex;flex-direction:column;gap:10px}
+.lightbox canvas{max-width:100%;max-height:78vh;object-fit:contain;border-radius:12px;
+  border:1px solid var(--line);background:#000;display:block;margin:0 auto}
+.lightbox figcaption{display:flex;justify-content:space-between;gap:14px;align-items:baseline;
+  color:var(--ink);font-size:15px;font-weight:560}
+.lightbox .lb-time{color:var(--ink-faint);font-family:var(--mono);font-size:13px;font-weight:400}
+.lb-close{position:absolute;top:16px;right:18px;background:var(--panel);color:var(--ink);
+  border:1px solid var(--line);border-radius:9px;width:34px;height:34px;font-size:19px;
+  line-height:1;cursor:pointer}
+.lb-nav{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:9px;
+  padding:7px 13px;font:inherit;font-size:13.5px;cursor:pointer}
+.lb-nav:hover,.lb-close:hover{border-color:var(--accent)}
+.lb-controls{display:flex;gap:8px;justify-content:center}
+.frame{cursor:zoom-in}
+.hidden{display:none}
+[hidden]{display:none}
+/* Messages here are written as paragraphs with blank lines between them,
+   because a codec problem needs more than one sentence to explain. */
+#refusal-reason{white-space:pre-line}
+#refusal-diagnostics{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;
+                     opacity:.75;word-break:break-word}
+</style>
+</head>
+<body>
+<header><span class="mark"></span><b>Swing analysis</b></header>
+<main>
+  <h1>Drop in a swing</h1>
+  <p class="lede">
+    Any video your phone makes. Everything happens in this browser tab &mdash; the clip
+    is never uploaded anywhere, and there is nothing to install.
+  </p>
+
+  <div class="drop" id="drop">
+    <input type="file" id="file" accept="video/*" hidden>
+    <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="2.5" y="5.5" width="13" height="13" rx="2.5"></rect>
+      <path d="M15.5 10.2l5-2.7v9l-5-2.7z"></path>
+      <path d="M9 9.5v5.5M6.4 12.2H11.6"></path>
+    </svg>
+    <p class="drop-main" id="drop-main">Drag a video here</p>
+    <p class="drop-sub" id="drop-sub">.mov .mp4 .m4v &middot; portrait or landscape &middot; any frame rate, slow motion included</p>
+    <button type="button" id="browse" class="btn-primary">Choose a video</button>
+  </div>
+
+  <div class="options">
+    <span class="options-label">Golfer is</span>
+    <div class="segmented" id="handedness" role="group" aria-label="Handedness">
+      <button type="button" data-value="right" aria-pressed="true">Right-handed</button>
+      <button type="button" data-value="left" aria-pressed="false">Left-handed</button>
+    </div>
+  </div>
+  <p class="first-run">The first clip you analyse also downloads the body-tracking model,
+     about 30&nbsp;MB. After that it is cached and every later clip starts straight away.</p>
+
+  <details class="tips">
+    <summary>Getting a clip it can read</summary>
+    <div class="tips-body"><ul>
+      <li><strong>Face on works best.</strong> Phone square to where the ball is going,
+        level with the golfer. Down the line, from behind, is harder: the body hides
+        itself, and it will often say so rather than guess.</li>
+      <li><strong>Whole body in shot, the whole way through.</strong> Standing further
+        back beats filling the frame and losing the feet at the top.</li>
+      <li><strong>Record a bit either side</strong> &mdash; before the takeaway, until the
+        finish is held.</li>
+      <li><strong>iPhone users:</strong> if nothing decodes, your clip is HEVC. Safari
+        reads it; otherwise set Camera &rarr; Formats &rarr; Most Compatible.</li>
+    </ul></div>
+  </details>
+
+  <div class="working hidden" id="working">
+    <div class="working-top"><span id="status">Starting</span><span id="status-detail"></span></div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="steps" id="steps">
+      <div class="step" data-step="0"><span class="dot">1</span>Loading the estimator</div>
+      <div class="step" data-step="1"><span class="dot">2</span>Reading the clip</div>
+      <div class="step" data-step="2"><span class="dot">3</span>Finding the swing</div>
+      <div class="step" data-step="3"><span class="dot">4</span>Drawing the positions</div>
+    </div>
+  </div>
+
+  <div class="banner warn hidden" id="refusal">
+    <h2 id="refusal-title">No swing was found in this clip</h2>
+    <p id="refusal-reason"></p>
+    <p class="advice" id="refusal-advice-line"><strong>What to try:</strong> <span id="refusal-advice"></span></p>
+    <p class="footnote" id="refusal-footnote">Being told this is better than being handed numbers
+      from a clip that did not contain a swing. A wrong number gets acted on; a missing one gets
+      looked into.</p>
+    <p class="footnote" id="refusal-diagnostics" hidden></p>
+  </div>
+
+  <div id="results" hidden>
+    <div class="verdict">
+      <p class="verdict-clip" id="summary"></p>
+      <button class="btn" id="again" type="button">Analyse another clip</button>
+    </div>
+
+    <h2 class="section">Tempo</h2>
+    <p class="section-sub">How long each half took, straight from the frame times. These are
+      the strongest numbers here, which is why they come first.</p>
+    <div class="metric-grid" id="tempo-cards"></div>
+
+    <h2 class="section">The eight positions</h2>
+    <p class="section-sub">Where the model put each one, and how far out it has been measured
+      to be. Click any frame to see it full size, then step through them with the arrow keys.</p>
+    <div class="strip" id="strip"></div>
+    <p class="footnote" id="band-note" hidden></p>
+    <p class="footnote"><span class="ast">*</span> Toe-up and mid-follow-through are defined
+      by the club shaft being horizontal. A body-pose estimator does not see the club, so
+      these two are placed from the body's motion rather than observed directly.</p>
+
+    <h2 class="section">Rotation at the top</h2>
+    <p class="section-sub">How far the shoulders and hips had turned away from square to the
+      camera, measured from how much they foreshorten. It carries no sign &mdash; turning
+      towards the camera and away from it look identical &mdash; and it reads low against
+      reality, so compare it with your own swings from the same spot rather than a published
+      figure.</p>
+    <div class="metric-grid" id="turn-cards"></div>
+
+    <h2 class="section">Stability</h2>
+    <p class="section-sub">Movement measured against the ground, in units of your own body
+      length, so no calibration is needed.</p>
+    <div class="metric-grid" id="stability-cards"></div>
+
+    <div class="result-actions">
+      <button class="btn" id="download" type="button">Download the numbers as JSON</button>
+      <button class="btn" id="again-bottom" type="button">Analyse another clip</button>
+    </div>
+  </div>
+
+  <div class="lightbox" id="lightbox" hidden>
+    <button class="lb-close" id="lb-close" type="button" aria-label="Close">&times;</button>
+    <figure>
+      <div id="lb-canvas"></div>
+      <figcaption><span id="lb-label"></span><span class="lb-time" id="lb-time"></span></figcaption>
+      <div class="lb-controls">
+        <button class="lb-nav" id="lb-prev" type="button">&larr; Previous</button>
+        <button class="lb-nav" id="lb-next" type="button">Next &rarr;</button>
+      </div>
+    </figure>
+  </div>
+
+  <video id="scratch-video" class="hidden" playsinline muted></video>
+  <canvas id="scratch-canvas" class="hidden"></canvas>
+</main>
+<footer>
+  <p>Runs entirely in your browser. The clip never leaves this device. The pose estimator is
+     fetched from Google's servers the first time and cached after that.</p>
+</footer>
+<script type="module">
+/*__ENGINE__*/
+/*__MODEL__*/
+/*__METRICS__*/
+/*__APP__*/
+boot(/*__PAYLOAD__*/);
+</script>
+</body>
+</html>

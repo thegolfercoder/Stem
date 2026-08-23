@@ -1,0 +1,30 @@
+{
+  "source": "real_swing_01.mov",
+  "description": "A real swing on a night driving range, iPhone, 360x640, 30 fps.",
+  "handedness": "right",
+  "frame_rate_hz": 30.0,
+  "n_frames": 211,
+  "events": {
+    "address": 84,
+    "top": 105,
+    "impact": 115,
+    "finish": 125
+  },
+  "how_the_truth_was_established": {
+    "impact": "The ball is plainly on the tee through frame 114 and gone from frame 115. The strongest ground truth here, and it needs no interpretation.",
+    "address": "Hand speed over the settled address, frames 74 to 82, is 0.042 +/- 0.012 body lengths per second. It first exceeds eight standard deviations above that at frame 84.",
+    "top": "The hands reach their highest point in the image at frame 105.",
+    "finish": "Motion falls back toward the address noise floor and stays there from about frame 125. The least sharp of the four, and the tolerance reflects that."
+  },
+  "tolerance_frames": {
+    "address": 3,
+    "top": 3,
+    "impact": 2,
+    "finish": 6
+  },
+  "why_those_tolerances": "How sharply each event is defined in this particular clip, in its own 30 fps frames. Impact is held tightest because the ball is on the tee in one frame and gone in the next, which needs no interpretation. The finish is loosest because a golfer holds a pose rather than arriving at an instant. They live here rather than in the test because two things read them: the test, and the script that chooses which trained model gets bundled - and a model that fails this clip is not eligible to ship however well it scores on generated swings.",
+  "notes": [
+    "At 30 fps the downswing is 9 frames, so one frame is 10 percent of it. Tempo measured from this clip carries that uncertainty however good the model becomes.",
+    "MediaPipe loses the hands through impact: hand speed reads 19.8, 6.7, 1.9 then 3.9 across frames 112 to 115, which cannot be right. Motion blur at 30 fps."
+  ]
+}

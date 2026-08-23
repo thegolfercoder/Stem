@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}{{ swing.label or swing.source_name }}{% endblock %}
+{% block content %}
+
+<section class="swing-head">
+  <div>
+    <h1 id="title">{{ swing.label or swing.source_name }}</h1>
+    <p class="sub">
+      {{ swing.created_at.strftime('%d %B %Y, %H:%M') }}
+      {% if analysis.video %} &middot; {{ analysis.video.width }}&times;{{ analysis.video.height }},
+        {{ '%.0f'|format(analysis.video.measured_fps) }} fps,
+        {{ '%.1f'|format(analysis.video.duration_s) }} s{% endif %}
+      &middot; body found in {{ '%.0f'|format(analysis.detection_rate * 100) }}% of frames
+    </p>
+  </div>
+  <div class="head-actions">
+    <input id="club" value="{{ swing.club or '' }}" list="clublist" placeholder="club" autocomplete="off">
+    <datalist id="clublist">{% for c in clubs %}<option value="{{ c }}">{% endfor %}</datalist>
+    <button id="save" class="btn">Save</button>
+    <a class="btn ghost" href="{{ url_for('api_swing_analysis', swing_id=swing.id) }}">JSON</a>
+    <button id="delete" class="btn danger">Delete</button>
+  </div>
+</section>
+
+{% if refusal %}
+<section class="banner warn">
+  <h2>No swing was found in this clip</h2>
+  <p>{{ refusal }}</p>
+  {% if advice %}<p class="advice"><strong>What to try:</strong> {{ advice }}</p>{% endif %}
+  <p class="hint">
+    Being told this is better than being handed numbers from a clip that did not
+    contain a swing, because a wrong number gets acted on and a missing one gets
+    looked into.
+  </p>
+</section>
+{% else %}
+
+<section class="film">
+  <h2>The eight positions</h2>
+  <p class="section-sub">Click one to hold it. Times are relative to the start of the clip.</p>
+  <div class="strip">
+    {% for e in events %}
+    <figure class="frame" data-time="{{ e.time_s }}" tabindex="0">
+      {% if e.image %}
+        <img src="{{ url_for('media_frame', swing_id=swing.id, name=e.image) }}" alt="{{ e.label }}" loading="lazy">
+      {% else %}
+        <div class="frame-missing">frame not saved</div>
+      {% endif %}
+      <figcaption>
+        <span class="frame-label">{{ e.label }}{% if e.club_defined %}<span class="asterisk" title="Defined by the club shaft, which the pose estimator cannot see. Inferred from the body.">*</span>{% endif %}</span>
+        <span class="frame-time">{{ '%.3f'|format(e.time_s) }} s</span>
+        {% if e.band_ms is not none %}
+        <span class="frame-band" title="{{ e.band_note }}">&plusmn;{{ '%.0f'|format(e.band_ms) }} ms</span>
+        {% endif %}
+        <span class="conf" style="--c: {{ e.confidence }}"><i></i></span>
+      </figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+  {% if band_corpus %}
+  <p class="footnote">
+    The &plusmn; figures are measured, not assumed. This model was run over
+    {{ band_corpus }}, and the spread of its errors recorded. Each figure is the
+    distance that contained
+    {{ band_coverage }}% of those errors at the confidence the model reported here, so a
+    doubtful event gets a wider band than a certain one. A band appears only where
+    enough held-out clips landed at that confidence to measure one, and none of this is
+    a claim about footage of a real golfer on grass.
+  </p>
+  {% endif %}
+  <p class="footnote">
+    <span class="asterisk">*</span> Toe-up and mid-follow-through are defined by the club
+    shaft being horizontal. A body-pose estimator does not see the club, so these two
+    are placed from the body's motion rather than observed directly.
+  </p>
+</section>
+
+{% if sequence %}
+<section class="scrub">
+  <h2>Scrub through it</h2>
+  <p class="section-sub">
+    Drag the slider, or use the arrow keys, to step one frame at a time. Built from
+    still frames rather than a video player, so it works in any browser whatever
+    your phone recorded in &mdash; and every step really is one frame.
+  </p>
+  <div class="scrub-wrap">
+    <div class="scrub-stage">
+      <img id="scrub-img" alt="swing frame">
+      <div class="scrub-readout"><span id="scrub-time">0.000</span> s<span id="scrub-event"></span></div>
+    </div>
+  </div>
+  <div class="scrub-controls">
+    <button id="scrub-play" class="btn" aria-label="Play">Play</button>
+    <input id="scrub-range" type="range" min="0" max="{{ sequence|length - 1 }}" value="0" step="1">
+  </div>
+  <div class="scrub-marks" id="scrub-marks"></div>
+  <p class="footnote">
+    <a href="{{ url_for('media_video', swing_id=swing.id) }}" download>Download the original clip</a>
+    &mdash; kept exactly as you uploaded it.
+  </p>
+</section>
+<script id="seq-data" type="application/json">{{ sequence|tojson }}</script>
+<script id="event-data" type="application/json">{{ events|tojson }}</script>
+{% endif %}
+
+{% for group in groups %}
+<section class="metrics">
+  <h2>{{ group.title }}</h2>
+  <p class="section-sub">{{ group.blurb }}</p>
+  <div class="metric-grid">
+    {% for m in group['items'] %}
+    <div class="metric {% if not m.ok %}metric-refused{% endif %}">
+      <div class="metric-label">{{ m.label }}</div>
+      {% if m.ok %}
+        <div class="metric-value">{{ format_number(m.value, m.unit) }}<span class="metric-unit">{{ m.unit }}</span></div>
+        {% if m.range_low is defined and m.range_low is not none %}
+        <div class="metric-range" title="{{ m.range_note }}">
+          measured spread {{ '%.2f'|format(m.range_low) }} &ndash; {{ '%.2f'|format(m.range_high) }}
+        </div>
+        {% endif %}
+        <div class="metric-foot">
+          <span class="prov prov-{{ m.provenance }}">{{ m.provenance.replace('_', ' ') }}</span>
+          {% if m.hint %}<span class="metric-hint">{{ m.hint }}</span>{% endif %}
+        </div>
+        {% if m.assumptions %}
+        <details class="assume">
+          <summary>what this assumes</summary>
+          <ul>{% for a in m.assumptions %}<li>{{ a }}</li>{% endfor %}</ul>
+        </details>
+        {% endif %}
+      {% else %}
+        <div class="metric-value metric-none">no reading</div>
+        <div class="metric-foot"><span class="metric-hint">{{ m.reason }}</span></div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+
+{% if analysis.metrics and analysis.metrics.kinematic_sequence %}
+<section class="metrics">
+  <h2>Kinematic sequence</h2>
+  <p class="section-sub">
+    The order in which the pelvis, chest and lead arm reached their fastest.
+    In an efficient swing the bigger, slower parts peak first. Reported as
+    observed, not scored.
+  </p>
+  <div class="sequence">
+    {% for part in analysis.metrics.kinematic_sequence %}
+      <span class="seq-part">{{ part.replace('_', ' ') }}
+        {% if part in analysis.metrics.kinematic_peak_times_ms %}
+          <em>{{ '%+.0f'|format(analysis.metrics.kinematic_peak_times_ms[part]) }} ms</em>
+        {% endif %}
+      </span>
+      {% if not loop.last %}<span class="seq-arrow" aria-hidden="true">→</span>{% endif %}
+    {% endfor %}
+  </div>
+  <p class="footnote">Times are relative to impact. Source: {{ analysis.metrics.kinematic_sequence_source.replace('_', ' ') }}.</p>
+</section>
+{% endif %}
+
+{% endif %}
+
+<script>window.SWING_ID = {{ swing.id }};</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='swing.js') }}"></script>
+{% endblock %}

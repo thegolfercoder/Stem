@@ -1,0 +1,75 @@
+name: checks
+
+# Nothing ran these before: three hundred tests across the two projects and no
+# machine that executed any of them on a push, which is the same as not having
+# them the moment somebody forgets. This project has already shipped two faults
+# a test would have caught, because nothing opened the page and looked - and a
+# third that this workflow did catch and that nobody read, which is the other
+# half of the problem.
+#
+# A fresh checkout has no out/, so it runs the checkpoint bundled in the package
+# rather than an ensemble a developer happens to have trained. That difference is
+# what caught the third fault, and the real-swing test now covers both so it does
+# not take a clean machine to notice.
+on:
+  # Not every branch on push as well as on pull_request: that ran the whole suite
+  # twice for every commit on an open pull request, against the same commit.
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  swingml:
+    name: swing analysis
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: swingml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: install
+        run: pip install -e ".[dev]"
+      - name: lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: types
+        # The scripts are checked too. They are where the training runs, the
+        # calibration and the dataset builds live, and a fault in one of those
+        # costs however long the run took to discover - which is the argument for
+        # checking them, not against.
+        run: |
+          mypy -p swingml -p synth
+          mypy scripts
+      - name: tests
+        # The browser and parity tests skip themselves when the built page and
+        # the exported weights are absent, which they are in a fresh checkout -
+        # both are build products. Everything that does not need them runs.
+        run: pytest -q
+
+  launchmon:
+    name: radar dsp
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: launchmon-py
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: install
+        run: pip install -e ".[dev]"
+      - name: lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: types
+        run: mypy -p launchmon
+      - name: tests
+        run: pytest -q

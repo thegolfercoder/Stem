@@ -1,0 +1,26 @@
+# Hardware configuration for one physical build of the instrument.
+#
+# radar_geometry is measured on the range at setup and recorded per session.
+# Mounting height in particular changes the cosine correction materially, so it
+# is never assumed.
+
+radar_tx_hz: 24.125e9
+
+radar_geometry:
+  range_from_tee_m: 1.4
+  height_m: 0.05        # measured at setup; the value here is for a ground-level mount
+  tee_height_m: 0.05
+  azimuth_beamwidth_deg: 80.0
+  elevation_beamwidth_deg: 40.0
+
+amplifier:
+  passband_low_hz: 200.0
+  passband_high_hz: 15000.0
+  order: 2
+
+audio:
+  sample_rate_hz: 48000.0   # iOS caps USB audio input here; do not design above it
+  capture_window_s: 0.7
+
+# Provisional only. Replaced by the Stage 2 trajectory fit.
+ball_drag_coefficient_provisional: 0.214

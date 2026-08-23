@@ -1,0 +1,23 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Build products and training runs, at any depth. `swingml/out/` was listed
+# separately as well, which a pattern with no leading slash already covers.
+out/
+
+# The MediaPipe pose landmarker is 30 MB and is fetched on first run, by
+# `swingml doctor --fix`. Downloaded, not built here, and not worth carrying.
+models/
+
+*.mp4
+*.mov
+
+# Footage is ignored by default so stray captures never land in the repository.
+# The one exception is the real-swing regression fixture, which is checked in on
+# purpose: without it there is nothing here but generated data.
+!swingml/tests/fixtures/*.mov
