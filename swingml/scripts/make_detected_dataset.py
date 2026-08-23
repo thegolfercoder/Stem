@@ -76,6 +76,44 @@ def build_one(
     )
 
 
+def write_archive(
+    path: Path,
+    features: list[np.ndarray],
+    events: list[np.ndarray],
+    meta: list[dict[str, float]],
+) -> None:
+    """One cached batch of clips, with everything needed to slice or audit it."""
+    if not features:
+        return
+
+    def column(key: str) -> np.ndarray:
+        return np.array([m[key] for m in meta])
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        path,
+        lengths=np.array([f.shape[0] for f in features]),
+        features=np.concatenate(features, axis=0),
+        events=np.stack(events),
+        # The seed is what makes a cached clip identifiable after the fact. Without
+        # it there is no way to tell whether two batches overlap, and an overlap
+        # between a training batch and a held-out one is the one mistake that makes
+        # every number downstream of it a lie.
+        seeds=column("seed").astype(np.int64),
+        tempo_ratio=column("tempo_ratio"),
+        azimuth_deg=column("azimuth_deg"),
+        capture_rate_hz=column("capture_rate_hz"),
+        left_handed=column("left_handed"),
+        landscape=column("landscape"),
+        detection_rate=column("detection_rate"),
+    )
+    print(f"  wrote {path}: {len(features)} clips", flush=True)
+
+
+def chunk_path(out: Path, index: int) -> Path:
+    return out.with_name(f"{out.stem}_{index:03d}{out.suffix}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--n", type=int, default=300)
@@ -92,6 +130,18 @@ def main() -> None:
         ),
     )
     parser.add_argument("--out", type=Path, default=Path("out/detected/train.npz"))
+    parser.add_argument(
+        "--chunk",
+        type=int,
+        default=0,
+        help=(
+            "write a numbered archive every this many clips instead of one at the "
+            "end. Rendering three hundred clips is over an hour and an archive is "
+            "only written when it finishes, so an interruption at any point during "
+            "that hour left nothing at all - which happened twice. The corpus is a "
+            "list of archives anyway, so several small ones cost nothing"
+        ),
+    )
     parser.add_argument(
         "--wide-tempo",
         action="store_true",
@@ -134,7 +184,9 @@ def main() -> None:
     started = time.time()
     seed = args.seed_offset
     attempts = 0
-    while len(all_features) < args.n and attempts < args.n * 3:
+    written = 0
+    chunk_index = 0
+    while written + len(all_features) < args.n and attempts < args.n * 3:
         attempts += 1
         result = build_one(draw_swing(seed, config, azimuth), estimator, args.long_edge)
         seed += 1
@@ -145,39 +197,27 @@ def main() -> None:
         all_events.append(events)
         all_meta.append(meta)
 
-        if len(all_features) % 10 == 0:
+        if args.chunk and len(all_features) >= args.chunk:
+            write_archive(chunk_path(args.out, chunk_index), all_features, all_events, all_meta)
+            written += len(all_features)
+            chunk_index += 1
+            all_features, all_events, all_meta = [], [], []
+
+        if (written + len(all_features)) % 10 == 0:
+            done = written + len(all_features)
             elapsed = time.time() - started
-            rate = elapsed / len(all_features)
-            remaining = rate * (args.n - len(all_features))
+            rate = elapsed / max(done, 1)
             print(
-                f"  {len(all_features)}/{args.n}  {rate:.1f}s each, ~{remaining / 60:.0f} min left",
+                f"  {done}/{args.n}  {rate:.1f}s each, ~{rate * (args.n - done) / 60:.0f} min left",
                 flush=True,
             )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
-    def column(key: str) -> np.ndarray:
-        return np.array([m[key] for m in all_meta])
-
-    np.savez_compressed(
-        args.out,
-        lengths=np.array([f.shape[0] for f in all_features]),
-        features=np.concatenate(all_features, axis=0),
-        events=np.stack(all_events),
-        # The seed is what makes a cached clip identifiable after the fact. Without
-        # it there is no way to tell whether two batches overlap, and an overlap
-        # between a training batch and a held-out one is the one mistake that makes
-        # every number downstream of it a lie.
-        seeds=column("seed").astype(np.int64),
-        tempo_ratio=column("tempo_ratio"),
-        azimuth_deg=column("azimuth_deg"),
-        capture_rate_hz=column("capture_rate_hz"),
-        left_handed=column("left_handed"),
-        landscape=column("landscape"),
-        detection_rate=column("detection_rate"),
-    )
+    last = chunk_path(args.out, chunk_index) if args.chunk else args.out
+    write_archive(last, all_features, all_events, all_meta)
     print(
-        f"wrote {args.out}: {len(all_features)} clips from {attempts} attempts "
+        f"done: {written + len(all_features)} clips from {attempts} attempts "
         f"in {(time.time() - started) / 60:.0f} min"
     )
 
