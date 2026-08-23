@@ -7,7 +7,6 @@ Either clone it:
 ```bash
 git clone https://github.com/thegolfercoder/Stem
 cd Stem
-git checkout claude/prompt-usage-0oy6wa
 code .
 ```
 
@@ -61,8 +60,22 @@ swingml doctor --fix                # download anything missing
 
 ```bash
 cd swingml
-pytest tests/ -q                                             # 71 tests
-ruff check . && mypy --explicit-package-bases swingml synth scripts
+pytest -q
+ruff check . && ruff format --check .
+mypy --explicit-package-bases swingml synth scripts
+```
+
+These are the same checks the machine runs on every push, so if they pass here
+they pass there. A count is not quoted because it goes stale; the number that
+matters is that nothing fails.
+
+Some tests skip themselves in a fresh checkout. The browser-parity and page
+tests need the exported weights and the built page, and both are build products
+rather than checked-in files:
+
+```bash
+python scripts/export_web_model.py     # weights the page can carry
+python scripts/build_web_app.py        # the single-file page
 ```
 
 ## Try it without a clip of your own
@@ -86,6 +99,7 @@ a reason rather than measured — that is the behaviour worth checking.
 | `swingml/scripts/` | Training, dataset building, evaluation |
 | `swingml/tests/` | The test suite |
 | `~/.swingml/` | Your swings, uploaded clips, downloaded models |
+| `swingml/out/` | Build products and training runs. Not checked in, safe to delete. |
 | `launchmon-py/` | Earlier radar work. Self-contained, unrelated to swing analysis. |
 
 ## Before trusting any number

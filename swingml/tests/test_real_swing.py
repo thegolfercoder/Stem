@@ -32,13 +32,14 @@ from swingml.analysis import (
     AnalysisConfig,
     SwingAnalysis,
     analyse_pose_sequence,
+    load_model,
     model_fingerprint,
     resolve_model,
 )
-from swingml.assets import find_event_calibration, find_event_model
+from swingml.assets import find_event_calibration, find_event_calibrations, find_event_model
 from swingml.events import SwingEvent
 from swingml.features import feature_dimension
-from swingml.model.calibration import ErrorBand, load_calibration
+from swingml.model.calibration import ErrorBand, ModelCalibration, load_calibration
 from swingml.model.tcn import SwingEventNet
 from swingml.pose.base import PoseSequence
 from swingml.quantity import NoReading
@@ -66,6 +67,8 @@ class Truth(BaseModel):
     n_frames: int
     events: dict[str, int]
     how_the_truth_was_established: dict[str, str]
+    tolerance_frames: dict[str, int]
+    why_those_tolerances: str
     notes: tuple[str, ...] = ()
 
 
@@ -101,25 +104,52 @@ def sequence() -> PoseSequence:
     )
 
 
-@pytest.fixture(scope="module")
-def analysis(sequence: PoseSequence) -> SwingAnalysis:
-    """Analysed through whatever this installation would actually run.
-
-    Deliberately not a checkpoint picked out here. The point of the fixture is to
-    catch a regression in the thing a user gets, and a test that loads a different
-    model from the application is testing something nobody runs. It also means the
-    error bands are attached only when they were measured through these weights,
-    which is the behaviour worth exercising rather than working around.
-    """
-    resolved = resolve_model()
-    assert resolved is not None
-    return analyse_pose_sequence(
-        sequence,
-        resolved.model,
+def analysed(sequence: PoseSequence, model: object, calibration: object) -> SwingAnalysis:
+    config = (
         AnalysisConfig(handedness=Handedness.RIGHT)
-        if resolved.calibration is None
-        else AnalysisConfig(handedness=Handedness.RIGHT, calibration=resolved.calibration),
+        if calibration is None
+        else AnalysisConfig(handedness=Handedness.RIGHT, calibration=calibration)  # type: ignore[arg-type]
     )
+    return analyse_pose_sequence(sequence, model, config)  # type: ignore[arg-type]
+
+
+@pytest.fixture(scope="module", params=["bundled", "installed"])
+def analysis(request: pytest.FixtureRequest, sequence: PoseSequence) -> SwingAnalysis:
+    """Run twice: against the artefact in the package, and against what resolves.
+
+    It used to be only the second, on the argument that a test loading a different
+    model from the application is testing something nobody runs. That argument is
+    right and it left a hole, because the two are not the same model on a machine
+    where anything has been trained. `resolve_model` prefers an ensemble under
+    `out/` when one exists, so every developer here was exercising the ensemble
+    while the thing that actually ships - the single checkpoint inside the package
+    - was exercised only by a fresh checkout, which is to say only by CI.
+
+    It went wrong exactly there. The bundled model put the finish thirty-eight
+    frames late on this clip, CI said so on four consecutive pushes, and every
+    local run was green because a better model was sitting in `out/`.
+    """
+    if request.param == "bundled":
+        path = find_event_model()
+        if path is None:
+            pytest.skip("no model is bundled with the package")
+        model: object = load_model(path)
+        calibration = _matching_calibration(model)
+    else:
+        resolved = resolve_model()
+        assert resolved is not None
+        model, calibration = resolved.model, resolved.calibration
+    return analysed(sequence, model, calibration)
+
+
+def _matching_calibration(model: object) -> ModelCalibration | None:
+    """The table measured through these weights, or none. Never another model's."""
+    digest = model_fingerprint(model)  # type: ignore[arg-type]
+    for path in find_event_calibrations():
+        table = load_calibration(path)
+        if table.matches(digest):
+            return table
+    return None
 
 
 def has_bands(analysis: SwingAnalysis) -> bool:
@@ -132,22 +162,28 @@ def test_a_real_swing_is_not_refused(analysis: SwingAnalysis) -> None:
 
 
 @pytest.mark.parametrize(
-    ("event", "key", "tolerance"),
+    ("event", "key"),
     [
-        # Impact is the ball leaving the tee, so it is held tightest.
-        (SwingEvent.IMPACT, "impact", 2),
-        (SwingEvent.ADDRESS, "address", 3),
-        (SwingEvent.TOP, "top", 3),
-        # The finish is the vaguest of the four - a golfer holds a pose rather than
-        # arriving at an instant - so it gets the loosest bound.
-        (SwingEvent.FINISH, "finish", 6),
+        (SwingEvent.IMPACT, "impact"),
+        (SwingEvent.ADDRESS, "address"),
+        (SwingEvent.TOP, "top"),
+        (SwingEvent.FINISH, "finish"),
     ],
 )
 def test_events_land_where_the_clip_says_they_do(
-    analysis: SwingAnalysis, truth: Truth, event: SwingEvent, key: str, tolerance: int
+    analysis: SwingAnalysis, truth: Truth, event: SwingEvent, key: str
 ) -> None:
+    """The tolerances come from the fixture, because two things need them.
+
+    This test is one. The other is the script that decides which trained model
+    gets bundled into the package, which uses this clip as a gate rather than as
+    a tiebreak: a model that fails here does not ship however well it scores on
+    generated swings. Written out twice they would drift, and the drift would
+    show up as a model passing selection and failing the build.
+    """
     predicted = analysis.event_source_frames[int(event)]
     actual = truth.events[key]
+    tolerance = truth.tolerance_frames[key]
     assert abs(predicted - actual) <= tolerance, (
         f"{event.label}: model says frame {predicted}, the clip says {actual}. "
         f"{truth.how_the_truth_was_established[key]}"
@@ -259,19 +295,29 @@ def test_impact_lands_inside_its_band(analysis: SwingAnalysis, truth: Truth) -> 
     assert error <= band.half_width_frames / 2.0 + 0.5
 
 
-def test_the_vague_events_get_the_wider_bands(analysis: SwingAnalysis) -> None:
-    """Address and the finish are the two events whose truth is a judgement call.
+def test_the_bands_at_the_boundaries_are_the_widest(analysis: SwingAnalysis) -> None:
+    """No interior event is given a wider band than address or the finish.
 
-    Every other event is a shape the body passes through. These two are the
-    boundaries of the swing, and the ground-truth notes for this clip say as much
-    about both: address had to be found from where stillness ended, and the finish
-    from where motion settled, neither of which happens on a particular frame.
+    Address and the finish are the two events whose truth is a judgement call.
+    Every other event is a shape the body passes through; these two are where the
+    swing starts and stops being one, and the ground-truth notes for this clip say
+    as much - address had to be found from where stillness ended and the finish
+    from where motion settled, neither of which happens on a particular frame. The
+    model never saw those notes, and the bands come out widest there anyway.
 
-    The model never saw those notes and is least sure at exactly those two points.
-    That the bands come out wider there is the whole claim that they measure
-    something, so it is asserted as a property rather than as two numbers - which
-    of the pair is widest is a detail of one model on one clip, and changed when
-    the ensemble replaced a single network.
+    Asserted as "widest" rather than "strictly wider than every other", which is
+    what it used to say and what broke it. The bands are conformal quantiles of an
+    integer frame error, so at this corpus size they take one of three values; a
+    strict ordering over eight events drawn from three values is not a claim about
+    the model, it is a claim about the arithmetic having no ties. It duly failed
+    on a tie - address and toe-up both at three frames - on a model whose bands
+    were doing exactly what they should.
+
+    A companion test asserting that the finish is the *least confident* event was
+    written here and removed. It held for two models and then failed for a third,
+    and the third was the one that gets the finish right: a model confident about
+    the finish is confident about the finish. The property belonged to the models
+    that were wrong, not to the clip.
     """
     if not has_bands(analysis):
         pytest.skip("no error bands were measured for the model this installation runs")
@@ -281,10 +327,13 @@ def test_the_vague_events_get_the_wider_bands(analysis: SwingAnalysis) -> None:
     boundary = {int(SwingEvent.ADDRESS), int(SwingEvent.FINISH)}
     interior = max(w for i, w in enumerate(widths) if i not in boundary)
     for index in boundary:
-        assert widths[index] > interior, (
-            f"{SwingEvent.ordered()[index].label} band is {widths[index]}, no wider than "
+        assert widths[index] >= interior, (
+            f"{SwingEvent.ordered()[index].label} band is {widths[index]}, narrower than "
             f"the widest interior event at {interior}"
         )
+    assert min(widths) < max(widths), (
+        "every event got the same band, so the bands are not reading confidence at all"
+    )
 
 
 def test_a_calibration_measured_for_another_model_is_not_quoted(

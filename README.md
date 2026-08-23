@@ -1,13 +1,19 @@
 # Stem
 
+[![checks](https://github.com/thegolfercoder/Stem/actions/workflows/checks.yml/badge.svg)](https://github.com/thegolfercoder/Stem/actions/workflows/checks.yml)
+
 Two pieces of work on measuring a golf swing without a launch monitor's price
 tag. They share a set of principles and no code.
 
 | Path | What it is | State |
 |---|---|---|
-| `swingml/` | **Swing analysis from a single phone camera.** Pose estimation, a temporal model over the eight swing events, and the metrics that follow. Runs as a local web app, a command line tool, or one self-contained HTML file with no install. | Working. 151 tests. |
-| `launchmon-py/` | **Radar DSP for a launch monitor.** A 24 GHz CW Doppler front end arriving as USB-C audio, and the signal processing that turns it into ball and club speed. | Working. 148 tests. No hardware yet. |
-| `models/` | The MediaPipe pose landmarker. Downloaded, not built here. | — |
+| `swingml/` | **Swing analysis from a single phone camera.** Pose estimation, a temporal model over the eight swing events, and the metrics that follow. Runs as a local web app, a command line tool, or one self-contained HTML file with no install. | Working. |
+| `launchmon-py/` | **Radar DSP for a launch monitor.** A 24 GHz CW Doppler front end arriving as USB-C audio, and the signal processing that turns it into ball and club speed. | Working. No hardware yet. |
+
+Both suites run on every push - lint, types and tests - and the badge above is
+the only place a test count belongs. Written into prose it goes stale the day
+after somebody adds a test, and this file carried "151 tests" for a while after
+the number was 195.
 
 Most of the repository is `swingml/`, and it has its own
 [README](swingml/README.md) covering how it works, what it measures, what it
@@ -21,10 +27,11 @@ each carrying a measured error band and a label saying how it was arrived at.
 
 Accuracy on a freshly generated holdout no model has trained on: **83% of events
 within one frame and 93% within two**, with tempo carrying a measured spread of
-**±12%**. Those
-figures come from rendered swings put through the real pose estimator, and
-`swingml/README.md` is explicit about that and about the one real clip in the
-repository.
+**±12%**. Those figures are for the ensemble, they come from rendered swings put
+through the real pose estimator, and `swingml/README.md` is explicit about both -
+and about the one real clip in the repository, which is the only evidence here
+about an actual person and is treated as a gate on what ships rather than as a
+score.
 
 ```bash
 cd swingml
@@ -33,8 +40,15 @@ swingml ui                    # the local app
 swingml analyse clip.mov      # one clip
 ```
 
-Or open `swingml/out/web/swing-analysis.html` in a browser and drop a video on
-it. Nothing to install; the clip never leaves the machine.
+Or build the single-file page and open it in a browser:
+
+```bash
+python scripts/build_web_app.py     # writes out/web/swing-analysis.html
+```
+
+Drop a video on it. Nothing to install, no server, and the clip never leaves the
+machine. The page is a build product and is not checked in, which is why a fresh
+clone has no `out/`.
 
 ## The launch monitor
 
@@ -83,19 +97,28 @@ Spin appears in the codebase as an *input*: the trajectory model needs a value
 and takes a per-club prior. Anything computed from it is `MODELLED` and carries
 that assumption with it wherever it goes.
 
-## Legal note
+## Licence and legal note
 
-Overlaying motion metrics on swing video sits squarely within claims asserted in
-Blast Motion's patent portfolio, including US 9,039,527. This is a university
-research prototype and that is fine for private research. **Nobody should assume
-this is safe to sell.**
+The code is MIT licensed - see [LICENSE](LICENSE). That covers copyright and
+nothing else, which matters here: overlaying motion metrics on swing video sits
+squarely within claims asserted in Blast Motion's patent portfolio, including
+US 9,039,527. An MIT licence grants no patent rights and cannot grant rights
+nobody here holds. This is a university research prototype and that is fine for
+private research. **Nobody should assume this is safe to sell.**
 
-## Running the Python environment
+## Working on either project
+
+They are separate installs sharing one virtual environment. `SETUP.md` covers
+the swing analyser in more detail; this is the whole of it for the radar.
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e "launchmon-py[dev]"
-cd launchmon-py
-PYTHONPATH=. ../.venv/bin/python -m pytest tests/ -q     # 148 tests
-../.venv/bin/ruff check . && ../.venv/bin/mypy launchmon tests scripts
-PYTHONPATH=. ../.venv/bin/python scripts/snr_sweep.py --seeds 20
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e "swingml[dev]" -e "launchmon-py[dev]"
+
+cd swingml     && pytest -q && ruff check . && mypy -p swingml -p synth && mypy scripts
+cd launchmon-py && PYTHONPATH=. pytest -q && ruff check . && mypy launchmon tests scripts
 ```
+
+The MediaPipe pose landmarker is about 30 MB and is downloaded on first run
+rather than checked in - `swingml doctor --fix` fetches it, and `models/` is
+where it lands.

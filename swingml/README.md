@@ -74,6 +74,13 @@ On a freshly generated holdout of 160 clips that no model has trained on, event
 timings land **within one frame 83% of the time and within two frames 93%** — two
 frames being 33 ms. The previous model scored 76% and 89% on the same clips.
 
+That is the five-member ensemble, which is what a machine with a trained `out/`
+runs. A fresh install and the browser page carry one checkpoint, because five is
+too heavy to bundle: on the same clips that single model is **81.1% and 92.0%**,
+with a median tempo error of 6.7%. Which of the five gets bundled is decided by
+`scripts/choose_bundled_model.py`, and the real clip below is a gate in that
+decision rather than a tiebreak.
+
 Where the error is has been measured rather than assumed. The four interior
 events — top, mid-downswing, impact, mid-follow-through — land within one frame
 94 to 98 percent of the time. Everything else is address, toe-up, mid-backswing
@@ -119,27 +126,37 @@ real_swing_01.mov`, thirty frames a second, at night, on a phone — kept as a
 regression fixture. One clip proves nothing about the general case. What it does is
 catch a change that looks fine on generated data and breaks the real thing.
 
-On it, the model puts address on the frame the golfer starts moving, impact within
-a frame of the ball leaving the tee, the top one frame late and the finish about
-four late. How each of those was established independently of the model is recorded
-in `real_swing_01.json` beside the clip.
+On it the bundled model puts address exactly on the frame the golfer starts
+moving, the top two frames late, impact one frame early, and the finish one frame
+late. How each of those was established independently of the model is recorded in
+`real_swing_01.json` beside the clip, along with the tolerance each is held to.
 
-**And this is where the current model is weakest, which is worth stating plainly.**
-The ensemble that ships now is better than its predecessor on 160 freshly generated
-clips by seven points within one frame, with a tempo improvement significant at 95%
-in every slice. On this one real clip it is *worse*: it puts the top one frame later
-and impact one frame earlier than the model it replaced, which compresses a
-ten-frame downswing to seven and takes tempo from 2.20 to **3.08** where the clip's
-own evidence says about 2.1 to 2.4. All five members agree on impact at frame 114,
-so this is systematic rather than one member misfiring.
+**Those four small errors produce one large one, and that is the honest headline
+for this clip.** Tempo is a ratio of two short intervals: two frames late at the
+top and one frame early at impact turn a ten-frame downswing into a seven-frame
+one, and tempo reads **3.26** where the clip's own evidence says about 2.1 to 2.4.
+The ensemble is no better — 3.08, from the same compressed downswing. At thirty
+frames a second one frame is ten percent of a downswing, so nothing here needs a
+gross failure to go this wrong; two frames in opposite directions is enough.
+±12% does not reach 2.44, so on this clip the band does not cover the truth
+either.
 
-At thirty frames a second a downswing is ten frames and one frame is ten percent,
-which is exactly the fragility the ±12% band exists to report — but 3.08 ± 12% does
-not reach 2.44, so on this clip the band does not cover the truth either. One clip
-against a hundred and sixty is not close as evidence, and the newer model ships. It
-is recorded here because it is the single clearest piece of evidence that the
-synthetic corpus is not the same thing as real footage, and because a result like
-this is the kind that quietly disappears.
+One clip against a hundred and sixty is not close as evidence, and the models
+ship. It is recorded because it is the clearest single sign that the synthetic
+corpus is not the same thing as real footage, and because a result like this is
+the kind that quietly disappears.
+
+**What the clip does decide is which model ships.** `scripts/choose_bundled_model.py`
+treats it as a gate rather than a tiebreak: a checkpoint that misses any of the
+four events by more than the fixture's own tolerance is not eligible, whatever it
+scores on generated swings. That rule exists because it was not there. The member
+bundled before this one had been picked purely on the best score over generated
+clips, and it put the finish **thirty-eight frames late** on this swing. Three of
+the five ensemble members fail the gate. Of the two that pass, the one that ships
+also happens to be the better of them on generated clips — 81.1% within one frame
+against 79.9, and 6.7% median tempo error against 8.0 — so the gate cost 0.7
+points against the excluded best and bought a model that is not wrong about the
+only person in this repository.
 
 ### Error bands
 
@@ -262,10 +279,36 @@ real estimator is run over them, and *its* output is the training input, with th
 exact labels kept.
 
 ```bash
-python scripts/make_detected_dataset.py --n 300      # render, detect, cache
-python scripts/train_ensemble.py --members 5         # fine-tune an ensemble
-python scripts/evaluate_clips.py                     # score it on the test corpus
+# 1. Build clips. Expensive - a clip is seconds, not milliseconds - so cached.
+python scripts/make_detected_dataset.py --n 300 --wide-tempo --out out/detected/more.npz
+
+# 2. Check nothing appears twice. Every figure below rests on this.
+python scripts/audit_corpus.py
+
+# 3. Train. The splits come from a fixed list of archives; new footage is added
+#    to training only, so validation and test stay what every earlier number was
+#    measured on.
+python scripts/experiment.py --name m0 --seed 0 --extra-train out/detected/more.npz \
+    --out out/exp/m0
+
+# 4. Ask whether the difference is real, rather than which number is bigger.
+python scripts/compare.py --a out/ensemble --b out/exp --clips out/holdout/*.npz
+
+# 5. Choose what ships. The real clip is a gate here, not a tiebreak.
+python scripts/choose_bundled_model.py --members out/exp/*/swing_event_net.pt \
+    --holdout out/holdout/*.npz --install swingml/data/swing_event_net.pt
+
+# 6. Measure error bands for those exact weights, then build the page.
+python scripts/calibrate_events.py --data out/detected/*.npz \
+    --checkpoint swingml/data/swing_event_net.pt --out swingml/data/event_calibration.json
+python scripts/export_web_model.py && python scripts/build_web_app.py
 ```
+
+Steps 4 and 5 are the ones worth insisting on. Every improvement here has been a
+few points on a few hundred clips, which is the regime where a difference can be
+entirely which clips were drawn; and a model chosen on generated footage alone
+picked, once, a checkpoint that put the finish thirty-eight frames late on the
+only real swing in the repository.
 
 ## Layout
 
@@ -294,8 +337,12 @@ shrinking from 0.295 m to 0.048 m across a single swing — a bone changing leng
 sixfold — and every angle derived from it was noise wearing a confident face. Those
 are now refused, with that measurement in the reason.
 
-## Legal note
+## Licence and legal note
 
-Overlaying motion metrics on swing video sits within claims asserted in Blast
-Motion's patent portfolio, including US 9,039,527. This is a university research
-prototype, which is fine. Nobody should assume it is safe to sell.
+MIT, in the [LICENSE](../LICENSE) at the root of the repository. That is a
+copyright licence and nothing more, which is the distinction that matters here:
+overlaying motion metrics on swing video sits within claims asserted in Blast
+Motion's patent portfolio, including US 9,039,527, and no copyright licence
+grants patent rights - least of all rights nobody here holds. This is a
+university research prototype, which is fine. Nobody should assume it is safe to
+sell.

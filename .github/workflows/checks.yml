@@ -1,12 +1,21 @@
 name: checks
 
-# Nothing ran these before. A hundred and fifty tests in the repository and no
-# machine that executed them on a push, which is the same as not having them the
-# moment somebody forgets - and this project has already shipped two faults that
-# a test would have caught, because nothing opened the page and looked.
+# Nothing ran these before: three hundred tests across the two projects and no
+# machine that executed any of them on a push, which is the same as not having
+# them the moment somebody forgets. This project has already shipped two faults
+# a test would have caught, because nothing opened the page and looked - and a
+# third that this workflow did catch and that nobody read, which is the other
+# half of the problem.
+#
+# A fresh checkout has no out/, so it runs the checkpoint bundled in the package
+# rather than an ensemble a developer happens to have trained. That difference is
+# what caught the third fault, and the real-swing test now covers both so it does
+# not take a clean machine to notice.
 on:
+  # Not every branch on push as well as on pull_request: that ran the whole suite
+  # twice for every commit on an open pull request, against the same commit.
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
 
 jobs:
