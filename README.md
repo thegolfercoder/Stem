@@ -25,9 +25,9 @@ Video of a swing goes in. Out comes the eight positions of the swing with a time
 for each, the tempo ratio, rotation at the top and movement against the ground -
 each carrying a measured error band and a label saying how it was arrived at.
 
-Accuracy on a freshly generated holdout no model has trained on: **83% of events
-within one frame and 93% within two**, with tempo carrying a measured spread of
-**±12%**. Those figures are for the ensemble, they come from rendered swings put
+Accuracy on a freshly generated holdout no model has trained on: **85.5% of events
+within one frame and 94.5% within two**, with tempo carrying a measured spread of
+**±9%**. Those figures are for the ensemble, they come from rendered swings put
 through the real pose estimator, and `swingml/README.md` is explicit about both -
 and about the one real clip in the repository, which is the only evidence here
 about an actual person and is treated as a gate on what ships rather than as a
