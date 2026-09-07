@@ -1,0 +1,30 @@
+# The benchmark every other config in this directory is reported against.
+#
+# Equal weight across the universe, rebalanced only when a position has drifted
+# more than 10% of equity away from its target. A tighter tolerance turns this
+# into a rebalancing strategy in its own right, which is not what a benchmark
+# should be.
+name: buy_and_hold
+notes: >
+  Equal-weight the universe and hold. Same costs, same period, same data as
+  every other run, so the comparison is like for like.
+
+strategy:
+  type: buy_and_hold
+
+data:
+  directory: data/sample
+  development_end: "2019-12-31"
+
+backtest:
+  initial_capital: 100000
+  rebalance_tolerance: 0.10
+  commission: { type: bps, bps: 2.0 }
+  slippage: { type: volume_share, spread_bps: 3.0, coefficient: 0.6 }
+
+risk:
+  limits:
+    max_position_weight: 0.30
+    max_gross_exposure: 1.0
+    max_net_exposure: 1.0
+    allow_shorts: false

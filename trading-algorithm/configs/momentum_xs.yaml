@@ -1,0 +1,35 @@
+# Cross-sectional momentum: rank the universe, hold the best.
+#
+# With a four-symbol universe this is close to a single-asset bet and its
+# results are dominated by that one choice. It is here to exercise the ranking
+# machinery, and the README says plainly that a four-name universe is not a test
+# of the cross-sectional effect.
+name: momentum_xs
+notes: >
+  Rank on 12-1 momentum (252-bar return, most recent 21 bars skipped), hold the
+  top name, no shorts.
+
+strategy:
+  type: xs_momentum
+  parameters:
+    lookback: 252
+    skip_bars: 21
+    top_n: 1
+    bottom_n: 0
+
+data:
+  directory: data/sample
+  development_end: "2019-12-31"
+
+backtest:
+  initial_capital: 100000
+  rebalance_tolerance: 0.05
+  commission: { type: bps, bps: 2.0 }
+  slippage: { type: volume_share, spread_bps: 3.0, coefficient: 0.6 }
+
+risk:
+  limits:
+    max_position_weight: 1.0
+    max_gross_exposure: 1.0
+    max_net_exposure: 1.0
+    allow_shorts: false
