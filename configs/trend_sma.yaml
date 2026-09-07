@@ -1,0 +1,45 @@
+# Moving-average trend following, long only.
+#
+# 50/200 is the textbook pair and is used here deliberately: it was not chosen
+# by searching this data, so the development-period result is closer to an
+# honest out-of-sample number than a tuned pair would be. `docs/METHODOLOGY.md`
+# explains why that matters more than finding a better pair would.
+name: trend_sma
+notes: >
+  Long when the 50-bar average is above the 200-bar average, flat otherwise,
+  with two bars of confirmation to cut whipsaw. Scaled to a 10% annual
+  volatility target and stopped out at 4x the entry-bar ATR.
+
+strategy:
+  type: ma_crossover
+  parameters:
+    fast: 50
+    slow: 200
+    allow_short: false
+    confirmation_bars: 2
+
+data:
+  directory: data/sample
+  development_end: "2019-12-31"
+
+backtest:
+  initial_capital: 100000
+  rebalance_tolerance: 0.03
+  commission: { type: bps, bps: 2.0 }
+  slippage: { type: volume_share, spread_bps: 3.0, coefficient: 0.6 }
+  stop: { type: atr, multiple: 4.0 }
+
+risk:
+  sizer:
+    type: volatility_target
+    annual_target: 0.10
+    lookback: 60
+    max_scale: 1.5
+  limits:
+    max_position_weight: 0.35
+    max_gross_exposure: 1.0
+    max_net_exposure: 1.0
+    allow_shorts: false
+  drawdown_guard:
+    max_drawdown: 0.30
+    cooldown_bars: 20

@@ -1,0 +1,42 @@
+# Time-series momentum: each instrument judged against its own past.
+#
+# Long/short, so this is the one config where the borrow cost on shorts and the
+# net-exposure limit both bind. Run it with `allow_shorts: false` to see how
+# much of any result comes from the short book.
+name: momentum_ts
+notes: >
+  Hold each instrument long or short on the sign of its own 126-bar return,
+  requiring at least a 2% absolute move so the book is flat in a flat market.
+
+strategy:
+  type: ts_momentum
+  parameters:
+    lookback: 126
+    allow_short: true
+    min_absolute_return: 0.02
+
+data:
+  directory: data/sample
+  development_end: "2019-12-31"
+
+backtest:
+  initial_capital: 100000
+  rebalance_tolerance: 0.03
+  annual_borrow_rate: 0.03
+  commission: { type: bps, bps: 2.0 }
+  slippage: { type: volume_share, spread_bps: 3.0, coefficient: 0.6 }
+
+risk:
+  sizer:
+    type: volatility_target
+    annual_target: 0.10
+    lookback: 60
+    max_scale: 1.5
+  limits:
+    max_position_weight: 0.35
+    max_gross_exposure: 1.0
+    max_net_exposure: 0.6
+    allow_shorts: true
+  drawdown_guard:
+    max_drawdown: 0.30
+    cooldown_bars: 20

@@ -1,0 +1,43 @@
+# Z-score mean reversion, long only.
+#
+# The z-score is measured on price rather than on a residual against a factor or
+# a pair. That is the simplest possible version, and it is also the version most
+# exposed to the failure mode of the whole family: it buys things that are
+# falling, and it cannot tell a temporary dislocation from a permanent
+# repricing. The ATR stop is not optional here.
+name: mean_reversion
+notes: >
+  Buy when the close is 1.5 trailing standard deviations below its 20-bar mean,
+  exit inside 0.3. Long only, stopped at 3x the entry-bar ATR.
+
+strategy:
+  type: zscore_reversion
+  parameters:
+    lookback: 20
+    entry_z: 1.5
+    exit_z: 0.3
+    allow_short: false
+
+data:
+  directory: data/sample
+  development_end: "2019-12-31"
+
+backtest:
+  initial_capital: 100000
+  rebalance_tolerance: 0.03
+  commission: { type: bps, bps: 2.0 }
+  slippage: { type: volume_share, spread_bps: 3.0, coefficient: 0.6 }
+  stop: { type: atr, multiple: 3.0 }
+
+risk:
+  sizer:
+    type: inverse_volatility
+    lookback: 60
+  limits:
+    max_position_weight: 0.35
+    max_gross_exposure: 1.0
+    max_net_exposure: 1.0
+    allow_shorts: false
+  drawdown_guard:
+    max_drawdown: 0.30
+    cooldown_bars: 20
