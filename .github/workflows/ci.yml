@@ -1,0 +1,50 @@
+name: checks
+
+# A test suite nothing runs is a test suite nobody has. These are the same three
+# commands a contributor runs locally, so a green badge means the same thing as
+# a clean checkout.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: install
+        run: pip install -e ".[dev]"
+
+      - name: lint
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: types
+        run: mypy
+
+      - name: tests
+        run: pytest -q --cov=tradelab --cov-report=term-missing
+
+      - name: the checked-in sample data is what the generator produces
+        # If these differ, either the generator changed without the data being
+        # regenerated or someone edited the CSVs by hand. Both make every result
+        # in the README unreproducible, which is worth failing a build over.
+        run: |
+          tradelab generate --output /tmp/regenerated
+          diff -r data/sample /tmp/regenerated
+
+      - name: the shipped configs still run
+        run: tradelab compare configs --split development
