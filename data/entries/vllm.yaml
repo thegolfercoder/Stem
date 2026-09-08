@@ -1,0 +1,67 @@
+slug: vllm
+name: vLLM
+provider: vLLM project
+kind: runtime
+status: available
+summary: >
+  An Apache 2.0 inference and serving library from UC Berkeley, built for
+  throughput and memory efficiency through PagedAttention and continuous
+  batching.
+
+categories:
+  - id: local
+    tier: recommended
+    rationale: >
+      The serving stack for open-weight models under real load. PagedAttention
+      and continuous batching are the two techniques that decide how many
+      concurrent requests a GPU can hold, and this is where they originated.
+    evidence: [vllm-github]
+
+use_cases:
+  - Serving an open-weight model to many concurrent users
+  - Getting the most throughput from fixed GPU capacity
+  - Production self-hosted deployment behind an OpenAI-compatible API
+
+strengths:
+  - Apache 2.0
+  - PagedAttention for key-value memory management, and continuous request batching
+  - Multiple quantisation and parallelism strategies across several hardware vendors
+  - Maintained by a community of over 2000 contributors, so it is not one person's project
+
+weaknesses:
+  - Far more setup than Ollama; this is a serving library, not a desktop application
+  - Aimed at server GPUs; it is not the right tool for running a model on a laptop
+  - Performance depends on tuning batch and memory settings for your model and hardware
+  - Like any runtime, it does not change what the model can do
+
+modalities:
+  input: [text, image, code]
+  output: [text, code]
+
+api:
+  available: true
+  docs_url: https://github.com/vllm-project/vllm
+  note: Serves an OpenAI-compatible HTTP API.
+
+openness:
+  weights: open-source
+  license: Apache-2.0
+  weights_url: https://github.com/vllm-project/vllm
+
+pricing:
+  unit: free
+  source: vllm-github
+
+sources:
+  - id: vllm-github
+    url: https://github.com/vllm-project/vllm
+    kind: official
+    title: vllm-project/vllm
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_site
+  verified_fields: [existence, openness, api]
+
+alternatives: [ollama, deepseek-v4-pro, qwen3.8-2.4t-a95b]

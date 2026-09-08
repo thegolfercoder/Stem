@@ -1,0 +1,70 @@
+slug: llama-4-maverick
+name: Llama 4 Maverick
+provider: Meta
+kind: model
+model_id: meta-llama/Llama-4-Maverick-17B-128E-Instruct
+status: available
+summary: >
+  The larger Llama 4 mixture-of-experts model, 17B active parameters across 128
+  experts, with an FP8 variant published alongside it.
+
+categories:
+  - id: local
+    tier: open-weight
+    rationale: >
+      Same active-parameter count as Scout with eight times the experts, so
+      inference speed is comparable while memory requirements are much higher -
+      the trade-off to weigh when choosing between them.
+    evidence: [hf-meta]
+  - id: general-reasoning
+    tier: open-weight
+    rationale: >
+      The larger of Meta's two published Llama 4 instruct checkpoints, with the
+      same ecosystem support as Scout.
+    evidence: [hf-meta]
+
+use_cases:
+  - Self-hosted deployment where memory is available and capability matters
+  - Fine-tuning at the top of the Llama 4 range
+
+strengths:
+  - FP8 variant published, which meaningfully reduces the memory requirement
+  - 17B active parameters keeps inference cost close to Scout's despite the size
+  - Same mature ecosystem as the rest of the Llama line
+
+weaknesses:
+  - 128 experts means a large memory footprint even though active parameters are modest
+  - Llama Community Licence, with the same conditions and scale threshold as Scout
+  - Superseded on published comparisons by newer open-weight families
+  - Gated access on Hugging Face
+
+modalities:
+  input: [text, image, code]
+  output: [text, code]
+
+api:
+  available: false
+
+openness:
+  weights: open-weights
+  weights_url: https://huggingface.co/meta-llama
+  license: Llama Community License
+  parameters: 17B active, 128 experts
+
+pricing:
+  unit: self_hosted
+  source: hf-meta
+
+sources:
+  - id: hf-meta
+    url: https://huggingface.co/meta-llama
+    kind: official
+    title: Meta Llama on Hugging Face
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_site
+  verified_fields: [existence, model_id, openness]
+
+alternatives: [llama-4-scout, qwen3.8-2.4t-a95b, deepseek-v4-pro]

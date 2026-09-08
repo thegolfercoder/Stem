@@ -1,0 +1,59 @@
+slug: elevenlabs-scribe-v2
+name: ElevenLabs Scribe v2
+provider: ElevenLabs
+kind: model
+model_id: scribe_v2
+status: available
+summary: >
+  ElevenLabs' speech-to-text model, documented as covering 90+ languages with
+  speaker diarisation, with a real-time variant at roughly 150ms latency.
+
+categories:
+  - id: speech-to-text
+    tier: recommended
+    rationale: >
+      Speaker diarisation and 90+ language coverage are both documented on the
+      provider's models page, and diarisation is what separates a usable
+      meeting transcript from a wall of text.
+    evidence: [elevenlabs-models]
+
+use_cases:
+  - Meeting and interview transcription where who-said-what matters
+  - Live captioning, using the realtime variant
+  - Multilingual transcription
+
+strengths:
+  - Speaker diarisation documented, which many transcription APIs charge extra for or omit
+  - 90+ languages
+  - A real-time variant at ~150ms in the same family
+
+weaknesses:
+  - Pricing not recorded here
+  - Closed weights, so confidential audio leaves your infrastructure
+  - Word error rate not published in the source consulted, so there is nothing here to compare against alternatives
+  - Diarisation accuracy on overlapping speech is where transcription systems typically fail, and no figure is available here
+
+modalities:
+  input: [audio]
+  output: [text]
+
+api:
+  available: true
+  docs_url: https://elevenlabs.io/docs
+
+openness:
+  weights: closed
+
+sources:
+  - id: elevenlabs-models
+    url: https://elevenlabs.io/docs/models
+    kind: official
+    title: ElevenLabs models
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_docs
+  verified_fields: [existence, model_id, api, openness, modalities]
+
+alternatives: [gemini-3.5-transcribe, voxtral-mini-transcribe-realtime]

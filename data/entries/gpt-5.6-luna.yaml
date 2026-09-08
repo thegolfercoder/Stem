@@ -1,0 +1,85 @@
+slug: gpt-5.6-luna
+name: GPT-5.6 Luna
+provider: OpenAI
+kind: model
+model_id: gpt-5.6-luna
+status: available
+summary: >
+  The cheapest tier of the GPT-5.6 family at $0.20/$1.20 per million tokens,
+  with the same 1.05M-token context window as its larger siblings.
+
+categories:
+  - id: general-reasoning
+    tier: budget
+    rationale: >
+      A tenth of Terra's input price and a fiftieth of Astra's, with the same
+      context window. The capability gap is real; the price gap is larger.
+    evidence: [openai-pricing, openai-models]
+  - id: productivity
+    tier: recommended
+    rationale: >
+      At $0.20/MTok, summarising and classifying at volume costs little enough
+      that the engineering around it dominates the bill.
+    evidence: [openai-pricing]
+  - id: long-context
+    tier: budget
+    rationale: >
+      A 1.05M-token window at $0.20/MTok is the cheapest way in this database
+      to put a very large document in front of a hosted model.
+    evidence: [openai-pricing, openai-models]
+
+use_cases:
+  - Classification, extraction and routing at scale
+  - First-pass triage in a two-model system
+  - Cheap summarisation of long documents
+
+strengths:
+  - $0.20/$1.20 per million tokens
+  - Full 1.05M context, not a reduced window as budget tiers often carry
+  - Batch API halves the rates again
+
+weaknesses:
+  - The bottom tier of its family; expect it to fail on problems the larger tiers handle
+  - A large context window does not imply good performance across it - retrieval quality at 900K tokens is not something the price tier guarantees
+  - Cheap models are the ones most likely to be quietly deprecated when a family is refreshed
+
+context_window:
+  input_tokens: 1050000
+  output_tokens: 128000
+  source: openai-models
+
+modalities:
+  input: [text, image]
+  output: [text]
+
+api:
+  available: true
+  docs_url: https://developers.openai.com/api/docs
+
+openness:
+  weights: closed
+
+pricing:
+  unit: per_million_tokens
+  input_usd: 0.2
+  output_usd: 1.2
+  source: openai-pricing
+
+sources:
+  - id: openai-pricing
+    url: https://developers.openai.com/api/docs/pricing
+    kind: official
+    title: OpenAI API pricing
+    retrieved: 2026-09-07
+  - id: openai-models
+    url: https://developers.openai.com/api/docs/models
+    kind: official
+    title: OpenAI models
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_docs
+  verified_fields: [existence, model_id, pricing, context_window, api, openness]
+
+alternatives: [gpt-5.6-terra, claude-haiku-4-5, gemini-3.5-flash-lite]

@@ -1,0 +1,88 @@
+slug: deepseek-v4-pro
+name: DeepSeek V4 Pro
+provider: DeepSeek
+kind: model
+model_id: deepseek-ai/DeepSeek-V4-Pro-0813
+status: available
+summary: >
+  DeepSeek's larger open-weight model, published on Hugging Face with
+  downloadable weights. The checkpoint naming is date-based, so the exact
+  release matters when reproducing a result.
+
+categories:
+  - id: local
+    tier: open-weight
+    rationale: >
+      Weights are published on DeepSeek's own Hugging Face organisation, so it
+      can be run on hardware you control. The binding constraint is hardware:
+      this is a large model and quantised variants exist for a reason.
+    evidence: [hf-deepseek]
+  - id: coding
+    tier: open-weight
+    rationale: >
+      The Pro line is DeepSeek's larger checkpoint and the one third-party
+      coding comparisons in 2026 consistently include. Verify on your own
+      repository before committing to it.
+    evidence: [hf-deepseek]
+  - id: general-reasoning
+    tier: open-weight
+    rationale: >
+      An open-weight option in a category otherwise dominated by hosted
+      models, which changes the answer for anyone who cannot send data to a
+      third party.
+    evidence: [hf-deepseek]
+
+use_cases:
+  - Self-hosted inference where data cannot leave your infrastructure
+  - Fine-tuning on a private corpus
+  - Avoiding vendor lock-in on a hosted API
+
+strengths:
+  - Downloadable weights, so no dependency on a provider's uptime or pricing
+  - Multiple checkpoints published, including quantised and vision-experimental variants
+  - No per-token cost once running
+
+weaknesses:
+  - Large enough that running it needs serious GPU capacity; "free" here means the hardware bill instead of the token bill
+  - The exact licence terms vary by checkpoint and must be read per model card, not assumed from the family
+  - Date-stamped checkpoints mean "DeepSeek V4 Pro" alone does not identify a model; quote the full repository name
+  - Context window and benchmark figures are not recorded here, having not been read from the model card
+
+modalities:
+  input: [text, code]
+  output: [text, code]
+
+api:
+  available: true
+  docs_url: https://platform.deepseek.com/
+  note: Also offered as a hosted API by DeepSeek; the pricing there is not recorded here.
+
+openness:
+  weights: open-weights
+  weights_url: https://huggingface.co/deepseek-ai
+  note: >
+    Licence terms are stated on each model card and differ between checkpoints.
+    Read the card for the exact checkpoint you intend to run.
+
+pricing:
+  unit: self_hosted
+  source: hf-deepseek
+  note: Weights are free to download; the cost is the hardware you run them on.
+
+sources:
+  - id: hf-deepseek
+    url: https://huggingface.co/deepseek-ai
+    kind: official
+    title: DeepSeek on Hugging Face
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_site
+  verified_fields: [existence, model_id, openness]
+  note: >
+    Checkpoint names read from DeepSeek's own Hugging Face organisation page.
+    Licence, context window and benchmark claims were not verified and are
+    therefore not recorded.
+
+alternatives: [deepseek-v4-flash, qwen3.8-2.4t-a95b, kimi-k3, glm-5.3]
