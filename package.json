@@ -18,6 +18,7 @@
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "screenshot": "node scripts/screenshot.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -25,11 +26,13 @@
     "three": "^0.170.0"
   },
   "devDependencies": {
+    "@types/node": "^26.5.0",
     "@types/three": "^0.170.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "@vitest/coverage-v8": "^2.1.0",
     "eslint": "^9.0.0",
+    "playwright": "^1.63.0",
     "prettier": "^3.3.0",
     "typescript": "^5.6.0",
     "vite": "^5.4.0",
