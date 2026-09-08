@@ -20,22 +20,34 @@ history and nothing is rewritten or lost.
 
 ## Splitting them out
 
-Create three empty repositories on GitHub — **no** README, licence or
-`.gitignore`, or the first push is rejected as a non-fast-forward:
+**The split is already done.** Each project sits on its own branch of this
+repository, produced by `git subtree split` and verified from a clean checkout
+at the root — 231, 106 and 136 tests respectively, plus lint, types, build and
+the command-line tools, all run with the project as the repository root rather
+than as a subdirectory.
 
-- `trading-algorithm`
-- `ai-model-database`
-- `rubiks-cube-trainer`
+| Branch | Commits | Goes to |
+|---|---|---|
+| `project/trading-algorithm` | 4 | `thegolfercoder/trading-algorithm` |
+| `project/ai-model-database` | 3 | `thegolfercoder/ai-model-database` |
+| `project/rubiks-cube-trainer` | 3 | `thegolfercoder/rubiks-cube-trainer` |
 
-Then, from a checkout of this branch:
+Create the three repositories on GitHub — **empty**, no README, licence or
+`.gitignore`, or the first push is rejected as a non-fast-forward. Then:
 
 ```bash
-bash scripts/split-repos.sh --push thegolfercoder
+for p in trading-algorithm ai-model-database rubiks-cube-trainer; do
+  git clone --branch "project/$p" --single-branch \
+    https://github.com/thegolfercoder/Stem.git "$p"
+  git -C "$p" push "https://github.com/thegolfercoder/$p.git" "project/$p:main"
+done
 ```
 
-That runs `git subtree split` on each directory and pushes the result to
-`main`. Run it without `--push` first if you would rather look at the branches
-before they go anywhere.
+Each clone carries only that project's history — the trading one is 3.4 MB and
+four commits, with none of Stem in it.
+
+`scripts/split-repos.sh` regenerates the branches from scratch if you would
+rather not trust the ones already pushed. It produces the same three commits.
 
 ### The profile README
 

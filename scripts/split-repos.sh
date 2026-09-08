@@ -7,6 +7,11 @@
 # touches exactly one project, so `git subtree split` produces a clean history
 # for each with no rewriting and nothing lost.
 #
+# You probably do not need this. The same branches are already pushed as
+# `project/trading-algorithm` and so on, and PORTFOLIO.md has a shorter way to
+# get them into their repositories. This is here for regenerating them from
+# scratch if you would rather not trust the ones already there.
+#
 # Before running this, create three empty repositories on GitHub - no README,
 # no licence, no .gitignore, or the first push will be rejected as a non-fast
 # forward:
