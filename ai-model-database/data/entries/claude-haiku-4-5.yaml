@@ -1,0 +1,96 @@
+slug: claude-haiku-4-5
+name: Claude Haiku 4.5
+provider: Anthropic
+kind: model
+model_id: claude-haiku-4-5-20251001
+status: available
+summary: >
+  The fastest and cheapest model in Anthropic's lineup, at $1/$5 per million
+  tokens with a 200K context window. For high-volume work where latency and
+  unit cost matter more than the last increment of capability.
+
+categories:
+  - id: general-reasoning
+    tier: budget
+    rationale: >
+      A fifth of Sonnet 5's input price and a twentieth of Opus 5's. The
+      trade-off is a 200K context instead of 1M and a February 2025 reliable
+      knowledge cutoff.
+    evidence: [anthropic-models, anthropic-pricing]
+  - id: productivity
+    tier: recommended
+    rationale: >
+      Summarising, classifying and drafting at $1/MTok is cheap enough to run
+      over a whole inbox or ticket queue; Anthropic's own worked example puts
+      10,000 support conversations at about $37.
+    evidence: [anthropic-pricing]
+  - id: agentic
+    tier: budget
+    rationale: >
+      Supports tool use and is the fastest model in the lineup, which is the
+      property that matters most in an agent loop where latency multiplies
+      across turns.
+    evidence: [anthropic-models]
+
+use_cases:
+  - Classification and routing at volume
+  - Summarising large numbers of short documents
+  - The fast tier of a two-model system, escalating hard cases to Opus or Sonnet
+  - Latency-sensitive interactive features
+
+strengths:
+  - $1/$5 per million tokens, the cheapest in the Claude lineup
+  - Fastest model in the lineup
+  - Supports vision and tool use despite the price point
+
+weaknesses:
+  - 200K context, not the 1M of the current 5-generation models
+  - Reliable knowledge cutoff of February 2025, well behind the rest of the lineup
+  - Does not support the effort parameter; uses the older extended-thinking mode
+  - Retirement commitment runs only to 15 October 2026, the shortest in the lineup - a real consideration for anything long-lived
+
+context_window:
+  input_tokens: 200000
+  output_tokens: 64000
+  source: anthropic-models
+
+modalities:
+  input: [text, image, pdf]
+  output: [text]
+
+api:
+  available: true
+  docs_url: https://platform.claude.com/docs/en/get-started
+
+openness:
+  weights: closed
+
+pricing:
+  unit: per_million_tokens
+  input_usd: 1
+  output_usd: 5
+  source: anthropic-pricing
+
+sources:
+  - id: anthropic-models
+    url: https://platform.claude.com/docs/en/about-claude/models/overview
+    kind: official
+    title: Models overview
+    retrieved: 2026-09-07
+  - id: anthropic-pricing
+    url: https://platform.claude.com/docs/en/about-claude/pricing
+    kind: official
+    title: Pricing
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_docs
+  verified_fields: [existence, model_id, pricing, context_window, api, openness, status]
+
+notes: >
+  The October 2026 retirement date is the thing to check before building on
+  this model. Anthropic publishes lifecycle commitments per model; this one is
+  the nearest in the current lineup.
+
+alternatives: [claude-sonnet-5, gpt-5.6-luna, gemini-3.5-flash-lite]

@@ -1,0 +1,80 @@
+slug: ollama
+name: Ollama
+provider: Ollama
+kind: runtime
+status: available
+summary: >
+  An MIT-licensed tool for downloading and running open-weight models locally
+  on macOS, Windows, Linux and Docker. The shortest path from "I want to run a
+  model on this machine" to a running model.
+
+categories:
+  - id: local
+    tier: recommended
+    rationale: >
+      MIT licensed, runs on all three desktop platforms, and handles the model
+      download, quantisation selection and serving in one command - which is
+      where most first attempts at local inference stall.
+    evidence: [ollama-github]
+  - id: productivity
+    tier: specialized
+    rationale: >
+      Makes it practical to run a model over personal documents without any of
+      them leaving the machine, which is a privacy property no hosted service
+      can offer.
+    evidence: [ollama-github]
+
+use_cases:
+  - Running open-weight models on a laptop
+  - Local development against a model without API costs
+  - Offline or air-gapped use
+  - Serving a model to other applications on a local network
+
+strengths:
+  - MIT licensed
+  - macOS, Windows, Linux and Docker
+  - Handles model download and quantisation selection rather than leaving them to you
+  - Exposes an OpenAI-compatible API locally, so existing code often works unchanged
+
+weaknesses:
+  - A convenience layer over inference engines, not an inference engine - for maximum throughput on server hardware, vLLM is the more direct tool
+  - Model quality is bounded by what fits in your hardware, which is usually far below frontier
+  - Default quantisations trade quality for size, and the default is not always the right trade for your task
+  - Not a model at all - it is the thing that runs one, which is why this database lists it as a runtime
+
+modalities:
+  input: [text, image, code]
+  output: [text, code]
+
+api:
+  available: true
+  docs_url: https://github.com/ollama/ollama
+  note: Serves a local HTTP API, including an OpenAI-compatible endpoint.
+
+openness:
+  weights: open-source
+  license: MIT
+  weights_url: https://github.com/ollama/ollama
+  note: The runtime is MIT licensed. The models it downloads carry their own licences.
+
+pricing:
+  unit: free
+  source: ollama-github
+
+sources:
+  - id: ollama-github
+    url: https://github.com/ollama/ollama
+    kind: official
+    title: ollama/ollama
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_site
+  verified_fields: [existence, openness, api]
+
+notes: >
+  The runtime being MIT licensed says nothing about the models you pull through
+  it. A Llama model run under Ollama is still under the Llama licence.
+
+alternatives: [vllm, ministral-3-8b, qwen3.8-27b]

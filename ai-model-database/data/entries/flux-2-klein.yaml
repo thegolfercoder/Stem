@@ -1,0 +1,77 @@
+slug: flux-2-klein
+name: FLUX.2 Klein
+provider: Black Forest Labs
+kind: model
+model_id: black-forest-labs/FLUX.2-klein-9b
+status: available
+summary: >
+  Black Forest Labs' FLUX.2 Klein image models, published with downloadable
+  weights in 4B and 9B sizes with FP8 and NVFP4 quantised variants.
+
+categories:
+  - id: image-generation
+    tier: open-weight
+    rationale: >
+      The main image-generation family with weights you can actually download
+      and run, which is the deciding factor for anyone who needs images
+      generated without sending prompts to a third party.
+    evidence: [hf-bfl]
+  - id: local
+    tier: specialized
+    rationale: >
+      4B and 9B variants with FP8 and NVFP4 quantisations put image generation
+      within reach of a single consumer GPU.
+    evidence: [hf-bfl]
+
+use_cases:
+  - Generating images on your own hardware
+  - High-volume generation where per-image API pricing does not scale
+  - Building image generation into a product without a third-party dependency
+
+strengths:
+  - Weights published in several sizes and quantisations, including FP8 and NVFP4
+  - Runs locally, so prompts and outputs never leave your machine
+  - No per-image cost once running
+
+weaknesses:
+  - The FLUX family has historically used different licences for different variants, including non-commercial terms on some - read the model card for the exact one you intend to use
+  - Licence not recorded in this entry, which is the field that most affects whether you can use it
+  - Output quality against the hosted image models is not something this entry has evidence about
+  - Needs a capable GPU; "local" image generation on CPU is impractically slow
+
+modalities:
+  input: [text, image]
+  output: [image]
+
+api:
+  available: false
+  note: Black Forest Labs also offer a hosted API; it is not tracked in this entry.
+
+openness:
+  weights: open-weights
+  weights_url: https://huggingface.co/black-forest-labs
+  note: >
+    Licence varies by variant within this family and is not recorded here.
+    Non-commercial terms have applied to some FLUX releases. Check the card.
+
+pricing:
+  unit: self_hosted
+  source: hf-bfl
+
+sources:
+  - id: hf-bfl
+    url: https://huggingface.co/black-forest-labs
+    kind: official
+    title: Black Forest Labs on Hugging Face
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_site
+  verified_fields: [existence, model_id, openness]
+  note: >
+    Repository names read from the official organisation page. Licence
+    deliberately not recorded, because it varies by variant and guessing it
+    would be the single most damaging error this entry could contain.
+
+alternatives: [gemini-3-pro-image, gemini-3.1-flash-image]

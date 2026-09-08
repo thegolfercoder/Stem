@@ -1,0 +1,82 @@
+slug: mistral-large-3
+name: Mistral Large 3
+provider: Mistral AI
+kind: model
+model_id: mistral-large-3-25-12
+status: available
+summary: >
+  Mistral's largest model, available through their API and published under
+  Apache 2.0 - a genuinely permissive licence at the top of a provider's range,
+  which is unusual.
+
+categories:
+  - id: general-reasoning
+    tier: open-weight
+    rationale: >
+      Apache 2.0 at the top of a provider's own range removes the licence
+      question entirely, which for regulated deployments is a bigger factor
+      than a few points of capability.
+    evidence: [mistral-models]
+  - id: local
+    tier: open-weight
+    rationale: >
+      Apache 2.0 means no acceptable-use terms, no scale threshold and no
+      permission to seek - the least legally complicated way to self-host a
+      large model.
+    evidence: [mistral-models]
+
+use_cases:
+  - Deployment in healthcare, legal or finance where licence certainty is required
+  - Self-hosting without negotiating usage terms
+  - API access with the option to move to self-hosting later
+
+strengths:
+  - Apache 2.0, which is OSI-approved and imposes no usage restrictions
+  - Available both as a hosted API and as weights, so the migration path off the API exists
+  - Mistral publishes most of its range under the same licence, including the small Ministral models
+
+weaknesses:
+  - Below the frontier hosted models on capability, by the general pattern of open-weight releases
+  - Pricing for the hosted API not recorded here
+  - Context window and parameter count not recorded here
+  - Model naming embeds a date (25-12) which is easy to misquote
+
+modalities:
+  input: [text, code]
+  output: [text, code]
+
+api:
+  available: true
+  docs_url: https://docs.mistral.ai/
+
+openness:
+  weights: open-source
+  license: Apache-2.0
+  note: >
+    Apache 2.0 is OSI-approved and imposes no field-of-use restriction. That
+    puts this in a different legal category from the Llama and Qwen large
+    models, not merely a different point on a spectrum.
+
+pricing:
+  unit: self_hosted
+  source: mistral-models
+  note: Also available as a paid hosted API; those rates are not recorded here.
+
+sources:
+  - id: mistral-models
+    url: https://docs.mistral.ai/getting-started/models/models_overview/
+    kind: official
+    title: Mistral models overview
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_docs
+  verified_fields: [existence, model_id, openness, api]
+
+notes: >
+  If the question is "what can I run locally", the licence is usually the
+  binding constraint rather than the benchmark. This entry and the Llama ones
+  are the clearest illustration of that in the database.
+
+alternatives: [ministral-3-8b, qwen3.8-27b, llama-4-scout]

@@ -1,0 +1,64 @@
+slug: elevenlabs-eleven-v3
+name: ElevenLabs Eleven v3
+provider: ElevenLabs
+kind: model
+model_id: eleven_v3
+status: available
+summary: >
+  ElevenLabs' expressive text-to-speech model, documented as covering 70+
+  languages, with a conversational variant at roughly 280ms latency.
+
+categories:
+  - id: audio-generation
+    tier: recommended
+    rationale: >
+      A dedicated text-to-speech provider with a documented model ladder from
+      expressive (v3) to ultra-fast (flash at ~75ms), which lets one integration
+      cover both narration and real-time use.
+    evidence: [elevenlabs-models]
+
+use_cases:
+  - Narration and voiceover
+  - Real-time conversational agents, using the conversational variant
+  - Multilingual speech from one model
+
+strengths:
+  - 70+ languages on v3
+  - A documented latency ladder - v3 conversational at ~280ms, flash v2.5 at ~75ms
+  - Voice design from text (eleven_ttv_v3) in the same family
+
+weaknesses:
+  - Pricing not recorded here; ElevenLabs bills on a character/credit subscription model that this entry does not capture
+  - Closed weights, so audio must be sent to a third party
+  - Voice cloning raises consent and likeness questions that are a policy matter, not a capability one
+  - The flash models trade language coverage for latency, and flash v2 is English-only
+
+modalities:
+  input: [text]
+  output: [audio]
+
+api:
+  available: true
+  docs_url: https://elevenlabs.io/docs
+
+openness:
+  weights: closed
+
+sources:
+  - id: elevenlabs-models
+    url: https://elevenlabs.io/docs/models
+    kind: official
+    title: ElevenLabs models
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_docs
+  verified_fields: [existence, model_id, api, openness, modalities]
+  note: Pricing not recorded - the models page does not carry rates.
+
+notes: >
+  Before cloning a voice, check that you have the speaker's consent. That is
+  not a technical constraint and no model will enforce it for you.
+
+alternatives: [elevenlabs-scribe-v2, lyria-3.5]

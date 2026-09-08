@@ -1,0 +1,89 @@
+slug: llama-4-scout
+name: Llama 4 Scout
+provider: Meta
+kind: model
+model_id: meta-llama/Llama-4-Scout-17B-16E-Instruct
+status: available
+summary: >
+  Meta's smaller Llama 4 mixture-of-experts model, 17B active parameters across
+  16 experts, published on Meta's Hugging Face organisation.
+
+categories:
+  - id: local
+    tier: recommended
+    rationale: >
+      The Llama line has by far the widest third-party tooling support of any
+      open-weight family - quantisations, runtimes, fine-tuning frameworks -
+      which usually matters more for a self-hosted deployment than a few points
+      of benchmark difference.
+    evidence: [hf-meta]
+  - id: long-context
+    tier: open-weight
+    rationale: >
+      Scout is the Llama 4 checkpoint associated with very long context in
+      third-party reporting. The specific figure is not recorded here because
+      it was not read from the model card.
+    evidence: [hf-meta]
+  - id: general-reasoning
+    tier: open-weight
+    rationale: >
+      A mature, widely deployed open-weight family, which means more people
+      have found and documented its failure modes than for newer entrants.
+    evidence: [hf-meta]
+
+use_cases:
+  - Self-hosted deployment with mature tooling
+  - Fine-tuning where community recipes already exist
+  - Long-context work on your own hardware
+
+strengths:
+  - The largest ecosystem of any open-weight family - quantisations, serving stacks, fine-tuning tooling
+  - 17B active parameters, so inference cost is far below the total parameter count
+  - Llama Guard and Prompt Guard published in the same organisation for safety filtering
+
+weaknesses:
+  - The Llama Community Licence is not an OSI-approved open source licence and carries usage conditions, including a monthly-active-user threshold - read it
+  - Llama 4 has been in the field long enough that newer open-weight families exceed it on published comparisons
+  - Context window figure not recorded here, not having been read from the model card
+  - Access on Hugging Face is gated and requires accepting the licence
+
+modalities:
+  input: [text, image, code]
+  output: [text, code]
+
+api:
+  available: false
+  note: Offered by many third-party hosts; those are not tracked here.
+
+openness:
+  weights: open-weights
+  weights_url: https://huggingface.co/meta-llama
+  license: Llama Community License
+  parameters: 17B active, 16 experts
+  note: >
+    Not an OSI-approved open source licence. It carries acceptable-use terms
+    and a scale threshold above which separate permission is required.
+
+pricing:
+  unit: self_hosted
+  source: hf-meta
+
+sources:
+  - id: hf-meta
+    url: https://huggingface.co/meta-llama
+    kind: official
+    title: Meta Llama on Hugging Face
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_site
+  verified_fields: [existence, model_id, openness]
+
+notes: >
+  "Open weights" and "open source" are not the same thing, and the Llama
+  licence is the clearest example of the difference. If your requirement is
+  legal certainty rather than the ability to download, an Apache 2.0 or MIT
+  model is a different answer to the same question.
+
+alternatives: [llama-4-maverick, qwen3.8-27b, ministral-3-8b, mistral-large-3]

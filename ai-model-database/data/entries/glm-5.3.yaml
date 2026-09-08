@@ -1,0 +1,69 @@
+slug: glm-5.3
+name: GLM-5.3
+provider: Z.ai
+kind: model
+model_id: zai-org/GLM-5.3
+status: available
+summary: >
+  The current checkpoint in Z.ai's GLM-5 line, published with open weights,
+  with a smaller GLM-5.3-Flash variant alongside it.
+
+categories:
+  - id: coding
+    tier: open-weight
+    rationale: >
+      The GLM-5 line is one of the open-weight families that third-party coding
+      comparisons in 2026 consistently include. Verify on your own repository
+      rather than on a leaderboard.
+    evidence: [hf-zai]
+  - id: local
+    tier: open-weight
+    rationale: >
+      Weights and BF16 variants published, with a smaller Flash checkpoint for
+      constrained hardware.
+    evidence: [hf-zai]
+
+use_cases:
+  - Self-hosted coding assistance
+  - On-premises deployment where code cannot leave the network
+  - Fine-tuning for a specific codebase
+
+strengths:
+  - A Flash variant published alongside the full model, so there is a size ladder within one family
+  - BF16 variants published for both
+  - Predecessor GLM-5.2 reported as MIT licensed with a 1M-token context
+
+weaknesses:
+  - Licence for 5.3 specifically not recorded here; it was reported as its own permissive licence rather than inheriting 5.2's MIT
+  - Context window and parameter count not recorded for this checkpoint
+  - The line moves quickly - three generations in the organisation at time of checking - so a pinned checkpoint matters more than the family name
+  - Ecosystem tooling is thinner than Llama's
+
+modalities:
+  input: [text, code]
+  output: [text, code]
+
+api:
+  available: false
+
+openness:
+  weights: open-weights
+  weights_url: https://huggingface.co/zai-org
+
+pricing:
+  unit: self_hosted
+  source: hf-zai
+
+sources:
+  - id: hf-zai
+    url: https://huggingface.co/zai-org
+    kind: official
+    title: Z.ai on Hugging Face
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_site
+  verified_fields: [existence, model_id, openness]
+
+alternatives: [deepseek-v4-pro, kimi-k3, qwen3.8-2.4t-a95b]

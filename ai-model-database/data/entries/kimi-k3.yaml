@@ -1,0 +1,73 @@
+slug: kimi-k3
+name: Kimi K3
+provider: Moonshot AI
+kind: model
+model_id: moonshotai/Kimi-K3
+status: available
+summary: >
+  The most recent model published in Moonshot AI's Kimi line, with weights on
+  Hugging Face. A K2.7-Code checkpoint is published alongside it.
+
+categories:
+  - id: general-reasoning
+    tier: open-weight
+    rationale: >
+      The newest checkpoint in a line that has shipped several open-weight
+      generations, which is a signal about maintenance rather than capability.
+    evidence: [hf-moonshot]
+  - id: local
+    tier: open-weight
+    rationale: >
+      Weights are published on Moonshot's own Hugging Face organisation,
+      alongside earlier K2 checkpoints that remain available.
+    evidence: [hf-moonshot]
+
+use_cases:
+  - Self-hosted deployment
+  - Research on a recent open-weight model
+  - Comparison against the DeepSeek and Qwen lines
+
+strengths:
+  - Actively maintained line with several generations published
+  - A code-specialised sibling checkpoint, Kimi-K2.7-Code, published in the same organisation
+  - Earlier generations remain downloadable, which matters for reproducing published results
+
+weaknesses:
+  - Licence terms not recorded here; the K2.6 generation was reported as a modified MIT licence, which is not the same as MIT
+  - Parameter count, context window and hardware requirements not recorded here
+  - Less third-party tooling and quantisation support than the Llama and Qwen ecosystems
+  - No first-party API documented in the source consulted
+
+modalities:
+  input: [text, code]
+  output: [text, code]
+
+api:
+  available: false
+
+openness:
+  weights: open-weights
+  weights_url: https://huggingface.co/moonshotai
+
+pricing:
+  unit: self_hosted
+  source: hf-moonshot
+
+sources:
+  - id: hf-moonshot
+    url: https://huggingface.co/moonshotai
+    kind: official
+    title: Moonshot AI on Hugging Face
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_site
+  verified_fields: [existence, model_id, openness]
+
+notes: >
+  This entry is deliberately thin. Existence and the repository name were
+  verified; nothing else was. That is the honest state of the entry, and it is
+  visible rather than papered over with plausible numbers.
+
+alternatives: [deepseek-v4-pro, qwen3.8-2.4t-a95b, glm-5.3]

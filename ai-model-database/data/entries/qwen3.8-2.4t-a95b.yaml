@@ -1,0 +1,78 @@
+slug: qwen3.8-2.4t-a95b
+name: Qwen3.8-2.4T-A95B
+provider: Alibaba
+kind: model
+model_id: Qwen/Qwen3.8-2.4T-A95B
+status: available
+summary: >
+  Alibaba's large mixture-of-experts model with published weights, in the
+  Qwen3.8 generation. FP8 weights are published alongside the full-precision
+  release.
+
+categories:
+  - id: general-reasoning
+    tier: open-weight
+    rationale: >
+      The largest model in Alibaba's published Qwen3.8 line, and one of the
+      few open-weight models at this scale with weights actually downloadable
+      rather than announced.
+    evidence: [hf-qwen]
+  - id: local
+    tier: open-weight
+    rationale: >
+      Weights and an FP8 variant are published, though at this size "local"
+      means a multi-GPU server rather than a workstation.
+    evidence: [hf-qwen]
+
+use_cases:
+  - Self-hosted deployment where capability matters more than hardware cost
+  - Research on a frontier-scale open model
+  - Multilingual work, where the Qwen line has historically been strong
+
+strengths:
+  - Weights published, including an FP8 variant that halves the memory requirement
+  - Part of a large family with smaller dense siblings, so a capability ladder exists within one tokenizer and prompt format
+
+weaknesses:
+  - Published under a custom licence rather than Apache 2.0 - read it before commercial use
+  - At this scale, self-hosting requires a multi-GPU server; the hardware cost can exceed API spend for low volumes
+  - Context window and benchmark figures not recorded here, not having been read from the model card
+  - Custom licences on large open-weight models have historically included usage restrictions that matter in regulated industries
+
+modalities:
+  input: [text, code]
+  output: [text, code]
+
+api:
+  available: false
+  note: Available through third-party hosting providers; those are not tracked here.
+
+openness:
+  weights: open-weights
+  weights_url: https://huggingface.co/Qwen
+  license: custom
+  note: >
+    The Qwen line mixes licences: this model is under a custom licence while
+    the dense 27B sibling is Apache 2.0. Do not assume one from the other.
+
+pricing:
+  unit: self_hosted
+  source: hf-qwen
+
+sources:
+  - id: hf-qwen
+    url: https://huggingface.co/Qwen
+    kind: official
+    title: Qwen on Hugging Face
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_site
+  verified_fields: [existence, model_id, openness]
+  note: >
+    Repository names read from Alibaba's own Hugging Face organisation. The
+    custom-licence classification comes from secondary reporting and should be
+    confirmed against the model card before commercial use.
+
+alternatives: [qwen3.8-27b, deepseek-v4-pro, kimi-k3, mistral-large-3]
