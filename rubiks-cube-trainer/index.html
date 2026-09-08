@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rubik's cube trainer</title>
+    <meta
+      name="description"
+      content="An interactive 3D Rubik's cube that solves itself two ways and teaches you to do it."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23171719'/%3E%3Crect x='5' y='5' width='6' height='6' fill='%23f5f5f0'/%3E%3Crect x='13' y='5' width='6' height='6' fill='%23c0392b'/%3E%3Crect x='21' y='5' width='6' height='6' fill='%2327923f'/%3E%3Crect x='5' y='13' width='6' height='6' fill='%23f2c31a'/%3E%3Crect x='13' y='13' width='6' height='6' fill='%231f5fbf'/%3E%3Crect x='21' y='13' width='6' height='6' fill='%23e8730c'/%3E%3Crect x='5' y='21' width='6' height='6' fill='%2327923f'/%3E%3Crect x='13' y='21' width='6' height='6' fill='%23f5f5f0'/%3E%3Crect x='21' y='21' width='6' height='6' fill='%23c0392b'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div class="app">
+      <header class="bar">
+        <h1>Rubik's cube trainer</h1>
+        <nav class="tabs" role="tablist" aria-label="Sections">
+          <button role="tab" class="tab" data-tab="play" aria-selected="true">Play</button>
+          <button role="tab" class="tab" data-tab="learn" aria-selected="false">Learn</button>
+          <button role="tab" class="tab" data-tab="time" aria-selected="false">Time</button>
+        </nav>
+        <div class="bar-right">
+          <label class="field">
+            <span>Colours</span>
+            <select id="palette"></select>
+          </label>
+          <label class="field">
+            <span>Speed</span>
+            <input id="speed" type="range" min="0" max="400" step="20" />
+          </label>
+        </div>
+      </header>
+
+      <main class="stage">
+        <div class="viewport">
+          <canvas id="cube" aria-label="Interactive 3D Rubik's cube"></canvas>
+          <p class="viewport-hint">
+            Drag the background to turn the cube round. Drag a face to turn that layer. Or use the
+            keyboard: <kbd>U</kbd> <kbd>D</kbd> <kbd>L</kbd> <kbd>R</kbd> <kbd>F</kbd> <kbd>B</kbd>,
+            with <kbd>Shift</kbd> for anticlockwise.
+          </p>
+          <output id="status" class="status" role="status" aria-live="polite"></output>
+        </div>
+
+        <aside class="panel">
+          <!-- Play -->
+          <section class="tabpanel" data-panel="play">
+            <div class="row">
+              <button id="scramble" class="primary">Scramble</button>
+              <button id="reset">Solved</button>
+            </div>
+
+            <div class="block">
+              <h2>Solve it</h2>
+              <div class="row">
+                <button id="solve-fast">Efficiently</button>
+                <button id="solve-learn">The way you'd learn</button>
+              </div>
+              <p class="note" id="solve-note">
+                The first uses Kociemba's two-phase algorithm and finds about twenty moves. The
+                second uses the layer-by-layer method and finds about a hundred and fifty, every one
+                of which belongs to a step you could follow yourself.
+              </p>
+            </div>
+
+            <div class="block" id="playback" hidden>
+              <h2>Solution</h2>
+              <p class="mono" id="solution-moves"></p>
+              <div class="row">
+                <button id="step-back" aria-label="Previous move">&#9664;</button>
+                <button id="play" class="primary">Play</button>
+                <button id="step-forward" aria-label="Next move">&#9654;</button>
+                <button id="play-all">To the end</button>
+              </div>
+              <p class="progress"><span id="playback-progress"></span></p>
+              <div class="step-detail" id="step-detail"></div>
+            </div>
+
+            <div class="block">
+              <h2>Your moves</h2>
+              <p class="mono scroll" id="history">&mdash;</p>
+              <div class="row">
+                <button id="undo">Undo</button>
+                <button id="redo">Redo</button>
+              </div>
+            </div>
+
+            <div class="block">
+              <h2>Set it up</h2>
+              <label class="field wide">
+                <span>Type a scramble</span>
+                <input id="scramble-input" placeholder="R U R' U' F2 …" spellcheck="false" />
+              </label>
+              <div class="row">
+                <button id="apply-scramble">Apply</button>
+                <button id="copy-state">Copy state</button>
+              </div>
+              <p class="note" id="scramble-error"></p>
+            </div>
+
+            <div class="block">
+              <h2>Patterns</h2>
+              <div class="chips" id="patterns"></div>
+              <p class="note" id="pattern-note"></p>
+            </div>
+          </section>
+
+          <!-- Learn -->
+          <section class="tabpanel" data-panel="learn" hidden>
+            <div class="block">
+              <h2>Where you are</h2>
+              <ol class="ladder" id="ladder"></ol>
+            </div>
+
+            <div class="block">
+              <div class="row">
+                <button id="hint" class="primary">What now?</button>
+                <button id="apply-hint">Do it</button>
+              </div>
+              <div class="step-detail" id="hint-detail">
+                Scramble the cube, then ask. Each hint names the stage, the algorithm and what it
+                does.
+              </div>
+            </div>
+
+            <div class="block" id="lesson">
+              <h2 id="lesson-title"></h2>
+              <p class="goal" id="lesson-goal"></p>
+              <p id="lesson-idea"></p>
+              <h3>What to look for</h3>
+              <p id="lesson-look"></p>
+              <h3>Where it usually goes wrong</h3>
+              <p id="lesson-mistake"></p>
+              <div id="lesson-algorithms"></div>
+              <div class="row">
+                <button id="practise">Practise this stage</button>
+              </div>
+              <p class="note">
+                Practising sets the cube up with everything before this stage already done, so the
+                only thing in front of you is the case you are learning.
+              </p>
+            </div>
+          </section>
+
+          <!-- Time -->
+          <section class="tabpanel" data-panel="time" hidden>
+            <div class="block">
+              <p class="timer mono" id="timer">0.00</p>
+              <p class="note" id="timer-hint">
+                Hold <kbd>Space</kbd> to start inspection, hold again and release to begin. Press
+                anything to stop.
+              </p>
+              <label class="field">
+                <input type="checkbox" id="inspection" />
+                <span>15 second inspection</span>
+              </label>
+            </div>
+
+            <div class="block">
+              <h2>This session</h2>
+              <dl class="stats" id="stats"></dl>
+              <div class="row">
+                <button id="clear-times">Clear</button>
+              </div>
+            </div>
+
+            <div class="block">
+              <h2>Solves</h2>
+              <ol class="solves" id="solves"></ol>
+            </div>
+          </section>
+        </aside>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

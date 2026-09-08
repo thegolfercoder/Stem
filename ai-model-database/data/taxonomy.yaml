@@ -1,0 +1,190 @@
+# The controlled vocabulary. Everything in data/entries/ is validated against it.
+#
+# A free-text category field turns a database into a pile of near-synonyms within
+# a month - "coding", "code", "programming", "software" - and nothing can be
+# queried afterwards. Adding a category is a deliberate act with a definition
+# attached, which is the point.
+
+version: 1
+
+policy:
+  # An entry not re-checked within this many days is reported as stale by
+  # `aimodeldb stale` and by the scheduled workflow. AI models change fast
+  # enough that a six-month-old price is more likely wrong than right.
+  max_age_days: 90
+  # An entry more than this far past its check date is reported as an error
+  # rather than a warning, and the build fails.
+  hard_max_age_days: 365
+
+tiers:
+  - id: recommended
+    label: Recommended
+    definition: >
+      A sound default for this category for most people, given the evidence
+      cited on the entry. Not a claim that it is the best: several entries in
+      one category can hold this tier, and where they do the differences between
+      them are in the notes rather than in a ranking.
+  - id: strong-alternative
+    label: Strong alternative
+    definition: >
+      Comparable in capability, differing in price, licence, latency, ecosystem
+      or availability. Pick between these on constraints, not on quality.
+  - id: specialized
+    label: Specialized
+    definition: >
+      Better than the general options for a narrower slice of this category, and
+      worse outside it. The entry says which slice.
+  - id: open-weight
+    label: Open-weight
+    definition: >
+      The weights can be downloaded and run on your own hardware. Listed
+      separately because "can I run this myself" is a constraint that overrides
+      capability comparisons rather than sitting on the same axis as them.
+  - id: budget
+    label: Budget option
+    definition: >
+      Materially cheaper than the recommended entries in this category, with a
+      capability gap the entry describes. Cheap and adequate is a real answer.
+
+categories:
+  - id: general-reasoning
+    label: General reasoning
+    question: Which model should I use for hard, open-ended thinking?
+    definition: >
+      Multi-step reasoning over problems with no fixed shape: analysis,
+      planning, judgement calls, synthesis across sources.
+
+  - id: coding
+    label: Coding
+    question: Which model or tool should I use to write and edit code?
+    definition: >
+      Writing, editing, reviewing and debugging code, including agentic work
+      across a repository rather than single-function completion.
+
+  - id: mathematics
+    label: Mathematics
+    question: Which model should I use for mathematical work?
+    definition: >
+      Formal and quantitative reasoning: proof, symbolic manipulation,
+      competition-style problems, numerical work where the answer is checkable.
+
+  - id: research
+    label: Research and synthesis
+    question: Which tool should I use for deep research?
+    definition: >
+      Gathering, reading and synthesising many sources into a cited answer.
+      Distinct from general reasoning by the retrieval and citation requirement.
+
+  - id: writing
+    label: Writing and editing
+    question: Which model should I use to draft or edit prose?
+    definition: >
+      Long-form drafting, editing, style work, and writing in a specified voice.
+
+  - id: image-generation
+    label: Image generation
+    question: Which tool should I use to generate or edit images?
+    definition: Generating and editing raster images from text or image input.
+
+  - id: video-generation
+    label: Video generation
+    question: Which tool should I use to generate video?
+    definition: Generating video from text, image or video input.
+
+  - id: audio-generation
+    label: Audio, speech and music generation
+    question: Which tool should I use to generate speech or music?
+    definition: Text-to-speech, voice cloning, sound effects and music generation.
+
+  - id: speech-to-text
+    label: Speech to text
+    question: Which tool should I use for transcription?
+    definition: Transcription and diarisation of recorded or live audio.
+
+  - id: data-analysis
+    label: Data analysis
+    question: Which model should I use to analyse data?
+    definition: >
+      Reasoning over tabular and structured data, writing and running analysis
+      code, and producing charts and summaries from a dataset.
+
+  - id: vision
+    label: Vision and document understanding
+    question: Which model should I use to read images, documents or screens?
+    definition: >
+      Understanding images, charts, screenshots, scanned documents and PDFs as
+      input. Not image generation.
+
+  - id: agentic
+    label: Agentic workflows
+    question: Which model should I use to build an agent?
+    definition: >
+      Multi-step tool use, long-horizon task execution, and computer or browser
+      control, where the model chooses its own next action.
+
+  - id: long-context
+    label: Long context
+    question: Which model should I use for very long documents?
+    definition: >
+      Working over inputs of hundreds of thousands of tokens or more. A large
+      advertised context window is necessary but not sufficient; the entry says
+      what is known about performance across the window, not just its size.
+
+  - id: local
+    label: Running locally
+    question: What can I run on my own hardware?
+    definition: >
+      Models whose weights are downloadable, and the runtimes that serve them.
+      The binding constraint here is hardware and licence, not benchmark scores.
+
+  - id: education
+    label: Education and learning
+    question: Which tool should I use to learn or teach a subject?
+    definition: >
+      Explanation, tutoring, study material generation, and working through a
+      body of source material.
+
+  - id: productivity
+    label: Productivity
+    question: Which tool should I use for everyday knowledge work?
+    definition: >
+      Summarising, drafting, meeting notes, search over personal or team
+      documents, and workflow automation.
+
+  - id: embeddings
+    label: Embeddings and retrieval
+    question: Which model should I use for search and RAG?
+    definition: Vector representations for semantic search, clustering and retrieval.
+
+kinds:
+  - id: model
+    definition: A model accessed through an API or downloadable weights.
+  - id: tool
+    definition: An application or service built on models, with its own interface.
+  - id: runtime
+    definition: Software for serving or running models on your own hardware.
+
+openness:
+  - id: closed
+    definition: Weights are not published. Available only through an API or product.
+  - id: open-weights
+    definition: >
+      Weights are downloadable, under a licence that may restrict use. Not the
+      same as open source: the training data and code are usually not published.
+  - id: open-source
+    definition: >
+      Weights and licence permit unrestricted use, modification and
+      redistribution under an OSI-approved licence.
+
+source_kinds:
+  - id: official
+    definition: >
+      The provider's own documentation, pricing page, model card or release
+      note. The only kind that can satisfy the requirement that every entry
+      carry a primary source.
+  - id: benchmark
+    definition: A public benchmark or leaderboard, named with its methodology.
+  - id: secondary
+    definition: >
+      Journalism, analysis or third-party comparison. May support an entry and
+      may never be its only source.

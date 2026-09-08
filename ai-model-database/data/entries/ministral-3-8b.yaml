@@ -1,0 +1,71 @@
+slug: ministral-3-8b
+name: Ministral 3 8B
+provider: Mistral AI
+kind: model
+model_id: ministral-3-8b-25-12
+status: available
+summary: >
+  An 8B Apache 2.0 model from Mistral's small-model line, which also includes
+  3B and 14B siblings. Small enough to run on a laptop.
+
+categories:
+  - id: local
+    tier: recommended
+    rationale: >
+      8B parameters under Apache 2.0 is the combination that makes local
+      running genuinely practical: it fits in consumer hardware and carries no
+      licence conditions to check.
+    evidence: [mistral-models]
+  - id: general-reasoning
+    tier: budget
+    rationale: >
+      Small models are not substitutes for frontier ones. This sits here as the
+      answer to "something has to run offline", not as a capability
+      recommendation.
+    evidence: [mistral-models]
+
+use_cases:
+  - Running a model on a laptop or an edge device
+  - Offline or air-gapped deployment
+  - The local tier of a hybrid system that escalates to an API
+
+strengths:
+  - Apache 2.0 with no usage restrictions
+  - 8B parameters runs quantised on consumer hardware
+  - 3B and 14B siblings published under the same licence, so there is a size ladder
+
+weaknesses:
+  - An 8B model will fail on tasks any frontier model handles; the gap is large and not closing
+  - Context window not recorded here
+  - Quantisation to fit consumer hardware costs further quality, and how much is workload-dependent
+
+modalities:
+  input: [text, code]
+  output: [text, code]
+
+api:
+  available: true
+  docs_url: https://docs.mistral.ai/
+
+openness:
+  weights: open-source
+  license: Apache-2.0
+  parameters: 8B
+
+pricing:
+  unit: self_hosted
+  source: mistral-models
+
+sources:
+  - id: mistral-models
+    url: https://docs.mistral.ai/getting-started/models/models_overview/
+    kind: official
+    title: Mistral models overview
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_docs
+  verified_fields: [existence, model_id, openness, api]
+
+alternatives: [qwen3.8-27b, mistral-large-3, ollama]

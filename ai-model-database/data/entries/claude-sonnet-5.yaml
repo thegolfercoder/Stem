@@ -1,0 +1,113 @@
+slug: claude-sonnet-5
+name: Claude Sonnet 5
+provider: Anthropic
+kind: model
+model_id: claude-sonnet-5
+status: available
+summary: >
+  The balance point of Anthropic's lineup: the same 1M-token context and 128K
+  output as Opus 5, faster, at two-fifths of the input price.
+
+categories:
+  - id: general-reasoning
+    tier: strong-alternative
+    rationale: >
+      Described by the provider as the best combination of speed and
+      intelligence in the lineup. The gap to Opus 5 is real but the price gap
+      is 2.5x, which makes this the default for high-volume work.
+    evidence: [anthropic-models]
+  - id: coding
+    tier: recommended
+    rationale: >
+      Carries the same 1M-token window as Opus 5, so it can hold the same
+      amount of a codebase, at a fifth of the input cost per token.
+    evidence: [anthropic-models, anthropic-pricing]
+  - id: long-context
+    tier: recommended
+    rationale: >
+      1M input tokens at $2/MTok is the cheapest million-token window in the
+      Claude lineup, and long-context requests are not surcharged.
+    evidence: [anthropic-pricing]
+  - id: writing
+    tier: strong-alternative
+    rationale: >
+      Same context and output limits as Opus 5 for drafting work, with lower
+      latency, which matters when a person is waiting for the draft.
+    evidence: [anthropic-models]
+  - id: education
+    tier: recommended
+    rationale: >
+      Fast enough for back-and-forth tutoring at a price that makes a long
+      session affordable, with a context window large enough to hold a textbook
+      chapter and a student's work together.
+    evidence: [anthropic-models, anthropic-pricing]
+  - id: agentic
+    tier: strong-alternative
+    rationale: >
+      Supports the same tool-use and computer-use surface as Opus 5, at lower
+      latency, which compounds across an agent loop with many turns.
+    evidence: [anthropic-pricing]
+
+use_cases:
+  - High-volume production workloads where Opus pricing does not fit
+  - Interactive coding assistance
+  - Summarising and querying long documents
+  - Tutoring and explanation at conversational latency
+
+strengths:
+  - 1M-token context and 128K output, matching Opus 5, at $2/$10
+  - Fast relative to Opus 5 and Fable 5.1
+  - The $2/$10 introductory price became the standard price rather than rising to $3/$15 as originally scheduled
+
+weaknesses:
+  - Below Opus 5 and Fable 5.1 on the hardest reasoning, by the provider's own positioning
+  - Reliable knowledge cutoff of January 2026, older than Opus 5 and Fable 5.1
+  - Text and image input only
+  - No fast mode available, unlike Opus 5
+
+context_window:
+  input_tokens: 1000000
+  output_tokens: 128000
+  source: anthropic-models
+
+modalities:
+  input: [text, image, pdf]
+  output: [text]
+
+api:
+  available: true
+  docs_url: https://platform.claude.com/docs/en/get-started
+
+openness:
+  weights: closed
+
+pricing:
+  unit: per_million_tokens
+  input_usd: 2
+  output_usd: 10
+  source: anthropic-pricing
+  note: >
+    Announced as introductory pricing through 31 August 2026; the scheduled
+    increase to $3/$15 was cancelled and $2/$10 is now the standard price.
+
+sources:
+  - id: anthropic-models
+    url: https://platform.claude.com/docs/en/about-claude/models/overview
+    kind: official
+    title: Models overview
+    retrieved: 2026-09-07
+  - id: anthropic-pricing
+    url: https://platform.claude.com/docs/en/about-claude/pricing
+    kind: official
+    title: Pricing
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_docs
+  verified_fields: [existence, model_id, pricing, context_window, api, openness, status]
+
+notes: >
+  Retirement commitment: not sooner than 30 June 2027.
+
+alternatives: [claude-opus-5, claude-haiku-4-5, gpt-5.6-terra, gemini-3.8-flash]

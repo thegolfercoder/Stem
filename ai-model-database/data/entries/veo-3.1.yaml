@@ -1,0 +1,67 @@
+slug: veo-3.1
+name: Veo 3.1
+provider: Google
+kind: model
+model_id: veo-3.1-generate-preview
+status: preview
+summary: >
+  Google's video generation model, available through the Gemini API in preview.
+
+categories:
+  - id: video-generation
+    tier: recommended
+    rationale: >
+      One of the small number of video models available through a general
+      developer API rather than only a consumer product, which is the practical
+      constraint for anyone building on top of one.
+    evidence: [google-models]
+
+use_cases:
+  - Generating video clips from a text prompt
+  - Video generation inside an application, via API
+
+strengths:
+  - Available through the same API as the rest of the Gemini line
+  - Documented as offering creative controls rather than prompt-only generation
+
+weaknesses:
+  - Preview status, so behaviour and pricing can change without notice
+  - Per-second pricing not recorded here
+  - Video generation output length, resolution and audio support are not stated in the source consulted
+  - Commercial usage rights for generated video are a terms question this database does not track
+
+modalities:
+  input: [text, image]
+  output: [video]
+
+api:
+  available: true
+  docs_url: https://ai.google.dev/gemini-api/docs
+
+openness:
+  weights: closed
+
+sources:
+  - id: google-models
+    url: https://ai.google.dev/gemini-api/docs/models
+    kind: official
+    title: Gemini API models
+    retrieved: 2026-09-07
+  - id: google-pricing
+    url: https://ai.google.dev/gemini-api/docs/pricing
+    kind: official
+    title: Gemini API pricing
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_docs
+  verified_fields: [existence, model_id, api, openness, status, modalities]
+
+notes: >
+  Video generation is the category where this database is thinnest, because
+  most of the credible options are consumer products without public API
+  documentation. Contributions with official sources are wanted - see
+  CONTRIBUTING.md.
+
+alternatives: [gemini-3-pro-image]

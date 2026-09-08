@@ -1,0 +1,88 @@
+slug: gemini-3.1-pro
+name: Gemini 3.1 Pro
+provider: Google
+kind: model
+model_id: gemini-3.1-pro-preview
+status: preview
+summary: >
+  Google's Pro-tier model, in preview, with context-tiered pricing that doubles
+  above 200K input tokens.
+
+categories:
+  - id: general-reasoning
+    tier: strong-alternative
+    rationale: >
+      The Pro tier of Google's lineup, above the Flash models on the provider's
+      own price list. Still in preview, which is a reason for caution in
+      production rather than a judgement about capability.
+    evidence: [google-pricing]
+  - id: mathematics
+    tier: strong-alternative
+    rationale: >
+      The Pro tier is where Google puts its deeper-reasoning work; Deep Think
+      variants sit alongside it. Check on your own problems before relying on
+      it.
+    evidence: [google-pricing]
+  - id: long-context
+    tier: strong-alternative
+    rationale: >
+      Handles requests above 200K tokens, but at double the base rate - unlike
+      Anthropic's flat long-context pricing. Cheap up to 200K, expensive above.
+    evidence: [google-pricing]
+
+use_cases:
+  - Harder reasoning than the Flash tier handles
+  - Multimodal analysis over long inputs, budget permitting
+
+strengths:
+  - $2/$12 per million tokens under 200K input, competitive with the mid tiers elsewhere
+  - Native multimodal input
+  - Batch mode at 50% of list
+
+weaknesses:
+  - Preview status; Google's own model listing did not include it at the time of checking, only the pricing page did
+  - Above 200K input tokens, input doubles to $4 and output rises to $18 - a long-context request costs roughly twice the headline
+  - Google's flagship frontier model has been reported as still unreleased as of September 2026, so the Pro tier is not the top of a completed lineup
+
+modalities:
+  input: [text, image, audio, video, pdf]
+  output: [text]
+
+api:
+  available: true
+  docs_url: https://ai.google.dev/gemini-api/docs
+
+openness:
+  weights: closed
+
+pricing:
+  unit: per_million_tokens
+  input_usd: 2
+  output_usd: 12
+  source: google-pricing
+  note: >
+    Context-tiered: $2 in / $12 out at or below 200K input tokens, $4 in /
+    $18 out above it. The figures recorded here are the low tier.
+
+sources:
+  - id: google-pricing
+    url: https://ai.google.dev/gemini-api/docs/pricing
+    kind: official
+    title: Gemini API pricing
+    retrieved: 2026-09-07
+  - id: google-models
+    url: https://ai.google.dev/gemini-api/docs/models
+    kind: official
+    title: Gemini API models
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_docs
+  verified_fields: [existence, pricing, api, openness, status, modalities]
+
+notes: >
+  Context-tiered pricing is the thing to notice. Two providers can quote
+  similar headline rates and differ by 2x on a long-document workload.
+
+alternatives: [gemini-3.8-flash, claude-opus-5, gpt-6-astra]

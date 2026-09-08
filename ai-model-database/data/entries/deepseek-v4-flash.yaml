@@ -1,0 +1,70 @@
+slug: deepseek-v4-flash
+name: DeepSeek V4 Flash
+provider: DeepSeek
+kind: model
+model_id: deepseek-ai/DeepSeek-V4-Flash-0731
+status: available
+summary: >
+  The smaller, faster line of DeepSeek's V4 family, with open weights and a
+  vision-experimental variant published alongside it.
+
+categories:
+  - id: local
+    tier: open-weight
+    rationale: >
+      Smaller than the Pro line, which is the property that decides whether a
+      model runs on the hardware you actually have. That constraint outranks
+      capability comparisons for local deployment.
+    evidence: [hf-deepseek]
+  - id: coding
+    tier: budget
+    rationale: >
+      The Flash line trades capability for size and speed; for code completion
+      and routine edits that trade is often the right one.
+    evidence: [hf-deepseek]
+
+use_cases:
+  - Local inference on constrained hardware
+  - Fast code completion
+  - The cheap tier of a self-hosted two-model setup
+
+strengths:
+  - Smaller than the Pro line, so it fits on less hardware
+  - A vision-experimental variant is published in the same organisation
+  - FP8 and quantised variants available
+
+weaknesses:
+  - Below the Pro line in capability by the family's own structure
+  - Licence terms must be read per model card
+  - No context window or benchmark figures recorded here, not having been read from the card
+  - Vision variant is marked experimental in its repository name
+
+modalities:
+  input: [text, code]
+  output: [text, code]
+
+api:
+  available: true
+  docs_url: https://platform.deepseek.com/
+
+openness:
+  weights: open-weights
+  weights_url: https://huggingface.co/deepseek-ai
+
+pricing:
+  unit: self_hosted
+  source: hf-deepseek
+
+sources:
+  - id: hf-deepseek
+    url: https://huggingface.co/deepseek-ai
+    kind: official
+    title: DeepSeek on Hugging Face
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_site
+  verified_fields: [existence, model_id, openness]
+
+alternatives: [deepseek-v4-pro, qwen3.8-27b, ministral-3-8b]

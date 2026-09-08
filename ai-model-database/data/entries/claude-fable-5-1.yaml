@@ -1,0 +1,102 @@
+slug: claude-fable-5-1
+name: Claude Fable 5.1
+provider: Anthropic
+kind: model
+model_id: claude-fable-5-1
+status: available
+summary: >
+  Anthropic's top tier, positioned for demanding reasoning and long-horizon
+  agentic work. Thinking is always on, and it is priced at twice Opus 5.
+
+categories:
+  - id: general-reasoning
+    tier: recommended
+    rationale: >
+      Anthropic's documentation positions this for cases where evals on Opus 5
+      at higher effort still fall short, which is a narrower recommendation
+      than "better" and is the one the provider actually makes.
+    evidence: [anthropic-models]
+  - id: mathematics
+    tier: recommended
+    rationale: >
+      Adaptive thinking is always on with a default effort of high, which is
+      the configuration that suits problems where the answer is checkable and
+      the work matters more than the latency.
+    evidence: [anthropic-models]
+  - id: agentic
+    tier: recommended
+    rationale: >
+      Explicitly positioned by the provider for long-horizon agentic work, with
+      the same 1M-token window and tool surface as Opus 5.
+    evidence: [anthropic-models]
+  - id: long-context
+    tier: strong-alternative
+    rationale: >
+      1M tokens at standard pricing, and cache reads at 2.5% of base input
+      rather than the usual 10%, which makes repeated queries over one large
+      corpus unusually cheap relative to its headline price.
+    evidence: [anthropic-pricing]
+
+use_cases:
+  - Problems where a cheaper model has been tried and measured as insufficient
+  - Long-horizon agent runs spanning many hours of tool calls
+  - Hard mathematical and analytical reasoning
+
+strengths:
+  - Adaptive thinking always on, defaulting to high effort
+  - Cache reads at 2.5% of base input price, four times cheaper proportionally than the rest of the lineup
+  - Longest retirement commitment in the lineup, to at least 1 September 2027
+  - Most recent knowledge cutoff in the lineup, June 2026
+
+weaknesses:
+  - $10/$50 per million tokens, twice Opus 5 and ten times Haiku 4.5
+  - Slowest model in the lineup
+  - Thinking cannot be turned off, so there is no cheap fast path for easy requests
+  - Text and image input only
+
+context_window:
+  input_tokens: 1000000
+  output_tokens: 128000
+  source: anthropic-models
+
+modalities:
+  input: [text, image, pdf]
+  output: [text]
+
+api:
+  available: true
+  docs_url: https://platform.claude.com/docs/en/get-started
+
+openness:
+  weights: closed
+
+pricing:
+  unit: per_million_tokens
+  input_usd: 10
+  output_usd: 50
+  source: anthropic-pricing
+  note: Cache hits are $0.25/MTok, 2.5% of base input rather than the usual 10%.
+
+sources:
+  - id: anthropic-models
+    url: https://platform.claude.com/docs/en/about-claude/models/overview
+    kind: official
+    title: Models overview
+    retrieved: 2026-09-07
+  - id: anthropic-pricing
+    url: https://platform.claude.com/docs/en/about-claude/pricing
+    kind: official
+    title: Pricing
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_docs
+  verified_fields: [existence, model_id, pricing, context_window, api, openness, status]
+
+notes: >
+  The provider's own guidance is to reach for this only after measuring Opus 5
+  at higher effort and finding it short. That is a better default than reaching
+  for the top of the price list first.
+
+alternatives: [claude-opus-5, gpt-6-astra]

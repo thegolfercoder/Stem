@@ -1,0 +1,71 @@
+slug: voxtral-mini-transcribe-realtime
+name: Voxtral Mini Transcribe Realtime
+provider: Mistral AI
+kind: model
+model_id: voxtral-mini-transcribe-realtime-26-02
+status: available
+summary: >
+  Mistral's real-time speech-to-text model, published under Apache 2.0 - a
+  transcription model you can self-host without licence conditions.
+
+categories:
+  - id: speech-to-text
+    tier: open-weight
+    rationale: >
+      Apache 2.0 transcription weights mean audio never has to leave your
+      infrastructure, which for medical, legal and interview recordings is the
+      deciding factor rather than word error rate.
+    evidence: [mistral-models]
+  - id: local
+    tier: specialized
+    rationale: >
+      A "mini" transcription model is small enough to run alongside other
+      workloads, and transcription is one of the tasks where a small
+      specialised model beats a large general one on cost by a wide margin.
+    evidence: [mistral-models]
+
+use_cases:
+  - Transcribing confidential audio without sending it to a third party
+  - Real-time captioning
+  - Batch transcription at no per-minute cost
+
+strengths:
+  - Apache 2.0
+  - Real-time capable by design rather than batch-only
+  - Available both as weights and through Mistral's API
+
+weaknesses:
+  - Word error rate not recorded here; there is nothing in this entry to compare against a hosted competitor
+  - Language coverage not recorded here
+  - The mini designation implies a capability trade-off against larger transcription models
+  - Diarisation support not stated in the source consulted
+
+modalities:
+  input: [audio]
+  output: [text]
+
+api:
+  available: true
+  docs_url: https://docs.mistral.ai/
+
+openness:
+  weights: open-source
+  license: Apache-2.0
+
+pricing:
+  unit: self_hosted
+  source: mistral-models
+
+sources:
+  - id: mistral-models
+    url: https://docs.mistral.ai/getting-started/models/models_overview/
+    kind: official
+    title: Mistral models overview
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_docs
+  verified_fields: [existence, model_id, openness, api]
+
+alternatives: [elevenlabs-scribe-v2, gemini-3.5-transcribe]

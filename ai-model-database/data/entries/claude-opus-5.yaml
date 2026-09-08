@@ -1,0 +1,140 @@
+slug: claude-opus-5
+name: Claude Opus 5
+provider: Anthropic
+kind: model
+model_id: claude-opus-5
+status: available
+summary: >
+  Anthropic's default recommendation for most workloads, aimed at complex
+  agentic coding and enterprise work. A 1M-token context window and adaptive
+  thinking, at mid-tier frontier pricing.
+
+categories:
+  - id: general-reasoning
+    tier: recommended
+    rationale: >
+      Anthropic's own documentation names this as the model to start with for
+      most workloads, with Fable 5.1 reserved for cases where Opus 5 at high
+      effort still falls short.
+    evidence: [anthropic-models]
+  - id: coding
+    tier: recommended
+    rationale: >
+      Positioned by the provider for complex agentic coding, and the model
+      behind Claude Code. The 1M-token window matters here specifically: it is
+      what lets a session hold a repository rather than a file.
+    evidence: [anthropic-models]
+  - id: agentic
+    tier: recommended
+    rationale: >
+      Adaptive thinking, server-side tool use, and documented computer-use and
+      browser-use toolsets, so multi-step tool loops do not have to be built
+      from scratch.
+    evidence: [anthropic-models, anthropic-pricing]
+  - id: long-context
+    tier: recommended
+    rationale: >
+      1M tokens of input at standard per-token pricing, with no long-context
+      surcharge, so a 900k-token request costs the same rate as a 9k one.
+    evidence: [anthropic-pricing]
+  - id: writing
+    tier: recommended
+    rationale: >
+      Long-form drafting and editing within a single 1M-token context, so an
+      entire manuscript and its style guide fit in one request.
+    evidence: [anthropic-models]
+  - id: data-analysis
+    tier: recommended
+    rationale: >
+      A documented code-execution tool runs analysis code server-side, with
+      1,550 container-hours a month included per organisation before
+      per-hour billing starts.
+    evidence: [anthropic-pricing]
+  - id: research
+    tier: recommended
+    rationale: >
+      Server-side web search and web fetch tools are documented and priced,
+      so citation-backed research runs inside one API call rather than needing
+      a retrieval stack around it.
+    evidence: [anthropic-pricing]
+  - id: vision
+    tier: strong-alternative
+    rationale: >
+      Image input, vision and tool use are supported across the current
+      lineup; screenshots are the input format the computer-use toolset runs on.
+    evidence: [anthropic-models]
+
+use_cases:
+  - Agentic coding across a whole repository
+  - Long-horizon tasks that span many tool calls
+  - Analysis over documents too large for a 200K window
+  - Research with cited sources, using the built-in web search tool
+
+strengths:
+  - 1M-token context at standard pricing, with no long-context surcharge
+  - 128K max output tokens synchronously, and 300K on the Batch API behind a beta header
+  - Adaptive thinking, so reasoning depth is steered by an effort parameter rather than a token budget
+  - Prompt caching at 10% of base input price makes repeated large contexts cheap
+
+weaknesses:
+  - Five times the input price of Claude Sonnet 5 and twenty-five times Haiku 4.5
+  - Moderate latency relative to the rest of the lineup; fast mode doubles the price
+  - Text and image input only - no audio or video input
+  - The 4.7-generation tokenizer produces roughly 30% more tokens for the same text than earlier models, which offsets part of any headline price comparison against them
+
+context_window:
+  input_tokens: 1000000
+  output_tokens: 128000
+  source: anthropic-models
+  note: >
+    1M tokens is roughly 555k English words on the current tokenizer. The Batch
+    API supports up to 300k output tokens behind the output-300k-2026-03-24
+    beta header.
+
+modalities:
+  input: [text, image, pdf]
+  output: [text]
+
+api:
+  available: true
+  docs_url: https://platform.claude.com/docs/en/get-started
+  note: Also available on Amazon Bedrock, Google Cloud Vertex AI and Microsoft Foundry.
+
+openness:
+  weights: closed
+
+pricing:
+  unit: per_million_tokens
+  input_usd: 5
+  output_usd: 25
+  source: anthropic-pricing
+  note: >
+    Batch API is 50% off. Cache reads cost 10% of base input. Fast mode, in
+    research preview, is $10/$50. US-only inference carries a 1.1x multiplier.
+
+sources:
+  - id: anthropic-models
+    url: https://platform.claude.com/docs/en/about-claude/models/overview
+    kind: official
+    title: Models overview
+    retrieved: 2026-09-07
+  - id: anthropic-pricing
+    url: https://platform.claude.com/docs/en/about-claude/pricing
+    kind: official
+    title: Pricing
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_docs
+  verified_fields: [existence, model_id, pricing, context_window, api, openness, status]
+  note: >
+    Price, context window, max output and model ID read directly from
+    Anthropic's models overview and pricing pages on the retrieval date.
+
+notes: >
+  Anthropic commits to retiring this model no sooner than 24 July 2027, which
+  is unusually explicit and worth weighing if you are building something with a
+  long life. Reliable knowledge cutoff is May 2026.
+
+alternatives: [claude-sonnet-5, claude-fable-5-1, gpt-6-astra, gemini-3.8-flash]

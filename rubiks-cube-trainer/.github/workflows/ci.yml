@@ -1,0 +1,68 @@
+name: checks
+
+# The browser test is the one that matters most and is the one most likely to
+# be skipped for being slow. It builds the site, serves it, and drives a real
+# Chromium through every button - because a cube renderer can be broken in ways
+# no unit test notices: a canvas that never gets a size, a module that throws on
+# load, a button wired to nothing.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: types
+        run: npm run typecheck
+
+      - name: lint
+        run: npm run lint
+
+      - name: formatting
+        run: npm run format:check
+
+      - name: build
+        run: npm run build
+
+      - name: install a browser for the page test
+        run: npx playwright install --with-deps chromium
+
+      - name: tests
+        run: npm test
+
+  pages:
+    needs: checks
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deploy
+        uses: actions/deploy-pages@v4

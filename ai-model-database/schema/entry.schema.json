@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thegolfercoder/ai-model-database/schema/entry.schema.json",
+  "title": "AI model or tool entry",
+  "description": "One model, tool or runtime. Every entry must cite at least one official source and record when a person last checked it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["slug", "name", "provider", "kind", "summary", "categories", "sources", "verification"],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.]*(-[a-z0-9.]+)*$",
+      "maxLength": 60,
+      "description": "Stable identifier. Must equal the filename stem."
+    },
+    "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "provider": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "kind": { "type": "string", "description": "Validated against taxonomy.kinds." },
+    "model_id": {
+      "type": ["string", "null"],
+      "description": "The exact identifier used in an API request or weight download, when one exists."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 400,
+      "description": "One or two sentences on what this is and who it is for."
+    },
+    "released": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{4}(-[0-9]{2})?(-[0-9]{2})?$",
+      "description": "Release date, as precisely as it is known."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["available", "preview", "limited", "deprecated", "retired"],
+      "default": "available"
+    },
+
+    "categories": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "tier", "rationale"],
+        "properties": {
+          "id": { "type": "string" },
+          "tier": { "type": "string" },
+          "rationale": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 500,
+            "description": "Why this entry sits in this tier for this category. Comparative superlatives require a cited source; see docs/METHODOLOGY.md."
+          },
+          "evidence": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Source ids backing the rationale."
+          }
+        }
+      }
+    },
+
+    "use_cases": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 3, "maxLength": 200 },
+      "maxItems": 12
+    },
+    "strengths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 3, "maxLength": 300 },
+      "maxItems": 10
+    },
+    "weaknesses": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 3, "maxLength": 300 },
+      "maxItems": 10,
+      "description": "Required in practice: an entry with no weaknesses is marketing copy, and the validator says so."
+    },
+
+    "context_window": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "input_tokens": { "type": ["integer", "null"], "minimum": 1 },
+        "output_tokens": { "type": ["integer", "null"], "minimum": 1 },
+        "source": { "type": "string" },
+        "note": { "type": "string", "maxLength": 300 }
+      }
+    },
+
+    "modalities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "input": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["text", "image", "audio", "video", "pdf", "code"]
+          }
+        },
+        "output": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["text", "image", "audio", "video", "code", "embedding"]
+          }
+        }
+      }
+    },
+
+    "api": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available"],
+      "properties": {
+        "available": { "type": "boolean" },
+        "docs_url": { "type": ["string", "null"], "format": "uri" },
+        "note": { "type": "string", "maxLength": 300 }
+      }
+    },
+
+    "openness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["weights"],
+      "properties": {
+        "weights": { "type": "string" },
+        "license": { "type": ["string", "null"], "maxLength": 80 },
+        "weights_url": { "type": ["string", "null"], "format": "uri" },
+        "parameters": { "type": ["string", "null"], "maxLength": 60 },
+        "note": { "type": "string", "maxLength": 300 }
+      }
+    },
+
+    "pricing": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["unit", "source"],
+      "properties": {
+        "unit": {
+          "type": "string",
+          "enum": [
+            "per_million_tokens",
+            "per_image",
+            "per_second_of_video",
+            "per_minute_of_audio",
+            "per_thousand_characters",
+            "per_request",
+            "subscription",
+            "free",
+            "self_hosted"
+          ]
+        },
+        "input_usd": { "type": ["number", "null"], "minimum": 0 },
+        "output_usd": { "type": ["number", "null"], "minimum": 0 },
+        "amount_usd": { "type": ["number", "null"], "minimum": 0 },
+        "source": { "type": "string" },
+        "note": { "type": "string", "maxLength": 400 }
+      }
+    },
+
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "url", "kind", "retrieved"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+          "url": { "type": "string", "format": "uri" },
+          "kind": { "type": "string" },
+          "title": { "type": "string", "maxLength": 200 },
+          "retrieved": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        }
+      }
+    },
+
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["last_verified", "method", "verified_fields"],
+      "properties": {
+        "last_verified": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "description": "The date a person last checked this entry's fields against its cited sources. Not the date the file was edited."
+        },
+        "method": {
+          "type": "string",
+          "enum": ["official_docs", "official_site", "vendor_announcement", "secondary_only"],
+          "description": "How the check was done. 'secondary_only' entries are reported by the validator and should be upgraded or removed."
+        },
+        "verified_fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "existence",
+              "model_id",
+              "pricing",
+              "context_window",
+              "modalities",
+              "api",
+              "openness",
+              "status",
+              "released"
+            ]
+          },
+          "description": "Which fields were actually checked. Anything not listed is editorial judgement, not a verified fact."
+        },
+        "note": { "type": "string", "maxLength": 500 }
+      }
+    },
+
+    "notes": { "type": "string", "maxLength": 1200 },
+    "alternatives": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 8,
+      "description": "Slugs of entries a reader comparing this one should also look at."
+    }
+  }
+}

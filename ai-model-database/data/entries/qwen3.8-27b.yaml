@@ -1,0 +1,92 @@
+slug: qwen3.8-27b
+name: Qwen3.8-27B
+provider: Alibaba
+kind: model
+model_id: Qwen/Qwen3.8-27B
+status: available
+summary: >
+  A dense 27B model from the Qwen3.8 generation, published under Apache 2.0
+  with an FP8 variant alongside it. The size and the licence are what make it
+  interesting.
+
+categories:
+  - id: local
+    tier: recommended
+    rationale: >
+      A dense 27B model with an FP8 variant is in reach of a single modern GPU,
+      which is the size that decides whether "run it yourself" is a real option
+      or a data-centre project.
+    evidence: [hf-qwen]
+  - id: general-reasoning
+    tier: open-weight
+    rationale: >
+      Part of the Qwen3.8 generation, so it shares the family's tokenizer and
+      prompt format with the much larger MoE sibling - useful for prototyping
+      small and scaling up.
+    evidence: [hf-qwen]
+  - id: vision
+    tier: open-weight
+    rationale: >
+      Reported to carry native vision-language capability, which is uncommon in
+      an open-weight model at this size. Confirm against the model card before
+      relying on it.
+    evidence: [hf-qwen]
+
+use_cases:
+  - Running a capable model on a single GPU
+  - Fine-tuning on private data with a permissive licence
+  - On-premises deployment in regulated environments
+
+strengths:
+  - Apache 2.0 licence per secondary reporting, which is the permissive end of the open-weight spectrum
+  - Dense rather than mixture-of-experts, so memory requirements are predictable
+  - FP8 variant published alongside the full-precision weights
+
+weaknesses:
+  - Far below frontier hosted models in capability; 27B parameters is a real ceiling
+  - The Apache 2.0 classification comes from secondary reporting and needs confirming on the model card
+  - Context window not recorded here
+  - Vision capability is reported rather than verified here
+
+modalities:
+  input: [text, image, code]
+  output: [text, code]
+
+api:
+  available: false
+
+openness:
+  weights: open-weights
+  weights_url: https://huggingface.co/Qwen
+  license: Apache-2.0
+  parameters: 27B dense
+  note: >
+    Licence recorded from secondary reporting; confirm on the model card. The
+    Qwen family mixes Apache 2.0 and custom licences between checkpoints.
+
+pricing:
+  unit: self_hosted
+  source: hf-qwen
+
+sources:
+  - id: hf-qwen
+    url: https://huggingface.co/Qwen
+    kind: official
+    title: Qwen on Hugging Face
+    retrieved: 2026-09-07
+  - id: hf-open-llm-roundup
+    url: https://huggingface.co/blog/daya-shankar/open-source-llms
+    kind: secondary
+    title: Open-source LLM roundup, 2026
+    retrieved: 2026-09-07
+
+verification:
+  last_verified: 2026-09-07
+  method: official_site
+  verified_fields: [existence, model_id, openness]
+  note: >
+    Existence and repository name verified on the official organisation page.
+    Licence and vision capability come from a secondary source and are flagged
+    as such in the weaknesses.
+
+alternatives: [ministral-3-8b, deepseek-v4-flash, ollama]
