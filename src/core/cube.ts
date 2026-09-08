@@ -48,7 +48,18 @@ export enum Edge {
 
 export const CORNER_NAMES = ['URF', 'UFL', 'ULB', 'UBR', 'DFR', 'DLF', 'DBL', 'DRB'] as const;
 export const EDGE_NAMES = [
-  'UR', 'UF', 'UL', 'UB', 'DR', 'DF', 'DL', 'DB', 'FR', 'FL', 'BL', 'BR',
+  'UR',
+  'UF',
+  'UL',
+  'UB',
+  'DR',
+  'DF',
+  'DL',
+  'DB',
+  'FR',
+  'FL',
+  'BL',
+  'BR',
 ] as const;
 
 export class InvalidCubeError extends Error {}
@@ -67,7 +78,12 @@ export class Cube {
   readonly ep: Uint8Array;
   readonly eo: Uint8Array;
 
-  constructor(cp?: ArrayLike<number>, co?: ArrayLike<number>, ep?: ArrayLike<number>, eo?: ArrayLike<number>) {
+  constructor(
+    cp?: ArrayLike<number>,
+    co?: ArrayLike<number>,
+    ep?: ArrayLike<number>,
+    eo?: ArrayLike<number>,
+  ) {
     this.cp = Uint8Array.from(cp ?? [0, 1, 2, 3, 4, 5, 6, 7]);
     this.co = Uint8Array.from(co ?? [0, 0, 0, 0, 0, 0, 0, 0]);
     this.ep = Uint8Array.from(ep ?? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
@@ -132,16 +148,14 @@ export class Cube {
   move(move: Move): Cube {
     const base = MOVE_CUBES[faceOf(move)];
     if (base === undefined) throw new Error(`move ${move} is out of range`);
-    let result: Cube = this;
-    for (let i = 0; i < amountOf(move); i++) result = result.multiply(base);
+    let result = this.multiply(base);
+    for (let turn = 1; turn < amountOf(move); turn++) result = result.multiply(base);
     return result;
   }
 
   /** Apply a sequence, left to right. */
   apply(moves: readonly Move[]): Cube {
-    let result: Cube = this;
-    for (const move of moves) result = result.move(move);
-    return result;
+    return moves.reduce<Cube>((cube, move) => cube.move(move), this);
   }
 
   /**
@@ -164,7 +178,8 @@ export class Cube {
       if (value > 2) return 'a corner has an impossible twist value';
       twist += value;
     }
-    if (twist % 3 !== 0) return 'one corner is twisted on its own, which no sequence of turns can do';
+    if (twist % 3 !== 0)
+      return 'one corner is twisted on its own, which no sequence of turns can do';
 
     let flip = 0;
     for (let i = 0; i < EDGE_COUNT; i++) {
@@ -218,42 +233,120 @@ export function permutationParity(perm: ArrayLike<number>): number {
 const U = new Cube(
   [Corner.UBR, Corner.URF, Corner.UFL, Corner.ULB, Corner.DFR, Corner.DLF, Corner.DBL, Corner.DRB],
   [0, 0, 0, 0, 0, 0, 0, 0],
-  [Edge.UB, Edge.UR, Edge.UF, Edge.UL, Edge.DR, Edge.DF, Edge.DL, Edge.DB, Edge.FR, Edge.FL, Edge.BL, Edge.BR],
+  [
+    Edge.UB,
+    Edge.UR,
+    Edge.UF,
+    Edge.UL,
+    Edge.DR,
+    Edge.DF,
+    Edge.DL,
+    Edge.DB,
+    Edge.FR,
+    Edge.FL,
+    Edge.BL,
+    Edge.BR,
+  ],
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 );
 
 const R = new Cube(
   [Corner.DFR, Corner.UFL, Corner.ULB, Corner.URF, Corner.DRB, Corner.DLF, Corner.DBL, Corner.UBR],
   [2, 0, 0, 1, 1, 0, 0, 2],
-  [Edge.FR, Edge.UF, Edge.UL, Edge.UB, Edge.BR, Edge.DF, Edge.DL, Edge.DB, Edge.DR, Edge.FL, Edge.BL, Edge.UR],
+  [
+    Edge.FR,
+    Edge.UF,
+    Edge.UL,
+    Edge.UB,
+    Edge.BR,
+    Edge.DF,
+    Edge.DL,
+    Edge.DB,
+    Edge.DR,
+    Edge.FL,
+    Edge.BL,
+    Edge.UR,
+  ],
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 );
 
 const F = new Cube(
   [Corner.UFL, Corner.DLF, Corner.ULB, Corner.UBR, Corner.URF, Corner.DFR, Corner.DBL, Corner.DRB],
   [1, 2, 0, 0, 2, 1, 0, 0],
-  [Edge.UR, Edge.FL, Edge.UL, Edge.UB, Edge.DR, Edge.FR, Edge.DL, Edge.DB, Edge.UF, Edge.DF, Edge.BL, Edge.BR],
+  [
+    Edge.UR,
+    Edge.FL,
+    Edge.UL,
+    Edge.UB,
+    Edge.DR,
+    Edge.FR,
+    Edge.DL,
+    Edge.DB,
+    Edge.UF,
+    Edge.DF,
+    Edge.BL,
+    Edge.BR,
+  ],
   [0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0],
 );
 
 const D = new Cube(
   [Corner.URF, Corner.UFL, Corner.ULB, Corner.UBR, Corner.DLF, Corner.DBL, Corner.DRB, Corner.DFR],
   [0, 0, 0, 0, 0, 0, 0, 0],
-  [Edge.UR, Edge.UF, Edge.UL, Edge.UB, Edge.DF, Edge.DL, Edge.DB, Edge.DR, Edge.FR, Edge.FL, Edge.BL, Edge.BR],
+  [
+    Edge.UR,
+    Edge.UF,
+    Edge.UL,
+    Edge.UB,
+    Edge.DF,
+    Edge.DL,
+    Edge.DB,
+    Edge.DR,
+    Edge.FR,
+    Edge.FL,
+    Edge.BL,
+    Edge.BR,
+  ],
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 );
 
 const L = new Cube(
   [Corner.URF, Corner.ULB, Corner.DBL, Corner.UBR, Corner.DFR, Corner.UFL, Corner.DLF, Corner.DRB],
   [0, 1, 2, 0, 0, 2, 1, 0],
-  [Edge.UR, Edge.UF, Edge.BL, Edge.UB, Edge.DR, Edge.DF, Edge.FL, Edge.DB, Edge.FR, Edge.UL, Edge.DL, Edge.BR],
+  [
+    Edge.UR,
+    Edge.UF,
+    Edge.BL,
+    Edge.UB,
+    Edge.DR,
+    Edge.DF,
+    Edge.FL,
+    Edge.DB,
+    Edge.FR,
+    Edge.UL,
+    Edge.DL,
+    Edge.BR,
+  ],
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 );
 
 const B = new Cube(
   [Corner.URF, Corner.UFL, Corner.UBR, Corner.DRB, Corner.DFR, Corner.DLF, Corner.ULB, Corner.DBL],
   [0, 0, 1, 2, 0, 0, 2, 1],
-  [Edge.UR, Edge.UF, Edge.UL, Edge.BR, Edge.DR, Edge.DF, Edge.DL, Edge.BL, Edge.FR, Edge.FL, Edge.UB, Edge.DB],
+  [
+    Edge.UR,
+    Edge.UF,
+    Edge.UL,
+    Edge.BR,
+    Edge.DR,
+    Edge.DF,
+    Edge.DL,
+    Edge.BL,
+    Edge.FR,
+    Edge.FL,
+    Edge.UB,
+    Edge.DB,
+  ],
   [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1],
 );
 

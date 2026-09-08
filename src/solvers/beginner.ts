@@ -48,6 +48,21 @@ export interface SolutionStep {
   readonly moves: Move[];
   /** The state before this step, so a viewer can highlight what is about to change. */
   readonly before: Cube;
+  /**
+   * Steps sharing a group id have to be done together.
+   *
+   * The three last-layer stages all need this and one of them needs it badly.
+   * Turning the corners leaves the bottom layer in pieces between its steps and
+   * only the complete stage puts it back; the two permutation stages line the
+   * top layer up part way through, which lifts pieces out of place until the
+   * algorithm after it puts them somewhere better. In all three the middle of
+   * the stage is not a state worth showing anybody.
+   *
+   * Stopping half way and re-planning sends a solver back to fixing what the
+   * stage deliberately broke, whose fix breaks the stage again - an infinite
+   * loop that the hint function walked straight into before this field existed.
+   */
+  readonly group?: string;
 }
 
 export interface BeginnerSolution {
@@ -72,7 +87,20 @@ interface Manoeuvre {
   readonly name: string;
   readonly why: string;
   readonly moves: Move[];
+  /**
+   * A turn of U on its own, to line the top layer up.
+   *
+   * Never a complete action: it lifts the corners out of place so that the
+   * algorithm after it can put them back somewhere better. Emitted as its own
+   * step it reads as the method going backwards, so these are folded into the
+   * step that follows.
+   */
+  readonly alignmentOnly?: boolean;
 }
+
+const ALIGNMENT_WHY =
+  'Turning the top layer to line the algorithm up with the pieces it is meant to move. ' +
+  'On its own it takes pieces out of place; it is the setup, not the step.';
 
 /** Prefix each algorithm with each U alignment, as a person would. */
 function withAlignments(name: string, why: string, moves: Move[]): Manoeuvre[] {
@@ -122,6 +150,40 @@ function searchManoeuvres(
     frontier = next;
   }
   return null;
+}
+
+/**
+ * Fold bare alignment turns into the manoeuvre they set up.
+ *
+ * An alignment left standing alone reads as a step that undoes progress,
+ * because on its own that is exactly what it does.
+ */
+function foldAlignments(path: readonly Manoeuvre[]): Manoeuvre[] {
+  const folded: Manoeuvre[] = [];
+  let pending: Manoeuvre[] = [];
+
+  for (const manoeuvre of path) {
+    if (manoeuvre.alignmentOnly) {
+      pending.push(manoeuvre);
+      continue;
+    }
+    if (pending.length === 0) {
+      folded.push(manoeuvre);
+      continue;
+    }
+    const prefix = pending.map((entry) => entry.name).join(' ');
+    folded.push({
+      name: `${prefix} then ${manoeuvre.name}`,
+      why: manoeuvre.why,
+      moves: [...pending.flatMap((entry) => entry.moves), ...manoeuvre.moves],
+    });
+    pending = [];
+  }
+
+  // A trailing alignment is a real step: it is what puts the top layer straight
+  // at the end, and by then it is not undoing anything.
+  folded.push(...pending);
+  return folded;
 }
 
 /** Plain breadth-first search over single turns, for the intuitive cross. */
@@ -175,7 +237,9 @@ const cornerSolved = (cube: Cube, cubie: Corner): boolean =>
 
 /** A key describing only the edges the current sub-goal cares about. */
 const edgeKey = (cube: Cube, cubies: readonly Edge[]): string =>
-  cubies.map((cubie) => `${positionOfEdge(cube, cubie)}.${cube.eo[positionOfEdge(cube, cubie)]}`).join('|');
+  cubies
+    .map((cubie) => `${positionOfEdge(cube, cubie)}.${cube.eo[positionOfEdge(cube, cubie)]}`)
+    .join('|');
 
 const cornerKey = (cube: Cube, cubies: readonly Corner[]): string =>
   cubies
@@ -189,6 +253,13 @@ const upperLayerKey = (cube: Cube): string =>
 
 const CROSS_EDGES: readonly Edge[] = [Edge.DF, Edge.DR, Edge.DB, Edge.DL];
 const CROSS_EDGE_NAMES = ['front', 'right', 'back', 'left'] as const;
+
+function crossDetail(index: number): string {
+  const edge = `Bring the ${CROSS_EDGE_NAMES[index]} edge of the bottom layer home`;
+  if (index === 0) return `${edge}.`;
+  if (index === 1) return `${edge}, leaving the one already placed where it is.`;
+  return `${edge}, leaving the ${index} already placed where they are.`;
+}
 
 function solveCross(cube: Cube): SolutionStep[] {
   const steps: SolutionStep[] = [];
@@ -211,9 +282,7 @@ function solveCross(cube: Cube): SolutionStep[] {
     steps.push({
       stage: 'cross',
       title: 'The cross',
-      detail:
-        `Bring the ${CROSS_EDGE_NAMES[index]} edge of the bottom layer home, ` +
-        `leaving the ${index} already placed where ${index === 1 ? 'it is' : 'they are'}.`,
+      detail: crossDetail(index),
       why:
         'The cross is solved by looking rather than by algorithm. Each edge only has to ' +
         'reach one place the right way up, and the shortest route is usually obvious once ' +
@@ -373,9 +442,9 @@ const topEdgesOriented = (cube: Cube): boolean =>
 
 function solveTopCross(cube: Cube): SolutionStep[] {
   const manoeuvres = withAlignments(
-    'F R U R\' U\' F\'',
+    "F R U R' U' F'",
     'The three moves in the middle are the same trio used on the corners; wrapping them in ' +
-      'F and F\' aims that trio at the top edges instead. A dot becomes an L, an L becomes a ' +
+      "F and F' aims that trio at the top edges instead. A dot becomes an L, an L becomes a " +
       'line, and a line becomes the cross.',
     alg("F R U R' U' F'"),
   );
@@ -431,9 +500,9 @@ function solveTopCornerPositions(cube: Cube): SolutionStep[] {
       'Swaps two corners diagonally opposite each other, and two edges.',
       alg("F R U' R' U' R U R' F' R U R' U' R' F R F'"),
     ),
-    { name: 'U', why: 'Line the top layer up with the sides.', moves: alg('U') },
-    { name: 'U2', why: 'Line the top layer up with the sides.', moves: alg('U2') },
-    { name: "U'", why: 'Line the top layer up with the sides.', moves: alg("U'") },
+    { name: 'U', why: ALIGNMENT_WHY, moves: alg('U'), alignmentOnly: true },
+    { name: 'U2', why: ALIGNMENT_WHY, moves: alg('U2'), alignmentOnly: true },
+    { name: "U'", why: ALIGNMENT_WHY, moves: alg("U'"), alignmentOnly: true },
   ];
 
   const path = searchManoeuvres(
@@ -447,9 +516,10 @@ function solveTopCornerPositions(cube: Cube): SolutionStep[] {
 
   const steps: SolutionStep[] = [];
   let current = cube;
-  for (const manoeuvre of path) {
+  for (const manoeuvre of foldAlignments(path)) {
     steps.push({
       stage: 'top-corner-positions',
+      group: 'top-corner-positions',
       title: 'Top corners into place',
       detail: 'Get each top corner to the right spot, ignoring which way it faces.',
       technique: manoeuvre.name,
@@ -496,6 +566,7 @@ function solveTopCornerOrientations(cube: Cube): SolutionStep[] {
       const moves = [...trio, ...trio];
       steps.push({
         stage: 'top-corner-orientations',
+        group: 'top-corner-orientations',
         title: 'Turning the top corners',
         detail: 'Twist the front-right top corner without moving it out of its place.',
         technique: "R' D' R D, twice",
@@ -514,6 +585,7 @@ function solveTopCornerOrientations(cube: Cube): SolutionStep[] {
       const moves = alg('U');
       steps.push({
         stage: 'top-corner-orientations',
+        group: 'top-corner-orientations',
         title: 'Turning the top corners',
         detail: 'Bring the next top corner round to the front-right.',
         technique: 'U',
@@ -530,6 +602,7 @@ function solveTopCornerOrientations(cube: Cube): SolutionStep[] {
   const finish = alg('U');
   steps.push({
     stage: 'top-corner-orientations',
+    group: 'top-corner-orientations',
     title: 'Turning the top corners',
     detail: 'Complete the turn of the top layer, putting it back where it started.',
     technique: 'U',
@@ -554,25 +627,20 @@ function solveTopEdgePositions(cube: Cube): SolutionStep[] {
       'The same three-cycle in the other direction, for when the edges go round the other way.',
       alg("R2 U R U R' U' R' U' R' U R'"),
     ),
-    { name: 'U', why: 'Line the top layer up with the sides.', moves: alg('U') },
-    { name: 'U2', why: 'Line the top layer up with the sides.', moves: alg('U2') },
-    { name: "U'", why: 'Line the top layer up with the sides.', moves: alg("U'") },
+    { name: 'U', why: ALIGNMENT_WHY, moves: alg('U'), alignmentOnly: true },
+    { name: 'U2', why: ALIGNMENT_WHY, moves: alg('U2'), alignmentOnly: true },
+    { name: "U'", why: ALIGNMENT_WHY, moves: alg("U'"), alignmentOnly: true },
   ];
 
-  const path = searchManoeuvres(
-    cube,
-    manoeuvres,
-    (state) => state.isSolved(),
-    upperLayerKey,
-    4,
-  );
+  const path = searchManoeuvres(cube, manoeuvres, (state) => state.isSolved(), upperLayerKey, 4);
   if (path === null) throw new UnsolvableStageError('could not finish the top edges');
 
   const steps: SolutionStep[] = [];
   let current = cube;
-  for (const manoeuvre of path) {
+  for (const manoeuvre of foldAlignments(path)) {
     steps.push({
       stage: 'top-edges',
+      group: 'top-edges',
       title: 'The last four edges',
       detail: 'Cycle the top edges into place. This is the last step.',
       technique: manoeuvre.name,
