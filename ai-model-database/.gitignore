@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+.vscode/
+.idea/
+.DS_Store
+
+# Built artefacts. `dist/database.json` and the generated tables under docs/ are
+# reproducible from data/entries/ by `scripts/build_index.py`, so they are not
+# checked in - a generated file in a repository is a file that goes stale
+# without anybody noticing.
+dist/
+docs/generated/
