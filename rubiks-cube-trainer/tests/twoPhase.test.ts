@@ -133,7 +133,9 @@ describe('solution quality', () => {
       const { cube } = scrambledCube(seed + 600);
       const { moves } = solveTwoPhase(cube, { timeLimitMs: 300 });
       for (let i = 1; i < moves.length; i++) {
-        expect(Math.trunc((moves[i] as number) / 3)).not.toBe(Math.trunc((moves[i - 1] as number) / 3));
+        expect(Math.trunc((moves[i] as number) / 3)).not.toBe(
+          Math.trunc((moves[i - 1] as number) / 3),
+        );
       }
     }
   });

@@ -78,9 +78,7 @@ describe('the move tables describe a real cube', () => {
   });
 
   it('the superflip is not solved but flips every edge in place', () => {
-    const superflip = parseSequence(
-      "U R2 F B R B2 R U2 L B2 R U' D' R2 F R' L B2 U2 F2",
-    );
+    const superflip = parseSequence("U R2 F B R B2 R U2 L B2 R U' D' R2 F R' L B2 U2 F2");
     const cube = solved.apply(superflip);
     expect(cube.isSolved()).toBe(false);
     for (let i = 0; i < 12; i++) {
@@ -109,10 +107,15 @@ describe('the move tables describe a real cube', () => {
   });
 
   it('composition is associative', () => {
-    const a = solved.apply(parseSequence("R U F"));
-    const b = solved.apply(parseSequence("L D B"));
+    const a = solved.apply(parseSequence('R U F'));
+    const b = solved.apply(parseSequence('L D B'));
     const c = solved.apply(parseSequence("R2 U' F2"));
-    expect(a.multiply(b).multiply(c).equals(a.multiply(b.multiply(c)))).toBe(true);
+    expect(
+      a
+        .multiply(b)
+        .multiply(c)
+        .equals(a.multiply(b.multiply(c))),
+    ).toBe(true);
   });
 });
 
@@ -211,16 +214,16 @@ describe('notation', () => {
   it('accepts the spellings people actually type', () => {
     const expected = parseSequence("R U' F2");
     expect(parseSequence("r u' f2")).toEqual(expected);
-    expect(parseSequence("R  U’  F2")).toEqual(expected);
+    expect(parseSequence('R  U’  F2')).toEqual(expected);
     expect(parseSequence("R,U',F2")).toEqual(expected);
-    expect(parseSequence("R U'2 F2")).toEqual(parseSequence("R U2 F2"));
+    expect(parseSequence("R U'2 F2")).toEqual(parseSequence('R U2 F2'));
   });
 
   it('refuses a token it does not understand rather than skipping it', () => {
     // A silently dropped token means the cube on screen is not the cube the
     // user typed, and they find out when the solution does not work.
     expect(() => parseSequence('R U X')).toThrow(/X is not a move/);
-    expect(() => parseSequence("R U3")).toThrow();
+    expect(() => parseSequence('R U3')).toThrow();
     expect(() => parseSequence('M2')).toThrow();
   });
 
@@ -261,7 +264,7 @@ describe('move cancellation', () => {
   it('never changes what a sequence does', () => {
     unchanged("R U R' U'");
     unchanged("R L R' L' U D U' D'");
-    unchanged("F F F F B B");
+    unchanged('F F F F B B');
     for (let trial = 0; trial < 300; trial++) {
       const moves = randomMoves(trial + 9000, 30);
       expect(solved.apply(cancelMoves(moves)).equals(solved.apply(moves))).toBe(true);
