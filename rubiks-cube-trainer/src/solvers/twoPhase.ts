@@ -109,18 +109,27 @@ export function solveTwoPhase(cube: Cube, options: TwoPhaseOptions = {}): TwoPha
   const started = Date.now();
   if (cube.isSolved()) {
     return {
-      moves: [], phase1Length: 0, phase2Length: 0,
-      candidatesExplored: 0, milliseconds: 0, timedOut: false,
+      moves: [],
+      phase1Length: 0,
+      phase2Length: 0,
+      candidatesExplored: 0,
+      milliseconds: 0,
+      timedOut: false,
     };
   }
 
   const tables = getTables();
-  const search = new Search(cube, tables, {
-    targetLength,
-    maxLength,
-    timeLimitMs,
-    maxPhase1Depth,
-  }, started);
+  const search = new Search(
+    cube,
+    tables,
+    {
+      targetLength,
+      maxLength,
+      timeLimitMs,
+      maxPhase1Depth,
+    },
+    started,
+  );
   const best = search.run();
 
   if (best === null) {
@@ -218,7 +227,13 @@ class Search {
    * combine into one - while two on the same axis are only generated in a fixed
    * order, because turning R then L reaches the same state as L then R.
    */
-  private searchPhase1(twist: number, flip: number, slice: number, remaining: number, lastMove: Move): void {
+  private searchPhase1(
+    twist: number,
+    flip: number,
+    slice: number,
+    remaining: number,
+    lastMove: Move,
+  ): void {
     if (this.finished()) return;
 
     if (remaining === 0) {
@@ -288,8 +303,12 @@ class Search {
   }
 
   private searchPhase2(
-    cornerPerm: number, edgePerm: number, slicePerm: number,
-    remaining: number, lastMove: Move, path: Move[],
+    cornerPerm: number,
+    edgePerm: number,
+    slicePerm: number,
+    remaining: number,
+    lastMove: Move,
+    path: Move[],
   ): boolean {
     if (remaining === 0) {
       return cornerPerm === 0 && edgePerm === 0 && slicePerm === 0;

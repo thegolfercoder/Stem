@@ -19,10 +19,10 @@ export const FACELET_COUNT = 54;
 
 /** The three facelets of each corner position, in the cubie's own order. */
 export const CORNER_FACELETS: readonly (readonly [number, number, number])[] = [
-  [8, 9, 20],   // URF: U9, R1, F3
-  [6, 18, 38],  // UFL: U7, F1, L3
-  [0, 36, 47],  // ULB: U1, L1, B3
-  [2, 45, 11],  // UBR: U3, B1, R3
+  [8, 9, 20], // URF: U9, R1, F3
+  [6, 18, 38], // UFL: U7, F1, L3
+  [0, 36, 47], // ULB: U1, L1, B3
+  [2, 45, 11], // UBR: U3, B1, R3
   [29, 26, 15], // DFR: D3, F9, R7
   [27, 44, 24], // DLF: D1, L9, F7
   [33, 53, 42], // DBL: D7, B9, L7
@@ -31,10 +31,10 @@ export const CORNER_FACELETS: readonly (readonly [number, number, number])[] = [
 
 /** The two facelets of each edge position. */
 export const EDGE_FACELETS: readonly (readonly [number, number])[] = [
-  [5, 10],  // UR: U6, R2
-  [7, 19],  // UF: U8, F2
-  [3, 37],  // UL: U4, L2
-  [1, 46],  // UB: U2, B2
+  [5, 10], // UR: U6, R2
+  [7, 19], // UF: U8, F2
+  [3, 37], // UL: U4, L2
+  [1, 46], // UB: U2, B2
   [32, 16], // DR: D6, R8
   [28, 25], // DF: D2, F8
   [30, 43], // DL: D4, L8
@@ -58,9 +58,18 @@ export const CORNER_COLOURS: readonly (readonly [Colour, Colour, Colour])[] = [
 ];
 
 export const EDGE_COLOURS: readonly (readonly [Colour, Colour])[] = [
-  ['U', 'R'], ['U', 'F'], ['U', 'L'], ['U', 'B'],
-  ['D', 'R'], ['D', 'F'], ['D', 'L'], ['D', 'B'],
-  ['F', 'R'], ['F', 'L'], ['B', 'L'], ['B', 'R'],
+  ['U', 'R'],
+  ['U', 'F'],
+  ['U', 'L'],
+  ['U', 'B'],
+  ['D', 'R'],
+  ['D', 'F'],
+  ['D', 'L'],
+  ['D', 'B'],
+  ['F', 'R'],
+  ['F', 'L'],
+  ['B', 'L'],
+  ['B', 'R'],
 ];
 
 /** Which face each facelet belongs to. Centres are indices 4, 13, 22, 31, 40, 49. */

@@ -120,9 +120,9 @@ export function setSlice(slice: number): Cube {
   let sliceNext = 0;
   let otherNext = 0;
   for (let position = 0; position < 12; position++) {
-    ep[position] = (mask & (1 << position)
-      ? sliceEdges[sliceNext++]
-      : otherEdges[otherNext++]) as number;
+    ep[position] = (
+      mask & (1 << position) ? sliceEdges[sliceNext++] : otherEdges[otherNext++]
+    ) as number;
   }
   return new Cube(undefined, undefined, ep, undefined);
 }

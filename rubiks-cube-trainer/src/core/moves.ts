@@ -21,12 +21,16 @@ export const ALL_MOVES: readonly Move[] = Array.from({ length: MOVE_COUNT }, (_,
 
 /** The ten moves of the phase-2 group <U, D, R2, L2, F2, B2>. */
 export const PHASE2_MOVES: readonly Move[] = [
-  0, 1, 2, // U, U2, U'
-  4,       // R2
-  7,       // F2
-  9, 10, 11, // D, D2, D'
-  13,      // L2
-  16,      // B2
+  0,
+  1,
+  2, // U, U2, U'
+  4, // R2
+  7, // F2
+  9,
+  10,
+  11, // D, D2, D'
+  13, // L2
+  16, // B2
 ];
 
 export function faceOf(move: Move): number {

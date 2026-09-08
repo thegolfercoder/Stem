@@ -146,21 +146,36 @@ export function getTables(onProgress?: (label: string, fraction: number) => void
   report('corner permutation', 0.3);
   const cornerPermMove = new Int32Array(CORNER_PERM_COUNT * PHASE2_MOVES.length);
   buildMoveTable(
-    CORNER_PERM_COUNT, PHASE2_MOVES, setCornerPerm, getCornerPerm,
-    cornerPermMove, PHASE2_MOVES.length, (m) => PHASE2_SLOT[m] as number,
+    CORNER_PERM_COUNT,
+    PHASE2_MOVES,
+    setCornerPerm,
+    getCornerPerm,
+    cornerPermMove,
+    PHASE2_MOVES.length,
+    (m) => PHASE2_SLOT[m] as number,
   );
 
   report('U and D edge permutation', 0.45);
   const udEdgePermMove = new Int32Array(UD_EDGE_PERM_COUNT * PHASE2_MOVES.length);
   buildMoveTable(
-    UD_EDGE_PERM_COUNT, PHASE2_MOVES, setUdEdgePerm, getUdEdgePerm,
-    udEdgePermMove, PHASE2_MOVES.length, (m) => PHASE2_SLOT[m] as number,
+    UD_EDGE_PERM_COUNT,
+    PHASE2_MOVES,
+    setUdEdgePerm,
+    getUdEdgePerm,
+    udEdgePermMove,
+    PHASE2_MOVES.length,
+    (m) => PHASE2_SLOT[m] as number,
   );
 
   const slicePermMove = new Int8Array(SLICE_PERM_COUNT * PHASE2_MOVES.length);
   buildMoveTable(
-    SLICE_PERM_COUNT, PHASE2_MOVES, setSlicePerm, getSlicePerm,
-    slicePermMove, PHASE2_MOVES.length, (m) => PHASE2_SLOT[m] as number,
+    SLICE_PERM_COUNT,
+    PHASE2_MOVES,
+    setSlicePerm,
+    getSlicePerm,
+    slicePermMove,
+    PHASE2_MOVES.length,
+    (m) => PHASE2_SLOT[m] as number,
   );
 
   report('phase one lower bounds', 0.6);
@@ -228,9 +243,16 @@ export function getTables(onProgress?: (label: string, fraction: number) => void
 
   report('ready', 1);
   cached = {
-    twistMove, flipMove, sliceMove,
-    cornerPermMove, udEdgePermMove, slicePermMove,
-    twistSlicePrune, flipSlicePrune, cornerSlicePrune, edgeSlicePrune,
+    twistMove,
+    flipMove,
+    sliceMove,
+    cornerPermMove,
+    udEdgePermMove,
+    slicePermMove,
+    twistSlicePrune,
+    flipSlicePrune,
+    cornerSlicePrune,
+    edgeSlicePrune,
   };
   return cached;
 }
