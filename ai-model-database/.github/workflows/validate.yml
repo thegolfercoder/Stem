@@ -1,0 +1,57 @@
+name: validate
+
+# The database is the product, so the checks that matter are the ones over the
+# data: schema, references, freshness, and the editorial rules that keep this a
+# catalogue rather than a set of vendor blurbs.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: install
+        run: pip install -e ".[dev]"
+
+      - name: lint
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: types
+        run: mypy
+
+      - name: validate the database
+        # Errors fail the build. Warnings are printed and are the maintainer's
+        # to clear: the test suite asserts there are none, so a warning that
+        # survives review fails here too.
+        run: aimodeldb validate
+
+      - name: tests
+        run: pytest -q --cov=aimodeldb --cov-report=term-missing
+
+      - name: the index still builds
+        run: python scripts/build_index.py
+
+      - name: the documented example questions still return answers
+        run: |
+          aimodeldb ask "what is best for coding"
+          aimodeldb ask "what is best for deep research"
+          aimodeldb ask "what is best for mathematics"
+          aimodeldb ask "what is best for image generation"
+          aimodeldb ask "what is best for running locally"
+          aimodeldb ask "what is best for long documents"

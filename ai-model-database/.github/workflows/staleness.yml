@@ -1,0 +1,60 @@
+name: staleness
+
+# AI models change weekly. An entry verified four months ago is more likely
+# wrong than right, and the only defence is for something to notice on a
+# schedule rather than waiting for a reader to be misled.
+#
+# This opens or updates a single tracking issue listing every entry past the
+# policy window in data/taxonomy.yaml. It never edits an entry: bumping a
+# last_verified date without opening the source would destroy the one signal
+# this repository has that something is out of date.
+on:
+  schedule:
+    - cron: "0 9 1 * *"   # 09:00 UTC on the first of each month
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: install
+        run: pip install -e .
+
+      - name: find stale entries
+        id: stale
+        run: |
+          aimodeldb stale --issue-body > /tmp/issue-body.md
+          if aimodeldb stale --fail-on-stale > /dev/null; then
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat /tmp/issue-body.md
+
+      - name: open or update the tracking issue
+        if: steps.stale.outputs.stale == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="Entries due for re-verification"
+          BODY=$(cat /tmp/issue-body.md)
+          EXISTING=$(gh issue list --state open --search "$TITLE in:title" \
+            --json number --jq '.[0].number' || true)
+          if [ -n "$EXISTING" ]; then
+            gh issue edit "$EXISTING" --body "$BODY"
+            echo "updated issue #$EXISTING"
+          else
+            gh issue create --title "$TITLE" --body "$BODY" --label verification
+            echo "opened a new issue"
+          fi
