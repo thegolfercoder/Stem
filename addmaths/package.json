@@ -1,0 +1,40 @@
+{
+  "name": "igcse-additional-maths",
+  "version": "1.0.0",
+  "description": "A complete study platform for Cambridge IGCSE Additional Mathematics (0606).",
+  "scripts": {
+    "dev": "tsx scripts/build-search-index.ts && next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx scripts/test.ts && tsx scripts/verify-maths.ts",
+    "check": "npm run typecheck && npm run lint && npm run test",
+    "prebuild": "tsx scripts/build-search-index.ts",
+    "audit": "tsx scripts/audit.ts",
+    "serve": "node server.mjs"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "katex": "^0.18.7",
+    "next": "^15.5.25",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.5.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "axe-core": "^4.13.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.25",
+    "playwright": "^1.63.0",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3"
+  },
+  "private": true
+}
