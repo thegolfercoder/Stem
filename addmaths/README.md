@@ -145,6 +145,22 @@ engine (`scripts/singlefile/app.js`), so they run the same generators and the
 same marking as the React version rather than being a static copy of it. It
 needs `DecompressionStream`: Chrome 80+, Firefox 113+, Safari 16.4+.
 
+`--artifact` emits the same thing as body content only, for hosts that supply
+their own document skeleton, and honours a `data-theme` attribute on the root
+element as well as the site's own `.dark` class:
+
+```bash
+npm run build:singlefile -- ./addmaths-body.html --artifact
+```
+
+### On an iPad, or any tablet
+
+Open the file over **http(s)**, not `file://`. iOS previews a local `.html` in
+Quick Look, which does not run JavaScript, and Safari blocks `localStorage` on
+`file://` URLs, so progress cannot be saved. Serve it from anywhere — including
+`npm run serve` on a machine on the same network — then in Safari use
+**Share → Add to Home Screen** for a full-screen icon.
+
 ## Deploying
 
 The build produces a directory of static files with no server component.

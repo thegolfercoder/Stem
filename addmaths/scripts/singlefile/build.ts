@@ -85,20 +85,8 @@ const icon = readFileSync(join(OUT, "icon.svg"), "utf8");
 const pagesB64 = gzipSync(Buffer.from(JSON.stringify(pages)), { level: 9 }).toString("base64");
 const searchB64 = gzipSync(Buffer.from(searchIndex), { level: 9 }).toString("base64");
 
-/* ------------------------------------------------------------ the document */
-
-const doc = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IGCSE Additional Mathematics 0606 — complete revision course</title>
-<meta name="description" content="A complete study platform for Cambridge IGCSE Additional Mathematics (0606): full syllabus notes, worked examples, exam-style questions with solutions, a random question generator, timed exam simulator and progress tracking. Everything in one offline file.">
-<link rel="icon" href="data:image/svg+xml;base64,${Buffer.from(icon).toString("base64")}">
-<script>(function(){try{var s=localStorage.getItem('addmaths-theme');var m=window.matchMedia('(prefers-color-scheme: dark)').matches;if(s==='dark'||(s!=='light'&&m)){document.documentElement.classList.add('dark');}}catch(e){}})();</script>
-<style>
-${css}
-/* --- Styles for the parts this single-file build renders itself. --- */
+/* --- Styles for the parts this build renders itself, shared by both documents. --- */
+const sfStyles = String.raw`/* --- Styles for the parts this single-file build renders itself. --- */
 .sf-chip{border:1px solid var(--border);border-radius:.5rem;padding:.375rem .75rem;font-size:.875rem;font-weight:500;background:transparent;color:var(--text);cursor:pointer;transition:border-color .15s}
 .sf-chip:hover{border-color:color-mix(in oklab,var(--accent) 50%,transparent)}
 .sf-chip-on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
@@ -132,7 +120,22 @@ ${css}
 .sf-navbtn-on{border-color:var(--accent);background:var(--accent);color:var(--accent-contrast)}
 .sf-navbtn-done{border-color:color-mix(in oklab,var(--easy) 50%,transparent);background:color-mix(in oklab,var(--easy) 12%,transparent)}
 #sf-loading{padding:5rem 1rem;text-align:center}
-details>summary::-webkit-details-marker{display:none}
+details>summary::-webkit-details-marker{display:none}`;
+
+/* ------------------------------------------------------------ the document */
+
+const doc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IGCSE Additional Mathematics 0606 — complete revision course</title>
+<meta name="description" content="A complete study platform for Cambridge IGCSE Additional Mathematics (0606): full syllabus notes, worked examples, exam-style questions with solutions, a random question generator, timed exam simulator and progress tracking. Everything in one offline file.">
+<link rel="icon" href="data:image/svg+xml;base64,${Buffer.from(icon).toString("base64")}">
+<script>(function(){try{var s=localStorage.getItem('addmaths-theme');var m=window.matchMedia('(prefers-color-scheme: dark)').matches;if(s==='dark'||(s!=='light'&&m)){document.documentElement.classList.add('dark');}}catch(e){}})();</script>
+<style>
+${css}
+${sfStyles}
 </style>
 </head>
 <body class="min-h-dvh">
@@ -149,6 +152,58 @@ ${footerMatch[0]}
 </body>
 </html>
 `;
+
+/**
+ * The artifact variant.
+ *
+ * A published artifact is wrapped in its own document skeleton, so this build
+ * emits body content only, with the title and styles first. It also honours the
+ * viewer's theme: the artifact host stamps data-theme on the root element,
+ * where the standalone file only has the .dark class this site's CSS uses.
+ */
+const DARK_TOKENS = `--bg:#0d1017;--bg-soft:#12161f;--bg-card:#161b25;--border:#262d3b;--text:#e8ebf1;--text-muted:#9aa3b6;--accent:#8fb0ff;--accent-soft:#1a2542;--accent-contrast:#0d1017;--easy:#6fd8b4;--medium:#e9b765;--hard:#ff9d9d;--olympiad:#cbaaff;--shadow:0 1px 2px rgb(0 0 0/.4),0 12px 30px -14px rgb(0 0 0/.7)`;
+
+const artifactDoc = `<title>Add Maths 0606</title>
+<style>
+${css}
+${sfStyles}
+/* The artifact host expresses the reader's theme as data-theme on the root;
+   this site's CSS keys off a .dark class, so honour both. */
+:root[data-theme="dark"]{${DARK_TOKENS}}
+body{background:var(--bg);color:var(--text)}
+</style>
+<a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-[color:var(--bg-card)] focus:px-4 focus:py-2 focus:shadow-lg">Skip to content</a>
+${headerMatch[0]}
+<main id="main" tabindex="-1" class="mx-auto w-full max-w-6xl px-4 pb-20 sm:px-6">
+<div id="sf-loading"><p class="muted">Loading the course…</p></div>
+</main>
+${footerMatch[0]}
+<script>
+(function(){
+  function sync(){
+    var t=document.documentElement.getAttribute('data-theme');
+    if(t==='dark')document.documentElement.classList.add('dark');
+    else if(t==='light')document.documentElement.classList.remove('dark');
+    else{try{var s=localStorage.getItem('addmaths-theme');
+      var m=window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', s==='dark'||(s!=='light'&&m));}catch(e){}}
+  }
+  sync();
+  new MutationObserver(sync).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+})();
+</script>
+<script>window.__PAGES__=${JSON.stringify(pagesB64)};window.__SEARCH__=${JSON.stringify(searchB64)};window.__NAV__=${JSON.stringify(NAV)};</script>
+<script>${katex}</script>
+<script>${engine}</script>
+<script>${app}</script>
+`;
+
+if (process.argv.includes("--artifact")) {
+  const target = process.argv[2] && !process.argv[2].startsWith("--") ? process.argv[2] : "/tmp/addmaths-artifact.html";
+  writeFileSync(target, artifactDoc);
+  console.log(`wrote ${target} — ${(Buffer.byteLength(artifactDoc) / 1024).toFixed(0)} KB (artifact variant)`);
+  process.exit(0);
+}
 
 const dest = process.argv[2] ?? "/tmp/igcse-add-maths-0606.html";
 writeFileSync(dest, doc);
