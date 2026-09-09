@@ -9,6 +9,7 @@ tag. They share a set of principles and no code.
 |---|---|---|
 | `swingml/` | **Swing analysis from a single phone camera.** Pose estimation, a temporal model over the eight swing events, and the metrics that follow. Runs as a local web app, a command line tool, or one self-contained HTML file with no install. | Working. |
 | `launchmon-py/` | **Radar DSP for a launch monitor.** A 24 GHz CW Doppler front end arriving as USB-C audio, and the signal processing that turns it into ball and club speed. | Working. No hardware yet. |
+| `addmaths/` | **A study platform for Cambridge IGCSE Additional Mathematics 0606.** Notes for the whole syllabus, worked solutions, a question generator and a timed exam simulator, as a static site. Unrelated to the golf work, and self-contained. | Working. |
 
 Both suites run on every push - lint, types and tests - and the badge above is
 the only place a test count belongs. Written into prose it goes stale the day
