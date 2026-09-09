@@ -124,6 +124,27 @@ The site was also checked with axe-core against WCAG 2.1 A and AA across
 fourteen pages in both light and dark themes: **zero violations**. Every page was
 checked at 375px for horizontal overflow: **zero**.
 
+## One-file build
+
+The whole site also builds into a single self-contained HTML file:
+
+```bash
+npm run build:singlefile        # writes /tmp/igcse-add-maths-0606.html
+npm run build:singlefile -- ./addmaths.html
+```
+
+Every page is gzipped into one blob the page decompresses on load — 11.5 MB of
+KaTeX-heavy markup becomes about 1 MB — and the stylesheet, the KaTeX fonts, the
+search index, KaTeX itself and the question engine are all inlined. The result
+is **1.9 MB**, opens from a `file://` URL, and makes **no network requests at
+all**: notes, search, practice, the exam simulator, the tools, the planner and
+progress tracking all work offline.
+
+The three interactive pages are rebuilt in plain DOM against the real question
+engine (`scripts/singlefile/app.js`), so they run the same generators and the
+same marking as the React version rather than being a static copy of it. It
+needs `DecompressionStream`: Chrome 80+, Firefox 113+, Safari 16.4+.
+
 ## Deploying
 
 The build produces a directory of static files with no server component.

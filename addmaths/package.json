@@ -12,7 +12,8 @@
     "check": "npm run typecheck && npm run lint && npm run test",
     "prebuild": "tsx scripts/build-search-index.ts",
     "audit": "tsx scripts/audit.ts",
-    "serve": "node server.mjs"
+    "serve": "node server.mjs",
+    "build:singlefile": "npm run build && tsx scripts/singlefile/build.ts"
   },
   "license": "MIT",
   "dependencies": {
