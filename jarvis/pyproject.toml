@@ -11,6 +11,10 @@ dependencies = [
     "pydantic-settings>=2.1",
     "python-multipart>=0.0.9",
     "anthropic>=1.0",
+    # Reading PDFs. Imported lazily in `ingest.py`, so a broken or absent
+    # install costs PDFs and not the application - but it is a declared
+    # dependency because the knowledge base is meant to take PDFs out of the box.
+    "pypdf>=4.0",
 ]
 
 [project.scripts]
