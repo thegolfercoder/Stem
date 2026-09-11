@@ -1,0 +1,56 @@
+[project]
+name = "jarvis"
+version = "0.1.0"
+description = "A private, local-first personal assistant: local memory and tools, cloud intelligence."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "sqlalchemy>=2.0",
+    "pydantic>=2.5",
+    "pydantic-settings>=2.1",
+    "python-multipart>=0.0.9",
+    "anthropic>=1.0",
+]
+
+[project.scripts]
+jarvis = "jarvis.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "ruff>=0.4", "mypy>=1.8", "httpx>=0.27"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["backend"]
+include = ["jarvis*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.lint.flake8-bugbear]
+# `x: T = Depends(...)` in a signature is how FastAPI declares a dependency.
+# B008 is right about function calls in defaults in general and wrong about
+# these four, which is what this list is for.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Cookie", "fastapi.Query", "fastapi.Header"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+disallow_untyped_defs = true
+# The package lives under backend/, which is where the editable install points
+# too. Without this, `mypy -p jarvis` cannot find it from the project root.
+mypy_path = "backend"
+
+[[tool.mypy.overrides]]
+module = ["uvicorn.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

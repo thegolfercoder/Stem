@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>JARVIS</title>
+<link rel="stylesheet" href="/static/styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◆</text></svg>">
+</head>
+<body>
+
+<!-- Lock screen. Shown until /api/auth/status says otherwise, and shown again
+     the moment any request comes back 401. -->
+<div id="lock">
+  <div class="lock-card">
+    <div class="lock-mark">JARVIS</div>
+    <div class="lock-sub" id="lock-sub">Local assistant &middot; this machine only</div>
+
+    <form id="login-form" hidden>
+      <label class="field"><span>Username</span>
+        <input type="text" id="login-username" autocomplete="username" autocapitalize="none" required>
+      </label>
+      <label class="field"><span>Password</span>
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </label>
+      <div class="error-text" id="login-error"></div>
+      <button class="btn primary wide" type="submit">Unlock</button>
+    </form>
+
+    <form id="setup-form" hidden>
+      <label class="field"><span>Choose a username</span>
+        <input type="text" id="setup-username" autocomplete="username" autocapitalize="none" required>
+      </label>
+      <label class="field"><span>Your name (what JARVIS calls you)</span>
+        <input type="text" id="setup-display" autocomplete="name">
+      </label>
+      <label class="field"><span>Password (at least 8 characters)</span>
+        <input type="password" id="setup-password" autocomplete="new-password" minlength="8" required>
+      </label>
+      <div class="error-text" id="setup-error"></div>
+      <button class="btn primary wide" type="submit">Create this JARVIS</button>
+      <p class="note">
+        This account exists only in <code>jarvis/data/jarvis.db</code> on this
+        computer. There is no server to register with and no password to recover
+        &mdash; if you lose it, delete the database and start again.
+      </p>
+    </form>
+  </div>
+</div>
+
+<div id="shell" hidden>
+  <aside id="sidebar">
+    <div class="brand">JARVIS<small>local assistant</small></div>
+    <nav id="nav"></nav>
+    <div class="sidebar-foot">
+      <div class="who"><strong id="who-name">&mdash;</strong><span id="who-model">&mdash;</span></div>
+      <button class="btn wide" id="lock-button">Lock</button>
+    </div>
+  </aside>
+
+  <main>
+    <!-- Dashboard -->
+    <section class="view" data-view="dashboard">
+      <div class="view-head">
+        <h1 id="greeting">JARVIS</h1>
+        <span class="sub" id="dash-sub"></span>
+        <div class="spacer"></div>
+        <span class="pill" id="key-pill">checking key</span>
+      </div>
+      <div class="scroll">
+        <div class="grid">
+          <div class="card">
+            <h2>This machine</h2>
+            <div class="stat-row">
+              <div class="stat"><div class="value" id="stat-conversations">0</div><div class="label">conversations</div></div>
+              <div class="stat"><div class="value" id="stat-messages">0</div><div class="label">messages</div></div>
+              <div class="stat"><div class="value" id="stat-tools">0</div><div class="label">local tools</div></div>
+            </div>
+            <div class="kv" style="margin-top:12px"><span class="k">data</span><span class="v" id="stat-data-dir">&mdash;</span></div>
+          </div>
+
+          <div class="card">
+            <h2>Quick commands</h2>
+            <div id="quick-commands"></div>
+          </div>
+
+          <div class="card">
+            <h2>Recent conversations</h2>
+            <div id="recent-conversations"><p class="empty">Nothing yet.</p></div>
+          </div>
+
+          <div class="card pending">
+            <h2>Today's tasks</h2>
+            <p class="phase-note">The task store arrives in phase 3. Nothing is shown here
+              rather than something invented.</p>
+          </div>
+          <div class="card pending">
+            <h2>Upcoming deadlines</h2>
+            <p class="phase-note">Assignments and exams, once the school module exists (phase 3).</p>
+          </div>
+          <div class="card pending">
+            <h2>School overview</h2>
+            <p class="phase-note">Subjects you configure yourself, with notes, grades and
+              study progress (phase 3).</p>
+          </div>
+          <div class="card pending">
+            <h2>Recent projects</h2>
+            <p class="phase-note">Projects with goals, files and a timeline (phase 3).</p>
+          </div>
+          <div class="card pending">
+            <h2>Recent notes</h2>
+            <p class="phase-note">Notes and the document index (phase 2).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chat -->
+    <section class="view" data-view="chat">
+      <div class="chat-layout">
+        <div class="thread-rail">
+          <div class="thread-rail-head">
+            <button class="btn wide" id="new-conversation">+ New conversation</button>
+          </div>
+          <div class="thread-list" id="thread-list"></div>
+        </div>
+        <div class="chat-main">
+          <div class="messages" id="messages"></div>
+          <div class="composer">
+            <div class="composer-inner">
+              <textarea id="composer-input" rows="2"
+                placeholder="Ask JARVIS something. Enter sends, Shift+Enter for a new line."></textarea>
+              <div class="composer-actions">
+                <button class="btn" id="attach-button" disabled
+                  title="File upload and indexing arrive in phase 2.">Attach</button>
+                <button class="btn" id="remember-button" disabled
+                  title="Persistent memory arrives in phase 2. Until then, start a message with 'Remember that ...' and it is kept in this conversation's history.">Save to memory</button>
+                <span class="composer-hint" id="composer-hint"></span>
+                <div class="spacer"></div>
+                <button class="btn primary" id="send-button">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section class="view" data-view="settings">
+      <div class="view-head"><h1>Settings</h1><span class="sub">Model, key, and what JARVIS remembers</span></div>
+      <div class="scroll">
+        <div class="settings-grid">
+          <div class="card">
+            <h2>Cloud model</h2>
+            <label class="field"><span>Model</span><input type="text" id="set-model" spellcheck="false"></label>
+            <label class="field"><span>Maximum tokens per answer</span><input type="number" id="set-max-tokens" min="256" max="64000" step="256"></label>
+            <div class="switch-row">
+              <input type="checkbox" id="set-thinking">
+              <div><label for="set-thinking">Show the model's reasoning</label>
+                <div class="about">Streams a readable summary above the answer. Needs a model that supports it.</div></div>
+            </div>
+            <div class="switch-row">
+              <input type="checkbox" id="set-tools">
+              <div><label for="set-tools">Let JARVIS use local tools</label>
+                <div class="about">The model may ask to run a local function, such as searching past conversations. Tools run on this machine; only their results are sent.</div></div>
+            </div>
+            <div class="switch-row">
+              <input type="checkbox" id="set-fallback">
+              <div><label for="set-fallback">Use server-side refusal fallbacks</label>
+                <div class="about">If the model declines a request, the API retries it on another model in the same call. Turn off if your account rejects the beta.</div></div>
+            </div>
+            <div class="ok-text" id="settings-status"></div>
+            <button class="btn primary" id="save-settings">Save</button>
+          </div>
+
+          <div class="card">
+            <h2>API key</h2>
+            <div class="kv"><span class="k">status</span><span class="v" id="key-status">&mdash;</span></div>
+            <div class="kv"><span class="k">read from</span><span class="v" id="key-source">&mdash;</span></div>
+            <p class="note">
+              The key is read from the environment and never written to the
+              database, so no copy of <code>data/</code> can carry it. Set it in
+              <code>jarvis/.env</code> as <code>JARVIS_ANTHROPIC_API_KEY</code>
+              and restart JARVIS. There is no endpoint that returns the key to
+              this page, on purpose.
+            </p>
+          </div>
+
+          <div class="card">
+            <h2>Password</h2>
+            <label class="field"><span>Current password</span><input type="password" id="pw-current" autocomplete="current-password"></label>
+            <label class="field"><span>New password</span><input type="password" id="pw-new" autocomplete="new-password" minlength="8"></label>
+            <div class="error-text" id="pw-error"></div>
+            <button class="btn" id="change-password">Change password</button>
+            <p class="note">Changing the password signs out every browser, including this one.</p>
+          </div>
+
+          <div class="card">
+            <h2>Delete memory</h2>
+            <p class="note" style="margin-top:0">
+              Deletes conversations and messages from the local database. This is
+              a real delete against <code>jarvis.db</code>; nothing is held
+              anywhere else to also delete.
+            </p>
+            <label class="field"><span>Type DELETE MY MEMORY to confirm</span><input type="text" id="erase-confirm" spellcheck="false"></label>
+            <label class="field"><span>Scope</span>
+              <select id="erase-scope">
+                <option value="conversations">Conversations and messages</option>
+                <option value="all">Everything, including settings</option>
+              </select>
+            </label>
+            <div class="error-text" id="erase-error"></div>
+            <button class="btn danger" id="erase-button">Delete</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Views whose data layer has not been built yet. Each says what it will
+         hold and when, instead of showing invented rows. -->
+    <section class="view" data-view="placeholder">
+      <div class="view-head"><h1 id="ph-title">&mdash;</h1><span class="sub" id="ph-sub"></span></div>
+      <div class="scroll">
+        <div class="placeholder">
+          <span class="phase" id="ph-phase">phase</span>
+          <h2 id="ph-heading">&mdash;</h2>
+          <p id="ph-body"></p>
+          <ul id="ph-list"></ul>
+          <p class="note">
+            Nothing here is stubbed with sample data. The panel appears when the
+            tables behind it exist and JARVIS can actually answer questions about
+            them.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
