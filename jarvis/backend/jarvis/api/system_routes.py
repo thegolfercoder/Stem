@@ -17,15 +17,19 @@ from jarvis.api.schemas import (
     UserOut,
 )
 from jarvis.config import Settings
+from jarvis.context_manager import clear_traces
 from jarvis.db import deleted_rows
 from jarvis.models import AppSetting, Conversation, User
 from jarvis.services import conversations as convo_service
+from jarvis.services import documents as document_service
+from jarvis.services import memory as memory_service
 from jarvis.services.app_settings import get_ai_settings, save_ai_settings
 from jarvis.tools import ToolRegistry
 
 router = APIRouter(prefix="/api", tags=["system"])
 
 ERASE_PHRASE = "DELETE MY MEMORY"
+ERASE_SCOPES = ("conversations", "memories", "documents", "all")
 
 
 def _key_source(settings: Settings) -> str | None:
@@ -48,6 +52,8 @@ def status_(
         user=UserOut.model_validate(user),
         conversations=conversations,
         messages=messages,
+        memories=memory_service.count(session, user_id=user.id),
+        documents=len(document_service.list_all(session, user_id=user.id, limit=500)),
         api_key_present=bool(settings.anthropic_api_key),
         model=ai.model,
         data_dir=str(settings.data_dir),
@@ -104,34 +110,56 @@ def erase(
     body: EraseRequest,
     session: Session = Depends(db_session),
     user: User = Depends(current_user),
+    settings: Settings = Depends(app_settings),
 ) -> dict[str, object]:
     """Delete what JARVIS remembers.
 
-    `scope` is "conversations" or "all". Phase 1 has conversations and settings,
-    so "all" means both; as later phases add memory, notes and tasks, they are
-    deleted here too. The deletion is a real SQL DELETE against the local file -
-    there is nothing held anywhere else to also delete, which is the point of the
-    whole architecture.
+    `scope` decides how much: "conversations" for the chat history, "memories"
+    for the stored facts, "documents" for the indexed files and JARVIS's copies
+    of them, or "all" for every one of those plus the settings.
+
+    Each is a real SQL DELETE against the local file, and deleting a document
+    unlinks the copy under `data/documents/` as well. There is nothing held
+    anywhere else to also delete, which is the point of the whole architecture.
     """
     if body.confirm != ERASE_PHRASE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f'Type "{ERASE_PHRASE}" exactly to confirm.',
         )
-    if body.scope not in ("conversations", "all"):
+    if body.scope not in ERASE_SCOPES:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="scope must be conversations or all."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"scope must be one of: {', '.join(ERASE_SCOPES)}.",
         )
 
-    removed = deleted_rows(
-        session.execute(delete(Conversation).where(Conversation.user_id == user.id))
-    )
+    everything = body.scope == "all"
+    conversations_deleted = 0
+    memories_deleted = 0
+    documents_deleted = 0
     settings_removed = 0
-    if body.scope == "all":
+
+    if everything or body.scope == "conversations":
+        conversations_deleted = deleted_rows(
+            session.execute(delete(Conversation).where(Conversation.user_id == user.id))
+        )
+    if everything or body.scope == "memories":
+        memories_deleted = memory_service.delete_all(session, user_id=user.id)
+    if everything or body.scope == "documents":
+        documents_deleted = document_service.remove_all(
+            session, user_id=user.id, documents_dir=settings.documents_dir
+        )
+    if everything:
         settings_removed = deleted_rows(session.execute(delete(AppSetting)))
+
     session.commit()
+    # The in-memory record of what was recently sent to the cloud goes too. It
+    # is derived from the data that was just deleted.
+    clear_traces()
     return {
-        "conversations_deleted": removed,
+        "conversations_deleted": conversations_deleted,
+        "memories_deleted": memories_deleted,
+        "documents_deleted": documents_deleted,
         "settings_reset": settings_removed,
         "scope": body.scope,
     }

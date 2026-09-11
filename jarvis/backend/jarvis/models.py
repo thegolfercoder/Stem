@@ -1,9 +1,15 @@
 """The tables.
 
 Phase 1 owns five: the single user, their login sessions, conversations,
-messages, and the application settings that are not secrets. Tables for memory,
-tasks, school and projects arrive with the phases that use them - an empty table
-shipped early is a schema nobody has tested against real use.
+messages, and the application settings that are not secrets. Phase 2 adds three
+more - memories, documents and the chunks documents are split into - which is
+the whole of what "JARVIS remembers things" means. Tables for tasks, school and
+projects arrive with the phase that uses them; an empty table shipped early is a
+schema nobody has tested against real use.
+
+New tables appear through `create_all()` on the next start, so an existing
+database picks up phase 2 without a migration step. Nothing in phase 1's five
+tables changed, which is what makes that safe.
 """
 
 from __future__ import annotations
@@ -13,6 +19,7 @@ from datetime import UTC, datetime
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -138,3 +145,148 @@ class AppSetting(Base):
     )
 
     __table_args__ = (UniqueConstraint("key", name="uq_app_settings_key"),)
+
+
+# --- phase 2: memory ---------------------------------------------------------
+
+# The categories a memory can be filed under. A fixed list rather than free text:
+# the model picks one on every save, and a vocabulary it can drift away from is a
+# vocabulary that stops being useful for filtering a year in.
+MEMORY_CATEGORIES: tuple[str, ...] = (
+    "personal",
+    "school",
+    "subjects",
+    "preferences",
+    "goals",
+    "projects",
+    "people",
+    "routines",
+    "important_facts",
+    "instructions",
+)
+
+# Where a memory came from. Worth keeping: "you told me this" and "I inferred
+# this" deserve different treatment when one of them turns out to be wrong.
+MEMORY_SOURCES: tuple[str, ...] = ("user", "assistant", "manual", "import")
+
+
+class Memory(Base):
+    """One durable fact about the owner.
+
+    Small on purpose. A memory is a sentence, not a document - "I prefer concise
+    answers", "my maths goal is an A*". Anything longer belongs in a document,
+    which is the other half of phase 2.
+    """
+
+    __tablename__ = "memories"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    category: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    # 1 (trivia) to 5 (never get this wrong). Used to break ties in retrieval and
+    # to decide what survives when the context budget runs out.
+    importance: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="user")
+    # Comma-separated, lowercased, no spaces. A join table would be tidier and is
+    # not worth a second table for something only ever read whole; `tag_list`
+    # below is the accessor everything uses.
+    tags: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=utcnow, onupdate=utcnow, nullable=False
+    )
+    # Retrieval bookkeeping: a memory that is never used is a memory worth
+    # reviewing, and the memory page can sort by it.
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    use_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        CheckConstraint("importance between 1 and 5", name="ck_memories_importance"),
+        Index("ix_memories_user_category", "user_id", "category"),
+    )
+
+    @property
+    def tag_list(self) -> list[str]:
+        return [tag for tag in self.tags.split(",") if tag]
+
+
+# --- phase 2: documents ------------------------------------------------------
+
+
+class Document(Base):
+    """A file the owner has given JARVIS permission to read.
+
+    The file itself lives under `data/documents/`; this row is the index entry.
+    `content_hash` is what makes re-adding the same file an update rather than a
+    duplicate.
+    """
+
+    __tablename__ = "documents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Relative to the data directory, so moving the data directory does not
+    # invalidate every row.
+    path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    category: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    subject: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    tags: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+
+    content_type: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    # The opening of the text, for listing a document without reading the file.
+    excerpt: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    chunk_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=utcnow, onupdate=utcnow, nullable=False
+    )
+    indexed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    chunks: Mapped[list[DocumentChunk]] = relationship(
+        back_populates="document", cascade="all, delete-orphan", order_by="DocumentChunk.ordinal"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "content_hash", name="uq_documents_user_hash"),
+        Index("ix_documents_user_subject", "user_id", "subject"),
+    )
+
+    @property
+    def tag_list(self) -> list[str]:
+        return [tag for tag in self.tags.split(",") if tag]
+
+
+class DocumentChunk(Base):
+    """A passage of a document, and the unit retrieval actually works in.
+
+    Whole documents are the wrong size to send to a model: a question about one
+    paragraph should not cost the other forty. `char_start` is kept so a chunk
+    can be pointed back at its place in the file.
+    """
+
+    __tablename__ = "document_chunks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    document_id: Mapped[int] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    char_start: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Reserved for phase 2's embedding plug point: null until an embedder is
+    # configured, so adding one later is a backfill and not a schema change.
+    embedding_norm: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    document: Mapped[Document] = relationship(back_populates="chunks")
+
+    __table_args__ = (UniqueConstraint("document_id", "ordinal", name="uq_chunk_ordinal"),)

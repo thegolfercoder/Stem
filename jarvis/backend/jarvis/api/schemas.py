@@ -84,6 +84,8 @@ class AISettingsOut(BaseModel):
     show_thinking: bool
     use_refusal_fallback: bool
     enable_tools: bool
+    log_context: bool
+    allow_assistant_memories: bool
     # Whether a key was found in the environment. The key itself is never sent to
     # the browser - there is no endpoint that returns it.
     api_key_present: bool
@@ -97,6 +99,8 @@ class AISettingsUpdate(BaseModel):
     show_thinking: bool | None = None
     use_refusal_fallback: bool | None = None
     enable_tools: bool | None = None
+    log_context: bool | None = None
+    allow_assistant_memories: bool | None = None
 
 
 class EraseRequest(BaseModel):
@@ -111,8 +115,124 @@ class StatusOut(BaseModel):
     user: UserOut
     conversations: int
     messages: int
+    memories: int
+    documents: int
     api_key_present: bool
     model: str
     data_dir: str
     tools: list[str]
     recent_conversations: list[ConversationOut] = Field(default_factory=list)
+
+
+# --- phase 2: memory --------------------------------------------------------
+
+
+class MemoryIn(BaseModel):
+    content: str = Field(min_length=1, max_length=1_000)
+    category: str = Field(default="important_facts", max_length=32)
+    importance: int = Field(default=3, ge=1, le=5)
+    tags: list[str] = Field(default_factory=list)
+
+
+class MemoryUpdate(BaseModel):
+    content: str | None = Field(default=None, max_length=1_000)
+    category: str | None = Field(default=None, max_length=32)
+    importance: int | None = Field(default=None, ge=1, le=5)
+    tags: list[str] | None = None
+
+
+class MemoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    category: str
+    content: str
+    importance: int
+    source: str
+    tags: list[str] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+    last_used_at: datetime | None = None
+    use_count: int = 0
+
+    @classmethod
+    def of(cls, memory: object) -> MemoryOut:
+        """Built by hand because `tags` is stored as a string and read as a list."""
+        return cls(
+            id=memory.id,  # type: ignore[attr-defined]
+            category=memory.category,  # type: ignore[attr-defined]
+            content=memory.content,  # type: ignore[attr-defined]
+            importance=memory.importance,  # type: ignore[attr-defined]
+            source=memory.source,  # type: ignore[attr-defined]
+            tags=memory.tag_list,  # type: ignore[attr-defined]
+            created_at=memory.created_at,  # type: ignore[attr-defined]
+            updated_at=memory.updated_at,  # type: ignore[attr-defined]
+            last_used_at=memory.last_used_at,  # type: ignore[attr-defined]
+            use_count=memory.use_count,  # type: ignore[attr-defined]
+        )
+
+
+class MemorySearchHit(BaseModel):
+    memory: MemoryOut
+    score: float
+    matched: list[str] = Field(default_factory=list)
+
+
+# --- phase 2: documents -----------------------------------------------------
+
+
+class DocumentOut(BaseModel):
+    id: int
+    filename: str
+    category: str
+    subject: str
+    tags: list[str] = Field(default_factory=list)
+    content_type: str
+    size_bytes: int
+    chunk_count: int
+    excerpt: str
+    created_at: datetime
+    updated_at: datetime
+    indexed_at: datetime | None = None
+
+    @classmethod
+    def of(cls, document: object) -> DocumentOut:
+        return cls(
+            id=document.id,  # type: ignore[attr-defined]
+            filename=document.filename,  # type: ignore[attr-defined]
+            category=document.category,  # type: ignore[attr-defined]
+            subject=document.subject,  # type: ignore[attr-defined]
+            tags=document.tag_list,  # type: ignore[attr-defined]
+            content_type=document.content_type,  # type: ignore[attr-defined]
+            size_bytes=document.size_bytes,  # type: ignore[attr-defined]
+            chunk_count=document.chunk_count,  # type: ignore[attr-defined]
+            excerpt=document.excerpt,  # type: ignore[attr-defined]
+            created_at=document.created_at,  # type: ignore[attr-defined]
+            updated_at=document.updated_at,  # type: ignore[attr-defined]
+            indexed_at=document.indexed_at,  # type: ignore[attr-defined]
+        )
+
+
+class DocumentSearchHit(BaseModel):
+    document_id: int
+    filename: str
+    subject: str
+    part: int
+    parts: int
+    text: str
+    score: float
+
+
+class ConversationSearchHit(BaseModel):
+    conversation_id: int
+    title: str
+    role: str
+    text: str
+    created_at: datetime
+
+
+class NoteIn(BaseModel):
+    title: str = Field(default="", max_length=120)
+    text: str = Field(min_length=1, max_length=200_000)
+    subject: str = Field(default="", max_length=64)
+    tags: list[str] = Field(default_factory=list)

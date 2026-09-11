@@ -24,9 +24,22 @@ class Boom:
 
 
 def test_the_registry_describes_its_tools() -> None:
-    specs = default_registry().specs()
-    assert [s.name for s in specs] == ["search_conversations"]
-    assert specs[0].input_schema["required"] == ["query"]
+    specs = {spec.name: spec for spec in default_registry().specs()}
+    # Phase 1's tool, and the phase 2 ones registered beside it.
+    assert "search_conversations" in specs
+    assert {"save_memory", "search_memory", "update_memory", "delete_memory"} <= set(specs)
+    assert {"search_files", "list_documents"} <= set(specs)
+    assert specs["search_conversations"].input_schema["required"] == ["query"]
+
+
+def test_every_tool_describes_itself_well_enough_to_be_chosen() -> None:
+    """A tool the model cannot tell apart from another is a tool it will use
+    wrongly, so the description is part of the interface rather than a comment."""
+    for spec in default_registry().specs():
+        assert len(spec.description) > 80, spec.name
+        assert spec.input_schema["type"] == "object"
+        for name, field in spec.input_schema.get("properties", {}).items():
+            assert field.get("description") or field.get("enum"), f"{spec.name}.{name}"
 
 
 def test_a_duplicate_name_is_refused() -> None:

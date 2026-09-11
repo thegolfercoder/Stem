@@ -14,7 +14,8 @@ from sqlalchemy.orm import Session
 from jarvis.ai.anthropic_provider import AnthropicProvider
 from jarvis.ai.base import ChatProvider
 from jarvis.config import Settings, get_settings
-from jarvis.context import ContextBuilder
+from jarvis.context_manager import ContextManager
+from jarvis.context_sources import register_default_sources
 from jarvis.db import get_session
 from jarvis.models import User
 from jarvis.services import auth as auth_service
@@ -58,15 +59,21 @@ def tool_registry(request: Request) -> ToolRegistry:
     return registry
 
 
-def context_builder(request: Request) -> ContextBuilder:
-    """One builder per process. Phase 2 registers its retrieval sources on the
-    instance held in app state, so every request sees them."""
-    builder = getattr(request.app.state, "context_builder", None)
-    if builder is None:  # pragma: no cover - startup always sets it
+def context_manager(request: Request, session: Session = Depends(db_session)) -> ContextManager:
+    """One manager per process, with the phase 2 sources attached.
+
+    The `log_context` setting is applied per request rather than at startup, so
+    turning the context log on in Settings takes effect on the next message
+    instead of the next restart.
+    """
+    manager = getattr(request.app.state, "context_manager", None)
+    if manager is None:  # pragma: no cover - startup always sets it
         settings = get_settings()
-        builder = ContextBuilder(prompt_path=settings.config_dir / "system_prompt.md")
-        request.app.state.context_builder = builder
-    return builder
+        manager = ContextManager(prompt_path=settings.config_dir / "system_prompt.md")
+        register_default_sources(manager)
+        request.app.state.context_manager = manager
+    manager.log_context = get_ai_settings(session).log_context
+    return manager
 
 
 def chat_provider(

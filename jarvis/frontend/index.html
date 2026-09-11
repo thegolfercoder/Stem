@@ -73,9 +73,11 @@
           <div class="card">
             <h2>This machine</h2>
             <div class="stat-row">
+              <div class="stat"><div class="value" id="stat-memories">0</div><div class="label">memories</div></div>
+              <div class="stat"><div class="value" id="stat-documents">0</div><div class="label">documents</div></div>
               <div class="stat"><div class="value" id="stat-conversations">0</div><div class="label">conversations</div></div>
               <div class="stat"><div class="value" id="stat-messages">0</div><div class="label">messages</div></div>
-              <div class="stat"><div class="value" id="stat-tools">0</div><div class="label">local tools</div></div>
+              <div class="stat"><div class="value" id="stat-tools">0</div><div class="label">tools</div></div>
             </div>
             <div class="kv" style="margin-top:12px"><span class="k">data</span><span class="v" id="stat-data-dir">&mdash;</span></div>
           </div>
@@ -108,9 +110,14 @@
             <h2>Recent projects</h2>
             <p class="phase-note">Projects with goals, files and a timeline (phase 3).</p>
           </div>
-          <div class="card pending">
-            <h2>Recent notes</h2>
-            <p class="phase-note">Notes and the document index (phase 2).</p>
+          <div class="card">
+            <h2>Recent notes and documents</h2>
+            <div id="recent-documents"><p class="empty">Nothing indexed yet.</p></div>
+          </div>
+
+          <div class="card">
+            <h2>Most used memories</h2>
+            <div id="top-memories"><p class="empty">Nothing stored yet.</p></div>
           </div>
         </div>
       </div>
@@ -122,6 +129,7 @@
         <div class="thread-rail">
           <div class="thread-rail-head">
             <button class="btn wide" id="new-conversation">+ New conversation</button>
+            <input type="search" id="thread-search" placeholder="Search conversations...">
           </div>
           <div class="thread-list" id="thread-list"></div>
         </div>
@@ -170,6 +178,16 @@
               <div><label for="set-fallback">Use server-side refusal fallbacks</label>
                 <div class="about">If the model declines a request, the API retries it on another model in the same call. Turn off if your account rejects the beta.</div></div>
             </div>
+            <div class="switch-row">
+              <input type="checkbox" id="set-log-context">
+              <div><label for="set-log-context">Log what is sent to the cloud</label>
+                <div class="about">Writes a line per request to <code>logs/jarvis.log</code> naming the context used. Useful while developing; leave it off afterwards, because it puts personal context in a file.</div></div>
+            </div>
+            <div class="switch-row">
+              <input type="checkbox" id="set-assistant-memories">
+              <div><label for="set-assistant-memories">Let JARVIS save memories it judges useful</label>
+                <div class="about">Off means memory is only ever written when you ask for it, or by hand on the Memory page.</div></div>
+            </div>
             <div class="ok-text" id="settings-status"></div>
             <button class="btn primary" id="save-settings">Save</button>
           </div>
@@ -185,6 +203,17 @@
               and restart JARVIS. There is no endpoint that returns the key to
               this page, on purpose.
             </p>
+          </div>
+
+          <div class="card">
+            <h2>What was sent to the cloud</h2>
+            <p class="note" style="margin-top:0">
+              The last few requests, exactly as they left this machine. Held in
+              memory only and cleared when you delete memory - a permanent record
+              of the context would be a second copy of your data.
+            </p>
+            <button class="btn" id="context-refresh">Show recent requests</button>
+            <div id="context-traces"></div>
           </div>
 
           <div class="card">
@@ -207,12 +236,120 @@
             <label class="field"><span>Scope</span>
               <select id="erase-scope">
                 <option value="conversations">Conversations and messages</option>
+                <option value="memories">Memories</option>
+                <option value="documents">Documents and notes (deletes the files)</option>
                 <option value="all">Everything, including settings</option>
               </select>
             </label>
             <div class="error-text" id="erase-error"></div>
             <button class="btn danger" id="erase-button">Delete</button>
           </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- Memory -->
+    <section class="view" data-view="memory">
+      <div class="view-head">
+        <h1>Memory</h1><span class="sub" id="memory-count"></span>
+        <div class="spacer"></div>
+        <button class="btn" id="memory-add-toggle">+ Add a memory</button>
+      </div>
+      <div class="scroll">
+        <div class="panel-form" id="memory-form" hidden>
+          <label class="field"><span>What should JARVIS remember?</span>
+            <textarea id="memory-content" rows="2" placeholder="Sam prefers concise answers"></textarea>
+          </label>
+          <div class="row">
+            <label class="field"><span>Category</span><select id="memory-category"></select></label>
+            <label class="field"><span>Importance</span>
+              <select id="memory-importance">
+                <option value="1">1 - trivia</option>
+                <option value="2">2</option>
+                <option value="3" selected>3 - normal</option>
+                <option value="4">4</option>
+                <option value="5">5 - never get this wrong</option>
+              </select>
+            </label>
+            <label class="field"><span>Tags (comma separated)</span><input type="text" id="memory-tags" spellcheck="false"></label>
+          </div>
+          <div class="error-text" id="memory-error"></div>
+          <button class="btn primary" id="memory-save">Save memory</button>
+        </div>
+
+        <div class="toolbar">
+          <input type="search" id="memory-search" placeholder="Search memories...">
+          <select id="memory-filter"><option value="">All categories</option></select>
+        </div>
+        <div id="memory-list"></div>
+      </div>
+    </section>
+
+    <!-- Files / documents -->
+    <section class="view" data-view="files">
+      <div class="view-head">
+        <h1>Files</h1><span class="sub" id="documents-count"></span>
+        <div class="spacer"></div>
+        <label class="btn" for="document-file">+ Add a document</label>
+        <input type="file" id="document-file" hidden accept=".txt,.text,.md,.markdown,.rst,.csv,.log,.pdf">
+      </div>
+      <div class="scroll">
+        <div class="panel-form" id="document-form" hidden>
+          <div class="row">
+            <label class="field"><span>File</span><input type="text" id="document-name" readonly></label>
+            <label class="field"><span>Subject</span><input type="text" id="document-subject" placeholder="chemistry"></label>
+            <label class="field"><span>Tags</span><input type="text" id="document-tags" placeholder="igcse,revision"></label>
+          </div>
+          <div class="error-text" id="document-error"></div>
+          <button class="btn primary" id="document-upload">Index this file</button>
+        </div>
+
+        <div class="toolbar">
+          <input type="search" id="document-search" placeholder="Search inside your documents...">
+        </div>
+        <div id="document-results"></div>
+        <div id="document-list"></div>
+        <p class="note">
+          Files are copied into <code>data/documents/</code> and indexed as
+          passages. Deleting one here deletes JARVIS's copy. Readable types:
+          txt, md, rst, csv, log, pdf.
+        </p>
+      </div>
+    </section>
+
+    <!-- Notes -->
+    <section class="view" data-view="notes">
+      <div class="view-head">
+        <h1>Notes</h1><span class="sub">Written here, indexed like any other document</span>
+        <div class="spacer"></div>
+        <button class="btn" id="note-new">+ New note</button>
+      </div>
+      <div class="scroll">
+        <div class="panel-form" id="note-form" hidden>
+          <div class="row">
+            <label class="field"><span>Title</span><input type="text" id="note-title" placeholder="Rates of reaction"></label>
+            <label class="field"><span>Subject</span><input type="text" id="note-subject" placeholder="chemistry"></label>
+          </div>
+          <label class="field"><span>Note</span><textarea id="note-text" rows="10" placeholder="Write in Markdown..."></textarea></label>
+          <div class="error-text" id="note-error"></div>
+          <button class="btn primary" id="note-save">Save note</button>
+        </div>
+        <div id="note-list"></div>
+      </div>
+    </section>
+
+    <!-- Knowledge: one search across everything held locally -->
+    <section class="view" data-view="knowledge">
+      <div class="view-head">
+        <h1>Knowledge</h1><span class="sub">Search everything JARVIS holds on this machine</span>
+      </div>
+      <div class="scroll">
+        <div class="toolbar">
+          <input type="search" id="knowledge-search" placeholder="Search memories, documents and conversations...">
+        </div>
+        <div id="knowledge-results">
+          <p class="empty">Type to search across memories, documents and past conversations.</p>
         </div>
       </div>
     </section>

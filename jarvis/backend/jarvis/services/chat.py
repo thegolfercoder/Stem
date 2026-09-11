@@ -3,7 +3,8 @@
 This is the loop the whole application exists to run:
 
     the message arrives -> it is written to the local database
-                        -> local sources are searched for what is relevant
+                        -> its intent is worked out locally
+                        -> memories and documents are searched for what is relevant
                         -> a request carrying only that is sent to the cloud model
                         -> the answer streams back to the browser as it arrives
                         -> the answer is written to the local database
@@ -36,7 +37,8 @@ from jarvis.ai.base import (
     ThinkingEvent,
     ToolResultContent,
 )
-from jarvis.context import ContextBuilder
+from jarvis.context_manager import ContextManager
+from jarvis.intent import detect as detect_intent
 from jarvis.models import Conversation, User
 from jarvis.services import conversations as convo_service
 from jarvis.services.app_settings import AISettings
@@ -55,7 +57,7 @@ def run_turn(
     conversation: Conversation,
     user_text: str,
     provider: ChatProvider,
-    builder: ContextBuilder,
+    manager: ContextManager,
     registry: ToolRegistry,
     ai_settings: AISettings,
 ) -> Iterator[dict[str, Any]]:
@@ -84,19 +86,41 @@ def run_turn(
         convo_service.load_messages(session, conversation_id=conversation.id)
     )
     tools = registry.specs() if ai_settings.enable_tools else []
-    built = builder.build(
+
+    # What kind of message this is, worked out locally. It decides which
+    # memories are searched first and what the model is told about its tools;
+    # it never decides what is stored - see `intent.py`.
+    intent = detect_intent(user_text)
+
+    built = manager.build(
         user_display_name=user.display_name,
         history=history,
         model=ai_settings.model,
+        session=session,
+        user_id=user.id,
+        intent=intent,
         max_tokens=ai_settings.max_tokens,
         tools=tools,
         show_thinking=ai_settings.show_thinking,
         query=user_text,
     )
+    # Retrieval marks memories as used, and the turn should not lose that if the
+    # request fails later.
+    session.commit()
+
     if built.snippets:
         yield {
             "type": "context",
-            "snippets": [{"source": s.source, "title": s.title} for s in built.snippets],
+            "intent": intent.kind.value,
+            "snippets": [
+                {
+                    "source": snippet.source,
+                    "title": snippet.title,
+                    "reference": list(snippet.reference) if snippet.reference else None,
+                }
+                for snippet in built.snippets
+            ],
+            "chars": built.trace.total_chars if built.trace else 0,
         }
 
     request = built.request
@@ -196,6 +220,8 @@ def run_turn(
         "model": model_used,
         "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens},
         "error": failure,
+        # So the interface can show the memory count without a second request.
+        "context": built.trace.as_dict() if built.trace else None,
     }
 
 

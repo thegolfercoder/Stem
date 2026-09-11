@@ -17,7 +17,8 @@ from fastapi.staticfiles import StaticFiles
 from jarvis import __version__
 from jarvis.api import ROUTERS
 from jarvis.config import Settings, get_settings
-from jarvis.context import ContextBuilder
+from jarvis.context_manager import ContextManager
+from jarvis.context_sources import register_default_sources
 from jarvis.db import create_all, init_engine, session_scope
 from jarvis.logging_setup import configure_logging
 from jarvis.services.auth import purge_expired
@@ -48,9 +49,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             log.info("removed %d expired session(s)", expired)
         app.state.settings = settings
         app.state.tool_registry = default_registry()
-        app.state.context_builder = ContextBuilder(
-            prompt_path=settings.config_dir / "system_prompt.md"
-        )
+        manager = ContextManager(prompt_path=settings.config_dir / "system_prompt.md")
+        register_default_sources(manager)
+        app.state.context_manager = manager
         log.info("JARVIS %s ready on http://%s:%d", __version__, settings.host, settings.port)
         log.info("data directory: %s", settings.data_dir)
         if not settings.anthropic_api_key:

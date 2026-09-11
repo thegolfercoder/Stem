@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
+from jarvis import retrieval
 from jarvis.ai.base import ProviderMessage, Role
 from jarvis.db import deleted_rows
 from jarvis.models import Conversation, Message, utcnow
@@ -129,6 +131,59 @@ def as_provider_messages(messages: Sequence[Message]) -> list[ProviderMessage]:
         role: Role = "user" if message.role == "user" else "assistant"
         out.append(ProviderMessage.text(role, message.content))
     return out
+
+
+@dataclass(frozen=True)
+class ConversationHit:
+    """One message that matched a search of the history."""
+
+    conversation: Conversation
+    message: Message
+    score: float
+
+
+def search_messages(
+    session: Session, *, user_id: int, query: str, limit: int = 20
+) -> list[ConversationHit]:
+    """Search what was actually said, across every conversation.
+
+    Ranked rather than merely filtered, so "what did I say about the exam" puts
+    the message about the exam above one that mentions it in passing.
+    """
+    terms = retrieval.like_patterns(query)
+    if not terms:
+        return []
+
+    statement = (
+        select(Message, Conversation)
+        .join(Conversation, Message.conversation_id == Conversation.id)
+        .where(
+            Conversation.user_id == user_id,
+            Message.role.in_(("user", "assistant")),
+            or_(*[Message.content.icontains(term.strip("%")) for term in terms]),
+        )
+        .order_by(Message.id.desc())
+        .limit(500)
+    )
+    rows = list(session.execute(statement).all())
+    if not rows:
+        return []
+
+    by_id: dict[object, tuple[Message, Conversation]] = {
+        message.id: (message, conversation) for message, conversation in rows
+    }
+    candidates = [
+        retrieval.Candidate(key=message.id, text=f"{conversation.title} {message.content}")
+        for message, conversation in rows
+    ]
+    hits: list[ConversationHit] = []
+    for scored in retrieval.rank(query, candidates, limit=limit):
+        entry = by_id.get(scored.key)
+        if entry is None:  # pragma: no cover - key comes from by_id
+            continue
+        message, conversation = entry
+        hits.append(ConversationHit(conversation=conversation, message=message, score=scored.score))
+    return hits
 
 
 def derive_title(text: str) -> str:

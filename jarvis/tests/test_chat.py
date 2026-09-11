@@ -159,3 +159,89 @@ def test_a_provider_failure_is_stored_and_shown(signed_in: TestClient) -> None:
 def test_chat_requires_a_session(client: TestClient) -> None:
     response = client.post("/api/chat", json={"message": "hello"}, headers=CLIENT_HEADERS)
     assert response.status_code == 401
+
+
+# --- phase 2: memory in the loop ---------------------------------------------
+
+
+def test_a_remembered_fact_reaches_the_next_conversation(
+    signed_in: TestClient, provider: FakeProvider
+) -> None:
+    """The end-to-end claim of phase 2, in one test.
+
+    A fact is saved through the tool in one conversation; a question in a
+    *different* conversation gets it back through retrieval, with no help from
+    the model's own memory - the fake model has none.
+    """
+    saving = FakeProvider(
+        reply="Noted.",
+        tool_calls=[
+            ToolUseContent(
+                id="toolu_save",
+                name="save_memory",
+                input={
+                    "content": "Sam wants an A* in Economics",
+                    "category": "goals",
+                    "importance": 5,
+                },
+            )
+        ],
+    )
+    signed_in.app.dependency_overrides[chat_provider] = lambda: saving  # type: ignore[attr-defined]
+    events = send(signed_in, "Remember that I want an A* in economics")
+    assert any(e["type"] == "tool" and e["status"] == "done" for e in events)
+
+    stored = signed_in.get("/api/memory").json()
+    assert [m["content"] for m in stored] == ["Sam wants an A* in Economics"]
+    assert stored[0]["source"] == "assistant"
+
+    # A new conversation, a fresh provider, and no history to lean on.
+    signed_in.app.dependency_overrides[chat_provider] = lambda: provider  # type: ignore[attr-defined]
+    signed_in.post("/api/conversations", json={"title": "Later"}, headers=CLIENT_HEADERS)
+    events = send(signed_in, "What are my economics goals?")
+
+    assert "A* in Economics" in provider.requests[-1].system
+    context_events = [e for e in events if e["type"] == "context"]
+    assert context_events and context_events[0]["snippets"][0]["source"] == "memory"
+
+
+def test_a_memory_instruction_tells_the_model_about_the_tool(
+    signed_in: TestClient, provider: FakeProvider
+) -> None:
+    send(signed_in, "Remember that I prefer concise answers")
+    assert "save_memory" in provider.requests[-1].system
+
+
+def test_an_ordinary_question_carries_no_memory_instruction(
+    signed_in: TestClient, provider: FakeProvider
+) -> None:
+    send(signed_in, "What is the boiling point of water?")
+    assert "save_memory" not in provider.requests[-1].system
+
+
+def test_the_done_event_reports_what_context_was_used(signed_in: TestClient) -> None:
+    signed_in.post(
+        "/api/memory",
+        json={"content": "Sam is studying IGCSE Economics", "category": "subjects"},
+        headers=CLIENT_HEADERS,
+    )
+    events = send(signed_in, "help me with economics")
+    done = events[-1]
+    assert done["type"] == "done"
+    assert done["context"]["snippets"], "the interface needs this to show the memory indicator"
+    assert done["context"]["total_chars"] > 0
+
+
+def test_conversation_search_finds_earlier_messages(signed_in: TestClient) -> None:
+    send(signed_in, "My chemistry exam is on the third of October")
+    send(signed_in, "What is the capital of France?")
+
+    hits = signed_in.get("/api/conversations/search?q=chemistry exam").json()
+    assert hits
+    assert "chemistry exam" in hits[0]["text"].lower()
+    assert hits[0]["role"] == "user"
+    assert signed_in.get("/api/conversations/search?q=submarines").json() == []
+
+
+def test_conversation_search_needs_a_session(client: TestClient) -> None:
+    assert client.get("/api/conversations/search?q=x").status_code == 401

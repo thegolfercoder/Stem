@@ -38,7 +38,15 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
 # `x: T = Depends(...)` in a signature is how FastAPI declares a dependency.
 # B008 is right about function calls in defaults in general and wrong about
 # these four, which is what this list is for.
-extend-immutable-calls = ["fastapi.Depends", "fastapi.Cookie", "fastapi.Query", "fastapi.Header"]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Cookie",
+    "fastapi.Query",
+    "fastapi.Header",
+    "fastapi.File",
+    "fastapi.Form",
+    "fastapi.Body",
+]
 
 [tool.mypy]
 python_version = "3.11"

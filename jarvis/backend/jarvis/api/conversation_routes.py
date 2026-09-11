@@ -5,21 +5,29 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from jarvis import retrieval
 from jarvis.ai.base import ChatProvider
-from jarvis.api.deps import chat_provider, context_builder, current_user, db_session, tool_registry
+from jarvis.api.deps import (
+    chat_provider,
+    context_manager,
+    current_user,
+    db_session,
+    tool_registry,
+)
 from jarvis.api.schemas import (
     ChatRequestBody,
     ConversationCreate,
     ConversationDetail,
     ConversationOut,
     ConversationRename,
+    ConversationSearchHit,
     MessageOut,
 )
-from jarvis.context import ContextBuilder
+from jarvis.context_manager import ContextManager
 from jarvis.models import User
 from jarvis.services import chat as chat_service
 from jarvis.services import conversations as convo_service
@@ -47,6 +55,27 @@ def create_conversation(
 ) -> ConversationOut:
     conversation = convo_service.create_conversation(session, user_id=user.id, title=body.title)
     return ConversationOut.model_validate(conversation)
+
+
+@router.get("/conversations/search", response_model=list[ConversationSearchHit])
+def search_conversations(
+    q: str = Query(min_length=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    session: Session = Depends(db_session),
+    user: User = Depends(current_user),
+) -> list[ConversationSearchHit]:
+    """Search past messages. Declared before `/conversations/{id}` so that
+    "search" is not read as a conversation id."""
+    return [
+        ConversationSearchHit(
+            conversation_id=hit.conversation.id,
+            title=hit.conversation.title,
+            role=hit.message.role,
+            text=retrieval.excerpt(hit.message.content, q),
+            created_at=hit.message.created_at,
+        )
+        for hit in convo_service.search_messages(session, user_id=user.id, query=q, limit=limit)
+    ]
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationDetail)
@@ -99,7 +128,7 @@ def chat(
     session: Session = Depends(db_session),
     user: User = Depends(current_user),
     provider: ChatProvider = Depends(chat_provider),
-    builder: ContextBuilder = Depends(context_builder),
+    manager: ContextManager = Depends(context_manager),
     registry: ToolRegistry = Depends(tool_registry),
 ) -> StreamingResponse:
     """Send a message; the answer streams back as server-sent events.
@@ -129,7 +158,7 @@ def chat(
             conversation=conversation,
             user_text=body.message,
             provider=provider,
-            builder=builder,
+            manager=manager,
             registry=registry,
             ai_settings=ai_settings,
         ):

@@ -34,6 +34,14 @@ class AISettings(BaseModel):
     use_refusal_fallback: bool = True
     # Whether the model may call local tools.
     enable_tools: bool = True
+    # Write a line to the log for every request, saying how much context went and
+    # where it came from. Off by default: on, it puts personal context in a file
+    # that people paste into bug reports.
+    log_context: bool = False
+    # Let the model store a memory it judged worth keeping, without being asked
+    # in so many words. Off means memory is only ever written when you ask for
+    # it, or by hand on the memory page.
+    allow_assistant_memories: bool = True
 
     @field_validator("model")
     @classmethod
