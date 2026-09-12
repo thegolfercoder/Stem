@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from jarvis.ai.anthropic_provider import AnthropicProvider
 from jarvis.ai.base import ChatProvider
+from jarvis.ai.ollama_provider import OllamaProvider
 from jarvis.config import Settings, get_settings
 from jarvis.context_manager import ContextManager
 from jarvis.context_sources import register_default_sources
@@ -89,7 +90,16 @@ def chat_provider(
     settings: Settings = Depends(app_settings),
     session: Session = Depends(db_session),
 ) -> ChatProvider:
+    """Whichever model the owner chose, behind one interface.
+
+    Resolved per request rather than once at startup, because the choice lives
+    in the database and switching should not need a restart - the whole value
+    of having a local option is being able to reach for it the moment the other
+    one is unavailable.
+    """
     ai = get_ai_settings(session)
+    if ai.provider == "ollama":
+        return OllamaProvider(ai.local_host, model=ai.local_model)
     return AnthropicProvider(
         settings.anthropic_api_key,
         use_fallbacks=ai.use_refusal_fallback,

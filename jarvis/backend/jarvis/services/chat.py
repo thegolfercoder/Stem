@@ -107,7 +107,7 @@ def run_turn(
     built = manager.build(
         user_display_name=user.display_name,
         history=history,
-        model=ai_settings.model,
+        model=ai_settings.active_model,
         session=session,
         user_id=user.id,
         intent=intent,

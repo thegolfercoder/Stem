@@ -136,7 +136,9 @@ def evaluate_version(
         raise HTTPException(status_code=404, detail="No such version.")
     ai = get_ai_settings(session)
     try:
-        assessment = pipeline.assess(session, candidate=version, provider=provider, model=ai.model)
+        assessment = pipeline.assess(
+            session, candidate=version, provider=provider, model=ai.active_model
+        )
     except (pipeline.PipelineError, evaluation.EvaluationError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     session.commit()

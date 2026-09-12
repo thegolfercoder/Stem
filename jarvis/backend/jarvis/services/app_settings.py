@@ -15,9 +15,16 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jarvis.ai.anthropic_provider import DEFAULT_MODEL
+from jarvis.ai.ollama_provider import DEFAULT_HOST as OLLAMA_DEFAULT_HOST
+from jarvis.ai.ollama_provider import DEFAULT_MODEL as OLLAMA_DEFAULT_MODEL
 from jarvis.models import AppSetting
 
 AI_SETTINGS_KEY = "ai"
+
+# Where the intelligence comes from. Two, because the point of the second is
+# that the assistant keeps working when the first is unavailable, unaffordable,
+# or simply not something you want to depend on.
+PROVIDERS = ("anthropic", "ollama")
 
 # Where each half of voice runs. "off" is distinct from voice_enabled=False:
 # it turns off one direction while leaving the other working.
@@ -27,8 +34,16 @@ VOICE_BACKENDS = ("browser", "gemini", "off")
 class AISettings(BaseModel):
     """How JARVIS talks to the cloud model."""
 
+    # Which model answers. "anthropic" is the better reasoner; "ollama" is a
+    # model running on this machine, which needs no key and sends nothing
+    # anywhere. Switching is a dropdown, so the trade is made per-need rather
+    # than once at install.
     provider: str = "anthropic"
     model: str = DEFAULT_MODEL
+    # Used only when provider is "ollama". Kept separate from `model` so that
+    # switching back and forth does not lose whichever name you had set.
+    local_model: str = OLLAMA_DEFAULT_MODEL
+    local_host: str = OLLAMA_DEFAULT_HOST
     max_tokens: int = Field(default=8192, ge=256, le=64_000)
     # A readable summary of the model's reasoning, shown above the answer.
     show_thinking: bool = False
@@ -75,6 +90,24 @@ class AISettings(BaseModel):
         value = value.strip()
         if value not in VOICES:
             raise ValueError(f"voice must be one of {', '.join(VOICES)}")
+        return value
+
+    @property
+    def active_model(self) -> str:
+        """The model name that belongs to the provider in use.
+
+        Kept as one property rather than a branch at each call site, because
+        a request built with the cloud model's name and sent to the local one
+        fails with a confusing 404 about a model nobody chose.
+        """
+        return self.local_model if self.provider == "ollama" else self.model
+
+    @field_validator("provider")
+    @classmethod
+    def _known_provider(cls, value: str) -> str:
+        value = value.strip().lower()
+        if value not in PROVIDERS:
+            raise ValueError(f"provider must be one of {', '.join(PROVIDERS)}")
         return value
 
     @field_validator("model")

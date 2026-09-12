@@ -2,7 +2,8 @@
 
 A private, local-first personal assistant. It runs on one machine, keeps
 everything it knows in a SQLite file and a folder you can copy or delete, and
-borrows intelligence from a cloud model one request at a time.
+borrows intelligence one request at a time - from a cloud model, or from one
+running on the same machine.
 
 ```
 you -> JARVIS (local) -> memory, documents, tools -> cloud model -> JARVIS -> you
@@ -173,6 +174,41 @@ seeing every note, and neither belongs in a default.
 
 SQLite's FTS5 is available and is the other obvious upgrade path if keyword
 search needs to get faster before it needs to get smarter.
+
+## Running without anyone's cloud
+
+Everything here has been local since phase 1 - the data, the retrieval, the
+tools, the whole boundary. The intelligence was the exception: it needed an API
+key, an account, a bill, and a company that has to keep existing.
+
+It no longer does. Settings → *Where the intelligence comes from* switches
+between Claude and a model running on your own machine through
+[Ollama](https://ollama.com):
+
+```bash
+ollama pull llama3.1:8b     # once
+ollama serve                # if it is not already running
+```
+
+JARVIS finds it, lists what you have actually pulled, and switches without a
+restart. With no `JARVIS_ANTHROPIC_API_KEY` set at all, everything still works:
+chat, memory, documents, tasks, and the tools - nothing leaves the machine, and
+there is no key to lose.
+
+**The trade, stated rather than discovered.** A model you can run at home is
+meaningfully weaker than the best cloud model: it follows long instructions less
+reliably and calls tools worse. For "what's due this week?" over your own notes
+it is entirely adequate. For hard reasoning it is not. Both are configured at
+once and switching is a dropdown, which is the point - the cloud when you want
+the better answer, your own machine when you would rather be beholden to nobody.
+
+No SDK was added: Ollama's API is two JSON endpoints and newline-delimited JSON
+streaming, and nothing in `ai/ollama_provider.py` is imported unless you select
+it. Two shapes there are worth knowing, both found by calling the thing rather
+than reading about it - Ollama's tool calls carry no id where Anthropic's do, so
+ids are minted in that one file; and tool results go back as their own
+`role: "tool"` messages rather than as blocks inside a user message. Absorbing
+exactly that kind of disagreement is what the provider seam is for.
 
 ## Who it sounds like
 
@@ -349,10 +385,11 @@ user id and the database session - scoping is the application's decision, never
 the model's. Every build leaves a `ContextTrace` behind.
 
 **`ai/` hides the provider.** The rest of the application speaks in neutral
-types, and `AnthropicProvider` maps them to the Messages API. A second provider,
-or a local model in phase 5, is a new file implementing `ChatProvider`. It also
-degrades: optional features are dropped one at a time if your account or SDK
-rejects them, so a missing beta costs a feature rather than the assistant.
+types; `AnthropicProvider` maps them to the Messages API and `OllamaProvider`
+maps them to a model on this machine. Neither is imported by the chat service,
+which is why adding the second one changed no code in the turn loop. Anthropic
+also degrades: optional features are dropped one at a time if your account or
+SDK rejects them, so a missing beta costs a feature rather than the assistant.
 
 **`tools/` is how JARVIS acts.** A tool gets a `ToolContext` with the user id and
 session and can only touch that user's rows. Twelve are registered:
@@ -500,7 +537,7 @@ mypy -p jarvis && mypy tests
 pytest -q
 ```
 
-259 tests, no API key and no network: a temporary database and a scripted model.
+277 tests, no API key and no network: a temporary database and a scripted model.
 The Gemini backend is covered with `urlopen` replaced by a recorder, so the suite
 runs with no key and no quota and a change to the request shape fails an
 assertion rather than arriving as a bill.
@@ -531,4 +568,5 @@ instructions.
 | 3 | Persona and versioning, voice, the improvement loop, the command centre | **Done** |
 | 4 | Tasks, with deadlines the assistant can read and write | **Done** |
 | 5 | Calendar, school, projects | Planned |
-| 6 | Automation, notifications, a local model as fallback | Planned |
+| — | **A local model, so none of it needs a cloud at all** | **Done** |
+| 6 | Automation, notifications, always-on wake word | Planned |

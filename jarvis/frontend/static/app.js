@@ -636,6 +636,9 @@ async function loadSettings() {
   $("#set-fallback").checked = settings.use_refusal_fallback;
   $("#set-log-context").checked = settings.log_context;
   $("#set-assistant-memories").checked = settings.allow_assistant_memories;
+  $("#set-provider").value = settings.provider;
+  renderProvider(settings);
+
   $("#set-voice").checked = settings.voice_enabled;
 
   const voiceNames = $("#set-voice-name");
@@ -668,7 +671,9 @@ $("#save-settings").addEventListener("click", async () => {
   $("#settings-status").textContent = "";
   try {
     await api("PUT", "/api/settings", {
+      provider: $("#set-provider").value,
       model: $("#set-model").value.trim(),
+      local_model: $("#set-local-model").value || undefined,
       max_tokens: Number($("#set-max-tokens").value),
       show_thinking: $("#set-thinking").checked,
       enable_tools: $("#set-tools").checked,
@@ -689,6 +694,70 @@ $("#save-settings").addEventListener("click", async () => {
 // waiting on the Save button belonging to the panel above it. A toggle that
 // appears to do nothing until you find a button somewhere else is a toggle
 // people conclude is broken.
+/* Which model answers, and what that costs you. The note is the whole point of
+ * the control: the cloud one is better, the local one is yours - and nobody
+ * should have to read the README to find that out. */
+function renderProvider(settings) {
+  const local = settings.provider === "ollama";
+  $("#field-cloud-model").hidden = local;
+  $("#field-local-model").hidden = !local;
+
+  const models = $("#set-local-model");
+  const wanted = (settings.local_models || []).join("|");
+  if (models.dataset.filled !== wanted) {
+    models.innerHTML = "";
+    for (const name of settings.local_models || []) models.append(new Option(name, name));
+    if (!(settings.local_models || []).length && settings.local_model) {
+      models.append(new Option(settings.local_model + " (not pulled)", settings.local_model));
+    }
+    models.dataset.filled = wanted;
+  }
+  models.value = settings.local_model;
+
+  const option = $("#set-provider").querySelector('option[value="ollama"]');
+  option.disabled = !settings.local_available;
+
+  const note = $("#provider-note");
+  if (!settings.local_available) {
+    note.textContent =
+      "Ollama is not running on this machine. Install it from ollama.com, then " +
+      "`ollama pull llama3.1:8b` — after that JARVIS works with no API key and " +
+      "nothing leaves your computer.";
+  } else if (local) {
+    note.textContent =
+      "Answers are generated on this machine. Nothing leaves it, there is no key " +
+      "and no bill — and the model is meaningfully weaker than the cloud one at " +
+      "hard reasoning. Switch back any time.";
+  } else {
+    note.textContent =
+      "Answers come from Claude, which needs the API key below. Ollama is " +
+      "installed here, so you can switch to it whenever you would rather not " +
+      "send anything out.";
+  }
+}
+
+$("#set-provider").addEventListener("change", async (event) => {
+  try {
+    await api("PUT", "/api/settings", { provider: event.target.value });
+  } catch (error) {
+    $("#settings-status").textContent = error.message;
+  }
+  /* Redraw from what the server stored, so a refused change never leaves the
+   * page claiming it took effect. */
+  await loadSettings();
+  await loadDashboard();
+});
+
+$("#set-local-model").addEventListener("change", async (event) => {
+  try {
+    await api("PUT", "/api/settings", { local_model: event.target.value });
+  } catch (error) {
+    $("#settings-status").textContent = error.message;
+  }
+  await loadSettings();
+  await loadDashboard();
+});
+
 for (const [id, field] of [
   ["#set-voice-stt", "voice_stt"],
   ["#set-voice-tts", "voice_tts"],

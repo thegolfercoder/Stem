@@ -84,6 +84,13 @@ class ChatRequestBody(BaseModel):
 class AISettingsOut(BaseModel):
     provider: str
     model: str
+    local_model: str = ""
+    local_host: str = ""
+    # Whether there is an Ollama to talk to, and what it has pulled. Presence
+    # only - the settings page offers what exists rather than a free text box
+    # whose typos become 404s.
+    local_available: bool = False
+    local_models: list[str] = Field(default_factory=list)
     max_tokens: int
     show_thinking: bool
     use_refusal_fallback: bool
@@ -105,7 +112,10 @@ class AISettingsOut(BaseModel):
 
 
 class AISettingsUpdate(BaseModel):
+    provider: str | None = Field(default=None, max_length=16)
     model: str | None = Field(default=None, max_length=64)
+    local_model: str | None = Field(default=None, max_length=64)
+    local_host: str | None = Field(default=None, max_length=128)
     max_tokens: int | None = Field(default=None, ge=256, le=64_000)
     show_thinking: bool | None = None
     use_refusal_fallback: bool | None = None

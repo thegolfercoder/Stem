@@ -10,6 +10,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from jarvis import __version__
+from jarvis.ai.ollama_provider import installed_models, is_running
 from jarvis.api.deps import app_settings, current_user, db_session, tool_registry
 from jarvis.api.schemas import (
     AISettingsOut,
@@ -64,7 +65,7 @@ def status_(
         memories=memory_service.count(session, user_id=user.id),
         documents=len(document_service.list_all(session, user_id=user.id, limit=500)),
         api_key_present=bool(settings.anthropic_api_key),
-        model=ai.model,
+        model=ai.active_model,
         data_dir=str(settings.data_dir),
         tools=[t.name for t in registry],
         tasks_open=task_counts["open"],
@@ -93,12 +94,16 @@ def get_settings_(
     registry: ToolRegistry = Depends(tool_registry),
 ) -> AISettingsOut:
     ai = get_ai_settings(session)
+    local_models = installed_models(ai.local_host)
+    local_available = bool(local_models) or is_running(ai.local_host)
     return AISettingsOut(
         **ai.model_dump(),
         api_key_present=bool(settings.anthropic_api_key),
         api_key_source=_key_source(settings),
         gemini_key_present=bool(settings.gemini_api_key),
         voices=list(VOICES),
+        local_available=local_available,
+        local_models=local_models,
         tools=[t.name for t in registry],
     )
 
@@ -127,12 +132,16 @@ def update_settings(
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail=_first_message(exc)) from exc
     save_ai_settings(session, updated)
+    local_models = installed_models(updated.local_host)
+    local_available = bool(local_models) or is_running(updated.local_host)
     return AISettingsOut(
         **updated.model_dump(),
         api_key_present=bool(settings.anthropic_api_key),
         api_key_source=_key_source(settings),
         gemini_key_present=bool(settings.gemini_api_key),
         voices=list(VOICES),
+        local_available=local_available,
+        local_models=local_models,
         tools=[t.name for t in registry],
     )
 
