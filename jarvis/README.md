@@ -65,6 +65,43 @@ created on the next start and existing ones are unchanged. On the first start
 after upgrading, the persona in `config/system_prompt.md` is copied into the
 database as version 1.
 
+## The interface
+
+It is a console, not a site. There is no sidebar of pages, because a sidebar
+says "here are the sections" and the answer to almost every question here is
+"just ask". So:
+
+**The thread is the page.** One surface, always the thing in front of you. An
+empty thread shows a briefing instead of a canned hello - the date, what is
+overdue, what is due today, and what is stored - because that is a better first
+thing to see than a sentence the assistant writes about itself.
+
+**One bar, two modes.** Type a question and it is a question. Type `/` and it
+becomes a command palette: `/tasks`, `/memory`, `/find`, `/settings`. Arrow keys
+and Enter, or click. Commands that are not built yet appear greyed with "soon"
+rather than being hidden, so the palette is an honest map of what exists.
+
+**Panels are drawers, not destinations.** A command slides its panel over the
+thread and `Esc` closes it. You never lose your place, and nothing is more than
+two keystrokes away: `⌘K` or `Ctrl-K` focuses the bar from anywhere, `/` opens
+the palette when you are not typing.
+
+**The privacy inspector moved to before the send button.** As you type, a strip
+above the bar shows *what would be consulted* for the question as it stands -
+which records, and how many characters would leave. `GET /api/context/preview`
+runs the same retrieval a real turn would, then rolls the session back: the
+model is never called, no trace is recorded, and typing does not count as using
+a memory. After the answer, the rail shows what actually went.
+
+That is the whole privacy claim, moved from a settings page you would have to
+remember to visit, to the half-second before you press send.
+
+**A rail of instruments.** What needs attention, what the last answer consulted,
+and where things run - model, cloud or this machine, whether audio leaves, where
+the data lives. Each reading changes only when the thing it measures does, and
+anything that leaves the machine is amber. It collapses on a phone and toggles
+with `/rail`.
+
 ## Tasks
 
 A task is a title, a deadline, a priority, and optionally a subject or a
@@ -152,6 +189,43 @@ anyone with access to the host can read it — point `JARVIS_DATA_DIR` at an
 encrypted volume if that matters. And a hosted JARVIS is only as private as the
 machine hosting it: on your own hardware nothing changes, on somebody else's the
 "local-first" claim now means "first on their computer".
+
+## The front door on Vercel
+
+JARVIS's backend cannot run on Vercel, and it is worth being plain about why.
+Vercel is serverless: no persistent disk, no long-lived process, functions that
+die between requests. JARVIS is a SQLite file, a folder of documents, a login
+throttle held in memory and a streaming server. Put it there as-is and the data
+vanishes on every request; make it fit and "local-first" is gone, which is the
+thing it was built for.
+
+What Vercel is right for is the page. The interface is static, with no build
+step, and Vercel serves it from a CDN and proxies every `/api/*` call to the
+machine that actually holds your data - the Docker setup above, or anything
+else listening over https. The browser sees one origin, so the session cookie
+and the CSRF header work exactly as they do locally, and the backend already
+reads `x-forwarded-proto` to mark the cookie secure.
+
+```
+frontend/vercel.json        one rewrite: /api/* -> your backend
+```
+
+1. In Vercel, create a project from this repository with the **root directory**
+   set to `jarvis/frontend`. There is no build command; it is static.
+2. Edit `frontend/vercel.json` and replace `https://jarvis.example.com` with
+   the address your backend answers on. Rewrites cannot read environment
+   variables, so the destination is literal.
+3. Deploy.
+
+The `/api` path is marked `Cache-Control: no-store` at the edge, because a CDN
+that cached `/api/conversations` would hand one visitor's thread to the next
+request for the same URL. Tests assert the rewrite shape, that the destination
+is https and not localhost, and that the file holds no secret.
+
+One thing to check on the first deploy: answers stream as server-sent events,
+and a proxy that buffers the response would turn a streaming answer into one
+that arrives all at once. It still works; it just stops feeling live. If that
+happens, the backend's own address serves the same page without the hop.
 
 ## How memory works
 

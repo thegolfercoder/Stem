@@ -13,6 +13,7 @@ other or depend on the order they run in.
 from __future__ import annotations
 
 import time
+from typing import Any, cast
 
 import pytest
 from fastapi.testclient import TestClient
@@ -270,3 +271,57 @@ def test_a_username_with_a_space_matches_however_it_is_typed() -> None:
     canonical = normalise_username("Ada Lovelace")
     for typed in ("Ada Lovelace", "  ADA   Lovelace  ", "ada lovelace", "ada  LOVELACE"):
         assert normalise_username(typed) == canonical
+
+
+# --- the front door on Vercel --------------------------------------------------
+
+
+def _vercel_config() -> dict[str, object]:
+    import json as _json
+
+    from jarvis.config import Settings
+
+    return dict(_json.loads((Settings().frontend_dir / "vercel.json").read_text()))
+
+
+def test_vercel_only_ever_fronts_the_api_it_never_replaces_it() -> None:
+    """Vercel is serverless: no disk, no long-lived process. JARVIS is a SQLite
+    file and a streaming server. So the page lives on Vercel and every /api call
+    is proxied to the machine that actually holds the data - one rewrite, and
+    nothing else about the app has to know."""
+    config = _vercel_config()
+    rewrites = config["rewrites"]
+    assert isinstance(rewrites, list) and len(rewrites) == 1
+    rule = rewrites[0]
+    assert rule["source"] == "/api/:path*"
+    assert rule["destination"].endswith("/api/:path*"), "the path must survive the hop"
+
+
+def test_the_proxy_destination_is_https_and_not_this_machine() -> None:
+    """A rewrite to http would send the password in the clear; a rewrite to
+    localhost would point Vercel's servers at themselves."""
+    rule = _vercel_config()["rewrites"][0]  # type: ignore[index]
+    destination = str(rule["destination"])
+    assert destination.startswith("https://")
+    for local in ("localhost", "127.0.0.1", "0.0.0.0"):
+        assert local not in destination
+
+
+def test_the_api_is_never_cached_at_the_edge() -> None:
+    """A CDN that cached /api/conversations would hand one person's thread to
+    the next request for the same URL. Answers are personal; the edge must
+    not keep them."""
+    headers = cast(list[dict[str, Any]], _vercel_config()["headers"])
+    api_rules = [rule for rule in headers if str(rule["source"]).startswith("/api")]
+    assert api_rules, "the api path needs its own header rule"
+    entries = cast(list[dict[str, str]], api_rules[0]["headers"])
+    values = {entry["key"]: entry["value"] for entry in entries}
+    assert values.get("Cache-Control") == "no-store"
+
+
+def test_the_vercel_config_holds_no_secret() -> None:
+    from jarvis.config import Settings
+
+    raw = (Settings().frontend_dir / "vercel.json").read_text()
+    for forbidden in ("sk-ant-", "AIza", "PASSWORD", "API_KEY"):
+        assert forbidden not in raw

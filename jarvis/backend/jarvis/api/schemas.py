@@ -227,6 +227,9 @@ class StatusOut(BaseModel):
     documents: int
     api_key_present: bool
     model: str
+    # Which provider answers. The interface says "this machine" or "the cloud"
+    # from this, and saying it wrongly is worse than not saying it.
+    provider: str = "anthropic"
     data_dir: str
     tools: list[str]
     tasks_open: int = 0

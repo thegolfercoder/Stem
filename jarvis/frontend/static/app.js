@@ -19,38 +19,38 @@ const state = {
   activeVersion: null,
 };
 
-/* Sections that exist as data layers, and sections that do not yet. Keeping the
- * roadmap in one object means the sidebar and the placeholder panel can never
- * disagree about what is built. */
-const SECTIONS = [
-  { id: "dashboard", label: "JARVIS", ready: true },
-  { id: "chat", label: "Chat", ready: true },
-  { id: "tasks", label: "Tasks", ready: true },
-  {
-    id: "calendar", label: "Calendar", phase: 4,
-    heading: "What is actually happening tomorrow",
-    body: "Local events and deadlines, readable by the assistant through get_calendar() and writable through add_calendar_event().",
-    items: ["Events stored locally", "Deadlines from tasks and assignments", "\"What do I have tomorrow?\""],
-  },
-  {
-    id: "school", label: "School", phase: 4,
-    heading: "Subjects you configure, not subjects I guessed",
-    body: "Every subject is a row you create. Each one carries notes, resources, assignments, exams, topics, grades, teacher details and study progress.",
-    items: ["Subjects as configurable entries", "Notes and resources per subject", "Assignments and upcoming exams", "Grades and study progress"],
-  },
-  {
-    id: "projects", label: "Projects", phase: 4,
-    heading: "Projects with goals and a timeline",
-    body: "Name, description, goals, tasks, files, notes, status and timeline - the unit of work bigger than a task.",
-    items: ["Goals and status", "Tasks that roll up to a project", "Files and notes attached", "Timeline"],
-  },
-  { id: "notes", label: "Notes", ready: true },
-  { id: "knowledge", label: "Knowledge", ready: true },
-  { id: "files", label: "Files", ready: true },
-  { id: "memory", label: "Memory", ready: true },
-  { id: "improve", label: "Improvement", ready: true },
-  { id: "settings", label: "Settings", ready: true },
+/* Every way in. Commands open drawers over the thread; the thread itself is the
+ * page. Keeping the roadmap in one object means the palette and the drawers can
+ * never disagree about what is built - and what is not says so rather than
+ * pretending. */
+const COMMANDS = [
+  { id: "today",     cmd: "/today",     label: "Today",         desc: "What is due, what is late, the state of things" },
+  { id: "tasks",     cmd: "/tasks",     label: "Tasks",         desc: "Deadlines, grouped the way you read a day" },
+  { id: "memory",    cmd: "/memory",    label: "Memory",        desc: "What JARVIS knows about you" },
+  { id: "files",     cmd: "/files",     label: "Files",         desc: "Documents it can search" },
+  { id: "notes",     cmd: "/notes",     label: "Notes",         desc: "Written here, indexed like documents" },
+  { id: "knowledge", cmd: "/find",      label: "Find",          desc: "One search across memory, files and past threads" },
+  { id: "threads",   cmd: "/threads",   label: "Conversations", desc: "Past threads" },
+  { id: "improve",   cmd: "/improve",   label: "Improvement",   desc: "How it is doing, and what to change" },
+  { id: "settings",  cmd: "/settings",  label: "Settings",      desc: "Model, voice, key, delete everything" },
+  { id: "new",       cmd: "/new",       label: "New conversation", desc: "Start a fresh thread", run: () => newConversation() },
+  { id: "rail",      cmd: "/rail",      label: "Toggle instruments", desc: "Show or hide the readings", run: () => toggleRail() },
+  { id: "lock",      cmd: "/lock",      label: "Lock",          desc: "End this session", run: () => $("#lock-button").click() },
+  { id: "calendar",  cmd: "/calendar",  label: "Calendar",      desc: "Not built yet - phase 5", soon: true },
+  { id: "school",    cmd: "/school",    label: "School",        desc: "Not built yet - phase 5", soon: true },
+  { id: "projects",  cmd: "/projects",  label: "Projects",      desc: "Not built yet - phase 5", soon: true },
 ];
+const DRAWER_LOADERS = {
+  today: () => loadDashboard(),
+  settings: () => loadSettings(),
+  tasks: () => loadTasks(),
+  memory: () => loadMemories(),
+  files: () => loadDocuments(),
+  notes: () => loadNotes(),
+  knowledge: () => $("#knowledge-search").focus(),
+  improve: () => loadImprovement(),
+  threads: () => loadConversations(),
+};
 
 /* --- server ------------------------------------------------------------- */
 
@@ -251,54 +251,256 @@ $("#lock-button").addEventListener("click", async () => {
   location.reload();
 });
 
-/* --- navigation --------------------------------------------------------- */
+/* --- drawers ------------------------------------------------------------ */
 
-function buildNav() {
-  const nav = $("#nav");
-  nav.innerHTML = "";
-  for (const section of SECTIONS) {
-    const button = el("button", "nav-item");
-    button.dataset.section = section.id;
-    button.append(el("span", "dot"));
-    button.append(el("span", "text", section.label));
-    if (!section.ready) button.append(el("span", "soon", `P${section.phase}`));
-    button.addEventListener("click", () => go(section.id));
-    nav.append(button);
+function openDrawer(id) {
+  const command = COMMANDS.find((c) => c.id === id);
+  if (!command || command.soon || command.run) return;
+  state.view = id;
+  for (const panel of document.querySelectorAll(".panel")) {
+    panel.classList.toggle("active", panel.dataset.panel === id);
   }
+  $("#drawer-title").textContent = command.label;
+  const drawer = $("#drawer");
+  drawer.hidden = false;
+  drawer.setAttribute("aria-hidden", "false");
+  $("#drawer-body").scrollTop = 0;
+  const load = DRAWER_LOADERS[id];
+  if (load) Promise.resolve(load()).catch((error) => console.warn(error));
+  if (location.hash !== `#${id}`) history.replaceState(null, "", `#${id}`);
 }
 
+function closeDrawer() {
+  const drawer = $("#drawer");
+  if (drawer.hidden) return;
+  drawer.hidden = true;
+  drawer.setAttribute("aria-hidden", "true");
+  state.view = null;
+  history.replaceState(null, "", location.pathname);
+  $("#composer-input").focus();
+}
+
+/* `go` is what everything already calls. It keeps working; it just opens a
+ * drawer instead of switching a page. */
 function go(id) {
-  const section = SECTIONS.find((s) => s.id === id) || SECTIONS[0];
-  state.view = section.id;
-  for (const item of document.querySelectorAll(".nav-item")) {
-    item.classList.toggle("active", item.dataset.section === section.id);
-  }
-  const target = section.ready ? section.id : "placeholder";
-  for (const view of document.querySelectorAll(".view")) {
-    view.classList.toggle("active", view.dataset.view === target);
-  }
-  if (!section.ready) fillPlaceholder(section);
-  if (section.id === "dashboard") loadDashboard();
-  if (section.id === "chat") $("#composer-input").focus();
-  if (section.id === "settings") loadSettings();
-  if (section.id === "tasks") loadTasks();
-  if (section.id === "memory") loadMemories();
-  if (section.id === "files") loadDocuments();
-  if (section.id === "notes") loadNotes();
-  if (section.id === "knowledge") $("#knowledge-search").focus();
-  if (section.id === "improve") loadImprovement();
-  location.hash = section.id;
+  if (id === "chat" || id === "dashboard" && false) { closeDrawer(); return; }
+  if (id === "dashboard") id = "today";
+  openDrawer(id);
 }
 
-function fillPlaceholder(section) {
-  $("#ph-title").textContent = section.label;
-  $("#ph-sub").textContent = `not built yet - phase ${section.phase}`;
-  $("#ph-phase").textContent = `phase ${section.phase}`;
-  $("#ph-heading").textContent = section.heading;
-  $("#ph-body").textContent = section.body;
-  const list = $("#ph-list");
-  list.innerHTML = "";
-  for (const item of section.items) list.append(el("li", null, item));
+$("#drawer-close").addEventListener("click", closeDrawer);
+$("#drawer-scrim").addEventListener("click", closeDrawer);
+for (const chip of document.querySelectorAll("[data-open]")) {
+  chip.addEventListener("click", () => openDrawer(chip.dataset.open));
+}
+
+function toggleRail(force) {
+  const stage = $("#stage");
+  const off = force === undefined ? !stage.classList.contains("no-rail") : !force;
+  stage.classList.toggle("no-rail", off);
+  $("#chip-rail").setAttribute("aria-pressed", off ? "false" : "true");
+  try { localStorage.setItem("jarvis.rail", off ? "off" : "on"); } catch (_) {}
+}
+$("#chip-rail").addEventListener("click", () => toggleRail());
+try { if (localStorage.getItem("jarvis.rail") === "off") toggleRail(false); } catch (_) {}
+
+/* --- the palette -------------------------------------------------------- */
+
+const palette = { open: false, index: 0, rows: [] };
+
+function paletteMatches(text) {
+  const needle = text.slice(1).trim().toLowerCase();
+  return COMMANDS.filter((c) =>
+    !needle || c.cmd.slice(1).startsWith(needle) || c.label.toLowerCase().includes(needle)
+  );
+}
+
+function renderPalette(text) {
+  const box = $("#palette");
+  palette.rows = paletteMatches(text);
+  palette.index = Math.min(palette.index, Math.max(0, palette.rows.length - 1));
+  box.innerHTML = "";
+  if (!palette.rows.length) {
+    box.append(el("div", "palette-empty", "No command matches. Esc to go back to talking."));
+  }
+  palette.rows.forEach((c, i) => {
+    const row = el("button", "palette-row");
+    row.type = "button";
+    row.setAttribute("role", "option");
+    row.setAttribute("aria-selected", i === palette.index ? "true" : "false");
+    row.append(el("span", "cmd", c.cmd));
+    row.append(el("span", "desc", c.desc));
+    if (c.soon) row.append(el("span", "soon", "soon"));
+    row.addEventListener("mousedown", (e) => { e.preventDefault(); runCommand(c); });
+    box.append(row);
+  });
+  box.hidden = false;
+  palette.open = true;
+  $("#preview").hidden = true;
+}
+
+function closePalette() {
+  $("#palette").hidden = true;
+  palette.open = false;
+  palette.index = 0;
+}
+
+function runCommand(c) {
+  const input = $("#composer-input");
+  input.value = "";
+  input.style.height = "auto";
+  closePalette();
+  if (c.soon) { $("#composer-hint").textContent = `${c.label} is not built yet.`; return; }
+  if (c.run) { c.run(); return; }
+  openDrawer(c.id);
+}
+
+/* --- the live preview: what would be consulted, before sending ------------ */
+
+let previewSeq = 0;
+
+async function refreshPreview(text) {
+  const box = $("#preview");
+  const q = text.trim();
+  if (!q || q.startsWith("/") || q.length < 3) { box.hidden = true; return; }
+  const seq = ++previewSeq;
+  let data;
+  try {
+    data = await get(`/api/context/preview?q=${encodeURIComponent(q)}`);
+  } catch (_) {
+    return;
+  }
+  if (seq !== previewSeq || palette.open) return;   // a newer keystroke won
+
+  const rows = $("#preview-rows");
+  rows.innerHTML = "";
+  box.classList.toggle("none", !data.count);
+  if (!data.count) {
+    $("#preview-sum").textContent = "nothing personal would be sent";
+  } else {
+    const parts = Object.entries(data.by_source || {}).map(([k, n]) => `${n} ${k}${n === 1 ? "" : "s"}`);
+    $("#preview-sum").textContent = `${parts.join(", ")} · ${data.chars.toLocaleString()} chars would leave`;
+    for (const s of data.snippets.slice(0, 8)) {
+      const row = el("span", "preview-row");
+      row.append(el("span", "src", s.source));
+      row.append(document.createTextNode(s.label || s.title));
+      row.title = `${s.title} — ${s.chars} chars`;
+      rows.append(row);
+    }
+  }
+  box.hidden = false;
+}
+const previewSoon = debounce(refreshPreview, 220);
+
+/* --- the bar: one input, two modes ------------------------------------------ */
+
+const bar = $("#composer-input");
+
+bar.addEventListener("input", () => {
+  bar.style.height = "auto";
+  bar.style.height = `${Math.min(bar.scrollHeight, 200)}px`;
+  if (bar.value.startsWith("/")) {
+    renderPalette(bar.value);
+  } else {
+    if (palette.open) closePalette();
+    previewSoon(bar.value);
+  }
+});
+
+bar.addEventListener("keydown", (event) => {
+  if (palette.open) {
+    if (event.key === "ArrowDown") { event.preventDefault(); palette.index = (palette.index + 1) % Math.max(1, palette.rows.length); renderPalette(bar.value); return; }
+    if (event.key === "ArrowUp")   { event.preventDefault(); palette.index = (palette.index - 1 + palette.rows.length) % Math.max(1, palette.rows.length); renderPalette(bar.value); return; }
+    if (event.key === "Enter" || event.key === "Tab") { event.preventDefault(); if (palette.rows[palette.index]) runCommand(palette.rows[palette.index]); return; }
+    if (event.key === "Escape") { event.preventDefault(); bar.value = ""; closePalette(); return; }
+  }
+  if (event.key === "Escape") { $("#preview").hidden = true; return; }
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    $("#preview").hidden = true;
+    send();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  const meta = event.metaKey || event.ctrlKey;
+  if (meta && event.key.toLowerCase() === "k") { event.preventDefault(); closeDrawer(); bar.focus(); bar.select(); return; }
+  if (event.key === "Escape") { if (!$("#drawer").hidden) { closeDrawer(); event.preventDefault(); } return; }
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+  if (event.key === "/" && !typing && $("#drawer").hidden) { event.preventDefault(); bar.focus(); bar.value = "/"; renderPalette("/"); }
+});
+
+/* --- briefing + rail: readings, refreshed when the thing they read changes --- */
+
+function renderBriefing(status) {
+  const box = $("#briefing");
+  const hour = new Date().getHours();
+  const part = hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening";
+  const name = status.user.display_name || status.user.username;
+  $("#briefing-date").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  $("#briefing-greeting").textContent = `${part}, ${name}.`;
+
+  const attention = $("#briefing-attention");
+  attention.innerHTML = "";
+  if (status.attention && status.attention.length) {
+    if (status.tasks_overdue) attention.append(el("p", "late-line", `${status.tasks_overdue} overdue`));
+    for (const task of status.attention.slice(0, 5)) attention.append(taskRow(task));
+  }
+  const bits = [];
+  if (status.tasks_open) bits.push(`${status.tasks_open} open task${status.tasks_open === 1 ? "" : "s"}`);
+  if (status.memories) bits.push(`${status.memories} thing${status.memories === 1 ? "" : "s"} remembered`);
+  if (status.documents) bits.push(`${status.documents} document${status.documents === 1 ? "" : "s"} indexed`);
+  $("#briefing-note").textContent = bits.length
+    ? `${bits.join(", ")}. Nothing leaves this machine unless a question needs it.`
+    : "Nothing stored yet. Tell it something worth remembering, or give it a deadline.";
+
+  const starters = $("#briefing-starters");
+  starters.innerHTML = "";
+  for (const text of ["What should I start with today?", "What's due this week?", "/tasks", "/memory"]) {
+    const chip = el("button", "chip", text);
+    chip.type = "button";
+    chip.addEventListener("click", () => {
+      if (text.startsWith("/")) { runCommand(COMMANDS.find((c) => c.cmd === text)); return; }
+      bar.value = text; bar.focus(); previewSoon(text);
+    });
+    starters.append(chip);
+  }
+  box.hidden = !!state.activeConversation;
+}
+
+function renderRail(status) {
+  const box = $("#rail-attention");
+  box.innerHTML = "";
+  if (!status.attention || !status.attention.length) {
+    box.append(el("p", "empty", status.tasks_open ? "Nothing due today." : "Nothing outstanding."));
+  } else {
+    for (const task of status.attention.slice(0, 6)) box.append(taskRow(task));
+  }
+  $("#rail-model").textContent = status.model;
+  const local = status.provider === "ollama";
+  $("#rail-where").textContent = local ? "this machine" : "the cloud";
+  $("#rail-where").className = local ? "v" : "v offsite";
+  $("#chip-model").textContent = status.model;
+  $("#chip-model").className = `chip ${local || status.api_key_present ? "on" : "warm"}`;
+  $("#chip-model").title = local
+    ? "Answers are generated on this machine"
+    : "Answers come from the cloud model — open Settings";
+}
+
+function renderRailContext(event) {
+  const box = $("#rail-context");
+  box.innerHTML = "";
+  if (!event.snippets || !event.snippets.length) {
+    box.append(el("p", "empty", "Nothing personal was sent."));
+    return;
+  }
+  for (const s of event.snippets.slice(0, 8)) {
+    const row = el("div", "rail-snip");
+    row.append(el("span", "src", s.source));
+    row.append(document.createTextNode(s.title));
+    box.append(row);
+  }
+  box.append(el("div", "rail-sum", `${event.snippets.length} record${event.snippets.length === 1 ? "" : "s"} · ${event.chars.toLocaleString()} chars left the machine`));
 }
 
 /* --- dashboard ---------------------------------------------------------- */
@@ -312,6 +514,9 @@ const QUICK_COMMANDS = [
 
 async function loadDashboard() {
   const status = await get("/api/status");
+  state.status = status;
+  renderBriefing(status);
+  renderRail(status);
   const hour = new Date().getHours();
   const part = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   $("#greeting").textContent = `${part}, ${status.user.display_name || status.user.username}`;
@@ -436,21 +641,19 @@ async function loadConversations() {
 function newConversation() {
   state.activeConversation = null;
   $("#messages").innerHTML = "";
-  const hello = el("div", "msg assistant");
-  hello.append(el("div", "role", "JARVIS"));
-  const body = el("div", "body");
-  body.innerHTML = renderMarkdown(
-    "Ready. Everything you tell me is written to the database on this machine; " +
-    "only the part of it relevant to a question is sent to the model."
-  );
-  hello.append(body);
-  $("#messages").append(hello);
+  /* No canned hello. An empty thread shows the briefing - what is due, what is
+   * late - which is a better first thing to see than a sentence about itself. */
+  $("#briefing").hidden = false;
   for (const item of document.querySelectorAll(".thread")) item.classList.remove("active");
+  closeDrawer();
+  bar.focus();
 }
 
 async function openConversation(id) {
   const conversation = await get(`/api/conversations/${id}`);
   state.activeConversation = id;
+  $("#briefing").hidden = true;
+  closeDrawer();
   const container = $("#messages");
   container.innerHTML = "";
   for (const message of conversation.messages) appendMessage(message);
@@ -484,6 +687,8 @@ async function send() {
   if (!text) return;
   input.value = "";
   input.style.height = "auto";
+  $("#briefing").hidden = true;
+  $("#preview").hidden = true;
   state.streaming = true;
   $("#send-button").disabled = true;
   $("#composer-hint").textContent = "";
@@ -584,6 +789,7 @@ async function send() {
             trace.append(el("div", "muted-line", `  ${snippet.source}: ${snippet.title}`));
           }
           container.insertBefore(trace, node);
+          renderRailContext(event);
         } else if (event.type === "user_message") {
           state.activeConversation = event.conversation_id;
         } else if (event.type === "error") {
@@ -617,11 +823,8 @@ async function send() {
   }
 }
 
-$("#send-button").addEventListener("click", send);
+$("#send-button").addEventListener("click", () => { $("#preview").hidden = true; send(); });
 $("#new-conversation").addEventListener("click", () => { newConversation(); loadConversations(); });
-$("#composer-input").addEventListener("keydown", (event) => {
-  if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); }
-});
 $("#composer-input").addEventListener("input", (event) => {
   const box = event.target;
   box.style.height = "auto";
@@ -642,6 +845,8 @@ async function loadSettings() {
   $("#set-assistant-memories").checked = settings.allow_assistant_memories;
   $("#set-provider").value = settings.provider;
   renderProvider(settings);
+  $("#rail-where").textContent = settings.provider === "ollama" ? "this machine" : "the cloud";
+  $("#rail-where").className = settings.provider === "ollama" ? "v" : "v offsite";
 
   $("#set-voice").checked = settings.voice_enabled;
 
@@ -825,17 +1030,19 @@ $("#erase-button").addEventListener("click", async () => {
 /* --- start -------------------------------------------------------------- */
 
 async function bootApp() {
-  buildNav();
   newConversation();
   setStatus("ready", "ready");
+  await loadDashboard();
   await loadVoice();
   await loadConversations();
-  go(location.hash.slice(1) || "dashboard");
+  const wanted = location.hash.slice(1);
+  if (wanted && wanted !== "chat" && wanted !== "dashboard") openDrawer(wanted);
 }
 
 window.addEventListener("hashchange", () => {
   const id = location.hash.slice(1);
   if (id && id !== state.view) go(id);
+  if (!id) closeDrawer();
 });
 
 refreshAuth().catch((error) => {
@@ -1536,6 +1743,16 @@ async function loadVoice() {
     return;
   }
   $("#mic").hidden = !canListen();
+  {
+    const cloud = sttLocation() === "cloud" || ttsLocation() === "cloud";
+    const audio = $("#rail-audio");
+    audio.textContent = !state.voice.enabled ? "off" : cloud ? "leaves this machine" : "stays here";
+    audio.className = cloud && state.voice.enabled ? "v offsite" : "v";
+    const chip = $("#chip-voice");
+    chip.hidden = !state.voice.enabled;
+    chip.textContent = cloud ? "voice · cloud" : "voice · local";
+    chip.className = `chip ${cloud ? "warm" : "on"}`;
+  }
 
   const panel = $("#voice-profile");
   if (!panel) return;

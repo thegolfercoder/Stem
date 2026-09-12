@@ -173,32 +173,8 @@ input:focus, select:focus, textarea:focus {
 
 /* --- shell ---------------------------------------------------------------- */
 
-#shell { display: grid; grid-template-columns: var(--rail) 1fr; height: 100vh; }
 
-#rail {
-  display: flex;
-  flex-direction: column;
-  background: var(--panel);
-  border-right: 1px solid var(--line);
-  overflow: hidden;
-}
 
-.brand { padding: 20px 18px 14px; }
-.brand .mark {
-  font-family: var(--mono);
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: 0.34em;
-  text-indent: 0.34em;
-  color: var(--signal);
-}
-.brand .sub {
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  margin-top: 3px;
-}
 
 /* The status strip. Real state, never decoration: the dot's colour and motion
    are the only place the interface animates without being asked. */
@@ -237,50 +213,8 @@ input:focus, select:focus, textarea:focus {
   50% { opacity: .55; box-shadow: 0 0 0 6px transparent; }
 }
 
-nav { flex: 1; overflow-y: auto; padding: 2px 10px; }
 
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 7px 11px;
-  margin-bottom: 1px;
-  background: none;
-  border: none;
-  border-left: 2px solid transparent;
-  border-radius: 0 7px 7px 0;
-  color: var(--ink-dim);
-  text-align: left;
-  cursor: pointer;
-  transition: background .12s, color .12s, border-color .12s;
-}
-.nav-item:hover { background: var(--raised); color: var(--ink); }
-.nav-item.active {
-  background: var(--raised);
-  color: var(--signal);
-  border-left-color: var(--signal);
-}
-.nav-item .soon {
-  margin-left: auto;
-  font-family: var(--mono);
-  font-size: 9.5px;
-  color: var(--ink-faint);
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  padding: 0 4px;
-}
-.nav-item .count {
-  margin-left: auto;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  color: var(--ink-faint);
-  font-variant-numeric: tabular-nums;
-}
 
-.rail-foot { border-top: 1px solid var(--line); padding: 11px 12px; }
-.who { font-size: 12px; color: var(--ink-dim); margin-bottom: 9px; padding: 0 3px; }
-.who strong { color: var(--ink); display: block; font-size: 13px; }
 
 /* A value that names something off this machine. Used for a cloud voice
    backend, so "audio leaves here" is visible at a glance and not only in the
@@ -289,27 +223,8 @@ nav { flex: 1; overflow-y: auto; padding: 2px 10px; }
 
 /* --- main ----------------------------------------------------------------- */
 
-main { overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
 
-.view { display: none; height: 100%; overflow: hidden; flex-direction: column; }
-.view.active { display: flex; }
 
-.view-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 24px 13px;
-  border-bottom: 1px solid var(--line-soft);
-  flex-wrap: wrap;
-}
-.view-head h1 {
-  font-size: 15px;
-  margin: 0;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-.view-head .sub { color: var(--ink-faint); font-size: 12px; }
-.view-head .spacer { flex: 1; }
 
 .scroll { overflow-y: auto; padding: 20px 24px 40px; }
 
@@ -413,10 +328,7 @@ main { overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
 
 /* --- chat ----------------------------------------------------------------- */
 
-.chat-layout { display: grid; grid-template-columns: 230px 1fr; height: 100%; overflow: hidden; }
 
-.thread-rail { border-right: 1px solid var(--line-soft); display: flex; flex-direction: column; overflow: hidden; }
-.thread-rail-head { padding: 13px 12px 9px; display: flex; flex-direction: column; gap: 8px; }
 .thread-list { flex: 1; overflow-y: auto; padding: 0 8px 12px; }
 .thread {
   display: flex;
@@ -438,8 +350,6 @@ main { overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
 .thread:hover .kill { opacity: 1; }
 .thread .kill:hover { color: var(--alert); }
 
-.chat-main { display: flex; flex-direction: column; overflow: hidden; }
-.messages { flex: 1; overflow-y: auto; padding: 24px 28px 12px; }
 
 .msg { max-width: 74ch; margin: 0 auto 20px; }
 .msg .role {
@@ -542,12 +452,6 @@ main { overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
 }
 @keyframes blink { to { visibility: hidden; } }
 
-.composer { border-top: 1px solid var(--line-soft); padding: 13px 28px 17px; }
-.composer-inner { max-width: 74ch; margin: 0 auto; }
-.composer textarea { resize: none; min-height: 52px; max-height: 220px; border-radius: 10px; padding: 11px 13px; }
-.composer-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-.composer-actions .spacer { flex: 1; }
-.composer-hint { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); }
 
 #mic.listening {
   border-color: var(--signal);
@@ -825,85 +729,308 @@ main { overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
 
 /* --- narrow --------------------------------------------------------------- */
 
-/* Narrow. The rail stops being a column and becomes a bar across the top: the
-   sections keep their names, which is the whole point of a navigation. An
-   earlier version squeezed the rail to 58px and hid the labels, leaving a
-   stack of identical dots - unreadable, and there are no icons to fall back
-   on. A horizontal strip that scrolls costs one swipe and stays legible. */
-@media (max-width: 900px) {
-  #shell {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-  }
-  #rail {
-    min-width: 0;
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-    border-right: none;
-    border-bottom: 1px solid var(--line);
-    padding: 0 12px;
-    overflow: visible;
-  }
-  .brand { padding: 12px 0; flex: none; }
-  .brand .sub { display: none; }
-  .brand .mark { font-size: 13px; letter-spacing: 0.18em; text-indent: 0.18em; }
-  .status { margin: 0; flex: none; padding: 7px 9px; }
-  .status .label { display: none; }
-
-  /* The sections scroll sideways rather than wrapping, so the bar keeps one
-     fixed height and the content below it never jumps. */
-  nav {
-    flex: 1;
-    /* Without this the strip refuses to shrink below its content and drags the
-       whole grid wider than the screen, which is how a sideways scrollbar
-       appears on a page that has no business having one. */
-    min-width: 0;
-    display: flex;
-    gap: 4px;
-    padding: 8px 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-  }
-  nav::-webkit-scrollbar { display: none; }
-  .nav-item {
-    width: auto;
-    flex: none;
-    margin: 0;
-    padding: 6px 11px;
-    white-space: nowrap;
-    border-left: none;
-    border-bottom: 2px solid transparent;
-    border-radius: 7px 7px 0 0;
-  }
-  .nav-item.active { border-left-color: transparent; border-bottom-color: var(--signal); }
-  .nav-item .dot { display: none; }
-  .nav-item .soon, .nav-item .count { margin-left: 6px; }
-
-  /* Who you are and the lock move into the bar; the name itself is one tap
-     away on Settings and does not need to cost a row here. */
-  .rail-foot {
-    border-top: none;
-    padding: 0;
-    flex: none;
-    display: flex;
-    align-items: center;
-  }
-  .who { display: none; }
-  .rail-foot .btn.wide { width: auto; padding: 7px 12px; }
-
-  .chat-layout { grid-template-columns: 1fr; }
-  .thread-rail { display: none; }
-  .scroll, .messages, .composer, .view-head { padding-left: 15px; padding-right: 15px; }
-}
-
-/* On a phone the sections are worth more than the wordmark. The status dot
-   stays: knowing whether it is listening or thinking matters at every size. */
-@media (max-width: 560px) {
-  .brand { display: none; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
+/* =========================================================================
+   The command centre. One surface: the thread is the page, a command bar at
+   the bottom is the only way in, drawers slide over it and close with Esc,
+   and a rail of instruments sits beside it on wide screens. No sidebar of
+   pages, because pages are for sites and this is a console.
+   ========================================================================= */
+
+#shell { display: flex; flex-direction: column; height: 100dvh; min-height: 0; }
+
+/* --- top bar --------------------------------------------------------------- */
+
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  height: 46px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  flex: none;
+  min-width: 0;
+}
+#topbar .spacer { flex: 1; }
+.brand .mark {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .24em;
+  text-indent: .24em;
+  color: var(--signal);
+}
+.who { font-size: 12.5px; color: var(--ink-dim); white-space: nowrap; }
+.who strong { color: var(--ink); font-weight: 600; }
+
+/* A chip is a reading you can press. Same family as .pill, but interactive. */
+.chip {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  background: var(--inset);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 10px;
+  color: var(--ink-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 30vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip:hover { color: var(--ink); border-color: var(--ink-faint); }
+.chip.on { color: var(--good); border-color: #1f3d30; }
+.chip.warm { color: var(--signal); border-color: var(--signal-deep); }
+.chip.ghost { border-style: dashed; }
+.chip.ghost[aria-pressed="false"] { opacity: .55; }
+.chip:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+
+/* --- stage: thread + rail --------------------------------------------------- */
+
+#stage { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 272px; }
+#stage.no-rail { grid-template-columns: 1fr; }
+#stage.no-rail #rail { display: none; }
+
+#thread { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.messages { flex: 1; overflow-y: auto; padding: 22px 28px 12px; min-height: 0; }
+
+/* --- the briefing ----------------------------------------------------------- */
+
+#briefing { max-width: 74ch; margin: 0 auto; padding: 34px 28px 6px; width: 100%; }
+#briefing .eyebrow {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--signal);
+  margin: 0 0 6px;
+}
+#briefing h1 { font-size: 24px; font-weight: 600; margin: 0 0 14px; letter-spacing: -.01em; text-wrap: balance; }
+.briefing-note { color: var(--ink-dim); font-size: 14px; margin: 12px 0 0; }
+.starters { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+#briefing-attention .task { padding: 8px 0; }
+#briefing-attention .late-line {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--alert);
+  margin: 0 0 4px;
+}
+
+/* --- the command bar -------------------------------------------------------- */
+
+.composer { border-top: 1px solid var(--line-soft); padding: 10px 28px 12px; background: var(--ground); flex: none; }
+.composer-inner { max-width: 74ch; margin: 0 auto; position: relative; }
+
+.commandbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  background: var(--inset);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 8px 8px 12px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.commandbar:focus-within { border-color: var(--signal-deep); box-shadow: 0 0 0 3px var(--signal-glow); }
+.commandbar-glyph { font-family: var(--mono); color: var(--signal); font-size: 18px; line-height: 1; padding-bottom: 9px; flex: none; }
+.commandbar textarea {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 8px 0;
+  min-height: 24px;
+  max-height: 200px;
+  resize: none;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.commandbar textarea:focus { outline: none; box-shadow: none; border: none; }
+.commandbar-foot { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 0 4px; }
+.commandbar-foot .spacer { flex: 1; }
+.composer-hint { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); min-width: 0; overflow-wrap: anywhere; }
+.kbd-hint { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); white-space: nowrap; }
+kbd {
+  font-family: var(--mono);
+  font-size: .95em;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0 4px;
+  color: var(--ink-dim);
+}
+.btn.ghost { background: none; }
+
+/* The preview: what would be consulted for the question as it stands. It sits
+   directly above the bar so it reads as part of the act of asking. */
+.preview {
+  border: 1px solid var(--line-soft);
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  background: var(--panel);
+  padding: 8px 12px 9px;
+  margin: 0 6px -2px;
+}
+.preview-head { display: flex; align-items: baseline; gap: 10px; }
+.preview-title {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--signal);
+}
+.preview-sum { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.preview-rows { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.preview-row {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-dim);
+  background: var(--inset);
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  padding: 3px 8px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.preview-row .src { color: var(--signal-deep); margin-right: 6px; }
+.preview.none .preview-sum { color: var(--good); }
+
+/* The palette: commands, filtered as you type after a slash. */
+.palette {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: calc(100% + 8px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 18px 40px rgba(0,0,0,.45);
+  max-height: 46vh;
+  overflow-y: auto;
+  z-index: 20;
+}
+.palette-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--ink-dim);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13.5px;
+}
+.palette-row .cmd { font-family: var(--mono); color: var(--signal); font-size: 12.5px; min-width: 96px; }
+.palette-row .desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette-row .soon { font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+.palette-row[aria-selected="true"], .palette-row:hover { background: var(--raised); color: var(--ink); }
+.palette-empty { padding: 10px 12px; color: var(--ink-faint); font-size: 13px; }
+
+/* --- the rail --------------------------------------------------------------- */
+
+#rail {
+  border-left: 1px solid var(--line-soft);
+  background: var(--panel);
+  overflow-y: auto;
+  padding: 16px 16px 24px;
+  min-width: 0;
+}
+.instrument + .instrument { margin-top: 20px; }
+.instrument h2 {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 8px;
+}
+.instrument .task { padding: 7px 0; }
+.instrument .task .drop { display: none; }
+.instrument .empty { padding: 4px 0; text-align: left; font-size: 12.5px; }
+.instrument .kv { padding: 5px 0; }
+.instrument .kv .v { font-size: 11px; max-width: 60%; text-align: right; overflow-wrap: anywhere; }
+.rail-snip { font-family: var(--mono); font-size: 10.5px; color: var(--ink-dim); padding: 3px 0; border-bottom: 1px solid var(--line-soft); overflow-wrap: anywhere; }
+.rail-snip:last-child { border-bottom: none; }
+.rail-snip .src { color: var(--signal-deep); margin-right: 6px; }
+.rail-sum { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); margin-top: 6px; }
+
+/* --- drawers ---------------------------------------------------------------- */
+
+.drawer { position: fixed; inset: 0; z-index: 30; }
+.drawer[hidden] { display: none; }
+.drawer-scrim { position: absolute; inset: 0; background: rgba(10, 9, 8, .62); }
+.drawer-sheet {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: min(760px, 100%);
+  background: var(--ground);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -24px 0 60px rgba(0,0,0,.5);
+  animation: drawer-in .18s ease-out;
+}
+@keyframes drawer-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.drawer-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  height: 46px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  flex: none;
+}
+.drawer-bar h2 { font-size: 14px; font-weight: 600; margin: 0; }
+.drawer-bar .spacer { flex: 1; }
+.drawer-kbd { font-family: var(--mono); color: var(--signal); font-size: 15px; }
+.drawer-body { flex: 1; min-height: 0; overflow-y: auto; }
+
+.panel { display: none; }
+.panel.active { display: block; }
+.panel .scroll { overflow: visible; padding: 18px 22px 40px; }
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 22px 0;
+  flex-wrap: wrap;
+}
+.panel-head h1 { font-size: 15px; margin: 0; font-weight: 600; }
+.panel-head .sub { color: var(--ink-faint); font-size: 12px; }
+.panel-head .spacer { flex: 1; }
+.panel .thread-list { padding: 10px 0 0; }
+
+/* --- narrow ----------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  #stage { grid-template-columns: 1fr; }
+  #rail { display: none; }
+  #chip-rail { display: none; }
+  .who { display: none; }
+  #chip-threads { display: none; }
+  .messages { padding: 16px 15px 8px; }
+  .composer { padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); }
+  #briefing { padding: 22px 15px 4px; }
+  .kbd-hint { display: none; }
+  .commandbar textarea { font-size: 16px; } /* stops iOS zooming on focus */
+  .drawer-sheet { width: 100%; border-left: none; animation-name: drawer-up; }
+  @keyframes drawer-up { from { transform: translateY(18px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .panel .scroll { padding: 14px 15px 40px; }
+  .panel-head { padding: 14px 15px 0; }
+  .chip { max-width: 44vw; }
 }

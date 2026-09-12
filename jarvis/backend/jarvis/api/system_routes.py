@@ -66,6 +66,7 @@ def status_(
         documents=len(document_service.list_all(session, user_id=user.id, limit=500)),
         api_key_present=bool(settings.anthropic_api_key),
         model=ai.active_model,
+        provider=ai.provider,
         data_dir=str(settings.data_dir),
         tools=[t.name for t in registry],
         tasks_open=task_counts["open"],

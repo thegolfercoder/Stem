@@ -11,9 +11,15 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from jarvis.api.deps import current_user, db_session
+from jarvis.api.deps import context_manager, current_user, db_session
 from jarvis.api.schemas import MemoryIn, MemoryOut, MemorySearchHit, MemoryUpdate
-from jarvis.context_manager import recent_traces
+from jarvis.context_manager import (
+    MAX_SNIPPET_CHARS,
+    ContextManager,
+    RetrievalRequest,
+    recent_traces,
+)
+from jarvis.intent import detect
 from jarvis.models import MEMORY_CATEGORIES, User
 from jarvis.services import memory as memory_service
 
@@ -150,3 +156,67 @@ def context_recent(
     data, which is the thing this whole design is trying not to make.
     """
     return [trace.as_dict(include_system=include_system) for trace in recent_traces()]
+
+
+@router.get("/context/preview")
+def context_preview(
+    q: str = Query(default="", max_length=2000),
+    session: Session = Depends(db_session),
+    user: User = Depends(current_user),
+    manager: ContextManager = Depends(context_manager),
+) -> dict[str, object]:
+    """What *would* be consulted for this question, before it is asked.
+
+    `/context/recent` shows what left the machine after the fact. This is the
+    same retrieval run ahead of time, as you type, so the answer to "what will
+    it send?" is on screen before the send button is - which is the whole
+    privacy claim, moved from a settings page to the moment it matters.
+
+    Nothing about a preview persists. The model is never called, no trace is
+    recorded, and the session is rolled back at the end so that retrieval
+    marking a memory as *used* does not count keystrokes as uses.
+    """
+    query = q.strip()
+    if not query:
+        return {"query": "", "intent": "ask", "snippets": [], "count": 0, "chars": 0}
+
+    intent = detect(query)
+    snippets = manager.retrieve(
+        RetrievalRequest(
+            query=intent.subject or query,
+            user_id=user.id,
+            session=session,
+            intent=intent,
+        )
+    )
+    session.rollback()
+
+    rows = []
+    by_source: dict[str, int] = {}
+    total = 0
+    for snippet in snippets:
+        chars = min(len(snippet.body.strip()), MAX_SNIPPET_CHARS) + len(snippet.title)
+        total += chars
+        by_source[snippet.source] = by_source.get(snippet.source, 0) + 1
+        # `title` is written for the model and describes shape ("task todo -
+        # due 2026-09-12"); a person scanning "what would leave" needs to know
+        # *which* record, so the label is a short excerpt of the body. It never
+        # goes anywhere - this is the owner looking at their own data.
+        label = " ".join(snippet.body.split())[:70]
+        rows.append(
+            {
+                "source": snippet.source,
+                "title": snippet.title,
+                "label": label,
+                "chars": chars,
+                "reference": list(snippet.reference) if snippet.reference else None,
+            }
+        )
+    return {
+        "query": query,
+        "intent": intent.kind.value,
+        "snippets": rows,
+        "count": len(rows),
+        "chars": total,
+        "by_source": by_source,
+    }

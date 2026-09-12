@@ -362,3 +362,57 @@ def test_no_person_is_written_into_the_source() -> None:
                 if name in line:
                     offenders.append(f"{path.relative_to(root)}:{number} {line.strip()[:80]}")
     assert not offenders, "a person's name is hardcoded:\n" + "\n".join(offenders)
+
+
+def test_the_preview_shows_what_would_leave_without_sending_anything(
+    signed_in: TestClient, provider: FakeProvider
+) -> None:
+    """The privacy inspector, moved to before the send button.
+
+    The preview runs the same retrieval a real turn would, so what it shows is
+    what would go - and it must never call the model, never record a trace,
+    and never count a keystroke as a memory being *used*.
+    """
+    signed_in.post(
+        "/api/memory",
+        json={"content": "My economics mocks start on the third of October", "category": "school"},
+        headers=CLIENT_HEADERS,
+    )
+    signed_in.post(
+        "/api/memory",
+        json={"content": "My passport number is 123456789", "category": "personal"},
+        headers=CLIENT_HEADERS,
+    )
+
+    calls_before = len(provider.requests)
+    # Traces live in a process-global ring buffer, so other tests in this run
+    # leave their own behind. What matters is that a preview adds none.
+    traces_before = len(signed_in.get("/api/context/recent").json())
+    preview = signed_in.get("/api/context/preview", params={"q": "when are my economics mocks"})
+    assert preview.status_code == 200, preview.text
+    body = preview.json()
+
+    assert body["count"] >= 1
+    titles = " ".join(s["title"] for s in body["snippets"]).lower()
+    assert "school" in titles, "the relevant memory is what would go"
+    assert "passport" not in json.dumps(body).lower(), "the irrelevant one would not"
+    assert body["chars"] > 0, "and it says how much"
+
+    # Each row must identify *which* record. The `title` the model sees
+    # describes shape ("memory school (importance 3)"); a person checking what
+    # would leave needs the content.
+    labels = " ".join(s["label"] for s in body["snippets"]).lower()
+    assert "mocks" in labels, "a preview row names the record, not just its shape"
+
+    assert len(provider.requests) == calls_before, "a preview never reaches the model"
+    traces_after = len(signed_in.get("/api/context/recent").json())
+    assert traces_after == traces_before, "and never records a trace"
+
+    # Typing must not count as using a memory.
+    rows = signed_in.get("/api/memory").json()
+    assert all(row["use_count"] == 0 for row in rows), "a preview is not a use"
+
+
+def test_an_empty_preview_is_empty_not_an_error(signed_in: TestClient) -> None:
+    body = signed_in.get("/api/context/preview", params={"q": "   "}).json()
+    assert body == {"query": "", "intent": "ask", "snippets": [], "count": 0, "chars": 0}
