@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="dark">
 <title>JARVIS</title>
 <link rel="stylesheet" href="/static/styles.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◆</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='9' fill='none' stroke='%23ff7a1a' stroke-width='2.5'/><circle cx='16' cy='16' r='3' fill='%23ff7a1a'/></svg>">
 </head>
 <body>
 
@@ -15,7 +15,7 @@
 <div id="lock">
   <div class="lock-card">
     <div class="lock-mark">JARVIS</div>
-    <div class="lock-sub" id="lock-sub">Local assistant &middot; this machine only</div>
+    <div class="lock-sub" id="lock-sub">local command &middot; this machine only</div>
 
     <form id="login-form" hidden>
       <label class="field"><span>Username</span>
@@ -50,10 +50,17 @@
 </div>
 
 <div id="shell" hidden>
-  <aside id="sidebar">
-    <div class="brand">JARVIS<small>local assistant</small></div>
+  <aside id="rail">
+    <div class="brand">
+      <div class="mark">JARVIS</div>
+      <div class="sub">local command</div>
+    </div>
+    <!-- Real state, not decoration: this is the one element allowed to move. -->
+    <div class="status" id="status" data-state="ready">
+      <span class="dot"></span><span class="label" id="status-label">ready</span>
+    </div>
     <nav id="nav"></nav>
-    <div class="sidebar-foot">
+    <div class="rail-foot">
       <div class="who"><strong id="who-name">&mdash;</strong><span id="who-model">&mdash;</span></div>
       <button class="btn wide" id="lock-button">Lock</button>
     </div>
@@ -140,10 +147,7 @@
               <textarea id="composer-input" rows="2"
                 placeholder="Ask JARVIS something. Enter sends, Shift+Enter for a new line."></textarea>
               <div class="composer-actions">
-                <button class="btn" id="attach-button" disabled
-                  title="File upload and indexing arrive in phase 2.">Attach</button>
-                <button class="btn" id="remember-button" disabled
-                  title="Persistent memory arrives in phase 2. Until then, start a message with 'Remember that ...' and it is kept in this conversation's history.">Save to memory</button>
+                <button class="btn" id="mic" hidden title="Speak. The browser transcribes; audio never reaches the server.">Speak</button>
                 <span class="composer-hint" id="composer-hint"></span>
                 <div class="spacer"></div>
                 <button class="btn primary" id="send-button">Send</button>
@@ -190,6 +194,24 @@
             </div>
             <div class="ok-text" id="settings-status"></div>
             <button class="btn primary" id="save-settings">Save</button>
+          </div>
+
+          <div class="card">
+            <h2>Voice</h2>
+            <div class="switch-row">
+              <input type="checkbox" id="set-voice">
+              <div><label for="set-voice">Enable voice</label>
+                <div class="about">Adds a microphone to the composer and speaks answers back.</div></div>
+            </div>
+            <div id="voice-profile"></div>
+            <p class="note">
+              Speech recognition and playback run in the browser through the Web
+              Speech API. It costs nothing, needs no key, and the audio never
+              reaches the server &mdash; only the transcribed text does. Chrome and
+              Edge support it; Firefox does not, and the microphone stays hidden
+              there. Swapping in a local model or a cloud service later is one
+              registration in <code>jarvis/voice/registry.py</code>.
+            </p>
           </div>
 
           <div class="card">
@@ -259,7 +281,7 @@
       <div class="scroll">
         <div class="panel-form" id="memory-form" hidden>
           <label class="field"><span>What should JARVIS remember?</span>
-            <textarea id="memory-content" rows="2" placeholder="Sam prefers concise answers"></textarea>
+            <textarea id="memory-content" rows="2" placeholder="I prefer short answers with the conclusion first"></textarea>
           </label>
           <div class="row">
             <label class="field"><span>Category</span><select id="memory-category"></select></label>
@@ -351,6 +373,79 @@
         <div id="knowledge-results">
           <p class="empty">Type to search across memories, documents and past conversations.</p>
         </div>
+      </div>
+    </section>
+
+
+    <!-- Improvement: the evidence, and the gate -->
+    <section class="view" data-view="improve">
+      <div class="view-head">
+        <h1>Improvement</h1><span class="sub">What the numbers say, and what to do about it</span>
+        <div class="spacer"></div>
+        <span class="pill" id="active-version">&mdash;</span>
+      </div>
+      <div class="scroll">
+        <div class="grid">
+          <div class="card">
+            <h2>Last 30 days</h2>
+            <div class="readout" id="metrics-readout"></div>
+            <div id="metrics-bars"></div>
+          </div>
+          <div class="card">
+            <h2>Where it is weak</h2>
+            <div id="focus-notes"><p class="empty">Use it for a while and this fills in.</p></div>
+          </div>
+          <div class="card">
+            <h2>Needs a look</h2>
+            <div id="problem-turns"><p class="empty">Nothing failed recently.</p></div>
+          </div>
+        </div>
+
+        <h2 class="group-head">Prompt versions</h2>
+        <p class="note" style="margin-top:0">
+          The persona is a row, not a file. A proposal runs nothing; the suite
+          judges it against what is live; you decide whether it ships. Rolling
+          back is one click, always.
+        </p>
+        <div class="toolbar">
+          <button class="btn small" id="propose-toggle">+ Propose a change</button>
+          <button class="btn small" id="rollback">Roll back</button>
+        </div>
+        <div class="panel-form" id="propose-form" hidden>
+          <label class="field"><span>Name this change</span><input type="text" id="version-name" placeholder="shorter answers on factual questions"></label>
+          <label class="field"><span>Why</span><input type="text" id="version-notes" placeholder="answers were padding out one-line questions"></label>
+          <label class="field"><span>Prompt body (must contain {user})</span><textarea id="version-body" rows="12" spellcheck="false"></textarea></label>
+          <div class="error-text" id="version-error"></div>
+          <div class="edit-row">
+            <button class="btn" id="version-load-active">Load the active one</button>
+            <button class="btn primary" id="version-save">Save as draft</button>
+          </div>
+        </div>
+        <div id="version-list"></div>
+
+        <h2 class="group-head">Regression suite</h2>
+        <p class="note" style="margin-top:0">
+          Each case is a question, the memories to answer it from, and checks that
+          must hold. Deterministic on purpose &mdash; a suite graded by a model has
+          its own drift.
+        </p>
+        <div class="toolbar">
+          <button class="btn small" id="case-toggle">+ Add a case</button>
+        </div>
+        <div class="panel-form" id="case-form" hidden>
+          <div class="row">
+            <label class="field"><span>Name</span><input type="text" id="case-name" placeholder="states the exam date plainly"></label>
+            <label class="field"><span>Question</span><input type="text" id="case-prompt" placeholder="when are my mocks?"></label>
+          </div>
+          <label class="field"><span>Memories it may use (one per line)</span><textarea id="case-fixture" rows="3" placeholder="My mock exams start on the third of October"></textarea></label>
+          <label class="field"><span>Checks (one per line, as kind: value)</span><textarea id="case-checks" rows="4" placeholder="contains: third of October&#10;max_chars: 220&#10;no_error:"></textarea></label>
+          <div class="error-text" id="case-error"></div>
+          <button class="btn primary" id="case-save">Add case</button>
+        </div>
+        <div id="case-list"></div>
+
+        <h2 class="group-head">Recent activity</h2>
+        <div id="activity-list"></div>
       </div>
     </section>
 

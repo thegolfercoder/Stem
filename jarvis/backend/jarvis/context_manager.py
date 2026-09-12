@@ -202,6 +202,10 @@ class ContextManager:
         self._prompt_path = prompt_path
         self._now = now
         self.log_context = log_context
+        # Set per request from the active prompt version. The file is only the
+        # seed: once a version exists, changing the file must not quietly
+        # bypass the evaluation gate, so the database wins.
+        self.prompt_body: str | None = None
 
     def add_source(self, source: ContextSource) -> None:
         """Register a retrieval source. The seam later phases attach to."""
@@ -213,7 +217,9 @@ class ContextManager:
 
     def system_prompt(self, *, user_display_name: str) -> str:
         template = DEFAULT_SYSTEM_PROMPT
-        if self._prompt_path is not None and self._prompt_path.is_file():
+        if self.prompt_body:
+            template = self.prompt_body
+        elif self._prompt_path is not None and self._prompt_path.is_file():
             # Editable without touching the source, so the assistant's manner is
             # configuration rather than a code change.
             template = self._prompt_path.read_text(encoding="utf-8")

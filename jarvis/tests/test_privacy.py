@@ -294,3 +294,71 @@ def test_documents_and_memories_are_scoped_to_the_owner_in_retrieval(
     payload = sent_text(provider)
     assert "hunter2" not in payload
     assert "stranger" not in payload.lower()
+
+
+def test_the_interface_asks_the_network_for_nothing() -> None:
+    """The page must render with the network unplugged.
+
+    This is a privacy claim as much as an offline one. A stylesheet, a font or
+    a script pulled from someone else's server tells that server, on every
+    single page load, that this machine is running JARVIS and when - which is
+    exactly the kind of quiet beacon a local-first assistant is supposed not to
+    have. It also means the interface degrades the moment the wifi drops, which
+    is the one situation the whole design promises to survive.
+
+    An earlier version of this page pulled two faces from Google Fonts. Nothing
+    failed loudly; it just phoned out forever. Hence a test rather than a note.
+    """
+    frontend = Settings().frontend_dir
+    # XML namespaces look like URLs and are never dereferenced - they are
+    # identifiers. The inline SVG favicon needs one.
+    namespaces = ("http://www.w3.org/",)
+    offenders: list[str] = []
+    for path in sorted(frontend.rglob("*")):
+        if path.suffix.lower() not in {".html", ".css", ".js"}:
+            continue
+        text = path.read_text(encoding="utf-8")
+        for marker in ("http://", "https://", "//cdn.", "//fonts."):
+            index = 0
+            while (index := text.find(marker, index)) != -1:
+                line = text.count("\n", 0, index) + 1
+                snippet = text[index : index + 70].split("\n")[0]
+                # Links a person may click are fine - those are navigation the
+                # owner chooses. A *fetch* the page performs on its own is not.
+                fetched = any(
+                    hint in text[max(0, index - 200) : index].lower()
+                    for hint in ("src=", "href=", "url(", "@import", "fetch(")
+                )
+                anchor = "<a " in text[max(0, index - 200) : index].lower()
+                is_namespace = text.startswith(namespaces, index)
+                if fetched and not anchor and not is_namespace:
+                    offenders.append(f"{path.name}:{line} {snippet}")
+                index += len(marker)
+    assert not offenders, "the interface fetches from the network:\n" + "\n".join(offenders)
+
+
+def test_no_person_is_written_into_the_source() -> None:
+    """The owner's identity lives in the database, never in the code.
+
+    The persona is a template with `{user}` in it; the interface's example text
+    is written in the first person; evaluation substitutes a fixed neutral name
+    so cases do not break when an account is renamed. This test exists because
+    the alternative failure is silent - a hardcoded name works perfectly for the
+    one person whose name it is, and is wrong for everyone else, including the
+    same person after they change it.
+    """
+    root = Settings().frontend_dir.parent
+    searched = {".py", ".js", ".html", ".css", ".md"}
+    # Names that were, at some point, actually written into this project.
+    forbidden = ("Rian", "Shalini")
+    offenders: list[str] = []
+    for path in sorted(root.rglob("*")):
+        if path.suffix.lower() not in searched or "data" in path.parts:
+            continue
+        if path.name == "test_privacy.py":  # this file has to name them to check
+            continue
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            for name in forbidden:
+                if name in line:
+                    offenders.append(f"{path.relative_to(root)}:{number} {line.strip()[:80]}")
+    assert not offenders, "a person's name is hardcoded:\n" + "\n".join(offenders)

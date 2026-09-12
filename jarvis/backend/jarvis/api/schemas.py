@@ -58,6 +58,10 @@ class MessageOut(BaseModel):
     input_tokens: int | None = None
     output_tokens: int | None = None
     error: str | None = None
+    # So reopening a conversation still offers the rating buttons, and shows
+    # what was already said about each answer.
+    interaction_id: int | None = None
+    rating: str | None = None
 
 
 class ConversationDetail(ConversationOut):
@@ -86,6 +90,7 @@ class AISettingsOut(BaseModel):
     enable_tools: bool
     log_context: bool
     allow_assistant_memories: bool
+    voice_enabled: bool
     # Whether a key was found in the environment. The key itself is never sent to
     # the browser - there is no endpoint that returns it.
     api_key_present: bool
@@ -101,6 +106,7 @@ class AISettingsUpdate(BaseModel):
     enable_tools: bool | None = None
     log_context: bool | None = None
     allow_assistant_memories: bool | None = None
+    voice_enabled: bool | None = None
 
 
 class EraseRequest(BaseModel):
@@ -236,3 +242,141 @@ class NoteIn(BaseModel):
     text: str = Field(min_length=1, max_length=200_000)
     subject: str = Field(default="", max_length=64)
     tags: list[str] = Field(default_factory=list)
+
+
+# --- phase 3: the improvement loop ------------------------------------------
+
+
+class FeedbackIn(BaseModel):
+    interaction_id: int
+    rating: str = Field(pattern="^(up|down)$")
+    note: str = Field(default="", max_length=2000)
+
+
+class InteractionOut(BaseModel):
+    id: int
+    query: str
+    answer: str
+    intent: str
+    snippets: int
+    context_chars: int
+    input_tokens: int
+    output_tokens: int
+    latency_ms: int
+    tools_used: list[str] = Field(default_factory=list)
+    tool_errors: int
+    error: str | None = None
+    created_at: datetime
+    rating: str | None = None
+    note: str = ""
+    prompt_version_id: int | None = None
+
+    @classmethod
+    def of(cls, row: object, feedback: object | None = None) -> InteractionOut:
+        return cls(
+            id=row.id,  # type: ignore[attr-defined]
+            query=row.query,  # type: ignore[attr-defined]
+            answer=row.answer,  # type: ignore[attr-defined]
+            intent=row.intent,  # type: ignore[attr-defined]
+            snippets=row.snippets,  # type: ignore[attr-defined]
+            context_chars=row.context_chars,  # type: ignore[attr-defined]
+            input_tokens=row.input_tokens,  # type: ignore[attr-defined]
+            output_tokens=row.output_tokens,  # type: ignore[attr-defined]
+            latency_ms=row.latency_ms,  # type: ignore[attr-defined]
+            tools_used=[t for t in row.tools_used.split(",") if t],  # type: ignore[attr-defined]
+            tool_errors=row.tool_errors,  # type: ignore[attr-defined]
+            error=row.error,  # type: ignore[attr-defined]
+            created_at=row.created_at,  # type: ignore[attr-defined]
+            prompt_version_id=row.prompt_version_id,  # type: ignore[attr-defined]
+            rating=getattr(feedback, "rating", None),
+            note=getattr(feedback, "note", "") or "",
+        )
+
+
+class PromptVersionIn(BaseModel):
+    body: str = Field(min_length=40, max_length=20_000)
+    name: str = Field(default="", max_length=120)
+    notes: str = Field(default="", max_length=2000)
+
+
+class PromptVersionOut(BaseModel):
+    id: int
+    number: int
+    name: str
+    status: str
+    author: str
+    notes: str
+    body: str
+    parent_id: int | None = None
+    created_at: datetime
+    activated_at: datetime | None = None
+
+    @classmethod
+    def of(cls, row: object) -> PromptVersionOut:
+        return cls(
+            id=row.id,  # type: ignore[attr-defined]
+            number=row.number,  # type: ignore[attr-defined]
+            name=row.name,  # type: ignore[attr-defined]
+            status=row.status,  # type: ignore[attr-defined]
+            author=row.author,  # type: ignore[attr-defined]
+            notes=row.notes,  # type: ignore[attr-defined]
+            body=row.body,  # type: ignore[attr-defined]
+            parent_id=row.parent_id,  # type: ignore[attr-defined]
+            created_at=row.created_at,  # type: ignore[attr-defined]
+            activated_at=row.activated_at,  # type: ignore[attr-defined]
+        )
+
+
+class ActivateRequest(BaseModel):
+    # Shipping past a known regression has to be typed out, and it is recorded.
+    force: bool = False
+
+
+class FixtureRow(BaseModel):
+    category: str = Field(default="important_facts", max_length=32)
+    content: str = Field(min_length=1, max_length=1000)
+
+
+class CheckIn(BaseModel):
+    kind: str = Field(max_length=32)
+    value: str = Field(default="", max_length=500)
+
+
+class EvalCaseIn(BaseModel):
+    name: str = Field(default="", max_length=160)
+    prompt: str = Field(min_length=1, max_length=4000)
+    fixture: list[FixtureRow] = Field(default_factory=list)
+    checks: list[CheckIn] = Field(default_factory=list)
+
+
+class EvalCaseOut(BaseModel):
+    id: int
+    name: str
+    prompt: str
+    fixture: list[FixtureRow] = Field(default_factory=list)
+    checks: list[CheckIn] = Field(default_factory=list)
+    source: str
+    enabled: bool
+    created_at: datetime
+
+    @classmethod
+    def of(cls, row: object) -> EvalCaseOut:
+        import json
+
+        return cls(
+            id=row.id,  # type: ignore[attr-defined]
+            name=row.name,  # type: ignore[attr-defined]
+            prompt=row.prompt,  # type: ignore[attr-defined]
+            fixture=[FixtureRow(**f) for f in json.loads(row.fixture or "[]")],  # type: ignore[attr-defined]
+            checks=[CheckIn(**c) for c in json.loads(row.checks or "[]")],  # type: ignore[attr-defined]
+            source=row.source,  # type: ignore[attr-defined]
+            enabled=bool(row.enabled),  # type: ignore[attr-defined]
+            created_at=row.created_at,  # type: ignore[attr-defined]
+        )
+
+
+class PromoteRequest(BaseModel):
+    interaction_id: int
+    name: str = Field(default="", max_length=160)
+    checks: list[CheckIn] | None = None
+    fixture: list[FixtureRow] | None = None

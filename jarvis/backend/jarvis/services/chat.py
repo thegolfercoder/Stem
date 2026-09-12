@@ -39,6 +39,7 @@ from jarvis.ai.base import (
 )
 from jarvis.context_manager import ContextManager
 from jarvis.intent import detect as detect_intent
+from jarvis.learning.telemetry import TurnRecorder
 from jarvis.models import Conversation, User
 from jarvis.services import conversations as convo_service
 from jarvis.services.app_settings import AISettings
@@ -60,6 +61,7 @@ def run_turn(
     manager: ContextManager,
     registry: ToolRegistry,
     ai_settings: AISettings,
+    prompt_version_id: int | None = None,
 ) -> Iterator[dict[str, Any]]:
     """Run one exchange, yielding events as they happen."""
     user_text = user_text.strip()
@@ -92,6 +94,16 @@ def run_turn(
     # it never decides what is stored - see `intent.py`.
     intent = detect_intent(user_text)
 
+    # From here the turn is measured. Recorded whether it succeeds or fails -
+    # the failures are the half worth having.
+    recorder = TurnRecorder(
+        user_id=user.id,
+        conversation_id=conversation.id,
+        prompt_version_id=prompt_version_id,
+        query=user_text,
+        intent=intent.kind.value,
+    )
+
     built = manager.build(
         user_display_name=user.display_name,
         history=history,
@@ -107,6 +119,9 @@ def run_turn(
     # Retrieval marks memories as used, and the turn should not lose that if the
     # request fails later.
     session.commit()
+
+    recorder.snippets = len(built.snippets)
+    recorder.context_chars = built.trace.total_chars if built.trace else 0
 
     if built.snippets:
         yield {
@@ -169,6 +184,7 @@ def run_turn(
                 call.name, call.input, ToolContext(user_id=user.id, session=session)
             )
             session.commit()
+            recorder.tool_ran(call.name, failed=result.is_error)
             yield {
                 "type": "tool",
                 "name": call.name,
@@ -210,6 +226,13 @@ def run_turn(
         output_tokens=output_tokens or None,
         error=failure,
     )
+
+    recorder.answer = text
+    recorder.input_tokens = input_tokens
+    recorder.output_tokens = output_tokens
+    recorder.error = failure
+    recorder.message_id = stored.id
+    interaction = recorder.save(session)
     session.commit()
 
     yield {
@@ -222,6 +245,9 @@ def run_turn(
         "error": failure,
         # So the interface can show the memory count without a second request.
         "context": built.trace.as_dict() if built.trace else None,
+        # The handle the rating buttons post back to.
+        "interaction_id": interaction.id,
+        "latency_ms": interaction.latency_ms,
     }
 
 

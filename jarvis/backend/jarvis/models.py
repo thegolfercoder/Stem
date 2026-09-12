@@ -290,3 +290,179 @@ class DocumentChunk(Base):
     document: Mapped[Document] = relationship(back_populates="chunks")
 
     __table_args__ = (UniqueConstraint("document_id", "ordinal", name="uq_chunk_ordinal"),)
+
+
+# --- phase 3: the persona, and the loop that improves it ---------------------
+
+# A prompt version is data, never code. That is the whole safety story of the
+# improvement pipeline: a proposal is a row, evaluating it is reading that row,
+# and activating it is setting a status - there is no path by which the
+# assistant edits the program it is running.
+PROMPT_STATUSES: tuple[str, ...] = ("draft", "candidate", "active", "retired")
+PROMPT_AUTHORS: tuple[str, ...] = ("human", "pipeline", "seed")
+
+
+class PromptVersion(Base):
+    """One version of the assistant's persona and instructions."""
+
+    __tablename__ = "prompt_versions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    number: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="draft", index=True)
+    author: Mapped[str] = mapped_column(String(16), nullable=False, default="human")
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # What this was derived from, so a lineage can be walked back to the seed.
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("prompt_versions.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('draft', 'candidate', 'active', 'retired')", name="ck_prompt_status"
+        ),
+        UniqueConstraint("number", name="uq_prompt_number"),
+    )
+
+
+class Interaction(Base):
+    """One turn, measured.
+
+    Written for every exchange whether it went well or not. This is the
+    evidence the improvement loop runs on: without it, "the assistant got
+    better" is an opinion.
+    """
+
+    __tablename__ = "interactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    conversation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("conversations.id", ondelete="SET NULL"), nullable=True
+    )
+    message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("messages.id", ondelete="SET NULL"), nullable=True
+    )
+    prompt_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("prompt_versions.id", ondelete="SET NULL"), nullable=True
+    )
+
+    query: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    answer: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    intent: Mapped[str] = mapped_column(String(16), nullable=False, default="ask")
+
+    snippets: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    context_chars: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    tools_used: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    tool_errors: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+    __table_args__ = (Index("ix_interactions_user_created", "user_id", "created_at"),)
+
+
+class Feedback(Base):
+    """What the owner thought of one answer.
+
+    The only signal in the system that is not inferred. Everything the pipeline
+    later claims about quality traces back to one of these rows.
+    """
+
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    interaction_id: Mapped[int] = mapped_column(
+        ForeignKey("interactions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    rating: Mapped[str] = mapped_column(String(8), nullable=False)
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("rating in ('up', 'down')", name="ck_feedback_rating"),
+        UniqueConstraint("interaction_id", name="uq_feedback_interaction"),
+    )
+
+
+class EvalCase(Base):
+    """One thing the assistant is expected to get right.
+
+    `checks` is JSON: a list of {kind, value} assertions run against the answer.
+    Deterministic on purpose - a regression suite graded by a model is a
+    regression suite whose own judgement can drift.
+    """
+
+    __tablename__ = "eval_cases"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    # Memories to seed before the case runs, as JSON, so a case is reproducible
+    # on an empty database and never depends on the owner's real data.
+    fixture: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    checks: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    interaction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("interactions.id", ondelete="SET NULL"), nullable=True
+    )
+    enabled: Mapped[bool] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+class EvalRun(Base):
+    """One pass of the suite against one prompt version."""
+
+    __tablename__ = "eval_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    prompt_version_id: Mapped[int] = mapped_column(
+        ForeignKey("prompt_versions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    baseline_run_id: Mapped[int | None] = mapped_column(
+        ForeignKey("eval_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    passed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    regressions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+    results: Mapped[list[EvalResult]] = relationship(
+        back_populates="run", cascade="all, delete-orphan"
+    )
+
+
+class EvalResult(Base):
+    """How one case did on one run."""
+
+    __tablename__ = "eval_results"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(
+        ForeignKey("eval_runs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    case_id: Mapped[int] = mapped_column(
+        ForeignKey("eval_cases.id", ondelete="CASCADE"), nullable=False
+    )
+    passed: Mapped[bool] = mapped_column(Integer, nullable=False, default=0)
+    output: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    failures: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    run: Mapped[EvalRun] = relationship(back_populates="results")
+
+    __table_args__ = (UniqueConstraint("run_id", "case_id", name="uq_result_case"),)

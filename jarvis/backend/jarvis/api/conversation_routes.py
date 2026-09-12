@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -28,6 +28,7 @@ from jarvis.api.schemas import (
     MessageOut,
 )
 from jarvis.context_manager import ContextManager
+from jarvis.learning import telemetry
 from jarvis.models import User
 from jarvis.services import chat as chat_service
 from jarvis.services import conversations as convo_service
@@ -90,8 +91,19 @@ def get_conversation(
     if conversation is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such conversation.")
     messages = convo_service.load_messages(session, conversation_id=conversation.id)
+    out: list[MessageOut] = []
+    interactions = convo_service.interactions_for(session, [m.id for m in messages])
+    ratings = telemetry.feedback_for(session, [i.id for i in interactions.values()])
+    for message in messages:
+        item = MessageOut.model_validate(message)
+        interaction = interactions.get(message.id)
+        if interaction is not None:
+            item.interaction_id = interaction.id
+            rating = ratings.get(interaction.id)
+            item.rating = rating.rating if rating else None
+        out.append(item)
     detail = ConversationDetail.model_validate(conversation)
-    detail.messages = [MessageOut.model_validate(m) for m in messages]
+    detail.messages = out
     return detail
 
 
@@ -124,6 +136,7 @@ def delete_conversation(
 
 @router.post("/chat")
 def chat(
+    request: Request,
     body: ChatRequestBody,
     session: Session = Depends(db_session),
     user: User = Depends(current_user),
@@ -161,6 +174,7 @@ def chat(
             manager=manager,
             registry=registry,
             ai_settings=ai_settings,
+            prompt_version_id=getattr(request.state, "prompt_version_id", None),
         ):
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 

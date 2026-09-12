@@ -63,6 +63,54 @@ def _create_user(args: argparse.Namespace) -> int:
     return 0
 
 
+def _reset(args: argparse.Namespace) -> int:
+    """Delete the local data and start clean.
+
+    Deliberately blunt: it removes the database file and the documents JARVIS
+    copied in, rather than issuing DELETEs table by table. A reset that leaves
+    an account, a session row or a stray file behind is not a reset, and the
+    surest way to leave nothing behind is to not have a file.
+    """
+    import shutil
+
+    settings = get_settings()
+    targets = [settings.db_path, settings.documents_dir, settings.memory_dir, settings.uploads_dir]
+    # An empty directory is not data. Without this, a second reset reports
+    # deleting something because the first one recreated the folders.
+    existing = [t for t in targets if t.is_file() or (t.is_dir() and any(t.iterdir()))]
+
+    print("This deletes, permanently:")
+    print(f"  the account, memories, documents and chat history in {settings.db_path}")
+    print(f"  every file JARVIS copied into {settings.documents_dir}")
+    print("Your API key and the code itself are untouched.")
+
+    if not existing:
+        print("\nNothing to delete - this installation is already clean.")
+        return 0
+
+    if not args.yes:
+        try:
+            answer = input('\nType "reset" to confirm: ').strip()
+        except EOFError:
+            answer = ""
+        if answer != "reset":
+            print("Left alone.")
+            return 1
+
+    for path in existing:
+        if path.is_dir():
+            shutil.rmtree(path, ignore_errors=True)
+        else:
+            path.unlink(missing_ok=True)
+    # SQLite keeps a write-ahead log beside the database; it holds data too.
+    for suffix in ("-wal", "-shm"):
+        settings.db_path.with_name(settings.db_path.name + suffix).unlink(missing_ok=True)
+
+    settings.ensure_directories()
+    print("\nDone. The next start will ask you to create the account again.")
+    return 0
+
+
 def _where(_: argparse.Namespace) -> int:
     settings = get_settings()
     print(f"database   {settings.db_path}")
@@ -92,6 +140,10 @@ def main(argv: list[str] | None = None) -> int:
 
     where = sub.add_parser("where", help="print where local data lives")
     where.set_defaults(func=_where)
+
+    reset = sub.add_parser("reset", help="delete all local data and start clean")
+    reset.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
+    reset.set_defaults(func=_reset)
 
     args = parser.parse_args(argv)
     result: int = args.func(args)

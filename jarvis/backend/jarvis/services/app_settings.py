@@ -42,6 +42,9 @@ class AISettings(BaseModel):
     # in so many words. Off means memory is only ever written when you ask for
     # it, or by hand on the memory page.
     allow_assistant_memories: bool = True
+    # Whether the interface offers a microphone. Off by default: voice is a
+    # thing you turn on deliberately, not a thing that appears.
+    voice_enabled: bool = False
 
     @field_validator("model")
     @classmethod

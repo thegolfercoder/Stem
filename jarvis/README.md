@@ -14,11 +14,13 @@ and the only thing that ever leaves the machine is the context assembled for a
 single question - which you can read back afterwards, verbatim, on the settings
 page.
 
-**Phases 1 and 2 are built and working.** Login, streaming chat, conversation
-history and tool calling; persistent memory, a document index, local retrieval
-and the context manager that budgets what gets sent. Tasks, calendar, school and
-projects are phase 3. The sections that are not built say so in the sidebar
-rather than showing invented rows.
+**Phases 1, 2 and 3 are built and working.** Login, streaming chat,
+conversation history and tool calling; persistent memory, a document index,
+local retrieval and the context manager that budgets what gets sent; and a
+versioned persona, voice, and an improvement loop that measures itself without
+being allowed to change itself. Tasks, calendar, school and projects are still
+to come. The sections that are not built say so in the sidebar rather than
+showing invented rows.
 
 ## Running it
 
@@ -38,7 +40,14 @@ jarvis serve --reload            # restart on code changes, for development
 jarvis serve --port 9000         # somewhere else
 jarvis create-user               # create the owner without a browser
 jarvis where                     # where your data lives, and whether a key was found
+jarvis reset                     # erase everything it knows, keep the code
 ```
+
+`jarvis reset` returns the installation to a first-run state: the account,
+memories, documents, notes, conversations and every recorded turn go, along with
+the files under `data/documents`. It prints what it is about to remove and asks
+before doing it (`--yes` skips the question). Your API key and the code are not
+touched, and the next start asks you to create the account again.
 
 The key goes in `jarvis/.env`:
 
@@ -50,8 +59,10 @@ JARVIS_ANTHROPIC_API_KEY=sk-ant-...
 and never written to the database, so no backup of `data/` can carry it and no
 page can display it.
 
-Upgrading an existing installation needs no migration step: the phase 2 tables
-are created on the next start, and nothing in the phase 1 tables changed.
+Upgrading an existing installation needs no migration step: new tables are
+created on the next start and existing ones are unchanged. On the first start
+after upgrading, the persona in `config/system_prompt.md` is copied into the
+database as version 1.
 
 ## How memory works
 
@@ -126,15 +137,90 @@ seeing every note, and neither belongs in a default.
 SQLite's FTS5 is available and is the other obvious upgrade path if keyword
 search needs to get faster before it needs to get smarter.
 
+## Who it sounds like
+
+The persona lives in `config/system_prompt.md`: lead with the answer, let length
+follow substance, say the useful thing rather than the agreeable one, and never
+invent what the local context does not support. It is written to be a colleague
+who happens to know your files - dry rather than chirpy, and specifically not a
+transcription of anyone's film dialogue.
+
+That file is only a seed. On first start it is copied into the `prompt_versions`
+table and **the database becomes the source of truth** from then on. Editing the
+file afterwards changes nothing, on purpose: if the file still won, editing it
+would be a way to put an untested prompt into production without passing any of
+the checks below.
+
+## Voice
+
+Off by default; one switch on the settings page turns it on, and it saves
+itself. When it is on, the composer grows a microphone and answers are read back.
+
+**No paid dependency was added, because the free option was good enough to be
+the default.** Speech recognition and playback run in the browser through the
+Web Speech API, which means the audio never reaches the server at all - only the
+text it transcribed. Chrome and Edge support it; Firefox does not, and there the
+microphone stays hidden rather than pretending.
+
+The point of `jarvis/voice/` is that this stays swappable. Four jobs are named
+separately because they have different costs and failure modes - transcription,
+speech, wake word, and the conversation loop that uses them - and each is a
+`Protocol` in `voice/base.py` with implementations registered in
+`voice/registry.py`. Swapping in a local Whisper or a cloud voice is one
+`set_speech_to_text(...)` call; the chat service imports neither and does not
+change. Every backend declares where it runs (`browser`, `local`, `cloud`), and
+the settings page shows it, so "does my audio leave this machine?" is answerable
+by looking rather than by reading a vendor's documentation.
+
+## How it improves, and what it is not allowed to do
+
+The Improvement page is the honest version of "self-improving": the system
+measures itself, finds its weak spots, and proposes changes. **A person decides
+whether any of it ships.** Nothing here can be reached by the model - these are
+owner endpoints behind the session cookie, and the assistant's tools do not
+include them. It can be told its answer was bad; it cannot act on that by
+changing itself.
+
+The loop:
+
+1. **Every turn is recorded** - question, answer, intent, how many snippets and
+   characters of context went, tokens, latency, which tools ran and which
+   failed. Local data like any other, covered by the same delete.
+2. **You rate answers** with the arrows under any reply. Unrated is not silent
+   approval, and the metrics say so.
+3. **The numbers are few and actionable**: approval rate, error rate, median and
+   95th-percentile latency, context size. *Where it is weak* turns them into
+   plain sentences; *Needs a look* lists the turns that errored or you rejected.
+4. **Good answers become tests.** *Make this a test case* freezes the question
+   together with the context it was answered from, so the case exercises
+   retrieval without ever touching your real memories.
+5. **A change is a proposal.** New prompt versions are created as drafts and run
+   nothing.
+6. **The suite judges it against what is live.** Both versions run the same
+   cases; the baseline is re-run rather than read from history, so a candidate
+   is never credited or blamed for a change someone else made. Grading is
+   deterministic - `contains`, `max_chars`, `uses_tool`, `cites_context` and so
+   on - because a suite graded by a model has its own drift, and an unknown
+   check kind is an error rather than a check that quietly always passes.
+7. **Activation is a separate, explicit call.** A version that has not been
+   evaluated is refused. A version that breaks a case which currently passes is
+   refused, and forcing it writes the override into the record.
+8. **Rolling back is one click**, and it skips every gate, because the moment
+   you need it is the moment everything else has gone wrong.
+
+What it deliberately does not do: no fine-tuning, no weight updates, and no
+writing to its own source. "Improvement" here means a better prompt, chosen by
+you, with evidence.
+
 ## Architecture
 
 ```
 jarvis/
   backend/jarvis/
     app.py                 the FastAPI application
-    cli.py                 serve, create-user, where
+    cli.py                 serve, create-user, where, reset
     config.py              settings from the environment; where "local" is
-    db.py  models.py       SQLite, and the eight tables
+    db.py  models.py       SQLite, and the fourteen tables
     security.py            scrypt passwords, hashed session tokens
     context_manager.py     *the border* - assembles what leaves the machine
     context_sources.py     what it is allowed to consult
@@ -144,10 +230,12 @@ jarvis/
     ingest.py              file -> text -> passages
     ai/                    the cloud model, behind one small interface
     tools/                 local functions the model may ask for
+    voice/                 speech, as protocols - no vendor, no paid dependency
+    learning/              telemetry, metrics, graders, evals, prompt versions
     services/              memory, documents, conversations, auth, one chat turn
     api/                   HTTP; translation only
   frontend/                one HTML page, one stylesheet, one script
-  config/system_prompt.md  the persona, editable without touching code
+  config/system_prompt.md  the persona; a seed, copied into the database once
   data/                    your database, documents, uploads   (never committed)
   logs/                    rotating logs, no message content   (never committed)
   tests/
@@ -199,9 +287,17 @@ events into something else.
 reuses the ranker; the memory page, the tools and the retrieval path all go
 through `services/memory.py`.
 
+**`learning/` observes; it does not steer.** `telemetry.py` records turns,
+`metrics.py` reads them, `graders.py` marks deterministically, `evaluation.py`
+runs the suite and `versions.py` holds the gate that refuses a regression.
+`pipeline.py` is the only module that combines them, and even it cannot ship a
+version without a separate call from a person. The dependency arrow points one
+way: `services/chat.py` writes a row and moves on, and nothing under
+`learning/` is importable from a tool.
+
 ## Database
 
-Eight tables, all in `data/jarvis.db`.
+Fourteen tables, all in `data/jarvis.db`.
 
 | Table | What it holds |
 |---|---|
@@ -213,6 +309,12 @@ Eight tables, all in `data/jarvis.db`.
 | `memories` | `category`, `content`, `importance` 1-5, `source`, `tags`, `created_at`, `updated_at`, `last_used_at`, `use_count`. |
 | `documents` | `filename`, `path`, `category`, `subject`, `tags`, `content_type`, `size_bytes`, `content_hash`, `excerpt`, `chunk_count`, timestamps. |
 | `document_chunks` | `ordinal`, `text`, `char_start`, `embedding_norm` (null until an embedder exists). |
+| `prompt_versions` | The persona ladder: `number`, `body`, `status` (`draft`/`candidate`/`active`/`retired`), `author`, `notes`, `parent_id`, and when it was activated or retired. |
+| `interactions` | One recorded turn: query, answer, intent, snippets, context characters, tokens, latency, tools used, tool errors, error. |
+| `feedback` | Your verdict on one interaction. One row per turn - rating again replaces it. |
+| `eval_cases` | A question, the fixture context to answer it from, and the checks that must hold. |
+| `eval_runs` | One pass of the suite: which version, which baseline, passed, failed, regressions. |
+| `eval_results` | One case within a run, with every failure it produced rather than the first. |
 
 Memory categories: `personal`, `school`, `subjects`, `preferences`, `goals`,
 `projects`, `people`, `routines`, `important_facts`, `instructions`.
@@ -243,6 +345,19 @@ state-changing call needs an `X-Jarvis-Client` header.
 | GET | `/api/notes/{id}/text` | The note's text, for editing |
 | GET | `/api/context/recent` | **What was actually sent to the cloud** |
 | POST | `/api/memory/erase` | Delete, by scope |
+| GET | `/api/voice/profile` | Which backends do speech here, and where they run |
+| GET | `/api/learning/interactions` | Recorded turns |
+| GET | `/api/learning/problems` | Turns that errored, failed a tool, or were rated down |
+| POST | `/api/learning/feedback` | Rate one answer |
+| GET | `/api/learning/metrics` | The numbers, plus what to look at |
+| GET/POST | `/api/learning/versions` | The persona ladder; POST proposes a draft |
+| POST | `/api/learning/versions/{id}/evaluate` | Run the suite on it and on what is live |
+| POST | `/api/learning/versions/{id}/activate` | Ship it. Refused without evidence |
+| POST | `/api/learning/versions/rollback` | Go back |
+| GET/POST | `/api/learning/cases` | The regression suite |
+| DELETE | `/api/learning/cases/{id}` | Remove a case |
+| POST | `/api/learning/cases/promote` | Turn an approved answer into a test |
+| GET | `/api/learning/runs/{id}` | One run, case by case |
 
 ## What keeps it private
 
@@ -267,7 +382,18 @@ state-changing call needs an `X-Jarvis-Client` header.
   will not attach cross-origin without a preflight this server never answers.
 - **Delete means delete.** `POST /api/memory/erase` with a scope of
   `conversations`, `memories`, `documents` or `all` issues real DELETEs and
-  unlinks the document files. There is nowhere else holding a copy.
+  unlinks the document files. There is nowhere else holding a copy. `jarvis
+  reset` goes further and returns the whole installation to first-run state.
+- **The interface itself asks the network for nothing.** No fonts, no CDN, no
+  analytics: every byte the page loads comes from this server, so opening JARVIS
+  tells no one that you opened it, and it renders identically with the wifi off.
+  A test walks the frontend and fails on any fetch that reaches outside.
+- **Voice audio does not reach the server.** The browser transcribes and speaks;
+  only text crosses. Every voice backend declares where it runs, and the
+  settings page shows it.
+- **Turns are recorded locally, for you.** The improvement loop's measurements
+  live in the same database, are covered by the same delete, and are never sent
+  anywhere - the model is not told how it scored.
 
 Two things it does not do: the database is **not encrypted at rest** (point
 `JARVIS_DATA_DIR` at an encrypted volume if that matters), and turning on
@@ -282,12 +408,19 @@ mypy -p jarvis && mypy tests
 pytest -q
 ```
 
-166 tests, no API key and no network: a temporary database and a scripted model.
+209 tests, no API key and no network: a temporary database and a scripted model.
 They cover the login and lock paths, conversation scoping, a full chat turn
 including the tool round-trip, memory save/search/update/delete and relevance,
 document indexing, chunking, PDF extraction and passage search, conversation
 search, context construction and its budgets, intent detection, the ranker, the
 embedding seam, and the privacy filtering above.
+
+The ones worth knowing about are the safety tests around the improvement loop,
+because they assert absences rather than features: that a proposal changes
+nothing, that evaluation never activates as a side effect, that activation is
+refused when a case would regress, that assessment with no cases refuses rather
+than passing vacuously, and that no tool exposed to the model touches its own
+instructions.
 
 ## Roadmap
 
@@ -295,6 +428,6 @@ embedding seam, and the privacy filtering above.
 |---|---|---|
 | 1 | Local web app, login, chat, streaming, SQLite, conversation history, tool architecture | **Done** |
 | 2 | Persistent memory, notes, documents, local retrieval, RAG, context manager | **Done** |
-| 3 | Tasks, calendar, school, projects | Planned |
-| 4 | More tools, automation, memory management, notifications | Planned |
-| 5 | Voice, computer automation, a local model as fallback | Planned |
+| 3 | Persona and versioning, voice, the improvement loop, the command centre | **Done** |
+| 4 | Tasks, calendar, school, projects | Planned |
+| 5 | Automation, notifications, a local model as fallback | Planned |

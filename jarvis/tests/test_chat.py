@@ -205,18 +205,26 @@ def test_a_remembered_fact_reaches_the_next_conversation(
     assert context_events and context_events[0]["snippets"][0]["source"] == "memory"
 
 
+DIRECTIVE = "appears to be asking you to remember"
+
+
 def test_a_memory_instruction_tells_the_model_about_the_tool(
     signed_in: TestClient, provider: FakeProvider
 ) -> None:
     send(signed_in, "Remember that I prefer concise answers")
-    assert "save_memory" in provider.requests[-1].system
+    system = provider.requests[-1].system
+    assert DIRECTIVE in system
+    assert "save_memory" in system
 
 
 def test_an_ordinary_question_carries_no_memory_instruction(
     signed_in: TestClient, provider: FakeProvider
 ) -> None:
+    """The persona always mentions the memory tools - the model needs to know it
+    has them. What an ordinary question must not carry is the directive telling
+    it to go and store something."""
     send(signed_in, "What is the boiling point of water?")
-    assert "save_memory" not in provider.requests[-1].system
+    assert DIRECTIVE not in provider.requests[-1].system
 
 
 def test_the_done_event_reports_what_context_was_used(signed_in: TestClient) -> None:

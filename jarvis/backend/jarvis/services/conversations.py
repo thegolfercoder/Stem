@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from jarvis import retrieval
 from jarvis.ai.base import ProviderMessage, Role
 from jarvis.db import deleted_rows
-from jarvis.models import Conversation, Message, utcnow
+from jarvis.models import Conversation, Interaction, Message, utcnow
 
 TITLE_MAX_CHARS = 60
 DEFAULT_TITLE = "New conversation"
@@ -114,6 +114,21 @@ def load_messages(session: Session, *, conversation_id: int) -> list[Message]:
         select(Message).where(Message.conversation_id == conversation_id).order_by(Message.id.asc())
     )
     return list(session.execute(statement).scalars())
+
+
+def interactions_for(session: Session, message_ids: Sequence[int]) -> dict[int, Interaction]:
+    """The recorded turn behind each assistant message, keyed by message id.
+
+    Lets the interface offer a rating on an old answer: without it, feedback
+    would only ever be possible in the seconds after a reply arrived, which is
+    exactly when you are least able to judge it.
+    """
+    if not message_ids:
+        return {}
+    rows = session.execute(
+        select(Interaction).where(Interaction.message_id.in_(list(message_ids)))
+    ).scalars()
+    return {row.message_id: row for row in rows if row.message_id is not None}
 
 
 def as_provider_messages(messages: Sequence[Message]) -> list[ProviderMessage]:

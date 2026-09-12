@@ -20,6 +20,7 @@ from jarvis.config import Settings, get_settings
 from jarvis.context_manager import ContextManager
 from jarvis.context_sources import register_default_sources
 from jarvis.db import create_all, init_engine, session_scope
+from jarvis.learning.versions import seed_if_empty as seed_prompt_version
 from jarvis.logging_setup import configure_logging
 from jarvis.services.auth import purge_expired
 from jarvis.tools import default_registry
@@ -45,6 +46,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         create_all()
         with session_scope() as session:
             expired = purge_expired(session)
+            # There must be an active persona from the moment the application
+            # runs, not from the first message: the improvement view reads it,
+            # and a version list that is empty until you chat is a lie about
+            # what the assistant is running.
+            active = seed_prompt_version(
+                session, prompt_path=settings.config_dir / "system_prompt.md"
+            )
+            log.info("persona: v%d %s", active.number, active.name)
         if expired:
             log.info("removed %d expired session(s)", expired)
         app.state.settings = settings

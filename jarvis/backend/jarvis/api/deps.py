@@ -17,6 +17,7 @@ from jarvis.config import Settings, get_settings
 from jarvis.context_manager import ContextManager
 from jarvis.context_sources import register_default_sources
 from jarvis.db import get_session
+from jarvis.learning import versions as version_service
 from jarvis.models import User
 from jarvis.services import auth as auth_service
 from jarvis.services.app_settings import get_ai_settings
@@ -73,6 +74,14 @@ def context_manager(request: Request, session: Session = Depends(db_session)) ->
         register_default_sources(manager)
         request.app.state.context_manager = manager
     manager.log_context = get_ai_settings(session).log_context
+    # The live persona. Seeded from config/system_prompt.md the first time and
+    # from the database every time after that.
+    settings = get_settings()
+    active = version_service.seed_if_empty(
+        session, prompt_path=settings.config_dir / "system_prompt.md"
+    )
+    manager.prompt_body = active.body
+    request.state.prompt_version_id = active.id
     return manager
 
 

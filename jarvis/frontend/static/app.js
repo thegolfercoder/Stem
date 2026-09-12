@@ -14,6 +14,9 @@ const state = {
   activeConversation: null,
   settings: null,
   streaming: false,
+  voice: null,
+  listening: false,
+  activeVersion: null,
 };
 
 /* Sections that exist as data layers, and sections that do not yet. Keeping the
@@ -50,6 +53,7 @@ const SECTIONS = [
   { id: "knowledge", label: "Knowledge", ready: true },
   { id: "files", label: "Files", ready: true },
   { id: "memory", label: "Memory", ready: true },
+  { id: "improve", label: "Improvement", ready: true },
   { id: "settings", label: "Settings", ready: true },
 ];
 
@@ -97,6 +101,15 @@ async function postForm(path, formData) {
 }
 
 /* --- helpers ------------------------------------------------------------ */
+
+/* Assistant status. Every state here corresponds to something the system is
+ * actually doing; nothing sets it decoratively. */
+function setStatus(state, label) {
+  const node = $("#status");
+  if (!node) return;
+  node.dataset.state = state;
+  $("#status-label").textContent = label || state;
+}
 
 const $ = (selector) => document.querySelector(selector);
 const el = (tag, className, text) => {
@@ -273,6 +286,7 @@ function go(id) {
   if (section.id === "files") loadDocuments();
   if (section.id === "notes") loadNotes();
   if (section.id === "knowledge") $("#knowledge-search").focus();
+  if (section.id === "improve") loadImprovement();
   location.hash = section.id;
 }
 
@@ -434,8 +448,13 @@ function appendMessage(message) {
   body.innerHTML = renderMarkdown(message.content || "");
   node.append(body);
   if (message.error) node.append(el("div", "failed", message.error));
-  if (message.output_tokens) {
-    node.append(el("div", "meta", `${message.model || ""} - ${message.input_tokens || 0} in / ${message.output_tokens} out`));
+  if (message.output_tokens || message.interaction_id) {
+    const meta = el("div", "meta");
+    if (message.output_tokens) {
+      meta.append(el("span", null, `${message.model || ""} · ${message.input_tokens || 0} in / ${message.output_tokens} out`));
+    }
+    if (message.interaction_id) meta.append(ratingRow(message.interaction_id, message.rating));
+    node.append(meta);
   }
   $("#messages").append(node);
   return node;
@@ -450,7 +469,8 @@ async function send() {
   input.style.height = "auto";
   state.streaming = true;
   $("#send-button").disabled = true;
-  $("#composer-hint").textContent = "working...";
+  $("#composer-hint").textContent = "";
+  setStatus("thinking", "thinking");
 
   appendMessage({ role: "user", content: text });
   const container = $("#messages");
@@ -528,6 +548,7 @@ async function send() {
           toolNode.append(row);
           stick();
         } else if (event.type === "context") {
+          setStatus("retrieving", "retrieving");
           /* The memory indicator: which local records were consulted for this
            * answer, and how much went. Shown before the answer so it reads as
            * "here is what I looked at", not as a footnote. */
@@ -550,12 +571,18 @@ async function send() {
           state.activeConversation = event.conversation_id;
         } else if (event.type === "error") {
           node.append(el("div", "failed", event.message));
+          setStatus("error", "failed");
           stick();
         } else if (event.type === "done") {
+          const meta = el("div", "meta");
           if (event.usage && event.usage.output_tokens) {
-            node.append(el("div", "meta",
-              `${event.model || ""} - ${event.usage.input_tokens} in / ${event.usage.output_tokens} out`));
+            meta.append(el("span", null,
+              `${event.model || ""} · ${event.usage.input_tokens} in / ${event.usage.output_tokens} out`));
           }
+          if (event.latency_ms) meta.append(el("span", null, `${(event.latency_ms / 1000).toFixed(1)}s`));
+          if (event.interaction_id) meta.append(ratingRow(event.interaction_id));
+          if (meta.childElementCount) node.append(meta);
+          if (state.voice && state.voice.enabled && answer.trim()) speak(answer);
         }
       }
     }
@@ -567,6 +594,7 @@ async function send() {
     state.streaming = false;
     $("#send-button").disabled = false;
     $("#composer-hint").textContent = "";
+    if ($("#status").dataset.state !== "error") setStatus("ready", "ready");
     await loadConversations();
     stick();
   }
@@ -595,6 +623,8 @@ async function loadSettings() {
   $("#set-fallback").checked = settings.use_refusal_fallback;
   $("#set-log-context").checked = settings.log_context;
   $("#set-assistant-memories").checked = settings.allow_assistant_memories;
+  $("#set-voice").checked = settings.voice_enabled;
+  await loadVoice();
   $("#key-status").textContent = settings.api_key_present ? "loaded" : "not set";
   $("#key-source").textContent = settings.api_key_source || "-";
 }
@@ -610,11 +640,28 @@ $("#save-settings").addEventListener("click", async () => {
       use_refusal_fallback: $("#set-fallback").checked,
       log_context: $("#set-log-context").checked,
       allow_assistant_memories: $("#set-assistant-memories").checked,
+      voice_enabled: $("#set-voice").checked,
     });
     $("#settings-status").textContent = "Saved.";
     await loadSettings();
     await loadDashboard();
   } catch (error) {
+    $("#settings-status").textContent = error.message;
+  }
+});
+
+// The voice switch lives in its own card, so it saves itself rather than
+// waiting on the Save button belonging to the panel above it. A toggle that
+// appears to do nothing until you find a button somewhere else is a toggle
+// people conclude is broken.
+$("#set-voice").addEventListener("change", async (event) => {
+  const wanted = event.target.checked;
+  try {
+    await api("PUT", "/api/settings", { voice_enabled: wanted });
+    await loadVoice();
+    if (!wanted && window.speechSynthesis) window.speechSynthesis.cancel();
+  } catch (error) {
+    event.target.checked = !wanted;
     $("#settings-status").textContent = error.message;
   }
 });
@@ -653,6 +700,8 @@ $("#erase-button").addEventListener("click", async () => {
 async function bootApp() {
   buildNav();
   newConversation();
+  setStatus("ready", "ready");
+  await loadVoice();
   await loadConversations();
   go(location.hash.slice(1) || "dashboard");
 }
@@ -1100,5 +1149,370 @@ $("#context-refresh").addEventListener("click", async () => {
     pre.textContent = trace.system_text || "";
     row.append(pre);
     container.append(row);
+  }
+});
+
+/* --- rating: the one quality signal that is not inferred ------------------ */
+
+function ratingRow(interactionId, current) {
+  const wrap = el("span", "rate");
+  for (const [rating, glyph, title] of [
+    ["up", "▲", "This answer was good"],
+    ["down", "▼", "This answer was poor"],
+  ]) {
+    const button = el("button", current === rating ? "on" : "", glyph);
+    button.dataset.rating = rating;
+    button.title = title;
+    button.setAttribute("aria-label", title);
+    button.addEventListener("click", async () => {
+      try {
+        await api("POST", "/api/learning/feedback", { interaction_id: interactionId, rating });
+        for (const sibling of wrap.querySelectorAll("button")) sibling.classList.remove("on");
+        button.classList.add("on");
+      } catch (error) {
+        button.title = error.message;
+      }
+    });
+    wrap.append(button);
+  }
+  return wrap;
+}
+
+/* --- voice: the browser does the hearing and the speaking ----------------- */
+
+const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+async function loadVoice() {
+  try {
+    state.voice = await get("/api/voice/profile");
+  } catch (_) {
+    state.voice = null;
+    return;
+  }
+  const mic = $("#mic");
+  const supported = Boolean(SpeechRecognitionImpl);
+  mic.hidden = !(state.voice.enabled && supported);
+
+  const panel = $("#voice-profile");
+  if (!panel) return;
+  panel.innerHTML = "";
+  for (const [key, label] of [
+    ["speech_to_text", "hearing"],
+    ["text_to_speech", "speech"],
+    ["wake_word", "wake word"],
+  ]) {
+    const cap = state.voice[key];
+    const row = el("div", "kv");
+    row.append(el("span", "k", label));
+    row.append(el("span", "v", `${cap.name} · ${cap.location}${cap.available ? "" : " · unavailable"}`));
+    panel.append(row);
+  }
+  if (state.voice.enabled && !supported) {
+    panel.append(el("p", "note", "This browser has no speech recognition, so the microphone stays hidden. Chrome or Edge will show it."));
+  }
+}
+
+function listen() {
+  if (!SpeechRecognitionImpl || state.listening) return;
+  const recognition = new SpeechRecognitionImpl();
+  recognition.lang = navigator.language || "en-GB";
+  recognition.interimResults = true;
+  recognition.continuous = false;
+
+  const input = $("#composer-input");
+  const mic = $("#mic");
+  state.listening = true;
+  mic.classList.add("listening");
+  setStatus("listening", "listening");
+
+  recognition.addEventListener("result", (event) => {
+    let text = "";
+    for (const result of event.results) text += result[0].transcript;
+    input.value = text;
+    /* The wake phrase is stripped rather than sent: saying "Jarvis, what's due"
+     * should ask what is due, not ask about the word Jarvis. */
+    const phrase = (state.voice && state.voice.wake_phrase) || "";
+    if (phrase) {
+      const pattern = new RegExp(`^\\s*${phrase}[,\\s]+`, "i");
+      input.value = input.value.replace(pattern, "");
+    }
+  });
+  const stop = () => {
+    state.listening = false;
+    mic.classList.remove("listening");
+    if ($("#status").dataset.state === "listening") setStatus("ready", "ready");
+  };
+  recognition.addEventListener("end", () => {
+    stop();
+    if ($("#composer-input").value.trim()) send();
+  });
+  recognition.addEventListener("error", (event) => {
+    stop();
+    $("#composer-hint").textContent =
+      event.error === "not-allowed" ? "microphone blocked by the browser" : `microphone: ${event.error}`;
+  });
+  recognition.start();
+}
+
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  /* Markdown read aloud is unlistenable; strip it to the words. */
+  const plain = text
+    .replace(/```[\s\S]*?```/g, " code block ")
+    .replace(/[`*_#>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!plain) return;
+  const utterance = new SpeechSynthesisUtterance(plain.slice(0, 1200));
+  utterance.rate = 1.05;
+  utterance.pitch = 0.95;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+}
+
+$("#mic").addEventListener("click", listen);
+
+/* --- improvement: evidence, versions, the suite --------------------------- */
+
+async function loadImprovement() {
+  const [metrics, versions, cases, activity, problems] = await Promise.all([
+    get("/api/learning/metrics"),
+    get("/api/learning/versions"),
+    get("/api/learning/cases"),
+    get("/api/learning/interactions?limit=25"),
+    get("/api/learning/problems"),
+  ]);
+
+  const readout = $("#metrics-readout");
+  readout.innerHTML = "";
+  const figures = [
+    [metrics.turns, metrics.turns === 1 ? "turn" : "turns", ""],
+    [`${Math.round(metrics.approval_rate * 100)}%`, "approved", metrics.rated ? "" : "muted"],
+    [`${Math.round(metrics.error_rate * 100)}%`, "errors", metrics.error_rate > 0.05 ? "alert" : ""],
+    [`${(metrics.latency_p50_ms / 1000).toFixed(1)}s`, "median", ""],
+    [`${(metrics.latency_p95_ms / 1000).toFixed(1)}s`, "slowest 5%", ""],
+  ];
+  for (const [value, key, cls] of figures) {
+    const cell = el("div");
+    cell.append(el("div", `n ${cls}`.trim(), String(value)));
+    cell.append(el("div", "k", key));
+    readout.append(cell);
+  }
+
+  /* A bar that means something: how much of the evidence is actually rated. */
+  const bars = $("#metrics-bars");
+  bars.innerHTML = "";
+  const rated = el("div");
+  const noun = metrics.turns === 1 ? "turn" : "turns";
+  rated.append(el("div", "muted", `${metrics.rated} of ${metrics.turns} ${noun} rated`));
+  const bar = el("div", "bar");
+  const fill = el("i", metrics.rated_share > 0.1 ? "good" : "");
+  fill.style.width = `${Math.min(100, metrics.rated_share * 100)}%`;
+  bar.append(fill);
+  rated.append(bar);
+  bars.append(rated);
+
+  const focus = $("#focus-notes");
+  focus.innerHTML = "";
+  for (const note of metrics.focus || []) focus.append(el("p", "record-body muted", note));
+
+  const problemList = $("#problem-turns");
+  problemList.innerHTML = "";
+  if (!problems.length) {
+    problemList.append(el("p", "empty", "Nothing failed or was rated down."));
+  }
+  for (const row of problems.slice(0, 6)) {
+    const item = el("div", "record bad");
+    item.append(el("div", "record-head")).append(el("span", "muted", when(row.created_at)));
+    item.append(el("div", "record-body", row.query.slice(0, 120)));
+    item.append(el("div", "muted", row.error || (row.tool_errors ? `${row.tool_errors} tool error(s)` : "rated down")));
+    problemList.append(item);
+  }
+
+  const active = versions.find((v) => v.status === "active");
+  $("#active-version").textContent = active ? `running v${active.number}` : "no active version";
+  $("#active-version").className = "pill on";
+  state.activeVersion = active;
+
+  const list = $("#version-list");
+  list.innerHTML = "";
+  for (const version of versions) list.append(versionRow(version));
+
+  const caseList = $("#case-list");
+  caseList.innerHTML = "";
+  if (!cases.length) {
+    caseList.append(el("p", "empty", "No cases yet. Without them a prompt change cannot be judged."));
+  }
+  for (const item of cases) {
+    const row = el("div", "record");
+    const head = el("div", "record-head");
+    head.append(el("strong", null, item.name));
+    head.append(el("span", "tag", item.source));
+    head.append(el("span", "grow"));
+    const remove = el("button", "link-btn danger-text", "Delete");
+    remove.addEventListener("click", async () => {
+      await api("DELETE", `/api/learning/cases/${item.id}`);
+      loadImprovement();
+    });
+    head.append(remove);
+    row.append(head);
+    row.append(el("div", "record-body muted", item.prompt));
+    row.append(el("div", "muted-line", item.checks.map((c) => `${c.kind}${c.value ? ": " + c.value : ""}`).join("  ")));
+    caseList.append(row);
+  }
+
+  const activityList = $("#activity-list");
+  activityList.innerHTML = "";
+  if (!activity.length) activityList.append(el("p", "empty", "No turns recorded yet."));
+  for (const row of activity) {
+    const item = el("div", `record${row.error ? " bad" : ""}`);
+    const head = el("div", "record-head");
+    head.append(el("span", "tag", row.intent));
+    head.append(el("span", "muted", `${row.snippets} local · ${row.context_chars} chars · ${(row.latency_ms / 1000).toFixed(1)}s`));
+    head.append(el("span", "grow"));
+    if (row.rating) head.append(el("span", "muted", row.rating === "up" ? "approved" : "rejected"));
+    head.append(el("span", "muted", when(row.created_at)));
+    item.append(head);
+    item.append(el("div", "record-body", row.query.slice(0, 200)));
+    const actions = el("div", "record-actions");
+    const promote = el("button", "link-btn", "Make this a test case");
+    promote.addEventListener("click", async () => {
+      try {
+        await api("POST", "/api/learning/cases/promote", { interaction_id: row.id });
+        loadImprovement();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+    actions.append(promote);
+    item.append(actions);
+    activityList.append(item);
+  }
+}
+
+function versionRow(version) {
+  const row = el("div", "record");
+  const head = el("div", "record-head version");
+  head.append(el("span", "num", `v${version.number}`));
+  const title = el("span");
+  title.append(el("strong", null, version.name || "untitled"));
+  head.append(title);
+  head.append(el("span", `status-tag ${version.status}`, version.status));
+  row.append(head);
+  if (version.notes) row.append(el("div", "record-body muted", version.notes));
+
+  const actions = el("div", "record-actions");
+  if (version.status !== "active") {
+    const evaluate = el("button", "link-btn", "Run the suite");
+    evaluate.addEventListener("click", async () => {
+      evaluate.textContent = "running...";
+      setStatus("thinking", "evaluating");
+      try {
+        const result = await api("POST", `/api/learning/versions/${version.id}/evaluate`, {});
+        const verdict = el("div", "record-body");
+        verdict.textContent =
+          `${Math.round(result.pass_rate * 100)}% pass (live: ${Math.round(result.baseline_pass_rate * 100)}%). `
+          + (result.safe_to_activate ? "No regressions." : `Breaks: ${result.regressions.join(", ")}`);
+        row.append(verdict);
+        setStatus("ready", "ready");
+        loadImprovement();
+      } catch (error) {
+        evaluate.textContent = "Run the suite";
+        setStatus("error", "failed");
+        alert(error.message);
+      }
+    });
+    actions.append(evaluate);
+
+    const activate = el("button", "link-btn", "Activate");
+    activate.addEventListener("click", async () => {
+      try {
+        await api("POST", `/api/learning/versions/${version.id}/activate`, { force: false });
+        loadImprovement();
+      } catch (error) {
+        if (confirm(`${error.message}\n\nActivate anyway?`)) {
+          await api("POST", `/api/learning/versions/${version.id}/activate`, { force: true });
+          loadImprovement();
+        }
+      }
+    });
+    actions.append(activate);
+  }
+  const show = el("button", "link-btn", "Show prompt");
+  show.addEventListener("click", () => {
+    if (row.querySelector(".sent")) { row.querySelector(".sent").remove(); return; }
+    const pre = el("pre", "sent");
+    pre.textContent = version.body;
+    row.append(pre);
+  });
+  actions.append(show);
+  row.append(actions);
+  return row;
+}
+
+$("#propose-toggle").addEventListener("click", () => {
+  const form = $("#propose-form");
+  form.hidden = !form.hidden;
+});
+$("#version-load-active").addEventListener("click", () => {
+  if (state.activeVersion) $("#version-body").value = state.activeVersion.body;
+});
+$("#version-save").addEventListener("click", async () => {
+  $("#version-error").textContent = "";
+  try {
+    await api("POST", "/api/learning/versions", {
+      body: $("#version-body").value,
+      name: $("#version-name").value.trim(),
+      notes: $("#version-notes").value.trim(),
+    });
+    $("#propose-form").hidden = true;
+    loadImprovement();
+  } catch (error) {
+    $("#version-error").textContent = error.message;
+  }
+});
+$("#rollback").addEventListener("click", async () => {
+  if (!confirm("Roll back to the previous version?")) return;
+  try {
+    await api("POST", "/api/learning/versions/rollback", {});
+    loadImprovement();
+  } catch (error) {
+    alert(error.message);
+  }
+});
+
+$("#case-toggle").addEventListener("click", () => {
+  const form = $("#case-form");
+  form.hidden = !form.hidden;
+});
+$("#case-save").addEventListener("click", async () => {
+  $("#case-error").textContent = "";
+  const checks = $("#case-checks").value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const at = line.indexOf(":");
+      return at < 0
+        ? { kind: line, value: "" }
+        : { kind: line.slice(0, at).trim(), value: line.slice(at + 1).trim() };
+    });
+  const fixture = $("#case-fixture").value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((content) => ({ category: "important_facts", content }));
+  try {
+    await api("POST", "/api/learning/cases", {
+      name: $("#case-name").value.trim(),
+      prompt: $("#case-prompt").value.trim(),
+      fixture,
+      checks,
+    });
+    $("#case-form").hidden = true;
+    $("#case-name").value = $("#case-prompt").value = $("#case-fixture").value = $("#case-checks").value = "";
+    loadImprovement();
+  } catch (error) {
+    $("#case-error").textContent = error.message;
   }
 });
