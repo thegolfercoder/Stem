@@ -478,7 +478,11 @@ function renderRail(status) {
   }
   $("#rail-model").textContent = status.model;
   const local = status.provider === "ollama";
-  $("#rail-where").textContent = local ? "this machine" : "the cloud";
+  $("#rail-where").textContent = local
+    ? "this machine"
+    : status.provider === "openai"
+      ? "openai"
+      : "the cloud";
   $("#rail-where").className = local ? "v" : "v offsite";
   $("#chip-model").textContent = status.model;
   $("#chip-model").className = `chip ${local || status.api_key_present ? "on" : "warm"}`;
@@ -883,6 +887,7 @@ $("#save-settings").addEventListener("click", async () => {
       provider: $("#set-provider").value,
       model: $("#set-model").value.trim(),
       local_model: $("#set-local-model").value || undefined,
+      openai_model: $("#set-openai-model").value.trim() || undefined,
       max_tokens: Number($("#set-max-tokens").value),
       show_thinking: $("#set-thinking").checked,
       enable_tools: $("#set-tools").checked,
@@ -908,8 +913,11 @@ $("#save-settings").addEventListener("click", async () => {
  * should have to read the README to find that out. */
 function renderProvider(settings) {
   const local = settings.provider === "ollama";
-  $("#field-cloud-model").hidden = local;
+  const openai = settings.provider === "openai";
+  $("#field-cloud-model").hidden = local || openai;
   $("#field-local-model").hidden = !local;
+  $("#field-openai-model").hidden = !openai;
+  $("#set-openai-model").value = settings.openai_model || "";
 
   const models = $("#set-local-model");
   const wanted = (settings.local_models || []).join("|");
@@ -927,7 +935,20 @@ function renderProvider(settings) {
   option.disabled = !settings.local_available;
 
   const note = $("#provider-note");
-  if (!settings.local_available) {
+  /* Each option says what it costs you before you pick it: a key, money, or
+   * accuracy. Naming the trade is the whole job of this control. */
+  const openaiOption = $("#set-provider").querySelector('option[value="openai"]');
+  openaiOption.disabled = !settings.openai_key_present;
+  openaiOption.textContent = settings.openai_key_present
+    ? "Cloud — OpenAI, needs a key"
+    : "Cloud — OpenAI — no key in .env";
+
+  if (openai) {
+    note.textContent = settings.openai_key_present
+      ? "Answers come from OpenAI, billed to that account. The key stays on the " +
+        "server and is never sent to this page."
+      : "No OpenAI key found. Put JARVIS_OPENAI_API_KEY in .env.";
+  } else if (!settings.local_available) {
     note.textContent =
       "Ollama is not running on this machine. Install it from ollama.com, then " +
       "`ollama pull llama3.1:8b` — after that JARVIS works with no API key and " +
@@ -935,7 +956,7 @@ function renderProvider(settings) {
   } else if (local) {
     note.textContent =
       "Answers are generated on this machine. Nothing leaves it, there is no key " +
-      "and no bill — and the model is meaningfully weaker than the cloud one at " +
+      "and no bill — and the model is meaningfully weaker than a cloud one at " +
       "hard reasoning. Switch back any time.";
   } else {
     note.textContent =
@@ -953,6 +974,16 @@ $("#set-provider").addEventListener("change", async (event) => {
   }
   /* Redraw from what the server stored, so a refused change never leaves the
    * page claiming it took effect. */
+  await loadSettings();
+  await loadDashboard();
+});
+
+$("#set-openai-model").addEventListener("change", async (event) => {
+  try {
+    await api("PUT", "/api/settings", { openai_model: event.target.value.trim() });
+  } catch (error) {
+    $("#settings-status").textContent = error.message;
+  }
   await loadSettings();
   await loadDashboard();
 });

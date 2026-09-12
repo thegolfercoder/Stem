@@ -55,6 +55,13 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("JARVIS_GEMINI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"),
     )
 
+    # Same rule again: read from the environment on every request, never stored
+    # in the database, never returned by any endpoint.
+    openai_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("JARVIS_OPENAI_API_KEY", "OPENAI_API_KEY"),
+    )
+
     @property
     def db_path(self) -> Path:
         return self.data_dir / "jarvis.db"

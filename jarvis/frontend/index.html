@@ -237,12 +237,15 @@
             <label class="field"><span>Where the intelligence comes from</span>
               <select id="set-provider">
                 <option value="anthropic">Cloud &mdash; Claude, needs a key</option>
+                <option value="openai">Cloud &mdash; OpenAI, needs a key</option>
                 <option value="ollama">This machine &mdash; Ollama, needs no key</option>
               </select></label>
             <div id="provider-note" class="about" style="margin:-4px 0 12px"></div>
             <label class="field" id="field-cloud-model"><span>Model</span><input type="text" id="set-model" spellcheck="false"></label>
             <label class="field" id="field-local-model" hidden><span>Local model</span>
               <select id="set-local-model"></select></label>
+            <label class="field" id="field-openai-model" hidden><span>OpenAI model</span>
+              <input type="text" id="set-openai-model" spellcheck="false" placeholder="gpt-5.5"></label>
             <label class="field"><span>Maximum tokens per answer</span><input type="number" id="set-max-tokens" min="256" max="64000" step="256"></label>
             <div class="switch-row">
               <input type="checkbox" id="set-thinking">

@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from jarvis.ai.anthropic_provider import AnthropicProvider
 from jarvis.ai.base import ChatProvider
 from jarvis.ai.ollama_provider import OllamaProvider
+from jarvis.ai.openai_provider import OpenAIProvider
 from jarvis.config import Settings, get_settings
 from jarvis.context_manager import ContextManager
 from jarvis.context_sources import register_default_sources
@@ -100,6 +101,8 @@ def chat_provider(
     ai = get_ai_settings(session)
     if ai.provider == "ollama":
         return OllamaProvider(ai.local_host, model=ai.local_model)
+    if ai.provider == "openai":
+        return OpenAIProvider(settings.openai_api_key, model=ai.openai_model)
     return AnthropicProvider(
         settings.anthropic_api_key,
         use_fallbacks=ai.use_refusal_fallback,

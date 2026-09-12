@@ -86,6 +86,8 @@ class AISettingsOut(BaseModel):
     model: str
     local_model: str = ""
     local_host: str = ""
+    openai_model: str = ""
+    openai_key_present: bool = False
     # Whether there is an Ollama to talk to, and what it has pulled. Presence
     # only - the settings page offers what exists rather than a free text box
     # whose typos become 404s.
@@ -115,6 +117,7 @@ class AISettingsUpdate(BaseModel):
     provider: str | None = Field(default=None, max_length=16)
     model: str | None = Field(default=None, max_length=64)
     local_model: str | None = Field(default=None, max_length=64)
+    openai_model: str | None = Field(default=None, max_length=64)
     local_host: str | None = Field(default=None, max_length=128)
     max_tokens: int | None = Field(default=None, ge=256, le=64_000)
     show_thinking: bool | None = None

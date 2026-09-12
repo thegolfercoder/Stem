@@ -300,6 +300,34 @@ seeing every note, and neither belongs in a default.
 SQLite's FTS5 is available and is the other obvious upgrade path if keyword
 search needs to get faster before it needs to get smarter.
 
+## Three providers, one seam
+
+Settings → *Where the intelligence comes from* picks one of three, without a
+restart:
+
+| | needs | where the data goes | notes |
+|---|---|---|---|
+| **Claude** | `JARVIS_ANTHROPIC_API_KEY` | Anthropic | the default |
+| **OpenAI** | `JARVIS_OPENAI_API_KEY` | OpenAI, billed to that account | `gpt-5.5` by default; any chat model works |
+| **Ollama** | nothing | nowhere — this machine | no key, no bill, weaker at hard reasoning |
+
+`ai/base.py` defines `ChatProvider` and the neutral types; each provider maps
+them to one API. The chat service imports none of them, which is why the second
+and third cost nothing in the turn loop. Two disagreements they absorb:
+
+- **Anthropic hands over a whole tool call. OpenAI streams one in fragments** —
+  arguments as a string split at arbitrary points, keyed by index, sometimes mid
+  escape-sequence. `_ToolAccumulator` collects by index and parses only once the
+  string is whole; parsing early gets a syntax error on valid arguments.
+- **Ollama's tool calls carry no id at all**, so ids are minted there — and both
+  it and OpenAI want tool results as their own `role: "tool"` messages rather
+  than blocks inside a user message.
+
+OpenAI's token limit has two names (`max_tokens` on older models,
+`max_completion_tokens` on the reasoning and gpt-5 families). Rather than keep a
+list of which is which — wrong the moment a model ships — the request sends the
+modern name and falls back once if the API objects.
+
 ## Running without anyone's cloud
 
 Everything here has been local since phase 1 - the data, the retrieval, the
@@ -662,7 +690,7 @@ mypy -p jarvis && mypy tests
 pytest -q
 ```
 
-294 tests, no API key and no network: a temporary database and a scripted model.
+326 tests, no API key and no network: a temporary database and a scripted model.
 The Gemini backend is covered with `urlopen` replaced by a recorder, so the suite
 runs with no key and no quota and a change to the request shape fails an
 assertion rather than arriving as a bill.

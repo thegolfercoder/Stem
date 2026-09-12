@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from jarvis.ai.anthropic_provider import DEFAULT_MODEL
 from jarvis.ai.ollama_provider import DEFAULT_HOST as OLLAMA_DEFAULT_HOST
 from jarvis.ai.ollama_provider import DEFAULT_MODEL as OLLAMA_DEFAULT_MODEL
+from jarvis.ai.openai_provider import DEFAULT_MODEL as OPENAI_DEFAULT_MODEL
 from jarvis.models import AppSetting
 
 AI_SETTINGS_KEY = "ai"
@@ -24,7 +25,7 @@ AI_SETTINGS_KEY = "ai"
 # Where the intelligence comes from. Two, because the point of the second is
 # that the assistant keeps working when the first is unavailable, unaffordable,
 # or simply not something you want to depend on.
-PROVIDERS = ("anthropic", "ollama")
+PROVIDERS = ("anthropic", "openai", "ollama")
 
 # Where each half of voice runs. "off" is distinct from voice_enabled=False:
 # it turns off one direction while leaving the other working.
@@ -44,6 +45,9 @@ class AISettings(BaseModel):
     # switching back and forth does not lose whichever name you had set.
     local_model: str = OLLAMA_DEFAULT_MODEL
     local_host: str = OLLAMA_DEFAULT_HOST
+    # Used only when provider is "openai". Kept separate from `model` for the
+    # same reason as `local_model`: switching should not lose the other name.
+    openai_model: str = OPENAI_DEFAULT_MODEL
     max_tokens: int = Field(default=8192, ge=256, le=64_000)
     # A readable summary of the model's reasoning, shown above the answer.
     show_thinking: bool = False
@@ -100,7 +104,11 @@ class AISettings(BaseModel):
         a request built with the cloud model's name and sent to the local one
         fails with a confusing 404 about a model nobody chose.
         """
-        return self.local_model if self.provider == "ollama" else self.model
+        if self.provider == "ollama":
+            return self.local_model
+        if self.provider == "openai":
+            return self.openai_model
+        return self.model
 
     @field_validator("provider")
     @classmethod
