@@ -25,26 +25,21 @@ const state = {
 const SECTIONS = [
   { id: "dashboard", label: "JARVIS", ready: true },
   { id: "chat", label: "Chat", ready: true },
+  { id: "tasks", label: "Tasks", ready: true },
   {
-    id: "tasks", label: "Tasks", phase: 3,
-    heading: "Tasks, with due dates that mean something",
-    body: "A task has a title, description, priority, due date, subject or project, status and tags - and JARVIS can create one from a sentence like \"add a maths assignment due Friday\".",
-    items: ["Natural-language capture and edits", "\"What's due this week?\"", "Priority ordering for today", "Linked to a subject or a project"],
-  },
-  {
-    id: "calendar", label: "Calendar", phase: 3,
+    id: "calendar", label: "Calendar", phase: 4,
     heading: "What is actually happening tomorrow",
     body: "Local events and deadlines, readable by the assistant through get_calendar() and writable through add_calendar_event().",
     items: ["Events stored locally", "Deadlines from tasks and assignments", "\"What do I have tomorrow?\""],
   },
   {
-    id: "school", label: "School", phase: 3,
+    id: "school", label: "School", phase: 4,
     heading: "Subjects you configure, not subjects I guessed",
     body: "Every subject is a row you create. Each one carries notes, resources, assignments, exams, topics, grades, teacher details and study progress.",
     items: ["Subjects as configurable entries", "Notes and resources per subject", "Assignments and upcoming exams", "Grades and study progress"],
   },
   {
-    id: "projects", label: "Projects", phase: 3,
+    id: "projects", label: "Projects", phase: 4,
     heading: "Projects with goals and a timeline",
     body: "Name, description, goals, tasks, files, notes, status and timeline - the unit of work bigger than a task.",
     items: ["Goals and status", "Tasks that roll up to a project", "Files and notes attached", "Timeline"],
@@ -282,6 +277,7 @@ function go(id) {
   if (section.id === "dashboard") loadDashboard();
   if (section.id === "chat") $("#composer-input").focus();
   if (section.id === "settings") loadSettings();
+  if (section.id === "tasks") loadTasks();
   if (section.id === "memory") loadMemories();
   if (section.id === "files") loadDocuments();
   if (section.id === "notes") loadNotes();
@@ -322,8 +318,25 @@ async function loadDashboard() {
   $("#stat-documents").textContent = status.documents;
   $("#stat-conversations").textContent = status.conversations;
   $("#stat-messages").textContent = status.messages;
+  $("#stat-tasks").textContent = status.tasks_open;
   $("#stat-tools").textContent = status.tools.length;
   $("#stat-data-dir").textContent = status.data_dir;
+
+  /* The one thing the front page exists to answer: is anything late, and what
+   * is due today. Overdue is counted separately because "three open" and "three
+   * overdue" are very different mornings. */
+  const attention = $("#dash-tasks");
+  attention.innerHTML = "";
+  if (!status.attention.length) {
+    attention.append(el("p", "empty",
+      status.tasks_open ? "Nothing due today." : "Nothing outstanding."));
+  } else {
+    for (const task of status.attention) attention.append(taskRow(task));
+    if (status.tasks_overdue) {
+      attention.append(el("p", "note alert-text",
+        `${status.tasks_overdue} overdue.`));
+    }
+  }
 
   const pill = $("#key-pill");
   pill.textContent = status.api_key_present ? "API key loaded" : "no API key";
@@ -1218,6 +1231,201 @@ function ratingRow(interactionId, current) {
   }
   return wrap;
 }
+
+/* --- tasks ----------------------------------------------------------------
+ * The grouping comes from the server, so the dashboard, this page and the
+ * assistant's context all describe the same day the same way. The page never
+ * works out what "today" is: a tab left open overnight would otherwise go on
+ * insisting nothing is overdue.
+ */
+
+const TASK_GROUPS = [
+  { key: "overdue", label: "Overdue", late: true },
+  { key: "due_today", label: "Today" },
+  { key: "due_soon", label: "Next seven days" },
+  { key: "undated", label: "No deadline" },
+];
+
+async function loadTasks() {
+  const query = $("#task-search").value.trim();
+  const subject = $("#task-filter").value;
+  const showDone = $("#task-show-done").checked;
+
+  let agenda;
+  try {
+    agenda = await get("/api/tasks/agenda?days=7");
+  } catch (error) {
+    $("#task-groups").innerHTML = "";
+    $("#task-groups").append(el("p", "empty", error.message));
+    return;
+  }
+  state.today = agenda.today;
+
+  fillSubjects(agenda.subjects, subject);
+
+  const container = $("#task-groups");
+  container.innerHTML = "";
+
+  if (query) {
+    const hits = await get(`/api/tasks/search?q=${encodeURIComponent(query)}`);
+    container.append(taskGroup({ label: `Matching "${query}"`, tasks: hits }));
+  } else {
+    let shown = 0;
+    for (const group of TASK_GROUPS) {
+      let tasks = agenda[group.key] || [];
+      if (subject) tasks = tasks.filter((task) => task.subject === subject);
+      if (!tasks.length) continue;
+      shown += tasks.length;
+      container.append(taskGroup({ ...group, tasks }));
+    }
+    if (!shown) {
+      container.append(el("p", "empty", "Nothing outstanding. Add one above, or just tell JARVIS."));
+    }
+  }
+
+  if (showDone) {
+    const done = await get("/api/tasks?status=done");
+    if (done.length) container.append(taskGroup({ label: "Finished", tasks: done }));
+  }
+
+  const open = TASK_GROUPS.reduce((n, g) => n + (agenda[g.key] || []).length, 0);
+  const late = (agenda.overdue || []).length;
+  $("#tasks-sub").textContent =
+    `${open} open${late ? ` · ${late} overdue` : ""}`;
+
+  const doneCard = $("#task-done-card");
+  doneCard.hidden = !showDone;
+}
+
+function fillSubjects(subjects, selected) {
+  const select = $("#task-filter");
+  const wanted = ["", ...subjects].join("|");
+  if (select.dataset.filled === wanted) return;
+  select.innerHTML = "";
+  select.append(new Option("All subjects", ""));
+  for (const subject of subjects) select.append(new Option(subject, subject));
+  select.value = selected || "";
+  select.dataset.filled = wanted;
+}
+
+function taskGroup(group) {
+  const wrap = el("div", `task-group${group.late ? " late" : ""}`);
+  const heading = el("h2");
+  heading.append(el("span", null, group.label));
+  heading.append(el("span", "count", String(group.tasks.length)));
+  wrap.append(heading);
+  for (const task of group.tasks) wrap.append(taskRow(task));
+  return wrap;
+}
+
+function taskRow(task) {
+  const row = el("div", `task${task.status === "done" ? " done" : ""}`);
+  row.dataset.priority = String(task.priority);
+
+  row.append(el("span", "pri"));
+
+  const tick = el("button", "tick", task.status === "done" ? "✓" : "");
+  tick.type = "button";
+  tick.title = task.status === "done" ? "Reopen" : "Mark finished";
+  tick.setAttribute("aria-label", tick.title);
+  tick.addEventListener("click", async () => {
+    const action = task.status === "done" ? "reopen" : "complete";
+    try {
+      await api("POST", `/api/tasks/${task.id}/${action}`);
+      await loadTasks();
+      await loadDashboard();
+    } catch (error) {
+      $("#task-error").textContent = error.message;
+    }
+  });
+  row.append(tick);
+
+  const body = el("div", "body");
+  body.append(el("div", "title", task.title));
+
+  const sub = el("div", "sub");
+  if (task.due_on) {
+    const when = task.due_time ? `${task.due_on} ${task.due_time}` : task.due_on;
+    sub.append(el("span", task.overdue ? "late" : null, when));
+  }
+  if (task.priority !== 2) sub.append(el("span", null, task.priority_label));
+  if (task.subject) sub.append(el("span", null, task.subject));
+  if (task.project) sub.append(el("span", null, `#${task.project}`));
+  /* Where a row came from, because a task JARVIS wrote down should be
+   * recognisable as one you did not type yourself. */
+  if (task.source === "assistant") sub.append(el("span", "from", "added by JARVIS"));
+  if (sub.childElementCount) body.append(sub);
+  if (task.notes) body.append(el("div", "notes", task.notes));
+  row.append(body);
+
+  const drop = el("button", "drop", "×");
+  drop.type = "button";
+  drop.title = "Delete";
+  drop.setAttribute("aria-label", `Delete ${task.title}`);
+  drop.addEventListener("click", async () => {
+    try {
+      await api("DELETE", `/api/tasks/${task.id}`);
+      await loadTasks();
+      await loadDashboard();
+    } catch (error) {
+      $("#task-error").textContent = error.message;
+    }
+  });
+  row.append(drop);
+
+  return row;
+}
+
+$("#task-add-toggle").addEventListener("click", () => {
+  const form = $("#task-form");
+  form.hidden = !form.hidden;
+  if (!form.hidden) $("#task-title").focus();
+});
+
+$("#task-save").addEventListener("click", async () => {
+  $("#task-error").textContent = "";
+  const title = $("#task-title").value.trim();
+  if (!title) {
+    $("#task-error").textContent = "A task needs a title.";
+    return;
+  }
+  try {
+    await api("POST", "/api/tasks", {
+      title,
+      due_on: $("#task-due").value || null,
+      due_time: $("#task-time").value || null,
+      priority: Number($("#task-priority").value),
+      subject: $("#task-subject").value.trim(),
+      project: $("#task-project").value.trim(),
+      notes: $("#task-notes").value.trim(),
+    });
+  } catch (error) {
+    $("#task-error").textContent = error.message;
+    return;
+  }
+  for (const id of ["#task-title", "#task-due", "#task-time", "#task-subject", "#task-project", "#task-notes"]) {
+    $(id).value = "";
+  }
+  $("#task-priority").value = "2";
+  $("#task-form").hidden = true;
+  await loadTasks();
+  await loadDashboard();
+});
+
+$("#task-search").addEventListener("input", debounce(loadTasks, 200));
+$("#task-filter").addEventListener("change", loadTasks);
+$("#task-show-done").addEventListener("change", loadTasks);
+
+$("#task-clear-done").addEventListener("click", async () => {
+  try {
+    const result = await api("POST", "/api/tasks/clear-completed");
+    $("#task-done-count").textContent = `${result.removed} removed.`;
+    await loadTasks();
+    await loadDashboard();
+  } catch (error) {
+    $("#task-error").textContent = error.message;
+  }
+});
 
 /* --- voice ----------------------------------------------------------------
  * Two backends, chosen separately on the settings page, and this file branches

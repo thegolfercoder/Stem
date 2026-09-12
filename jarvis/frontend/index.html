@@ -84,6 +84,7 @@
               <div class="stat"><div class="value" id="stat-documents">0</div><div class="label">documents</div></div>
               <div class="stat"><div class="value" id="stat-conversations">0</div><div class="label">conversations</div></div>
               <div class="stat"><div class="value" id="stat-messages">0</div><div class="label">messages</div></div>
+              <div class="stat"><div class="value" id="stat-tasks">0</div><div class="label">open tasks</div></div>
               <div class="stat"><div class="value" id="stat-tools">0</div><div class="label">tools</div></div>
             </div>
             <div class="kv" style="margin-top:12px"><span class="k">data</span><span class="v" id="stat-data-dir">&mdash;</span></div>
@@ -99,19 +100,19 @@
             <div id="recent-conversations"><p class="empty">Nothing yet.</p></div>
           </div>
 
-          <div class="card pending">
-            <h2>Today's tasks</h2>
-            <p class="phase-note">The task store arrives in phase 3. Nothing is shown here
-              rather than something invented.</p>
+          <div class="card">
+            <h2>Needs attention</h2>
+            <div id="dash-tasks"><p class="empty">Nothing outstanding.</p></div>
           </div>
           <div class="card pending">
             <h2>Upcoming deadlines</h2>
-            <p class="phase-note">Assignments and exams, once the school module exists (phase 3).</p>
+            <p class="phase-note">Assignments and exams, once the school module exists (phase 4).
+              Task deadlines are already on the Tasks page.</p>
           </div>
           <div class="card pending">
             <h2>School overview</h2>
             <p class="phase-note">Subjects you configure yourself, with notes, grades and
-              study progress (phase 3).</p>
+              study progress (phase 4).</p>
           </div>
           <div class="card pending">
             <h2>Recent projects</h2>
@@ -289,6 +290,55 @@
             <div class="error-text" id="erase-error"></div>
             <button class="btn danger" id="erase-button">Delete</button>
           </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- Tasks -->
+    <section class="view" data-view="tasks">
+      <div class="view-head">
+        <h1>Tasks</h1><span class="sub" id="tasks-sub"></span>
+        <div class="spacer"></div>
+        <button class="btn" id="task-add-toggle">+ Add a task</button>
+      </div>
+      <div class="scroll">
+        <div class="panel-form" id="task-form" hidden>
+          <label class="field"><span>What needs doing?</span>
+            <input type="text" id="task-title" placeholder="Finish the chemistry past paper">
+          </label>
+          <div class="row">
+            <label class="field"><span>Due</span><input type="date" id="task-due"></label>
+            <label class="field"><span>Time (optional)</span><input type="time" id="task-time"></label>
+            <label class="field"><span>Priority</span>
+              <select id="task-priority">
+                <option value="1">1 &ndash; someday</option>
+                <option value="2" selected>2 &ndash; normal</option>
+                <option value="3">3 &ndash; high</option>
+                <option value="4">4 &ndash; urgent</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label class="field"><span>Subject</span><input type="text" id="task-subject" placeholder="chemistry"></label>
+            <label class="field"><span>Project</span><input type="text" id="task-project" placeholder="coursework"></label>
+          </div>
+          <label class="field"><span>Notes (optional)</span><textarea id="task-notes" rows="2"></textarea></label>
+          <div class="error-text" id="task-error"></div>
+          <button class="btn primary" id="task-save">Add task</button>
+        </div>
+
+        <div class="toolbar">
+          <input type="search" id="task-search" placeholder="Search tasks...">
+          <select id="task-filter"><option value="">All subjects</option></select>
+          <label class="check"><input type="checkbox" id="task-show-done"> Show finished</label>
+        </div>
+
+        <div id="task-groups"></div>
+
+        <div class="card" id="task-done-card" hidden>
+          <p class="note" id="task-done-count"></p>
+          <button class="btn danger" id="task-clear-done">Clear finished tasks</button>
         </div>
       </div>
     </section>

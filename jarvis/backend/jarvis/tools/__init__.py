@@ -15,6 +15,12 @@ from jarvis.tools.memory_tools import (
     SearchMemoryTool,
     UpdateMemoryTool,
 )
+from jarvis.tools.task_tools import (
+    CompleteTaskTool,
+    CreateTaskTool,
+    ListTasksTool,
+    UpdateTaskTool,
+)
 
 
 def default_registry() -> ToolRegistry:
@@ -32,15 +38,24 @@ def default_registry() -> ToolRegistry:
     registry.register(SearchFilesTool())
     registry.register(ListDocumentsTool())
 
-    # Phase 3: create_task, update_task, complete_task, list_tasks,
-    #          create_project, update_project, get_calendar, add_calendar_event.
+    # Phase 4: tasks.
+    registry.register(CreateTaskTool())
+    registry.register(ListTasksTool())
+    registry.register(CompleteTaskTool())
+    registry.register(UpdateTaskTool())
+
+    # Still to come: create_project, update_project, get_calendar,
+    # add_calendar_event - each arrives with the table it acts on.
     return registry
 
 
 __all__ = [
+    "CompleteTaskTool",
+    "CreateTaskTool",
     "DeleteMemoryTool",
     "ListDocumentsTool",
     "ListMemoriesTool",
+    "ListTasksTool",
     "SaveMemoryTool",
     "SearchConversationsTool",
     "SearchFilesTool",
@@ -50,5 +65,6 @@ __all__ = [
     "ToolRegistry",
     "ToolResult",
     "UpdateMemoryTool",
+    "UpdateTaskTool",
     "default_registry",
 ]

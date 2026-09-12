@@ -14,12 +14,12 @@ and the only thing that ever leaves the machine is the context assembled for a
 single question - which you can read back afterwards, verbatim, on the settings
 page.
 
-**Phases 1, 2 and 3 are built and working.** Login, streaming chat,
-conversation history and tool calling; persistent memory, a document index,
-local retrieval and the context manager that budgets what gets sent; and a
-versioned persona, voice, and an improvement loop that measures itself without
-being allowed to change itself. Tasks, calendar, school and projects are still
-to come. The sections that are not built say so in the sidebar rather than
+**Phases 1 to 4 are built and working.** Login, streaming chat, conversation
+history and tool calling; persistent memory, a document index, local retrieval
+and the context manager that budgets what gets sent; a versioned persona, voice,
+and an improvement loop that measures itself without being allowed to change
+itself; and tasks, with deadlines the assistant can read and write. Calendar,
+school and projects are still to come. The sections that are not built say so in the sidebar rather than
 showing invented rows.
 
 ## Running it
@@ -63,6 +63,43 @@ Upgrading an existing installation needs no migration step: new tables are
 created on the next start and existing ones are unchanged. On the first start
 after upgrading, the persona in `config/system_prompt.md` is copied into the
 database as version 1.
+
+## Tasks
+
+A task is a title, a deadline, a priority, and optionally a subject or a
+project. The Tasks page groups them the way a person reads a day - overdue,
+today, the next seven days, then the ones with no date - and the dashboard shows
+only what needs attention, because that is the question the front page exists to
+answer.
+
+The part that makes it an assistant rather than a to-do list is that JARVIS can
+work the list itself. "I've got a chemistry paper due Friday" creates the task;
+"what should I start with?" reads it back in deadline order; "done the lab
+report" ticks it off. Four tools do this - `create_task`, `list_tasks`,
+`complete_task`, `update_task` - and every one goes through the same boundary as
+everything else: the model requests, the local code performs, against a user id
+the model never sees.
+
+**On dates, because this is where a task list quietly goes wrong.** Every other
+timestamp in the schema is UTC, because every other timestamp records when
+something happened. A deadline is not that. "The chemistry paper is due Friday"
+is a fact about a square on a calendar, and storing it as an instant means it
+can land on Thursday for anyone whose offset works out that way. So `due_on` is
+a plain date and `due_time` is an optional wall-clock string, and no conversion
+can move a deadline a day.
+
+Relative dates are resolved before they reach storage. The model is told the
+current date, so "Friday" becomes a real date in the tool call; the storage layer
+accepts `YYYY-MM-DD` and refuses everything else. A date parser on this side
+would have to guess which Friday, and a wrong guess is silent - which is why
+`create_task` returns an error rather than a best effort when it is handed the
+word "friday".
+
+Retrieval treats tasks differently from everything else, on purpose. Memories and
+documents answer "what of this is relevant?", which is a search problem. Tasks
+answer "what is due?", which is a calendar problem: a question about time gets
+the next few deadlines in date order, and a task does not become less due because
+the question happened not to contain its words.
 
 ## How memory works
 
@@ -263,7 +300,7 @@ jarvis/
     app.py                 the FastAPI application
     cli.py                 serve, create-user, where, reset
     config.py              settings from the environment; where "local" is
-    db.py  models.py       SQLite, and the fourteen tables
+    db.py  models.py       SQLite, and the fifteen tables
     security.py            scrypt passwords, hashed session tokens
     context_manager.py     *the border* - assembles what leaves the machine
     context_sources.py     what it is allowed to consult
@@ -275,7 +312,7 @@ jarvis/
     tools/                 local functions the model may ask for
     voice/                 speech, as protocols - no vendor, no paid dependency
     learning/              telemetry, metrics, graders, evals, prompt versions
-    services/              memory, documents, conversations, auth, one chat turn
+    services/              memory, documents, tasks, conversations, auth, one turn
     api/                   HTTP; translation only
   frontend/                one HTML page, one stylesheet, one script
   config/system_prompt.md  the persona; a seed, copied into the database once
@@ -318,9 +355,10 @@ degrades: optional features are dropped one at a time if your account or SDK
 rejects them, so a missing beta costs a feature rather than the assistant.
 
 **`tools/` is how JARVIS acts.** A tool gets a `ToolContext` with the user id and
-session and can only touch that user's rows. Eight are registered:
+session and can only touch that user's rows. Twelve are registered:
 `search_conversations`, `save_memory`, `search_memory`, `update_memory`,
-`delete_memory`, `list_memories`, `search_files`, `list_documents`.
+`delete_memory`, `list_memories`, `search_files`, `list_documents`,
+`create_task`, `list_tasks`, `complete_task`, `update_task`.
 
 **`services/chat.py` is one turn**, as a generator of plain dictionaries. The
 router turns them into server-sent events; a voice interface would turn the same
@@ -340,7 +378,7 @@ way: `services/chat.py` writes a row and moves on, and nothing under
 
 ## Database
 
-Fourteen tables, all in `data/jarvis.db`.
+Fifteen tables, all in `data/jarvis.db`.
 
 | Table | What it holds |
 |---|---|
@@ -358,6 +396,7 @@ Fourteen tables, all in `data/jarvis.db`.
 | `eval_cases` | A question, the fixture context to answer it from, and the checks that must hold. |
 | `eval_runs` | One pass of the suite: which version, which baseline, passed, failed, regressions. |
 | `eval_results` | One case within a run, with every failure it produced rather than the first. |
+| `tasks` | `title`, `notes`, `status`, `priority` 1-4, `due_on` (a date, not an instant), `due_time`, `subject`, `project`, `tags`, `source`, timestamps. |
 
 Memory categories: `personal`, `school`, `subjects`, `preferences`, `goals`,
 `projects`, `people`, `routines`, `important_facts`, `instructions`.
@@ -388,6 +427,12 @@ state-changing call needs an `X-Jarvis-Client` header.
 | GET | `/api/notes/{id}/text` | The note's text, for editing |
 | GET | `/api/context/recent` | **What was actually sent to the cloud** |
 | POST | `/api/memory/erase` | Delete, by scope |
+| GET/POST | `/api/tasks` | List what is open, add one |
+| GET | `/api/tasks/agenda` | Overdue, today, this week, undated - grouped once |
+| GET | `/api/tasks/search?q=` | Find one by title, notes, subject or project |
+| PUT/DELETE | `/api/tasks/{id}` | Change it, remove it |
+| POST | `/api/tasks/{id}/complete` `/reopen` | Tick it off, put it back |
+| POST | `/api/tasks/clear-completed` | Throw away what is finished |
 | GET | `/api/voice/profile` | Which backends do speech here, and where they run |
 | POST | `/api/voice/speak` | Text in, audio back. Only for non-browser backends |
 | POST | `/api/voice/transcribe` | Audio in, text back. Only for non-browser backends |
@@ -455,7 +500,7 @@ mypy -p jarvis && mypy tests
 pytest -q
 ```
 
-229 tests, no API key and no network: a temporary database and a scripted model.
+259 tests, no API key and no network: a temporary database and a scripted model.
 The Gemini backend is covered with `urlopen` replaced by a recorder, so the suite
 runs with no key and no quota and a change to the request shape fails an
 assertion rather than arriving as a bill.
@@ -463,7 +508,12 @@ They cover the login and lock paths, conversation scoping, a full chat turn
 including the tool round-trip, memory save/search/update/delete and relevance,
 document indexing, chunking, PDF extraction and passage search, conversation
 search, context construction and its budgets, intent detection, the ranker, the
-embedding seam, and the privacy filtering above.
+embedding seam, task deadlines and grouping, and the privacy filtering above.
+
+The task tests are mostly about dates, because that is where a task list goes
+wrong quietly: a deadline that lands a day early is worse than no deadline. None
+of them read the clock - "today" is always passed in - so none can break by being
+run at a different time of year, or pass only on the day they were written.
 
 The ones worth knowing about are the safety tests around the improvement loop,
 because they assert absences rather than features: that a proposal changes
@@ -479,5 +529,6 @@ instructions.
 | 1 | Local web app, login, chat, streaming, SQLite, conversation history, tool architecture | **Done** |
 | 2 | Persistent memory, notes, documents, local retrieval, RAG, context manager | **Done** |
 | 3 | Persona and versioning, voice, the improvement loop, the command centre | **Done** |
-| 4 | Tasks, calendar, school, projects | Planned |
-| 5 | Automation, notifications, a local model as fallback | Planned |
+| 4 | Tasks, with deadlines the assistant can read and write | **Done** |
+| 5 | Calendar, school, projects | Planned |
+| 6 | Automation, notifications, a local model as fallback | Planned |

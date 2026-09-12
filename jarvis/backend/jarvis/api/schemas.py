@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -118,6 +118,89 @@ class AISettingsUpdate(BaseModel):
     voice_name: str | None = Field(default=None, max_length=32)
 
 
+# --- tasks -------------------------------------------------------------------
+
+
+class TaskIn(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    notes: str = ""
+    status: str | None = None
+    priority: int | None = Field(default=None, ge=1, le=4)
+    # ISO date, already resolved. The browser knows what day it is locally, so
+    # relative dates are turned into real ones before they get here.
+    due_on: str | None = None
+    due_time: str | None = None
+    subject: str = ""
+    project: str = ""
+    tags: list[str] = Field(default_factory=list)
+
+
+class TaskUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    notes: str | None = None
+    status: str | None = None
+    priority: int | None = Field(default=None, ge=1, le=4)
+    due_on: str | None = None
+    due_time: str | None = None
+    # Distinct from `due_on: None`, which means "leave it alone".
+    clear_due: bool = False
+    subject: str | None = None
+    project: str | None = None
+    tags: list[str] | None = None
+
+
+class TaskOut(BaseModel):
+    id: int
+    title: str
+    notes: str
+    status: str
+    priority: int
+    priority_label: str
+    due_on: str | None = None
+    due_time: str = ""
+    overdue: bool = False
+    subject: str = ""
+    project: str = ""
+    tags: list[str] = Field(default_factory=list)
+    source: str = "user"
+    created_at: datetime
+    completed_at: datetime | None = None
+
+    @classmethod
+    def of(cls, task: object, today: date) -> TaskOut:
+        from jarvis.models import PRIORITY_LABELS
+
+        due_on = task.due_on  # type: ignore[attr-defined]
+        return cls(
+            id=task.id,  # type: ignore[attr-defined]
+            title=task.title,  # type: ignore[attr-defined]
+            notes=task.notes,  # type: ignore[attr-defined]
+            status=task.status,  # type: ignore[attr-defined]
+            priority=task.priority,  # type: ignore[attr-defined]
+            priority_label=PRIORITY_LABELS.get(task.priority, "normal"),  # type: ignore[attr-defined]
+            due_on=due_on.isoformat() if due_on else None,
+            due_time=task.due_time,  # type: ignore[attr-defined]
+            overdue=task.overdue(today),  # type: ignore[attr-defined]
+            subject=task.subject,  # type: ignore[attr-defined]
+            project=task.project,  # type: ignore[attr-defined]
+            tags=task.tag_list,  # type: ignore[attr-defined]
+            source=task.source,  # type: ignore[attr-defined]
+            created_at=task.created_at,  # type: ignore[attr-defined]
+            completed_at=task.completed_at,  # type: ignore[attr-defined]
+        )
+
+
+class AgendaOut(BaseModel):
+    """The next few days, grouped once on the server so every surface agrees."""
+
+    today: str
+    overdue: list[TaskOut] = Field(default_factory=list)
+    due_today: list[TaskOut] = Field(default_factory=list)
+    due_soon: list[TaskOut] = Field(default_factory=list)
+    undated: list[TaskOut] = Field(default_factory=list)
+    subjects: list[str] = Field(default_factory=list)
+
+
 class EraseRequest(BaseModel):
     # Typed out in full by the user. Deleting everything should take a moment's
     # deliberate effort.
@@ -136,7 +219,13 @@ class StatusOut(BaseModel):
     model: str
     data_dir: str
     tools: list[str]
+    tasks_open: int = 0
+    tasks_overdue: int = 0
+    tasks_due_today: int = 0
     recent_conversations: list[ConversationOut] = Field(default_factory=list)
+    # The few that actually need attention today, so the dashboard does not have
+    # to make a second request to show the one thing a person opens it for.
+    attention: list[TaskOut] = Field(default_factory=list)
 
 
 # --- phase 2: memory --------------------------------------------------------

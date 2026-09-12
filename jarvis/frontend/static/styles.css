@@ -560,6 +560,108 @@ main { overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
 .toolbar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
 .toolbar input[type="search"] { flex: 1; min-width: 180px; }
 .toolbar select { width: auto; min-width: 150px; }
+.toolbar .check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+.toolbar .check input { accent-color: var(--signal); }
+
+/* --- tasks ---------------------------------------------------------------- */
+
+/* A group heading carries the state, so "overdue" is legible before you have
+   read a single title. Only the overdue one takes the alert colour - if every
+   group were coloured, none of them would mean anything. */
+.task-group { margin-bottom: 18px; }
+.task-group > h2 {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.task-group > h2 .count { color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.task-group.late > h2 { color: var(--alert); }
+
+/* A task is a row, not a card: they are read as a list, and a border around
+   each one turns a list into a pile. */
+.task {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.task:last-child { border-bottom: none; }
+.task:hover { background: var(--panel); }
+.task.done .title { color: var(--ink-faint); text-decoration: line-through; }
+
+.task .tick {
+  flex: none;
+  width: 17px; height: 17px;
+  margin-top: 1px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--inset);
+  cursor: pointer;
+  padding: 0;
+  color: var(--good);
+  font-size: 10px;
+  line-height: 1;
+}
+.task .tick:hover { border-color: var(--good); }
+.task .tick:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+
+.task .body { flex: 1; min-width: 0; }
+.task .title { font-size: 14px; overflow-wrap: anywhere; }
+.task .sub {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+}
+.task .sub .late { color: var(--alert); }
+.task .sub .from { color: var(--signal-deep); }
+.task .notes { font-size: 12.5px; color: var(--ink-dim); margin-top: 4px; }
+
+/* Priority as a stripe rather than a word: it is scanned, not read, and at
+   normal it says nothing at all. */
+.task .pri {
+  flex: none;
+  width: 2px;
+  align-self: stretch;
+  border-radius: 2px;
+  background: transparent;
+}
+.task[data-priority="3"] .pri { background: var(--signal-deep); }
+.task[data-priority="4"] .pri { background: var(--signal); }
+
+.task .drop {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+  opacity: 0;
+  transition: opacity .12s;
+}
+.task:hover .drop, .task .drop:focus-visible { opacity: 1; }
+.task .drop:hover { color: var(--alert); }
+
+.alert-text { color: var(--alert); }
+
 
 .panel-form {
   background: var(--panel);

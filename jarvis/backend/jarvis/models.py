@@ -14,10 +14,11 @@ tables changed, which is what makes that safe.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -290,6 +291,99 @@ class DocumentChunk(Base):
     document: Mapped[Document] = relationship(back_populates="chunks")
 
     __table_args__ = (UniqueConstraint("document_id", "ordinal", name="uq_chunk_ordinal"),)
+
+
+# --- phase 4: tasks ----------------------------------------------------------
+
+TASK_STATUSES: tuple[str, ...] = ("todo", "doing", "done", "dropped")
+
+# 1 is "whenever", 4 is "this is the thing". Four levels rather than five,
+# because a scale with a middle invites everything to land in the middle.
+TASK_PRIORITIES: tuple[int, ...] = (1, 2, 3, 4)
+PRIORITY_LABELS: dict[int, str] = {
+    1: "someday",
+    2: "normal",
+    3: "high",
+    4: "urgent",
+}
+
+
+class Task(Base):
+    """One thing to do, with a deadline that means what it says.
+
+    On dates. Every other timestamp in this schema is UTC, because every other
+    timestamp records when something happened. A deadline is not that: "the
+    chemistry paper is due Friday" is a fact about a square on a calendar, and
+    storing it as an instant means it can land on Thursday for anyone whose
+    offset works out that way. So `due_on` is a plain date and `due_time` is an
+    optional wall-clock string. The database lives on the owner's own machine,
+    so local *is* the correct frame, and no conversion can move a deadline a day.
+
+    Relative dates are resolved before they get here. The model is told the
+    current date in its instructions, so "due Friday" becomes a real date in the
+    tool call rather than something this layer has to parse - which keeps the
+    guessing where it is good and the storage deterministic.
+    """
+
+    __tablename__ = "tasks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="todo", index=True)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
+
+    due_on: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    # "17:00", or empty for a whole-day deadline. Empty is the common case and
+    # is not the same as midnight: a task due Friday is not due at 00:00.
+    due_time: Mapped[str] = mapped_column(String(5), nullable=False, default="")
+
+    # Free text for now. When School and Projects become tables these become
+    # foreign keys, and the column names are chosen so that migration is a
+    # backfill rather than a rename.
+    subject: Mapped[str] = mapped_column(String(64), nullable=False, default="", index=True)
+    project: Mapped[str] = mapped_column(String(64), nullable=False, default="", index=True)
+    tags: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="user")
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=utcnow, onupdate=utcnow, nullable=False
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    user: Mapped[User] = relationship()
+
+    __table_args__ = (
+        CheckConstraint("status in ('todo', 'doing', 'done', 'dropped')", name="ck_tasks_status"),
+        CheckConstraint("priority between 1 and 4", name="ck_tasks_priority"),
+        Index("ix_tasks_user_status_due", "user_id", "status", "due_on"),
+    )
+
+    @property
+    def tag_list(self) -> list[str]:
+        return [tag for tag in self.tags.split(",") if tag]
+
+    @property
+    def open(self) -> bool:
+        return self.status in ("todo", "doing")
+
+    def overdue(self, today: date) -> bool:
+        """Past its date and still open. A done task is never overdue, however
+        late it was finished - that is history, not a thing to nag about."""
+        return self.open and self.due_on is not None and self.due_on < today
+
+    def when(self) -> str:
+        """The deadline as a person would say it, or empty for no deadline."""
+        if self.due_on is None:
+            return ""
+        stamp = self.due_on.isoformat()
+        return f"{stamp} {self.due_time}".strip()
 
 
 # --- phase 3: the persona, and the loop that improves it ---------------------

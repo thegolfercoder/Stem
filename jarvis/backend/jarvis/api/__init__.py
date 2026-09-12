@@ -6,6 +6,7 @@ from jarvis.api.document_routes import router as document_router
 from jarvis.api.learning_routes import router as learning_router
 from jarvis.api.memory_routes import router as memory_router
 from jarvis.api.system_routes import router as system_router
+from jarvis.api.task_routes import router as task_router
 from jarvis.api.voice_routes import router as voice_router
 
 ROUTERS = (
@@ -13,6 +14,7 @@ ROUTERS = (
     conversation_router,
     memory_router,
     document_router,
+    task_router,
     learning_router,
     voice_router,
     system_router,
@@ -26,5 +28,6 @@ __all__ = [
     "learning_router",
     "memory_router",
     "system_router",
+    "task_router",
     "voice_router",
 ]

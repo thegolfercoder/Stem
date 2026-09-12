@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import ValidationError
 from sqlalchemy import delete
@@ -15,6 +17,7 @@ from jarvis.api.schemas import (
     ConversationOut,
     EraseRequest,
     StatusOut,
+    TaskOut,
     UserOut,
 )
 from jarvis.config import Settings
@@ -24,6 +27,7 @@ from jarvis.models import AppSetting, Conversation, User
 from jarvis.services import conversations as convo_service
 from jarvis.services import documents as document_service
 from jarvis.services import memory as memory_service
+from jarvis.services import tasks as task_service
 from jarvis.services.app_settings import AISettings, get_ai_settings, save_ai_settings
 from jarvis.tools import ToolRegistry
 from jarvis.voice.gemini import VOICES
@@ -49,6 +53,9 @@ def status_(
     conversations, messages = convo_service.message_counts(session, user_id=user.id)
     recent = convo_service.list_conversations(session, user_id=user.id, limit=5)
     ai = get_ai_settings(session)
+    today = date.today()
+    task_counts = task_service.counts(session, user_id=user.id, today=today)
+    agenda = task_service.agenda(session, user_id=user.id, today=today)
     return StatusOut(
         version=__version__,
         user=UserOut.model_validate(user),
@@ -60,7 +67,11 @@ def status_(
         model=ai.model,
         data_dir=str(settings.data_dir),
         tools=[t.name for t in registry],
+        tasks_open=task_counts["open"],
+        tasks_overdue=task_counts["overdue"],
+        tasks_due_today=task_counts["due_today"],
         recent_conversations=[ConversationOut.model_validate(c) for c in recent],
+        attention=[TaskOut.of(task, today) for task in agenda.needs_attention[:6]],
     )
 
 
