@@ -166,11 +166,54 @@ The point of `jarvis/voice/` is that this stays swappable. Four jobs are named
 separately because they have different costs and failure modes - transcription,
 speech, wake word, and the conversation loop that uses them - and each is a
 `Protocol` in `voice/base.py` with implementations registered in
-`voice/registry.py`. Swapping in a local Whisper or a cloud voice is one
-`set_speech_to_text(...)` call; the chat service imports neither and does not
-change. Every backend declares where it runs (`browser`, `local`, `cloud`), and
-the settings page shows it, so "does my audio leave this machine?" is answerable
-by looking rather than by reading a vendor's documentation.
+`voice/registry.py`. Swapping in a local Whisper is one `set_speech_to_text(...)`
+call; the chat service imports neither and does not change. Every backend
+declares where it runs (`browser`, `local`, `cloud`), and the settings page shows
+it, so "does my audio leave this machine?" is answerable by looking rather than
+by reading a vendor's documentation.
+
+### Gemini, when the browser is not good enough
+
+The browser's recogniser mangles accents and proper nouns, its voices sound like
+a satnav, and Firefox has none of it at all. So there is a second backend:
+Google's Gemini, reached over two plain JSON endpoints with no SDK added.
+
+It is off unless you choose it, and **hearing and speaking are chosen
+separately**, because they are different trades. Having answers read aloud in a
+good voice sends the *answer text* out. Having your speech transcribed accurately
+sends *your voice* out. Wanting the first is not consenting to the second, so the
+settings page has two dropdowns and not one switch.
+
+Everything that can be said about where the audio goes, is:
+
+- Every Gemini capability reports `location: "cloud"`, and the interface prints
+  the consequence in words - "What you say leaves this machine", "Answers leave
+  this machine to be spoken" - next to the setting that caused it.
+- The **key never reaches the browser.** The page posts text to `/api/voice/speak`
+  and audio to `/api/voice/transcribe`; this server holds the key and makes the
+  call. That is also why there is a server round trip for something the browser
+  could almost do itself.
+- The key is environment-only, exactly like the model's: `JARVIS_GEMINI_API_KEY`
+  in `.env`, never written to the database, never returned by any endpoint. The
+  settings page is told *whether* a key exists and nothing more.
+- It travels in the `x-goog-api-key` header, not the `?key=` query parameter that
+  every example uses, so it does not end up in anything that logs a URL.
+- Choosing Gemini without a key does **not** quietly fall back to the browser. It
+  reports unavailable and says what to set, because a privacy setting that
+  silently does something other than what it says is worse than one that fails.
+- Nothing about the audio is logged, at any level, and no recording is written to
+  disk. The bytes go from the upload straight into the request.
+
+Two shapes in that API are worth knowing, both found by calling it rather than
+reading about it: synthesis returns **raw headerless PCM** that no browser will
+play, so `voice/gemini.py` puts a RIFF header on it; and the transcription model
+answers in `audioTranscription.text` rather than the `text` every other Gemini
+response uses, so the reader accepts either.
+
+Still on the browser side of the line: the wake word. Real always-on detection
+wants a small local model (openWakeWord, Porcupine) and is the next thing here.
+Gemini's realtime `bidi` models would do it, but that is a websocket protocol and
+a different design, so it is named rather than half-built.
 
 ## How it improves, and what it is not allowed to do
 
@@ -346,6 +389,8 @@ state-changing call needs an `X-Jarvis-Client` header.
 | GET | `/api/context/recent` | **What was actually sent to the cloud** |
 | POST | `/api/memory/erase` | Delete, by scope |
 | GET | `/api/voice/profile` | Which backends do speech here, and where they run |
+| POST | `/api/voice/speak` | Text in, audio back. Only for non-browser backends |
+| POST | `/api/voice/transcribe` | Audio in, text back. Only for non-browser backends |
 | GET | `/api/learning/interactions` | Recorded turns |
 | GET | `/api/learning/problems` | Turns that errored, failed a tool, or were rated down |
 | POST | `/api/learning/feedback` | Rate one answer |
@@ -388,9 +433,11 @@ state-changing call needs an `X-Jarvis-Client` header.
   analytics: every byte the page loads comes from this server, so opening JARVIS
   tells no one that you opened it, and it renders identically with the wifi off.
   A test walks the frontend and fails on any fetch that reaches outside.
-- **Voice audio does not reach the server.** The browser transcribes and speaks;
-  only text crosses. Every voice backend declares where it runs, and the
-  settings page shows it.
+- **Voice is local unless you say otherwise.** On the default setting the
+  browser transcribes and speaks and no audio reaches even this server. Choosing
+  Gemini for either direction sends that direction's audio or text to Google -
+  which the settings page states in words, next to the setting, before you pick
+  it. The key for it stays on the server and is never sent to the page.
 - **Turns are recorded locally, for you.** The improvement loop's measurements
   live in the same database, are covered by the same delete, and are never sent
   anywhere - the model is not told how it scored.
@@ -408,7 +455,10 @@ mypy -p jarvis && mypy tests
 pytest -q
 ```
 
-209 tests, no API key and no network: a temporary database and a scripted model.
+229 tests, no API key and no network: a temporary database and a scripted model.
+The Gemini backend is covered with `urlopen` replaced by a recorder, so the suite
+runs with no key and no quota and a change to the request shape fails an
+assertion rather than arriving as a bill.
 They cover the login and lock paths, conversation scoping, a full chat turn
 including the tool round-trip, memory save/search/update/delete and relevance,
 document indexing, chunking, PDF extraction and passage search, conversation

@@ -624,6 +624,28 @@ async function loadSettings() {
   $("#set-log-context").checked = settings.log_context;
   $("#set-assistant-memories").checked = settings.allow_assistant_memories;
   $("#set-voice").checked = settings.voice_enabled;
+
+  const voiceNames = $("#set-voice-name");
+  if (!voiceNames.options.length) {
+    for (const name of settings.voices || []) {
+      voiceNames.append(new Option(name, name));
+    }
+  }
+  $("#set-voice-stt").value = settings.voice_stt;
+  $("#set-voice-tts").value = settings.voice_tts;
+  voiceNames.value = settings.voice_name;
+
+  /* Gemini cannot be chosen without a key, and saying why beats a dropdown that
+   * silently does nothing when picked. */
+  const keyed = Boolean(settings.gemini_key_present);
+  for (const id of ["#set-voice-stt", "#set-voice-tts"]) {
+    const option = $(id).querySelector('option[value="gemini"]');
+    option.disabled = !keyed;
+    option.textContent = option.textContent.replace(/ — no key in \.env$/, "");
+    if (!keyed) option.textContent += " — no key in .env";
+  }
+  voiceNames.disabled = !keyed || settings.voice_tts !== "gemini";
+
   await loadVoice();
   $("#key-status").textContent = settings.api_key_present ? "loaded" : "not set";
   $("#key-source").textContent = settings.api_key_source || "-";
@@ -654,12 +676,31 @@ $("#save-settings").addEventListener("click", async () => {
 // waiting on the Save button belonging to the panel above it. A toggle that
 // appears to do nothing until you find a button somewhere else is a toggle
 // people conclude is broken.
+for (const [id, field] of [
+  ["#set-voice-stt", "voice_stt"],
+  ["#set-voice-tts", "voice_tts"],
+  ["#set-voice-name", "voice_name"],
+]) {
+  $(id).addEventListener("change", async (event) => {
+    try {
+      await api("PUT", "/api/settings", { [field]: event.target.value });
+      silence();
+    } catch (error) {
+      $("#settings-status").textContent = error.message;
+    }
+    /* Either way, redraw from what the server actually stored rather than from
+     * what was clicked - a rejected change must not leave the page claiming it
+     * took effect. */
+    await loadSettings();
+  });
+}
+
 $("#set-voice").addEventListener("change", async (event) => {
   const wanted = event.target.checked;
   try {
     await api("PUT", "/api/settings", { voice_enabled: wanted });
     await loadVoice();
-    if (!wanted && window.speechSynthesis) window.speechSynthesis.cancel();
+    if (!wanted) silence();
   } catch (error) {
     event.target.checked = !wanted;
     $("#settings-status").textContent = error.message;
@@ -1178,9 +1219,33 @@ function ratingRow(interactionId, current) {
   return wrap;
 }
 
-/* --- voice: the browser does the hearing and the speaking ----------------- */
+/* --- voice ----------------------------------------------------------------
+ * Two backends, chosen separately on the settings page, and this file branches
+ * on where each one runs rather than on which one it is. "browser" means the
+ * page does the work and nothing is uploaded; "cloud" means the audio goes to
+ * the server, which holds the key and talks to the provider. The key never
+ * reaches this file - that is the whole reason the server is in the middle.
+ */
 
 const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function sttLocation() {
+  return (state.voice && state.voice.speech_to_text && state.voice.speech_to_text.location) || "none";
+}
+
+function ttsLocation() {
+  return (state.voice && state.voice.text_to_speech && state.voice.text_to_speech.location) || "none";
+}
+
+/* Whether a microphone can be offered at all. The browser path needs the Web
+ * Speech API; the cloud path needs only a recorder, which is why choosing
+ * Gemini is what makes voice work in Firefox. */
+function canListen() {
+  if (!state.voice || !state.voice.enabled) return false;
+  if (sttLocation() === "browser") return Boolean(SpeechRecognitionImpl);
+  if (sttLocation() === "cloud") return Boolean(navigator.mediaDevices && window.MediaRecorder);
+  return false;
+}
 
 async function loadVoice() {
   try {
@@ -1189,9 +1254,7 @@ async function loadVoice() {
     state.voice = null;
     return;
   }
-  const mic = $("#mic");
-  const supported = Boolean(SpeechRecognitionImpl);
-  mic.hidden = !(state.voice.enabled && supported);
+  $("#mic").hidden = !canListen();
 
   const panel = $("#voice-profile");
   if (!panel) return;
@@ -1204,65 +1267,156 @@ async function loadVoice() {
     const cap = state.voice[key];
     const row = el("div", "kv");
     row.append(el("span", "k", label));
-    row.append(el("span", "v", `${cap.name} · ${cap.location}${cap.available ? "" : " · unavailable"}`));
+    const value = el("span", "v", `${cap.name} · ${cap.location}${cap.available ? "" : " · unavailable"}`);
+    if (cap.location === "cloud") value.classList.add("offsite");
+    row.append(value);
     panel.append(row);
   }
-  if (state.voice.enabled && !supported) {
-    panel.append(el("p", "note", "This browser has no speech recognition, so the microphone stays hidden. Chrome or Edge will show it."));
+  /* The notes come from the server so that "audio leaves this machine" is
+   * stated by the same code that decided it does. */
+  for (const note of state.voice.notes || []) panel.append(el("p", "note", note));
+  if (state.voice.enabled && !canListen() && sttLocation() === "browser") {
+    panel.append(el("p", "note", "This browser has no speech recognition, so the microphone stays hidden. Chrome and Edge have it — or switch hearing to Gemini, which works everywhere."));
   }
 }
 
+/* The wake phrase is stripped rather than sent: saying "Jarvis, what's due"
+ * should ask what is due, not ask about the word Jarvis. */
+function stripWake(text) {
+  const phrase = (state.voice && state.voice.wake_phrase) || "";
+  if (!phrase) return text;
+  return text.replace(new RegExp(`^\\s*${phrase}[,\\s]+`, "i"), "");
+}
+
+function listeningStopped() {
+  state.listening = false;
+  $("#mic").classList.remove("listening");
+  if ($("#status").dataset.state === "listening") setStatus("ready", "ready");
+}
+
 function listen() {
-  if (!SpeechRecognitionImpl || state.listening) return;
+  if (state.listening || !canListen()) return;
+  if (sttLocation() === "cloud") return listenViaServer();
+  return listenInPage();
+}
+
+function listenInPage() {
   const recognition = new SpeechRecognitionImpl();
   recognition.lang = navigator.language || "en-GB";
   recognition.interimResults = true;
   recognition.continuous = false;
 
   const input = $("#composer-input");
-  const mic = $("#mic");
   state.listening = true;
-  mic.classList.add("listening");
+  $("#mic").classList.add("listening");
   setStatus("listening", "listening");
 
   recognition.addEventListener("result", (event) => {
     let text = "";
     for (const result of event.results) text += result[0].transcript;
-    input.value = text;
-    /* The wake phrase is stripped rather than sent: saying "Jarvis, what's due"
-     * should ask what is due, not ask about the word Jarvis. */
-    const phrase = (state.voice && state.voice.wake_phrase) || "";
-    if (phrase) {
-      const pattern = new RegExp(`^\\s*${phrase}[,\\s]+`, "i");
-      input.value = input.value.replace(pattern, "");
-    }
+    input.value = stripWake(text);
   });
-  const stop = () => {
-    state.listening = false;
-    mic.classList.remove("listening");
-    if ($("#status").dataset.state === "listening") setStatus("ready", "ready");
-  };
   recognition.addEventListener("end", () => {
-    stop();
+    listeningStopped();
     if ($("#composer-input").value.trim()) send();
   });
   recognition.addEventListener("error", (event) => {
-    stop();
+    listeningStopped();
     $("#composer-hint").textContent =
       event.error === "not-allowed" ? "microphone blocked by the browser" : `microphone: ${event.error}`;
   });
   recognition.start();
 }
 
-function speak(text) {
-  if (!window.speechSynthesis) return;
-  /* Markdown read aloud is unlistenable; strip it to the words. */
-  const plain = text
+/* Record here, transcribe there. Press once to start, again to stop - there is
+ * no silence detection, because guessing wrong truncates someone mid-sentence
+ * and a second press is unambiguous. */
+async function listenViaServer() {
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (_) {
+    $("#composer-hint").textContent = "microphone blocked by the browser";
+    return;
+  }
+
+  const recorder = new MediaRecorder(stream);
+  const chunks = [];
+  state.listening = true;
+  state.recorder = recorder;
+  $("#mic").classList.add("listening");
+  setStatus("listening", "listening · press again to stop");
+
+  recorder.addEventListener("dataavailable", (event) => {
+    if (event.data && event.data.size) chunks.push(event.data);
+  });
+
+  recorder.addEventListener("stop", async () => {
+    /* Release the microphone immediately. A tab that keeps the recording
+     * indicator lit after you have stopped talking is its own kind of alarming. */
+    for (const track of stream.getTracks()) track.stop();
+    state.recorder = null;
+    listeningStopped();
+
+    const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+    if (!blob.size) return;
+    setStatus("retrieving", "transcribing");
+    try {
+      const form = new FormData();
+      form.append("audio", blob, "speech.webm");
+      const response = await fetch("/api/voice/transcribe", {
+        method: "POST",
+        headers: { "X-Jarvis-Client": "jarvis-web" },
+        body: form,
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.detail || "transcription failed");
+      const text = stripWake(payload.text || "").trim();
+      setStatus("ready", "ready");
+      if (!text) {
+        $("#composer-hint").textContent = "nothing was heard";
+        return;
+      }
+      $("#composer-input").value = text;
+      send();
+    } catch (error) {
+      setStatus("ready", "ready");
+      $("#composer-hint").textContent = error.message;
+    }
+  });
+
+  recorder.start();
+}
+
+function stopListening() {
+  if (state.recorder && state.recorder.state === "recording") state.recorder.stop();
+}
+
+/* Markdown read aloud is unlistenable; strip it to the words. */
+function speakable(text) {
+  return text
     .replace(/```[\s\S]*?```/g, " code block ")
     .replace(/[`*_#>]/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/* Stop whatever is talking, whichever backend started it. */
+function silence() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  if (state.player) state.player.pause();
+  stopListening();
+}
+
+function speak(text) {
+  const plain = speakable(text);
   if (!plain) return;
+  if (ttsLocation() === "cloud") return speakViaServer(plain);
+  if (ttsLocation() === "browser") return speakInPage(plain);
+}
+
+function speakInPage(plain) {
+  if (!window.speechSynthesis) return;
   const utterance = new SpeechSynthesisUtterance(plain.slice(0, 1200));
   utterance.rate = 1.05;
   utterance.pitch = 0.95;
@@ -1270,7 +1424,36 @@ function speak(text) {
   window.speechSynthesis.speak(utterance);
 }
 
-$("#mic").addEventListener("click", listen);
+async function speakViaServer(plain) {
+  /* One player, reused, so a fast second answer replaces the first instead of
+   * talking over it. */
+  if (!state.player) state.player = new Audio();
+  state.player.pause();
+  try {
+    const response = await fetch("/api/voice/speak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Jarvis-Client": "jarvis-web" },
+      body: JSON.stringify({ text: plain.slice(0, 5000) }),
+    });
+    if (!response.ok) {
+      let detail = "could not speak that";
+      try {
+        detail = (await response.json()).detail || detail;
+      } catch (_) {}
+      $("#composer-hint").textContent = detail;
+      return;
+    }
+    const blob = await response.blob();
+    if (state.playerUrl) URL.revokeObjectURL(state.playerUrl);
+    state.playerUrl = URL.createObjectURL(blob);
+    state.player.src = state.playerUrl;
+    await state.player.play();
+  } catch (error) {
+    $("#composer-hint").textContent = error.message;
+  }
+}
+
+$("#mic").addEventListener("click", () => (state.listening ? stopListening() : listen()));
 
 /* --- improvement: evidence, versions, the suite --------------------------- */
 

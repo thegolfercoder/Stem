@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import ValidationError
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
@@ -23,8 +24,9 @@ from jarvis.models import AppSetting, Conversation, User
 from jarvis.services import conversations as convo_service
 from jarvis.services import documents as document_service
 from jarvis.services import memory as memory_service
-from jarvis.services.app_settings import get_ai_settings, save_ai_settings
+from jarvis.services.app_settings import AISettings, get_ai_settings, save_ai_settings
 from jarvis.tools import ToolRegistry
+from jarvis.voice.gemini import VOICES
 
 router = APIRouter(prefix="/api", tags=["system"])
 
@@ -62,6 +64,16 @@ def status_(
     )
 
 
+def _first_message(exc: ValidationError) -> str:
+    """Pydantic's first complaint, in words rather than as a JSON tree."""
+    errors = exc.errors()
+    if not errors:
+        return "Those settings are not valid."
+    first = errors[0]
+    field = ".".join(str(p) for p in first.get("loc", ())) or "setting"
+    return f"{field}: {first.get('msg', 'is not valid')}"
+
+
 @router.get("/settings", response_model=AISettingsOut)
 def get_settings_(
     session: Session = Depends(db_session),
@@ -74,6 +86,8 @@ def get_settings_(
         **ai.model_dump(),
         api_key_present=bool(settings.anthropic_api_key),
         api_key_source=_key_source(settings),
+        gemini_key_present=bool(settings.gemini_api_key),
+        voices=list(VOICES),
         tools=[t.name for t in registry],
     )
 
@@ -93,14 +107,21 @@ def update_settings(
     into the database.
     """
     current = get_ai_settings(session)
-    updated = current.model_copy(
-        update={k: v for k, v in body.model_dump(exclude_none=True).items()}
-    )
+    # Re-validated rather than model_copy'd: copy skips validators, so a bad
+    # voice backend or an unknown voice name would be written to the database
+    # and only fail later, somewhere less helpful.
+    merged = {**current.model_dump(), **body.model_dump(exclude_none=True)}
+    try:
+        updated = AISettings.model_validate(merged)
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=_first_message(exc)) from exc
     save_ai_settings(session, updated)
     return AISettingsOut(
         **updated.model_dump(),
         api_key_present=bool(settings.anthropic_api_key),
         api_key_source=_key_source(settings),
+        gemini_key_present=bool(settings.gemini_api_key),
+        voices=list(VOICES),
         tools=[t.name for t in registry],
     )
 

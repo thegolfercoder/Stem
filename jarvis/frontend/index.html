@@ -203,14 +203,37 @@
               <div><label for="set-voice">Enable voice</label>
                 <div class="about">Adds a microphone to the composer and speaks answers back.</div></div>
             </div>
+            <div class="field-row">
+              <label class="field"><span>Hearing</span>
+                <select id="set-voice-stt">
+                  <option value="browser">Browser &mdash; free, stays on this machine</option>
+                  <option value="gemini">Gemini &mdash; more accurate, audio is uploaded</option>
+                  <option value="off">Off</option>
+                </select></label>
+              <label class="field"><span>Speaking</span>
+                <select id="set-voice-tts">
+                  <option value="browser">Browser &mdash; free, stays on this machine</option>
+                  <option value="gemini">Gemini &mdash; better voice, text is uploaded</option>
+                  <option value="off">Off</option>
+                </select></label>
+            </div>
+            <label class="field"><span>Gemini voice</span><select id="set-voice-name"></select></label>
             <div id="voice-profile"></div>
             <p class="note">
-              Speech recognition and playback run in the browser through the Web
-              Speech API. It costs nothing, needs no key, and the audio never
-              reaches the server &mdash; only the transcribed text does. Chrome and
-              Edge support it; Firefox does not, and the microphone stays hidden
-              there. Swapping in a local model or a cloud service later is one
-              registration in <code>jarvis/voice/registry.py</code>.
+              The browser option uses the Web Speech API your browser already
+              has: it costs nothing, needs no key, and the audio never reaches
+              this server &mdash; only the text it transcribed. Chrome and Edge
+              have it; Firefox does not.
+            </p>
+            <p class="note">
+              Gemini is the more accurate ear and the better voice, and it works
+              in every browser &mdash; but the audio is sent to Google, so it is
+              the one part of JARVIS that is not local. The two directions are
+              chosen separately, so you can have answers read aloud in a good
+              voice while your own speech never leaves the machine. It needs
+              <code>JARVIS_GEMINI_API_KEY</code> in <code>.env</code>; the key is
+              read from the environment, stays on the server, and is never sent
+              to this page.
             </p>
           </div>
 

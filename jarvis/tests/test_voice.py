@@ -73,7 +73,9 @@ def test_swapping_a_backend_is_one_call() -> None:
         def capability(self) -> Capability:
             return Capability(name=self.name, location=self.location, available=True)
 
-        def transcribe(self, audio: bytes, *, language: str = "en") -> Transcript:
+        def transcribe(
+            self, audio: bytes, *, language: str = "en", mime_type: str = "audio/wav"
+        ) -> Transcript:
             return Transcript(text="transcribed locally", confidence=0.9)
 
     voice.set_speech_to_text(LocalWhisper())
@@ -93,7 +95,9 @@ def test_a_cloud_backend_is_called_out_in_the_profile() -> None:
         def capability(self) -> Capability:
             return Capability(name=self.name, location=self.location, available=True)
 
-        def transcribe(self, audio: bytes, *, language: str = "en") -> Transcript:
+        def transcribe(
+            self, audio: bytes, *, language: str = "en", mime_type: str = "audio/wav"
+        ) -> Transcript:
             return Transcript(text="")
 
     voice.set_speech_to_text(CloudEars())

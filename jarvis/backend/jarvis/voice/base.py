@@ -79,9 +79,16 @@ class SpeechToText(Protocol):
 
     def capability(self) -> Capability: ...
 
-    def transcribe(self, audio: bytes, *, language: str = "en") -> Transcript:
+    def transcribe(
+        self, audio: bytes, *, language: str = "en", mime_type: str = "audio/wav"
+    ) -> Transcript:
         """One utterance, transcribed. Raises `VoiceUnavailableError` when this
-        backend cannot run here."""
+        backend cannot run here.
+
+        `mime_type` is part of the contract rather than an optional extra: a
+        transcriber told "wav" about a webm recording transcribes nothing, and
+        browsers record webm or ogg depending on which browser it is.
+        """
         ...
 
 
@@ -138,7 +145,9 @@ class NullSpeechToText:
             needs_setup=True,
         )
 
-    def transcribe(self, audio: bytes, *, language: str = "en") -> Transcript:
+    def transcribe(
+        self, audio: bytes, *, language: str = "en", mime_type: str = "audio/wav"
+    ) -> Transcript:
         raise VoiceUnavailableError(
             "No speech-to-text backend is configured. The browser can do this for "
             "free - enable voice in Settings - or register a local model."
@@ -206,7 +215,9 @@ class BrowserSpeechToText:
             detail="The browser transcribes; audio never reaches the server.",
         )
 
-    def transcribe(self, audio: bytes, *, language: str = "en") -> Transcript:
+    def transcribe(
+        self, audio: bytes, *, language: str = "en", mime_type: str = "audio/wav"
+    ) -> Transcript:
         raise VoiceUnavailableError(
             "The browser backend transcribes in the page. Audio is not sent to the "
             "server, so there is nothing here to transcribe."

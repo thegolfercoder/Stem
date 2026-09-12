@@ -19,6 +19,10 @@ from jarvis.models import AppSetting
 
 AI_SETTINGS_KEY = "ai"
 
+# Where each half of voice runs. "off" is distinct from voice_enabled=False:
+# it turns off one direction while leaving the other working.
+VOICE_BACKENDS = ("browser", "gemini", "off")
+
 
 class AISettings(BaseModel):
     """How JARVIS talks to the cloud model."""
@@ -45,6 +49,33 @@ class AISettings(BaseModel):
     # Whether the interface offers a microphone. Off by default: voice is a
     # thing you turn on deliberately, not a thing that appears.
     voice_enabled: bool = False
+    # Which backend does the hearing and which does the speaking, chosen
+    # separately because they are separate decisions: sending a recording out to
+    # be transcribed accurately is a different trade from having an answer read
+    # back in a better voice, and someone may want one and not the other.
+    # "browser" keeps the audio in the page; "gemini" sends it to Google.
+    voice_stt: str = "browser"
+    voice_tts: str = "browser"
+    # Which of Gemini's prebuilt voices, when Gemini is doing the speaking.
+    voice_name: str = "Kore"
+
+    @field_validator("voice_stt", "voice_tts")
+    @classmethod
+    def _known_backend(cls, value: str) -> str:
+        value = value.strip().lower()
+        if value not in VOICE_BACKENDS:
+            raise ValueError(f"voice backend must be one of {', '.join(VOICE_BACKENDS)}")
+        return value
+
+    @field_validator("voice_name")
+    @classmethod
+    def _known_voice(cls, value: str) -> str:
+        from jarvis.voice.gemini import VOICES
+
+        value = value.strip()
+        if value not in VOICES:
+            raise ValueError(f"voice must be one of {', '.join(VOICES)}")
+        return value
 
     @field_validator("model")
     @classmethod

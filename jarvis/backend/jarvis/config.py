@@ -47,6 +47,14 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("JARVIS_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY"),
     )
 
+    # Optional, and only for voice. Held to the same rule as the key above: read
+    # from the environment on every request, never written to the database, so
+    # no backup of `data/` can carry it and no page can display it.
+    gemini_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("JARVIS_GEMINI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"),
+    )
+
     @property
     def db_path(self) -> Path:
         return self.data_dir / "jarvis.db"

@@ -59,26 +59,84 @@ def disable_all() -> None:
     set_text_to_speech(NullTextToSpeech())
 
 
-def profile(*, enabled: bool = False) -> VoiceProfile:
-    """What the interface needs to decide whether to show a microphone."""
-    stt = _stt.capability()
-    tts = _tts.capability()
+def resolve_speech_to_text(choice: str, *, api_key: str | None) -> SpeechToText:
+    """The hearing backend named by the settings page.
+
+    Resolution happens per request rather than once at startup, because the
+    choice lives in the database and can change while the server is running.
+    Asking for a backend whose key is missing gets the Null one, which says what
+    is wrong, rather than a silent fall back to the browser - a setting that
+    quietly does something other than what it says is worse than one that fails.
+    """
+    if choice == "gemini":
+        if not api_key:
+            return NullSpeechToText()
+        from jarvis.voice.gemini import GeminiSpeechToText
+
+        return GeminiSpeechToText(api_key=api_key)
+    if choice == "browser":
+        return BrowserSpeechToText()
+    return NullSpeechToText()
+
+
+def resolve_text_to_speech(
+    choice: str, *, api_key: str | None, voice: str = "Kore"
+) -> TextToSpeech:
+    """The speaking backend named by the settings page."""
+    if choice == "gemini":
+        if not api_key:
+            return NullTextToSpeech()
+        from jarvis.voice.gemini import GeminiTextToSpeech
+
+        return GeminiTextToSpeech(api_key=api_key, voice=voice)
+    if choice == "browser":
+        return BrowserTextToSpeech()
+    return NullTextToSpeech()
+
+
+def profile(
+    *,
+    enabled: bool = False,
+    stt: SpeechToText | None = None,
+    tts: TextToSpeech | None = None,
+    key_present: bool | None = None,
+) -> VoiceProfile:
+    """What the interface needs to decide whether to show a microphone.
+
+    Takes the resolved backends when it has them, and falls back to the
+    registered globals so the older callers and the tests keep working.
+    """
+    stt_cap = (stt or _stt).capability()
+    tts_cap = (tts or _tts).capability()
     wake = _wake.capability()
 
     notes: list[str] = []
-    if stt.location == "browser":
+    if stt_cap.location == "browser":
         notes.append(
             "Speech recognition runs in the browser. Chrome and Edge support it; "
             "Firefox does not, and will hide the microphone."
         )
     if not enabled:
         notes.append("Voice is off. Turn it on in Settings.")
-    if stt.location == "cloud" or tts.location == "cloud":
-        notes.append("A cloud voice backend is configured: audio leaves this machine.")
+    # Said plainly, because it is the one thing about this feature a person
+    # would want to have been told. The provider is named from the capability
+    # rather than written in: this module should not have to be edited to stay
+    # truthful when a different cloud backend is registered.
+    if stt_cap.location == "cloud":
+        notes.append(
+            f"What you say leaves this machine: audio is uploaded to {stt_cap.name} "
+            "to be transcribed."
+        )
+    if tts_cap.location == "cloud":
+        notes.append(
+            f"Answers leave this machine to be spoken: the text is sent to {tts_cap.name}."
+        )
+    if key_present is False and "gemini" in (stt_cap.name + tts_cap.name):
+        notes.append("No Gemini API key found. Put JARVIS_GEMINI_API_KEY in .env.")
 
     return VoiceProfile(
-        stt=stt,
-        tts=tts,
+        stt=stt_cap,
+        tts=tts_cap,
         wake=wake,
         enabled=enabled,
         wake_phrase=getattr(_wake, "phrase", "jarvis"),

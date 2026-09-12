@@ -91,9 +91,15 @@ class AISettingsOut(BaseModel):
     log_context: bool
     allow_assistant_memories: bool
     voice_enabled: bool
+    voice_stt: str
+    voice_tts: str
+    voice_name: str
     # Whether a key was found in the environment. The key itself is never sent to
     # the browser - there is no endpoint that returns it.
     api_key_present: bool
+    # Same rule for the voice key: presence only, never the value.
+    gemini_key_present: bool = False
+    voices: list[str] = Field(default_factory=list)
     api_key_source: str | None = None
     tools: list[str] = Field(default_factory=list)
 
@@ -107,6 +113,9 @@ class AISettingsUpdate(BaseModel):
     log_context: bool | None = None
     allow_assistant_memories: bool | None = None
     voice_enabled: bool | None = None
+    voice_stt: str | None = Field(default=None, max_length=16)
+    voice_tts: str | None = Field(default=None, max_length=16)
+    voice_name: str | None = Field(default=None, max_length=32)
 
 
 class EraseRequest(BaseModel):
@@ -245,6 +254,13 @@ class NoteIn(BaseModel):
 
 
 # --- phase 3: the improvement loop ------------------------------------------
+
+
+class SpeakRequest(BaseModel):
+    """Text to be spoken by a backend that is not the browser."""
+
+    text: str = Field(min_length=1, max_length=5000)
+    voice: str = ""
 
 
 class FeedbackIn(BaseModel):

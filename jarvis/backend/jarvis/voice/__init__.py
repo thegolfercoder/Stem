@@ -5,8 +5,9 @@ consequences: transcription, speech, wake word, and the conversation loop they
 feed (which is `jarvis.services.chat`, unchanged and unaware of any of this).
 
 The default backends are the browser's own Web Speech API, which costs nothing
-and keeps audio off the server entirely. Replacing any one of them is a call to
-`registry.set_*` at startup.
+and keeps audio off the server entirely. A cloud backend (Gemini) can be chosen
+per direction on the settings page; `registry.resolve_*` turns that choice into
+an object, and `registry.set_*` replaces a default outright.
 """
 
 from jarvis.voice.base import (
@@ -25,6 +26,8 @@ from jarvis.voice.registry import (
     get_text_to_speech,
     get_wake_word,
     profile,
+    resolve_speech_to_text,
+    resolve_text_to_speech,
     set_speech_to_text,
     set_text_to_speech,
     set_wake_word,
@@ -44,6 +47,8 @@ __all__ = [
     "get_text_to_speech",
     "get_wake_word",
     "profile",
+    "resolve_speech_to_text",
+    "resolve_text_to_speech",
     "set_speech_to_text",
     "set_text_to_speech",
     "set_wake_word",
