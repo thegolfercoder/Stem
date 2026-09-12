@@ -1046,7 +1046,24 @@ window.addEventListener("hashchange", () => {
 });
 
 refreshAuth().catch((error) => {
-  $("#login-error").textContent = error.message;
+  /* The most likely cause of a failure this early is that there is no server
+   * behind the page - someone opened the file directly, or the backend is not
+   * running. "Failed to fetch" tells them nothing, so say the actual thing. */
+  const unreachable = error instanceof TypeError || /fetch|network/i.test(error.message);
+  if (unreachable) {
+    const box = $("#lock-error");
+    box.textContent =
+      "Cannot reach the JARVIS server. This page is only half the application - " +
+      "the other half holds your data, and runs on your machine. Start it with " +
+      "./start.sh and open http://127.0.0.1:8765, rather than opening this file " +
+      "directly.";
+    box.hidden = false;
+    $("#lock-sub").textContent = "no server behind this page";
+    $("#login-form").hidden = true;
+    $("#setup-form").hidden = true;
+  } else {
+    $("#login-error").textContent = error.message;
+  }
 });
 
 /* --- memory ------------------------------------------------------------- */

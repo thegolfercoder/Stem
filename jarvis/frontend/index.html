@@ -17,6 +17,10 @@
     <div class="lock-mark">JARVIS</div>
     <div class="lock-sub" id="lock-sub">local command &middot; this machine only</div>
 
+    <!-- Outside both forms on purpose: the one message that has to survive
+         hiding them is "there is no server behind this page". -->
+    <p class="lock-error" id="lock-error" hidden></p>
+
     <form id="login-form" hidden>
       <label class="field"><span>Username</span>
         <input type="text" id="login-username" autocomplete="username" autocapitalize="none" required>

@@ -733,6 +733,18 @@ input:focus, select:focus, textarea:focus {
   *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
 
+/* The lock screen's own message, for the one failure that happens before
+   there is anything to log in to. */
+.lock-error {
+  color: var(--signal-soft);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+  border-left: 2px solid var(--signal-deep);
+  padding: 8px 0 8px 10px;
+  margin: 4px 0 0;
+}
+
 /* =========================================================================
    The command centre. One surface: the thread is the page, a command bar at
    the bottom is the only way in, drawers slide over it and close with Esc,
