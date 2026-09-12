@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import os
 import sys
 
 from jarvis import __version__
@@ -28,6 +29,15 @@ def _serve(args: argparse.Namespace) -> int:
             "         JARVIS holds to your network. Use 127.0.0.1 unless you mean it.",
             file=sys.stderr,
         )
+    # The application builds its own Settings, which would otherwise report the
+    # configured port rather than the one actually being bound - so `--port 9000`
+    # printed a link to 8765 and sent you to a page that was not there. Writing
+    # the resolved values back into the environment makes the settings true for
+    # everything downstream, not just the banner.
+    os.environ["JARVIS_HOST"] = host
+    os.environ["JARVIS_PORT"] = str(port)
+    get_settings.cache_clear()
+
     uvicorn.run(
         "jarvis.app:app",
         factory=True,
