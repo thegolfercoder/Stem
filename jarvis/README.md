@@ -102,6 +102,57 @@ answer "what is due?", which is a calendar problem: a question about time gets
 the next few deadlines in date order, and a task does not become less due because
 the question happened not to contain its words.
 
+## Hosting it
+
+JARVIS binds to loopback by default, and on loopback the login form can only be
+reached by whoever is already at the keyboard. Hosted, it is reachable by anyone
+who finds the address, and the threat model changes completely. Three things
+carry that weight:
+
+- **Guessing is slow.** Failed logins are counted against both the account and
+  the caller's address, and after a handful the wait doubles to a five-minute
+  ceiling. Counting only the account would let anyone lock you out of your own
+  assistant; counting only the address would let a botnet spread its guesses.
+  A correct password forgives everything counted before it.
+- **The session cookie goes `Secure` over https**, decided from the connection
+  rather than a setting somebody has to remember. Behind a reverse proxy the app
+  itself speaks http, so it reads `x-forwarded-proto` — which makes that header
+  load-bearing, and the supplied Caddy config sets it.
+- **TLS is not optional.** Over plain http your password and every answer cross
+  the network in the clear. `compose.yaml` does not publish the app's port at
+  all; only the proxy can reach it, so there is no way to arrive over http and
+  skip the encryption.
+
+```bash
+cd jarvis
+cp .env.example .env                  # put your key in, if you want the cloud model
+$EDITOR Caddyfile                     # your domain instead of jarvis.example.com
+docker compose up -d
+
+# once, to create the owner account
+docker compose run --rm -e JARVIS_SETUP_PASSWORD='your password' \
+  jarvis jarvis create-user --username "Your Name" --display-name "Your Name"
+```
+
+The password is read from that command's environment rather than passed as an
+argument, because a command line is visible to every other process on the
+machine and lands in the shell's history. It is hashed with scrypt before it
+touches the database; there is no way to read it back, including for you.
+
+A username may contain a space. It is matched with case and extra whitespace
+folded, so a name like "Ada Lovelace" works however carefully it was typed.
+
+**The image holds no secrets.** Your database, documents and key live in a
+volume at `/data`, so the image can be rebuilt, replaced or pushed somewhere by
+accident without carrying anything personal — and there is a test asserting the
+Dockerfile never copies `.env` and never contains a key-shaped string.
+
+Two things to decide for yourself. The database is **not encrypted at rest**, so
+anyone with access to the host can read it — point `JARVIS_DATA_DIR` at an
+encrypted volume if that matters. And a hosted JARVIS is only as private as the
+machine hosting it: on your own hardware nothing changes, on somebody else's the
+"local-first" claim now means "first on their computer".
+
 ## How memory works
 
 A memory is one durable sentence about you - "Sam prefers concise answers", "Sam
@@ -537,7 +588,7 @@ mypy -p jarvis && mypy tests
 pytest -q
 ```
 
-277 tests, no API key and no network: a temporary database and a scripted model.
+294 tests, no API key and no network: a temporary database and a scripted model.
 The Gemini backend is covered with `urlopen` replaced by a recorder, so the suite
 runs with no key and no quota and a change to the request shape fails an
 assertion rather than arriving as a bill.

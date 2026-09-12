@@ -56,10 +56,19 @@ def _create_user(args: argparse.Namespace) -> int:
     create_all()
 
     username = args.username or input("username: ").strip()
-    password = getpass.getpass("password: ")
-    if password != getpass.getpass("repeat password: "):
-        print("The passwords did not match.", file=sys.stderr)
-        return 1
+
+    # A hosted first run has no terminal to type into, so the password may come
+    # from the environment instead. Environment only, never an argument: a
+    # command line is visible to every other process on the machine and lands
+    # in the shell's history, which is precisely how passwords leak.
+    password = os.environ.get("JARVIS_SETUP_PASSWORD", "")
+    if password:
+        print("using JARVIS_SETUP_PASSWORD from the environment")
+    else:
+        password = getpass.getpass("password: ")
+        if password != getpass.getpass("repeat password: "):
+            print("The passwords did not match.", file=sys.stderr)
+            return 1
 
     with session_scope() as session:
         try:

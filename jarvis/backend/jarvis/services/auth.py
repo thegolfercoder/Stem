@@ -32,6 +32,17 @@ class LoginResult:
     expires_at: datetime
 
 
+def normalise_username(username: str) -> str:
+    """How a username is stored and matched.
+
+    Lowercased, and internal runs of whitespace collapsed to one space, so a
+    username with a space in it matches however carefully or carelessly it was
+    typed. Applied on the way in and on the way back, because the two
+    disagreeing is a login that fails for no visible reason.
+    """
+    return " ".join(username.split()).lower()
+
+
 def user_exists(session: Session) -> bool:
     return session.execute(select(User.id).limit(1)).first() is not None
 
@@ -39,7 +50,7 @@ def user_exists(session: Session) -> bool:
 def create_user(session: Session, *, username: str, password: str, display_name: str = "") -> User:
     """Create the owner. Refuses a second one: this is a personal application,
     and a second account on it would be a second person's data on one database."""
-    username = username.strip().lower()
+    username = normalise_username(username)
     if not username:
         raise AuthError("A username is required.")
     if len(password) < MIN_PASSWORD_LENGTH:
@@ -58,7 +69,7 @@ def create_user(session: Session, *, username: str, password: str, display_name:
 
 def login(session: Session, *, username: str, password: str, ttl_hours: int) -> LoginResult:
     user = session.execute(
-        select(User).where(User.username == username.strip().lower())
+        select(User).where(User.username == normalise_username(username))
     ).scalar_one_or_none()
     # The same message either way: which half was wrong is not the user's
     # business to learn from a login form.

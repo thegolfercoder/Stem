@@ -66,7 +66,11 @@ async function api(method, path, body) {
     options.body = JSON.stringify(body);
   }
   const response = await fetch(path, options);
-  if (response.status === 401) {
+  /* A 401 from anywhere else means the session went; a 401 from the login call
+   * means the password was wrong. Treating them the same put "Locked." on the
+   * lock screen in place of the reason, which is the one moment the reason
+   * matters. */
+  if (response.status === 401 && !path.startsWith("/api/auth/login")) {
     showLock();
     throw new Error("Locked.");
   }
