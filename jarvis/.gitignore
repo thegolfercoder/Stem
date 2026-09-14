@@ -1,0 +1,9 @@
+# Everything personal JARVIS holds lives here: the database, uploaded documents,
+# the vector index. None of it belongs in a repository, so the whole tree is
+# ignored rather than named file by file - a rule that has to be updated every
+# time a module adds a directory is a rule that eventually misses one.
+data/
+logs/
+
+# The API key.
+.env

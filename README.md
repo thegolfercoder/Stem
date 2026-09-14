@@ -3,12 +3,14 @@
 [![checks](https://github.com/thegolfercoder/Stem/actions/workflows/checks.yml/badge.svg)](https://github.com/thegolfercoder/Stem/actions/workflows/checks.yml)
 
 Two pieces of work on measuring a golf swing without a launch monitor's price
-tag. They share a set of principles and no code.
+tag, and one on keeping a personal assistant's data on the machine it belongs
+to. They share a set of principles and no code.
 
 | Path | What it is | State |
 |---|---|---|
 | `swingml/` | **Swing analysis from a single phone camera.** Pose estimation, a temporal model over the eight swing events, and the metrics that follow. Runs as a local web app, a command line tool, or one self-contained HTML file with no install. | Working. |
 | `launchmon-py/` | **Radar DSP for a launch monitor.** A 24 GHz CW Doppler front end arriving as USB-C audio, and the signal processing that turns it into ball and club speed. | Working. No hardware yet. |
+| `jarvis/` | **A private, local-first personal assistant.** Local memory and tools on your own machine, intelligence borrowed from a cloud model one request at a time. | Phase 1 working. |
 
 Both suites run on every push - lint, types and tests - and the badge above is
 the only place a test count belongs. Written into prose it goes stale the day

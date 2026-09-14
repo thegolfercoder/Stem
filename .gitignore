@@ -21,3 +21,5 @@ models/
 # The one exception is the real-swing regression fixture, which is checked in on
 # purpose: without it there is nothing here but generated data.
 !swingml/tests/fixtures/*.mov
+
+# JARVIS keeps its own .gitignore for data/, logs/ and .env.

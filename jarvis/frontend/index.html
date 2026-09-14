@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>JARVIS</title>
+<link rel="stylesheet" href="/static/styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='9' fill='none' stroke='%23ff7a1a' stroke-width='2.5'/><circle cx='16' cy='16' r='3' fill='%23ff7a1a'/></svg>">
+</head>
+<body>
+
+<!-- Lock screen. Shown until /api/auth/status says otherwise, and shown again
+     the moment any request comes back 401. -->
+<div id="lock">
+  <div class="lock-card">
+    <div class="lock-mark">JARVIS</div>
+    <div class="lock-sub" id="lock-sub">local command &middot; this machine only</div>
+
+    <!-- Outside both forms on purpose: the one message that has to survive
+         hiding them is "there is no server behind this page". -->
+    <p class="lock-error" id="lock-error" hidden></p>
+
+    <form id="login-form" hidden>
+      <label class="field"><span>Username</span>
+        <input type="text" id="login-username" autocomplete="username" autocapitalize="none" required>
+      </label>
+      <label class="field"><span>Password</span>
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </label>
+      <div class="error-text" id="login-error"></div>
+      <button class="btn primary wide" type="submit">Unlock</button>
+    </form>
+
+    <form id="setup-form" hidden>
+      <label class="field"><span>Choose a username</span>
+        <input type="text" id="setup-username" autocomplete="username" autocapitalize="none" required>
+      </label>
+      <label class="field"><span>Your name (what JARVIS calls you)</span>
+        <input type="text" id="setup-display" autocomplete="name">
+      </label>
+      <label class="field"><span>Password (at least 8 characters)</span>
+        <input type="password" id="setup-password" autocomplete="new-password" minlength="8" required>
+      </label>
+      <div class="error-text" id="setup-error"></div>
+      <button class="btn primary wide" type="submit">Create this JARVIS</button>
+      <p class="note">
+        This account exists only in <code>jarvis/data/jarvis.db</code> on this
+        computer. There is no server to register with and no password to recover
+        &mdash; if you lose it, delete the database and start again.
+      </p>
+    </form>
+  </div>
+</div>
+
+<div id="shell" hidden>
+
+  <!-- The top bar carries the four things worth knowing at a glance: what
+       state it is in, which model answers, whether audio leaves, and who is
+       signed in. Nothing here is navigation - the command bar is. -->
+  <header id="topbar">
+    <div class="brand"><span class="mark">JARVIS</span></div>
+    <div class="status" id="status" data-state="ready">
+      <span class="dot"></span><span class="label" id="status-label">ready</span>
+    </div>
+    <div class="spacer"></div>
+
+    <!-- The brain switch. Left is the model on this machine, right is Claude.
+         It is a switch rather than a menu because it is the one setting that
+         gets changed mid-thought - you reach for the cloud when a question
+         turns out to be hard, and you want that to cost one click, not a trip
+         through a settings page. The end labels are part of the control: the
+         knob alone would tell you a position but not what it means. -->
+    <div class="brainswitch" id="brainswitch">
+      <span class="end" data-end="local">local</span>
+      <button class="switch" id="brain-toggle" type="button" role="switch" aria-checked="false"
+              aria-label="Answer with Claude instead of the model on this machine">
+        <span class="track"><span class="knob"></span></span>
+      </button>
+      <span class="end" data-end="cloud" id="brain-cloud">Claude</span>
+    </div>
+
+    <button class="chip" id="chip-model" type="button" title="Where the intelligence comes from - open Settings" data-open="settings">&mdash;</button>
+    <button class="chip" id="chip-voice" type="button" title="Where audio goes - open Settings" data-open="settings" hidden>voice</button>
+    <button class="chip" id="chip-threads" type="button" title="Past conversations" data-open="threads">threads</button>
+    <button class="chip ghost" id="chip-rail" type="button" title="Show or hide the instruments" aria-pressed="true">rail</button>
+    <div class="who"><strong id="who-name">&mdash;</strong><span id="who-model" hidden></span></div>
+    <button class="btn small" id="lock-button" type="button">Lock</button>
+  </header>
+
+  <div id="stage">
+    <main id="thread">
+      <!-- The briefing stands in for a dashboard when the thread is empty:
+           what is due, what is late, and how to start. It reads as a page. -->
+      <section id="briefing" hidden>
+        <p class="eyebrow" id="briefing-date"></p>
+        <h1 id="briefing-greeting">JARVIS</h1>
+        <div id="briefing-attention"></div>
+        <p class="briefing-note" id="briefing-note"></p>
+        <div class="starters" id="briefing-starters"></div>
+      </section>
+
+      <div class="messages" id="messages"></div>
+
+      <!-- The command bar: talk, or type / for a command. Under it, live, is
+           what would be consulted for the question as it stands - the privacy
+           inspector moved to before the send button. -->
+      <div class="composer">
+        <div class="composer-inner">
+          <div id="preview" class="preview" hidden>
+            <div class="preview-head">
+              <span class="preview-title">would consult</span>
+              <span class="preview-sum" id="preview-sum"></span>
+            </div>
+            <div class="preview-rows" id="preview-rows"></div>
+          </div>
+          <div id="palette" class="palette" hidden role="listbox" aria-label="Commands"></div>
+          <div class="commandbar">
+            <span class="commandbar-glyph" aria-hidden="true">&#8250;</span>
+            <textarea id="composer-input" rows="1"
+              placeholder="Ask JARVIS, or type / for a command"
+              autocomplete="off" spellcheck="true"></textarea>
+            <button class="btn ghost" id="mic" hidden title="Speak. The browser transcribes; audio never reaches the server.">Speak</button>
+            <button class="btn primary" id="send-button" type="button">Send</button>
+          </div>
+          <div class="commandbar-foot">
+            <span class="composer-hint" id="composer-hint"></span>
+            <span class="spacer"></span>
+            <span class="kbd-hint"><kbd>&#8984;K</kbd> focus &nbsp; <kbd>/</kbd> commands &nbsp; <kbd>Esc</kbd> close</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Instruments: readings, not decoration. Each one changes only when the
+         thing it measures does. -->
+    <aside id="rail">
+      <section class="instrument">
+        <h2>Needs attention</h2>
+        <div id="rail-attention"><p class="empty">Nothing outstanding.</p></div>
+      </section>
+      <section class="instrument">
+        <h2>Last answer consulted</h2>
+        <div id="rail-context"><p class="empty">Nothing yet.</p></div>
+      </section>
+      <section class="instrument">
+        <h2>Running on</h2>
+        <div class="kv"><span class="k">model</span><span class="v" id="rail-model">&mdash;</span></div>
+        <div class="kv"><span class="k">where</span><span class="v" id="rail-where">&mdash;</span></div>
+        <div class="kv"><span class="k">audio</span><span class="v" id="rail-audio">off</span></div>
+        <div class="kv"><span class="k">data</span><span class="v" id="rail-data">this machine</span></div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- Drawers slide over the thread and close with Esc. Every panel keeps the
+       ids the loaders already use, so nothing below had to be rewritten. -->
+  <div id="drawer" class="drawer" hidden aria-hidden="true">
+    <div class="drawer-scrim" id="drawer-scrim"></div>
+    <div class="drawer-sheet" role="dialog" aria-labelledby="drawer-title">
+      <div class="drawer-bar">
+        <span class="drawer-kbd">/</span>
+        <h2 id="drawer-title">&mdash;</h2>
+        <span class="spacer"></span>
+        <button class="btn small" id="drawer-close" type="button">Close <kbd>Esc</kbd></button>
+      </div>
+      <div class="drawer-body" id="drawer-body">
+
+    <!-- Threads: past conversations, moved out of a permanent side column. -->
+    <section class="panel" data-panel="threads">
+      <div class="panel-head">
+        <h1>Conversations</h1>
+        <div class="spacer"></div>
+        <button class="btn" id="new-conversation">+ New conversation</button>
+      </div>
+      <div class="scroll">
+        <input type="search" id="thread-search" placeholder="Search conversations...">
+        <div class="thread-list" id="thread-list"></div>
+      </div>
+    </section>
+
+    <section class="panel" data-panel="today">
+      <div class="panel-head">
+        <h1 id="greeting">JARVIS</h1>
+        <span class="sub" id="dash-sub"></span>
+        <div class="spacer"></div>
+        <span class="pill" id="key-pill">checking key</span>
+      </div>
+      <div class="scroll">
+        <div class="grid">
+          <div class="card">
+            <h2>This machine</h2>
+            <div class="stat-row">
+              <div class="stat"><div class="value" id="stat-memories">0</div><div class="label">memories</div></div>
+              <div class="stat"><div class="value" id="stat-documents">0</div><div class="label">documents</div></div>
+              <div class="stat"><div class="value" id="stat-conversations">0</div><div class="label">conversations</div></div>
+              <div class="stat"><div class="value" id="stat-messages">0</div><div class="label">messages</div></div>
+              <div class="stat"><div class="value" id="stat-tasks">0</div><div class="label">open tasks</div></div>
+              <div class="stat"><div class="value" id="stat-tools">0</div><div class="label">tools</div></div>
+            </div>
+            <div class="kv" style="margin-top:12px"><span class="k">data</span><span class="v" id="stat-data-dir">&mdash;</span></div>
+          </div>
+
+          <div class="card">
+            <h2>Quick commands</h2>
+            <div id="quick-commands"></div>
+          </div>
+
+          <div class="card">
+            <h2>Recent conversations</h2>
+            <div id="recent-conversations"><p class="empty">Nothing yet.</p></div>
+          </div>
+
+          <div class="card">
+            <h2>Needs attention</h2>
+            <div id="dash-tasks"><p class="empty">Nothing outstanding.</p></div>
+          </div>
+          <div class="card pending">
+            <h2>Upcoming deadlines</h2>
+            <p class="phase-note">Assignments and exams, once the school module exists (phase 4).
+              Task deadlines are already on the Tasks page.</p>
+          </div>
+          <div class="card pending">
+            <h2>School overview</h2>
+            <p class="phase-note">Subjects you configure yourself, with notes, grades and
+              study progress (phase 4).</p>
+          </div>
+          <div class="card pending">
+            <h2>Recent projects</h2>
+            <p class="phase-note">Projects with goals, files and a timeline (phase 3).</p>
+          </div>
+          <div class="card">
+            <h2>Recent notes and documents</h2>
+            <div id="recent-documents"><p class="empty">Nothing indexed yet.</p></div>
+          </div>
+
+          <div class="card">
+            <h2>Most used memories</h2>
+            <div id="top-memories"><p class="empty">Nothing stored yet.</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chat -->
+
+    <section class="panel" data-panel="settings">
+      <div class="panel-head"><h1>Settings</h1><span class="sub">Model, key, and what JARVIS remembers</span></div>
+      <div class="scroll">
+        <div class="settings-grid">
+          <div class="card">
+            <h2>Cloud model</h2>
+            <label class="field"><span>Where the intelligence comes from</span>
+              <select id="set-provider">
+                <option value="anthropic">Cloud &mdash; Claude, needs a key</option>
+                <option value="openai">Cloud &mdash; OpenAI, needs a key</option>
+                <option value="ollama">This machine &mdash; Ollama, needs no key</option>
+              </select></label>
+            <div id="provider-note" class="about" style="margin:-4px 0 12px"></div>
+            <label class="field" id="field-cloud-model"><span>Model</span><input type="text" id="set-model" spellcheck="false"></label>
+            <label class="field" id="field-local-model" hidden><span>Local model</span>
+              <select id="set-local-model"></select></label>
+            <label class="field" id="field-openai-model" hidden><span>OpenAI model</span>
+              <input type="text" id="set-openai-model" spellcheck="false" placeholder="gpt-5.5"></label>
+            <label class="field"><span>Maximum tokens per answer</span><input type="number" id="set-max-tokens" min="256" max="64000" step="256"></label>
+            <div class="switch-row">
+              <input type="checkbox" id="set-thinking">
+              <div><label for="set-thinking">Show the model's reasoning</label>
+                <div class="about">Streams a readable summary above the answer. Needs a model that supports it.</div></div>
+            </div>
+            <div class="switch-row">
+              <input type="checkbox" id="set-tools">
+              <div><label for="set-tools">Let JARVIS use local tools</label>
+                <div class="about">The model may ask to run a local function, such as searching past conversations. Tools run on this machine; only their results are sent.</div></div>
+            </div>
+            <div class="switch-row">
+              <input type="checkbox" id="set-fallback">
+              <div><label for="set-fallback">Use server-side refusal fallbacks</label>
+                <div class="about">If the model declines a request, the API retries it on another model in the same call. Turn off if your account rejects the beta.</div></div>
+            </div>
+            <div class="switch-row">
+              <input type="checkbox" id="set-log-context">
+              <div><label for="set-log-context">Log what is sent to the cloud</label>
+                <div class="about">Writes a line per request to <code>logs/jarvis.log</code> naming the context used. Useful while developing; leave it off afterwards, because it puts personal context in a file.</div></div>
+            </div>
+            <div class="switch-row">
+              <input type="checkbox" id="set-assistant-memories">
+              <div><label for="set-assistant-memories">Let JARVIS save memories it judges useful</label>
+                <div class="about">Off means memory is only ever written when you ask for it, or by hand on the Memory page.</div></div>
+            </div>
+            <div class="ok-text" id="settings-status"></div>
+            <button class="btn primary" id="save-settings">Save</button>
+          </div>
+
+          <div class="card">
+            <h2>Voice</h2>
+            <div class="switch-row">
+              <input type="checkbox" id="set-voice">
+              <div><label for="set-voice">Enable voice</label>
+                <div class="about">Adds a microphone to the composer and speaks answers back.</div></div>
+            </div>
+            <div class="field-row">
+              <label class="field"><span>Hearing</span>
+                <select id="set-voice-stt">
+                  <option value="browser">Browser &mdash; free, stays on this machine</option>
+                  <option value="gemini">Gemini &mdash; more accurate, audio is uploaded</option>
+                  <option value="off">Off</option>
+                </select></label>
+              <label class="field"><span>Speaking</span>
+                <select id="set-voice-tts">
+                  <option value="browser">Browser &mdash; free, stays on this machine</option>
+                  <option value="gemini">Gemini &mdash; better voice, text is uploaded</option>
+                  <option value="off">Off</option>
+                </select></label>
+            </div>
+            <label class="field"><span>Gemini voice</span><select id="set-voice-name"></select></label>
+            <div id="voice-profile"></div>
+            <p class="note">
+              The browser option uses the Web Speech API your browser already
+              has: it costs nothing, needs no key, and the audio never reaches
+              this server &mdash; only the text it transcribed. Chrome and Edge
+              have it; Firefox does not.
+            </p>
+            <p class="note">
+              Gemini is the more accurate ear and the better voice, and it works
+              in every browser &mdash; but the audio is sent to Google, so it is
+              the one part of JARVIS that is not local. The two directions are
+              chosen separately, so you can have answers read aloud in a good
+              voice while your own speech never leaves the machine. It needs
+              <code>JARVIS_GEMINI_API_KEY</code> in <code>.env</code>; the key is
+              read from the environment, stays on the server, and is never sent
+              to this page.
+            </p>
+          </div>
+
+          <div class="card">
+            <h2>API key</h2>
+            <div class="kv"><span class="k">status</span><span class="v" id="key-status">&mdash;</span></div>
+            <div class="kv"><span class="k">read from</span><span class="v" id="key-source">&mdash;</span></div>
+            <p class="note">
+              The key is read from the environment and never written to the
+              database, so no copy of <code>data/</code> can carry it. Set it in
+              <code>jarvis/.env</code> as <code>JARVIS_ANTHROPIC_API_KEY</code>
+              and restart JARVIS. There is no endpoint that returns the key to
+              this page, on purpose.
+            </p>
+          </div>
+
+          <div class="card">
+            <h2>What was sent to the cloud</h2>
+            <p class="note" style="margin-top:0">
+              The last few requests, exactly as they left this machine. Held in
+              memory only and cleared when you delete memory - a permanent record
+              of the context would be a second copy of your data.
+            </p>
+            <button class="btn" id="context-refresh">Show recent requests</button>
+            <div id="context-traces"></div>
+          </div>
+
+          <div class="card">
+            <h2>Password</h2>
+            <label class="field"><span>Current password</span><input type="password" id="pw-current" autocomplete="current-password"></label>
+            <label class="field"><span>New password</span><input type="password" id="pw-new" autocomplete="new-password" minlength="8"></label>
+            <div class="error-text" id="pw-error"></div>
+            <button class="btn" id="change-password">Change password</button>
+            <p class="note">Changing the password signs out every browser, including this one.</p>
+          </div>
+
+          <div class="card">
+            <h2>Delete memory</h2>
+            <p class="note" style="margin-top:0">
+              Deletes conversations and messages from the local database. This is
+              a real delete against <code>jarvis.db</code>; nothing is held
+              anywhere else to also delete.
+            </p>
+            <label class="field"><span>Type DELETE MY MEMORY to confirm</span><input type="text" id="erase-confirm" spellcheck="false"></label>
+            <label class="field"><span>Scope</span>
+              <select id="erase-scope">
+                <option value="conversations">Conversations and messages</option>
+                <option value="memories">Memories</option>
+                <option value="documents">Documents and notes (deletes the files)</option>
+                <option value="all">Everything, including settings</option>
+              </select>
+            </label>
+            <div class="error-text" id="erase-error"></div>
+            <button class="btn danger" id="erase-button">Delete</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- Tasks -->
+    <section class="panel" data-panel="tasks">
+      <div class="panel-head">
+        <h1>Tasks</h1><span class="sub" id="tasks-sub"></span>
+        <div class="spacer"></div>
+        <button class="btn" id="task-add-toggle">+ Add a task</button>
+      </div>
+      <div class="scroll">
+        <div class="panel-form" id="task-form" hidden>
+          <label class="field"><span>What needs doing?</span>
+            <input type="text" id="task-title" placeholder="Finish the chemistry past paper">
+          </label>
+          <div class="row">
+            <label class="field"><span>Due</span><input type="date" id="task-due"></label>
+            <label class="field"><span>Time (optional)</span><input type="time" id="task-time"></label>
+            <label class="field"><span>Priority</span>
+              <select id="task-priority">
+                <option value="1">1 &ndash; someday</option>
+                <option value="2" selected>2 &ndash; normal</option>
+                <option value="3">3 &ndash; high</option>
+                <option value="4">4 &ndash; urgent</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label class="field"><span>Subject</span><input type="text" id="task-subject" placeholder="chemistry"></label>
+            <label class="field"><span>Project</span><input type="text" id="task-project" placeholder="coursework"></label>
+          </div>
+          <label class="field"><span>Notes (optional)</span><textarea id="task-notes" rows="2"></textarea></label>
+          <div class="error-text" id="task-error"></div>
+          <button class="btn primary" id="task-save">Add task</button>
+        </div>
+
+        <div class="toolbar">
+          <input type="search" id="task-search" placeholder="Search tasks...">
+          <select id="task-filter"><option value="">All subjects</option></select>
+          <label class="check"><input type="checkbox" id="task-show-done"> Show finished</label>
+        </div>
+
+        <div id="task-groups"></div>
+
+        <div class="card" id="task-done-card" hidden>
+          <p class="note" id="task-done-count"></p>
+          <button class="btn danger" id="task-clear-done">Clear finished tasks</button>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- Memory -->
+    <section class="panel" data-panel="memory">
+      <div class="panel-head">
+        <h1>Memory</h1><span class="sub" id="memory-count"></span>
+        <div class="spacer"></div>
+        <button class="btn" id="memory-add-toggle">+ Add a memory</button>
+      </div>
+      <div class="scroll">
+        <div class="panel-form" id="memory-form" hidden>
+          <label class="field"><span>What should JARVIS remember?</span>
+            <textarea id="memory-content" rows="2" placeholder="I prefer short answers with the conclusion first"></textarea>
+          </label>
+          <div class="row">
+            <label class="field"><span>Category</span><select id="memory-category"></select></label>
+            <label class="field"><span>Importance</span>
+              <select id="memory-importance">
+                <option value="1">1 - trivia</option>
+                <option value="2">2</option>
+                <option value="3" selected>3 - normal</option>
+                <option value="4">4</option>
+                <option value="5">5 - never get this wrong</option>
+              </select>
+            </label>
+            <label class="field"><span>Tags (comma separated)</span><input type="text" id="memory-tags" spellcheck="false"></label>
+          </div>
+          <div class="error-text" id="memory-error"></div>
+          <button class="btn primary" id="memory-save">Save memory</button>
+        </div>
+
+        <div class="toolbar">
+          <input type="search" id="memory-search" placeholder="Search memories...">
+          <select id="memory-filter"><option value="">All categories</option></select>
+        </div>
+        <div id="memory-list"></div>
+      </div>
+    </section>
+
+    <!-- Files / documents -->
+    <section class="panel" data-panel="files">
+      <div class="panel-head">
+        <h1>Files</h1><span class="sub" id="documents-count"></span>
+        <div class="spacer"></div>
+        <label class="btn" for="document-file">+ Add a document</label>
+        <input type="file" id="document-file" hidden accept=".txt,.text,.md,.markdown,.rst,.csv,.log,.pdf">
+      </div>
+      <div class="scroll">
+        <div class="panel-form" id="document-form" hidden>
+          <div class="row">
+            <label class="field"><span>File</span><input type="text" id="document-name" readonly></label>
+            <label class="field"><span>Subject</span><input type="text" id="document-subject" placeholder="chemistry"></label>
+            <label class="field"><span>Tags</span><input type="text" id="document-tags" placeholder="igcse,revision"></label>
+          </div>
+          <div class="error-text" id="document-error"></div>
+          <button class="btn primary" id="document-upload">Index this file</button>
+        </div>
+
+        <div class="toolbar">
+          <input type="search" id="document-search" placeholder="Search inside your documents...">
+        </div>
+        <div id="document-results"></div>
+        <div id="document-list"></div>
+        <p class="note">
+          Files are copied into <code>data/documents/</code> and indexed as
+          passages. Deleting one here deletes JARVIS's copy. Readable types:
+          txt, md, rst, csv, log, pdf.
+        </p>
+      </div>
+    </section>
+
+    <!-- Notes -->
+    <section class="panel" data-panel="notes">
+      <div class="panel-head">
+        <h1>Notes</h1><span class="sub">Written here, indexed like any other document</span>
+        <div class="spacer"></div>
+        <button class="btn" id="note-new">+ New note</button>
+      </div>
+      <div class="scroll">
+        <div class="panel-form" id="note-form" hidden>
+          <div class="row">
+            <label class="field"><span>Title</span><input type="text" id="note-title" placeholder="Rates of reaction"></label>
+            <label class="field"><span>Subject</span><input type="text" id="note-subject" placeholder="chemistry"></label>
+          </div>
+          <label class="field"><span>Note</span><textarea id="note-text" rows="10" placeholder="Write in Markdown..."></textarea></label>
+          <div class="error-text" id="note-error"></div>
+          <button class="btn primary" id="note-save">Save note</button>
+        </div>
+        <div id="note-list"></div>
+      </div>
+    </section>
+
+    <!-- Knowledge: one search across everything held locally -->
+    <section class="panel" data-panel="knowledge">
+      <div class="panel-head">
+        <h1>Knowledge</h1><span class="sub">Search everything JARVIS holds on this machine</span>
+      </div>
+      <div class="scroll">
+        <div class="toolbar">
+          <input type="search" id="knowledge-search" placeholder="Search memories, documents and conversations...">
+        </div>
+        <div id="knowledge-results">
+          <p class="empty">Type to search across memories, documents and past conversations.</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- Improvement: the evidence, and the gate -->
+    <section class="panel" data-panel="improve">
+      <div class="panel-head">
+        <h1>Improvement</h1><span class="sub">What the numbers say, and what to do about it</span>
+        <div class="spacer"></div>
+        <span class="pill" id="active-version">&mdash;</span>
+      </div>
+      <div class="scroll">
+        <div class="grid">
+          <div class="card">
+            <h2>Last 30 days</h2>
+            <div class="readout" id="metrics-readout"></div>
+            <div id="metrics-bars"></div>
+          </div>
+          <div class="card">
+            <h2>Where it is weak</h2>
+            <div id="focus-notes"><p class="empty">Use it for a while and this fills in.</p></div>
+          </div>
+          <div class="card">
+            <h2>Needs a look</h2>
+            <div id="problem-turns"><p class="empty">Nothing failed recently.</p></div>
+          </div>
+        </div>
+
+        <h2 class="group-head">Prompt versions</h2>
+        <p class="note" style="margin-top:0">
+          The persona is a row, not a file. A proposal runs nothing; the suite
+          judges it against what is live; you decide whether it ships. Rolling
+          back is one click, always.
+        </p>
+        <div class="toolbar">
+          <button class="btn small" id="propose-toggle">+ Propose a change</button>
+          <button class="btn small" id="rollback">Roll back</button>
+        </div>
+        <div class="panel-form" id="propose-form" hidden>
+          <label class="field"><span>Name this change</span><input type="text" id="version-name" placeholder="shorter answers on factual questions"></label>
+          <label class="field"><span>Why</span><input type="text" id="version-notes" placeholder="answers were padding out one-line questions"></label>
+          <label class="field"><span>Prompt body (must contain {user})</span><textarea id="version-body" rows="12" spellcheck="false"></textarea></label>
+          <div class="error-text" id="version-error"></div>
+          <div class="edit-row">
+            <button class="btn" id="version-load-active">Load the active one</button>
+            <button class="btn primary" id="version-save">Save as draft</button>
+          </div>
+        </div>
+        <div id="version-list"></div>
+
+        <h2 class="group-head">Regression suite</h2>
+        <p class="note" style="margin-top:0">
+          Each case is a question, the memories to answer it from, and checks that
+          must hold. Deterministic on purpose &mdash; a suite graded by a model has
+          its own drift.
+        </p>
+        <div class="toolbar">
+          <button class="btn small" id="case-toggle">+ Add a case</button>
+        </div>
+        <div class="panel-form" id="case-form" hidden>
+          <div class="row">
+            <label class="field"><span>Name</span><input type="text" id="case-name" placeholder="states the exam date plainly"></label>
+            <label class="field"><span>Question</span><input type="text" id="case-prompt" placeholder="when are my mocks?"></label>
+          </div>
+          <label class="field"><span>Memories it may use (one per line)</span><textarea id="case-fixture" rows="3" placeholder="My mock exams start on the third of October"></textarea></label>
+          <label class="field"><span>Checks (one per line, as kind: value)</span><textarea id="case-checks" rows="4" placeholder="contains: third of October&#10;max_chars: 220&#10;no_error:"></textarea></label>
+          <div class="error-text" id="case-error"></div>
+          <button class="btn primary" id="case-save">Add case</button>
+        </div>
+        <div id="case-list"></div>
+
+        <h2 class="group-head">Recent activity</h2>
+        <div id="activity-list"></div>
+      </div>
+    </section>
+
+    <!-- Views whose data layer has not been built yet. Each says what it will
+         hold and when, instead of showing invented rows. -->
+
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

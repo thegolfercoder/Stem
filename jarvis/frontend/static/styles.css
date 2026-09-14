@@ -1,0 +1,1115 @@
+/* JARVIS - a command centre, not a chat site.
+ *
+ * One dark world, committed to deliberately: charcoal ground, a single warm
+ * signal colour, and restraint everywhere else. The rule throughout is that
+ * light means something. A glow marks live state - listening, thinking, an
+ * alert - and nothing decorative is allowed to glow, because then none of it
+ * reads as information.
+ *
+ * Performance is part of the design. Animations are transform and opacity only,
+ * there is no backdrop-filter on anything that scrolls, and every effect
+ * collapses under prefers-reduced-motion.
+ */
+
+:root {
+  /* Ground: charcoal with a warm bias toward the signal, so the neutrals read
+     as chosen rather than as default grey. */
+  --topbar-h: 46px;
+
+  --void: #0a0908;
+  --ground: #100e0d;
+  --panel: #171413;
+  --raised: #1e1a18;
+  --inset: #0d0b0a;
+  --line: #2a2422;
+  --line-soft: #201c1a;
+
+  --ink: #ece7e3;
+  --ink-dim: #9a908a;
+  --ink-faint: #6b625d;
+
+  /* The signal. Amber is the working colour; the red is reserved for failure,
+     which is why it never appears as decoration. */
+  --signal: #ff7a1a;
+  --signal-soft: #ffa45c;
+  --signal-deep: #7a3a0c;
+  --signal-glow: rgba(255, 122, 26, 0.22);
+  --alert: #e8422e;
+  --alert-glow: rgba(232, 66, 46, 0.2);
+  --good: #4fb286;
+
+  /* Everything here is a font the machine already has. Nothing is fetched from
+     a font service: a local-first assistant that phones Google on every page
+     load is not local-first, and it would render in a fallback face the moment
+     the network is gone. The named faces are tried first for the people who
+     happen to have them installed. */
+  --sans: "Inter Tight", Inter, ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Consolas, "Liberation Mono", monospace;
+
+  --rail: 236px;
+  --radius: 10px;
+
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14.5px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, textarea, select { font: inherit; color: inherit; }
+a { color: var(--signal-soft); }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; border-radius: 4px; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px; border: 3px solid var(--ground); }
+::-webkit-scrollbar-thumb:hover { background: var(--signal-deep); }
+
+/* --- lock screen ---------------------------------------------------------- */
+
+#lock {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(720px 420px at 50% 8%, rgba(255, 122, 26, 0.08), transparent 70%),
+    var(--void);
+}
+
+.lock-card {
+  width: min(390px, calc(100vw - 32px));
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 34px 30px;
+}
+
+.lock-mark {
+  font-family: var(--mono);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  text-align: center;
+  color: var(--signal);
+  text-shadow: 0 0 22px var(--signal-glow);
+}
+.lock-sub {
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  margin: 6px 0 26px;
+}
+
+/* --- forms ---------------------------------------------------------------- */
+
+label.field { display: block; margin-bottom: 14px; }
+label.field > span {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 6px;
+}
+
+input[type="text"], input[type="password"], input[type="number"],
+input[type="search"], select, textarea {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--inset);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--signal-deep);
+  box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.08);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 15px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .14s, background .14s, color .14s;
+}
+.btn:hover:not(:disabled) { border-color: var(--signal-deep); color: var(--signal-soft); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn.primary {
+  background: var(--signal);
+  border-color: var(--signal);
+  color: #170a02;
+  font-weight: 600;
+}
+.btn.primary:hover:not(:disabled) { background: var(--signal-soft); color: #170a02; }
+.btn.danger { border-color: #4a2420; color: var(--alert); }
+.btn.danger:hover:not(:disabled) { background: #1f1210; border-color: var(--alert); color: var(--alert); }
+.btn.wide { width: 100%; }
+.btn.small { padding: 4px 11px; font-size: 12px; }
+
+.note { font-size: 12px; color: var(--ink-faint); margin-top: 13px; }
+.error-text { color: var(--alert); font-size: 13px; min-height: 19px; margin: 4px 0 10px; }
+.ok-text { color: var(--good); font-size: 13px; min-height: 19px; }
+
+/* --- shell ---------------------------------------------------------------- */
+
+
+
+
+/* The status strip. Real state, never decoration: the dot's colour and motion
+   are the only place the interface animates without being asked. */
+.status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 12px 12px;
+  padding: 9px 11px;
+  background: var(--inset);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+}
+.status .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ink-faint);
+  flex: none;
+  transition: background .2s, box-shadow .2s;
+}
+.status .label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+}
+.status[data-state="ready"] .dot { background: var(--good); box-shadow: 0 0 8px rgba(79, 178, 134, .5); }
+.status[data-state="thinking"] .dot { background: var(--signal); animation: pulse 1.25s ease-in-out infinite; }
+.status[data-state="retrieving"] .dot { background: var(--signal-soft); animation: pulse .8s ease-in-out infinite; }
+.status[data-state="listening"] .dot { background: var(--signal); animation: pulse .7s ease-in-out infinite; }
+.status[data-state="error"] .dot { background: var(--alert); box-shadow: 0 0 10px var(--alert-glow); }
+.status[data-state="offline"] .dot { background: var(--ink-faint); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--signal-glow); }
+  50% { opacity: .55; box-shadow: 0 0 0 6px transparent; }
+}
+
+
+
+
+/* A value that names something off this machine. Used for a cloud voice
+   backend, so "audio leaves here" is visible at a glance and not only in the
+   sentence underneath. */
+.kv .v.offsite { color: var(--signal); }
+
+/* --- main ----------------------------------------------------------------- */
+
+
+
+
+.scroll { overflow-y: auto; padding: 20px 24px 40px; }
+
+/* --- readouts ------------------------------------------------------------- */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 13px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 15px 16px;
+}
+.card h2 {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-faint);
+  margin: 0 0 12px;
+  font-weight: 500;
+}
+.card.pending { border-style: dashed; }
+.card .phase-note { font-size: 12px; color: var(--ink-faint); }
+
+.readout { display: flex; gap: 22px; flex-wrap: wrap; }
+.readout .n {
+  font-family: var(--mono);
+  font-size: 23px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.readout .k {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+.readout .alert { color: var(--alert); }
+.readout .good { color: var(--good); }
+
+/* A bar that means something: share of a whole, drawn to scale. */
+.bar { height: 4px; background: var(--inset); border-radius: 2px; overflow: hidden; margin-top: 7px; }
+.bar > i { display: block; height: 100%; background: var(--signal); border-radius: 2px; }
+.bar > i.good { background: var(--good); }
+.bar > i.alert { background: var(--alert); }
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 7px 9px;
+  background: none;
+  border: none;
+  border-radius: 7px;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+}
+.list-row:hover { background: var(--raised); }
+.list-row .when { margin-left: auto; color: var(--ink-faint); font-size: 11px; flex: none; }
+.list-row .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.empty { color: var(--ink-faint); font-size: 13px; }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  text-transform: uppercase;
+}
+.pill.on { color: var(--good); border-color: #1f3d30; }
+.pill.off { color: var(--signal); border-color: var(--signal-deep); }
+
+.chip {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-size: 12.5px;
+  color: var(--ink-dim);
+  cursor: pointer;
+  margin: 0 6px 6px 0;
+  transition: border-color .14s, color .14s;
+}
+.chip:hover { border-color: var(--signal-deep); color: var(--signal-soft); }
+
+/* --- chat ----------------------------------------------------------------- */
+
+
+.thread-list { flex: 1; overflow-y: auto; padding: 0 8px 12px; }
+.thread {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 7px 10px;
+  margin-bottom: 1px;
+  background: none;
+  border: none;
+  border-radius: 7px;
+  color: var(--ink-dim);
+  text-align: left;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.thread:hover, .thread.active { background: var(--raised); color: var(--ink); }
+.thread .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.thread .kill { opacity: 0; background: none; border: none; color: var(--ink-faint); cursor: pointer; padding: 0 2px; flex: none; }
+.thread:hover .kill { opacity: 1; }
+.thread .kill:hover { color: var(--alert); }
+
+
+.msg { max-width: 74ch; margin: 0 auto 20px; }
+.msg .role {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 5px;
+}
+.msg.assistant .role { color: var(--signal); }
+.msg .body { word-wrap: break-word; }
+.msg .body p { margin: 0 0 10px; }
+.msg .body p:last-child { margin-bottom: 0; }
+.msg .body ul, .msg .body ol { margin: 0 0 10px; padding-left: 22px; }
+.msg .body h3 { font-size: 15px; margin: 15px 0 6px; }
+.msg .body code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  background: var(--inset);
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.msg .body pre {
+  background: var(--inset);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 0 0 10px;
+}
+.msg .body pre code { background: none; border: none; padding: 0; }
+.msg.user .body {
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  padding: 11px 14px;
+}
+.msg .meta {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  margin-top: 7px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.msg .failed {
+  border-left: 2px solid var(--alert);
+  padding-left: 10px;
+  color: var(--alert);
+  font-size: 13px;
+  margin-top: 7px;
+}
+
+/* Rating is part of the loop, not an afterthought - it is the only quality
+   signal in the system that is not inferred. */
+.rate { display: inline-flex; gap: 4px; }
+.rate button {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  padding: 1px 6px;
+  font-size: 12px;
+  transition: color .12s, border-color .12s;
+}
+.rate button:hover { color: var(--ink); border-color: var(--line); }
+.rate button.on[data-rating="up"] { color: var(--good); border-color: #1f3d30; }
+.rate button.on[data-rating="down"] { color: var(--alert); border-color: #4a2420; }
+
+/* The context trace: what was consulted, drawn as a line of evidence rather
+   than buried in a tooltip. */
+.trace-line {
+  max-width: 74ch;
+  margin: 0 auto 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  border-left: 2px solid var(--signal-deep);
+  padding: 3px 0 3px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.trace-line .did { color: var(--good); }
+.trace-line .err { color: var(--alert); }
+
+.cursor {
+  display: inline-block;
+  width: 7px;
+  height: 15px;
+  background: var(--signal);
+  vertical-align: text-bottom;
+  box-shadow: 0 0 8px var(--signal-glow);
+  animation: blink 1.05s steps(2, start) infinite;
+}
+@keyframes blink { to { visibility: hidden; } }
+
+
+#mic.listening {
+  border-color: var(--signal);
+  color: var(--signal);
+  box-shadow: 0 0 0 3px var(--signal-glow);
+}
+
+/* --- records (memory, documents, activity) -------------------------------- */
+
+.toolbar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.toolbar input[type="search"] { flex: 1; min-width: 180px; }
+.toolbar select { width: auto; min-width: 150px; }
+.toolbar .check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+.toolbar .check input { accent-color: var(--signal); }
+
+/* --- tasks ---------------------------------------------------------------- */
+
+/* A group heading carries the state, so "overdue" is legible before you have
+   read a single title. Only the overdue one takes the alert colour - if every
+   group were coloured, none of them would mean anything. */
+.task-group { margin-bottom: 18px; }
+.task-group > h2 {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.task-group > h2 .count { color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.task-group.late > h2 { color: var(--alert); }
+
+/* A task is a row, not a card: they are read as a list, and a border around
+   each one turns a list into a pile. */
+.task {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.task:last-child { border-bottom: none; }
+.task:hover { background: var(--panel); }
+.task.done .title { color: var(--ink-faint); text-decoration: line-through; }
+
+.task .tick {
+  flex: none;
+  width: 17px; height: 17px;
+  margin-top: 1px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--inset);
+  cursor: pointer;
+  padding: 0;
+  color: var(--good);
+  font-size: 10px;
+  line-height: 1;
+}
+.task .tick:hover { border-color: var(--good); }
+.task .tick:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+
+.task .body { flex: 1; min-width: 0; }
+.task .title { font-size: 14px; overflow-wrap: anywhere; }
+.task .sub {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+}
+.task .sub .late { color: var(--alert); }
+.task .sub .from { color: var(--signal-deep); }
+.task .notes { font-size: 12.5px; color: var(--ink-dim); margin-top: 4px; }
+
+/* Priority as a stripe rather than a word: it is scanned, not read, and at
+   normal it says nothing at all. */
+.task .pri {
+  flex: none;
+  width: 2px;
+  align-self: stretch;
+  border-radius: 2px;
+  background: transparent;
+}
+.task[data-priority="3"] .pri { background: var(--signal-deep); }
+.task[data-priority="4"] .pri { background: var(--signal); }
+
+.task .drop {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+  opacity: 0;
+  transition: opacity .12s;
+}
+.task:hover .drop, .task .drop:focus-visible { opacity: 1; }
+.task .drop:hover { color: var(--alert); }
+
+.alert-text { color: var(--alert); }
+
+
+.panel-form {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 15px 16px;
+  margin-bottom: 15px;
+}
+.panel-form .row { display: flex; gap: 12px; flex-wrap: wrap; }
+.panel-form .row > .field { flex: 1; min-width: 160px; }
+
+/* The same two-across pairing, outside a panel form. Wraps to one column when
+   there is not room, which at phone width is always. */
+.field-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.field-row > .field { flex: 1; min-width: 200px; }
+
+.record {
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 11px 14px;
+  margin-bottom: 8px;
+}
+.record.hit { border-left: 2px solid var(--signal-deep); }
+.record.bad { border-left: 2px solid var(--alert); }
+.record-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.record-head .grow { flex: 1; }
+.record-body { font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; }
+.record-body.muted { color: var(--ink-dim); font-size: 12.5px; }
+.record-tags { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+.record-actions { margin-top: 9px; display: flex; gap: 14px; flex-wrap: wrap; }
+.record textarea { margin-bottom: 8px; }
+.edit-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.edit-row select { width: auto; }
+
+.tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--signal-soft);
+  text-transform: lowercase;
+}
+.chip-static {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--inset);
+  border: 1px solid var(--line-soft);
+  color: var(--ink-dim);
+}
+.muted { color: var(--ink-faint); font-size: 11.5px; }
+.muted-line { color: var(--ink-faint); font-size: 11px; white-space: pre; font-family: var(--mono); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.imp { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); }
+.imp-4, .imp-5 { color: var(--signal); }
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--ink-dim);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.link-btn:hover { color: var(--signal-soft); }
+.link-btn.danger-text:hover { color: var(--alert); }
+
+.group-head {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-faint);
+  margin: 20px 0 9px;
+  font-weight: 500;
+}
+.group-head:first-child { margin-top: 0; }
+
+.kv { display: flex; justify-content: space-between; gap: 14px; font-size: 13px; padding: 4px 0; }
+.kv .k { color: var(--ink-dim); }
+.kv .v { font-family: var(--mono); font-size: 12px; word-break: break-all; text-align: right; }
+
+.settings-grid { display: grid; gap: 13px; max-width: 660px; }
+.switch-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+.switch-row input { margin-top: 3px; }
+.switch-row .about { font-size: 12px; color: var(--ink-faint); }
+.switch-row label { font-size: 13px; }
+
+.sent, .trace-system {
+  background: var(--inset);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 11px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink-dim);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow: auto;
+}
+.trace { border: 1px solid var(--line-soft); border-radius: 8px; padding: 9px 11px; margin-top: 9px; font-size: 12.5px; }
+.trace summary { cursor: pointer; }
+.trace-meta { color: var(--ink-faint); font-size: 11px; margin: 7px 0; font-family: var(--mono); }
+.trace-snippet { color: var(--ink-dim); font-family: var(--mono); font-size: 11px; }
+
+/* --- version ladder ------------------------------------------------------- */
+
+.version { display: grid; grid-template-columns: auto 1fr auto; gap: 11px; align-items: baseline; }
+.version .num {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--signal);
+}
+.status-tag {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 1px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  color: var(--ink-faint);
+}
+.status-tag.active { color: var(--good); border-color: #1f3d30; }
+.status-tag.candidate { color: var(--signal); border-color: var(--signal-deep); }
+.status-tag.retired { color: var(--ink-faint); }
+
+/* --- not built yet -------------------------------------------------------- */
+
+.placeholder { max-width: 620px; }
+.placeholder .phase {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--signal);
+  border: 1px solid var(--signal-deep);
+  border-radius: 3px;
+  padding: 1px 7px;
+  margin-bottom: 12px;
+}
+.placeholder h2 { margin: 0 0 8px; font-size: 17px; }
+.placeholder p { color: var(--ink-dim); margin: 0 0 14px; }
+.placeholder ul { color: var(--ink-dim); padding-left: 20px; }
+.placeholder li { margin-bottom: 4px; }
+
+/* --- narrow --------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
+/* The lock screen's own message, for the one failure that happens before
+   there is anything to log in to. */
+.lock-error {
+  color: var(--signal-soft);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+  border-left: 2px solid var(--signal-deep);
+  padding: 8px 0 8px 10px;
+  margin: 4px 0 0;
+}
+
+/* =========================================================================
+   The command centre. One surface: the thread is the page, a command bar at
+   the bottom is the only way in, drawers slide over it and close with Esc,
+   and a rail of instruments sits beside it on wide screens. No sidebar of
+   pages, because pages are for sites and this is a console.
+   ========================================================================= */
+
+#shell { display: flex; flex-direction: column; height: 100dvh; min-height: 0; }
+
+/* --- top bar --------------------------------------------------------------- */
+
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  height: var(--topbar-h);
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  flex: none;
+  min-width: 0;
+}
+#topbar .spacer { flex: 1; }
+.brand .mark {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .24em;
+  text-indent: .24em;
+  color: var(--signal);
+}
+.who { font-size: 12.5px; color: var(--ink-dim); white-space: nowrap; }
+.who strong { color: var(--ink); font-weight: 600; }
+
+/* A chip is a reading you can press. Same family as .pill, but interactive. */
+.chip {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  background: var(--inset);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 10px;
+  color: var(--ink-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 30vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip:hover { color: var(--ink); border-color: var(--ink-faint); }
+.chip.on { color: var(--good); border-color: #1f3d30; }
+.chip.warm { color: var(--signal); border-color: var(--signal-deep); }
+.chip.ghost { border-style: dashed; }
+.chip.ghost[aria-pressed="false"] { opacity: .55; }
+.chip:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+
+/* The brain switch: where answers come from, as a physical position rather
+ * than a stored preference you have to go and read. Left (knob at rest) is the
+ * machine you are sitting at; right is Claude. The amber only lights the side
+ * that is actually answering, so a glance settles it. */
+.brainswitch {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.brainswitch .end { color: var(--ink-faint); transition: color .16s ease; }
+.brainswitch[data-where="local"] .end[data-end="local"] { color: var(--good); }
+.brainswitch[data-where="cloud"] .end[data-end="cloud"] { color: var(--signal); }
+/* A cloud end selected with no key is not a working state, and saying so on
+ * the label is better than letting the next question fail to explain it. */
+.brainswitch[data-keyless="true"] .end[data-end="cloud"] { color: var(--alert); }
+
+.switch {
+  border: 0;
+  background: none;
+  padding: 2px;
+  cursor: pointer;
+  line-height: 0;
+}
+.switch .track {
+  display: block;
+  width: 34px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--inset);
+  border: 1px solid var(--line);
+  position: relative;
+  transition: border-color .16s ease, background-color .16s ease;
+}
+.switch .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--good);
+  transition: transform .18s cubic-bezier(.2, .8, .3, 1), background-color .16s ease;
+}
+.switch[aria-checked="true"] .track { border-color: var(--signal-deep); }
+.switch[aria-checked="true"] .knob { transform: translateX(16px); background: var(--signal); }
+.brainswitch[data-keyless="true"] .switch[aria-checked="true"] .knob { background: var(--alert); }
+.switch[disabled] { opacity: .5; cursor: progress; }
+.switch:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; border-radius: 999px; }
+@media (prefers-reduced-motion: reduce) {
+  .switch .knob, .switch .track, .brainswitch .end { transition: none; }
+}
+
+/* --- stage: thread + rail --------------------------------------------------- */
+
+#stage { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 272px; }
+#stage.no-rail { grid-template-columns: 1fr; }
+#stage.no-rail #rail { display: none; }
+
+#thread { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.messages { flex: 1; overflow-y: auto; padding: 22px 28px 12px; min-height: 0; }
+
+/* --- the briefing ----------------------------------------------------------- */
+
+#briefing { max-width: 74ch; margin: 0 auto; padding: 34px 28px 6px; width: 100%; }
+#briefing .eyebrow {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--signal);
+  margin: 0 0 6px;
+}
+#briefing h1 { font-size: 24px; font-weight: 600; margin: 0 0 14px; letter-spacing: -.01em; text-wrap: balance; }
+.briefing-note { color: var(--ink-dim); font-size: 14px; margin: 12px 0 0; }
+.starters { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+#briefing-attention .task { padding: 8px 0; }
+#briefing-attention .late-line {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--alert);
+  margin: 0 0 4px;
+}
+
+/* --- the command bar -------------------------------------------------------- */
+
+.composer { border-top: 1px solid var(--line-soft); padding: 10px 28px 12px; background: var(--ground); flex: none; }
+.composer-inner { max-width: 74ch; margin: 0 auto; position: relative; }
+
+.commandbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  background: var(--inset);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 8px 8px 12px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.commandbar:focus-within { border-color: var(--signal-deep); box-shadow: 0 0 0 3px var(--signal-glow); }
+.commandbar-glyph { font-family: var(--mono); color: var(--signal); font-size: 18px; line-height: 1; padding-bottom: 9px; flex: none; }
+.commandbar textarea {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 8px 0;
+  min-height: 24px;
+  max-height: 200px;
+  resize: none;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.commandbar textarea:focus { outline: none; box-shadow: none; border: none; }
+.commandbar-foot { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 0 4px; }
+.commandbar-foot .spacer { flex: 1; }
+.composer-hint { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); min-width: 0; overflow-wrap: anywhere; }
+.kbd-hint { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); white-space: nowrap; }
+kbd {
+  font-family: var(--mono);
+  font-size: .95em;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0 4px;
+  color: var(--ink-dim);
+}
+.btn.ghost { background: none; }
+
+/* The preview: what would be consulted for the question as it stands. It sits
+   directly above the bar so it reads as part of the act of asking. */
+.preview {
+  border: 1px solid var(--line-soft);
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  background: var(--panel);
+  padding: 8px 12px 9px;
+  margin: 0 6px -2px;
+}
+.preview-head { display: flex; align-items: baseline; gap: 10px; }
+.preview-title {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--signal);
+}
+.preview-sum { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.preview-rows { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.preview-row {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-dim);
+  background: var(--inset);
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  padding: 3px 8px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.preview-row .src { color: var(--signal-deep); margin-right: 6px; }
+.preview.none .preview-sum { color: var(--good); }
+
+/* The palette: commands, filtered as you type after a slash. */
+.palette {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: calc(100% + 8px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 18px 40px rgba(0,0,0,.45);
+  max-height: 46vh;
+  overflow-y: auto;
+  z-index: 20;
+}
+.palette-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--ink-dim);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13.5px;
+}
+.palette-row .cmd { font-family: var(--mono); color: var(--signal); font-size: 12.5px; min-width: 96px; }
+.palette-row .desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette-row .soon { font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+.palette-row[aria-selected="true"], .palette-row:hover { background: var(--raised); color: var(--ink); }
+.palette-empty { padding: 10px 12px; color: var(--ink-faint); font-size: 13px; }
+
+/* --- the rail --------------------------------------------------------------- */
+
+#rail {
+  border-left: 1px solid var(--line-soft);
+  background: var(--panel);
+  overflow-y: auto;
+  padding: 16px 16px 24px;
+  min-width: 0;
+}
+.instrument + .instrument { margin-top: 20px; }
+.instrument h2 {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 8px;
+}
+.instrument .task { padding: 7px 0; }
+.instrument .task .drop { display: none; }
+.instrument .empty { padding: 4px 0; text-align: left; font-size: 12.5px; }
+.instrument .kv { padding: 5px 0; }
+.instrument .kv .v { font-size: 11px; max-width: 60%; text-align: right; overflow-wrap: anywhere; }
+.rail-snip { font-family: var(--mono); font-size: 10.5px; color: var(--ink-dim); padding: 3px 0; border-bottom: 1px solid var(--line-soft); overflow-wrap: anywhere; }
+.rail-snip:last-child { border-bottom: none; }
+.rail-snip .src { color: var(--signal-deep); margin-right: 6px; }
+.rail-sum { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); margin-top: 6px; }
+
+/* --- drawers ---------------------------------------------------------------- */
+
+/* Below the top bar, not over it. A drawer is a panel you consult while the
+ * machine keeps running, so the readings and the brain switch have to stay
+ * live behind it - covering them made the top bar decorative the moment
+ * anything was open. */
+.drawer { position: fixed; inset: var(--topbar-h) 0 0 0; z-index: 30; }
+.drawer[hidden] { display: none; }
+.drawer-scrim { position: absolute; inset: 0; background: rgba(10, 9, 8, .62); }
+.drawer-sheet {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: min(760px, 100%);
+  background: var(--ground);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -24px 0 60px rgba(0,0,0,.5);
+  animation: drawer-in .18s ease-out;
+}
+@keyframes drawer-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.drawer-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  height: 46px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  flex: none;
+}
+.drawer-bar h2 { font-size: 14px; font-weight: 600; margin: 0; }
+.drawer-bar .spacer { flex: 1; }
+.drawer-kbd { font-family: var(--mono); color: var(--signal); font-size: 15px; }
+.drawer-body { flex: 1; min-height: 0; overflow-y: auto; }
+
+.panel { display: none; }
+.panel.active { display: block; }
+.panel .scroll { overflow: visible; padding: 18px 22px 40px; }
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 22px 0;
+  flex-wrap: wrap;
+}
+.panel-head h1 { font-size: 15px; margin: 0; font-weight: 600; }
+.panel-head .sub { color: var(--ink-faint); font-size: 12px; }
+.panel-head .spacer { flex: 1; }
+.panel .thread-list { padding: 10px 0 0; }
+
+/* --- narrow ----------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  #stage { grid-template-columns: 1fr; }
+  #rail { display: none; }
+  #chip-rail { display: none; }
+  .who { display: none; }
+  #chip-threads { display: none; }
+  .messages { padding: 16px 15px 8px; }
+  .composer { padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); }
+  #briefing { padding: 22px 15px 4px; }
+  .kbd-hint { display: none; }
+  .commandbar textarea { font-size: 16px; } /* stops iOS zooming on focus */
+  .drawer-sheet { width: 100%; border-left: none; animation-name: drawer-up; }
+  @keyframes drawer-up { from { transform: translateY(18px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .panel .scroll { padding: 14px 15px 40px; }
+  .panel-head { padding: 14px 15px 0; }
+  .chip { max-width: 44vw; }
+  /* The switch stays - it is the one control you reach for mid-thought - but
+     the words either side go. The knob's position and colour still say which
+     brain is answering, and the chip beside it names the model outright. */
+  .brainswitch .end { display: none; }
+}

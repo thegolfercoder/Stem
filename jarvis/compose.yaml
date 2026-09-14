@@ -1,0 +1,54 @@
+# JARVIS behind a reverse proxy that terminates TLS.
+#
+# The proxy is not optional and not decoration. Hosted over plain http, every
+# password and every answer crosses the network in the clear, and the session
+# cookie cannot carry its `secure` flag - so the app watches
+# `x-forwarded-proto` and only marks the cookie secure when the proxy says the
+# connection really was https.
+#
+#   1. put your key in .env      (never in this file, never in the image)
+#   2. docker compose up -d
+#   3. docker compose run --rm -e JARVIS_SETUP_PASSWORD='...' jarvis jarvis create-user
+#
+# Step 3 is once. The password is read from the environment of that one command
+# rather than passed as an argument, because a command line is visible to every
+# other process on the machine.
+
+services:
+  jarvis:
+    build: .
+    restart: unless-stopped
+    # Not published to the host: only Caddy may reach it, so there is no way to
+    # arrive over plain http and skip the proxy entirely.
+    expose:
+      - "8765"
+    volumes:
+      - jarvis-data:/data
+    env_file:
+      - .env
+    environment:
+      JARVIS_HOST: 0.0.0.0
+      JARVIS_PORT: "8765"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8765/api/auth/status', timeout=4).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - jarvis
+
+volumes:
+  jarvis-data:
+  caddy-data:
+  caddy-config:
