@@ -9,7 +9,9 @@ from tests.conftest import CLIENT_HEADERS
 
 def test_settings_round_trip(signed_in: TestClient) -> None:
     current = signed_in.get("/api/settings").json()
-    assert current["provider"] == "anthropic"
+    # The local model is the default; see tests/test_brain_switch.py for why.
+    # The cloud model name is still carried, ready for the switch to select it.
+    assert current["provider"] == "ollama"
     assert current["model"].startswith("claude-")
 
     updated = signed_in.put(

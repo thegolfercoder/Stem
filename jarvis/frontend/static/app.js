@@ -489,7 +489,57 @@ function renderRail(status) {
   $("#chip-model").title = local
     ? "Answers are generated on this machine"
     : "Answers come from the cloud model — open Settings";
+  renderBrainSwitch(status);
 }
+
+/* --- the brain switch --------------------------------------------------- */
+
+const LOCAL_PROVIDER = "ollama";
+const CLOUD_PROVIDER = "anthropic";
+
+/* Drawn from what the server says is stored, never from what was just clicked,
+ * so a refused or failed change cannot leave the knob sitting on a side that
+ * is not answering. */
+function renderBrainSwitch(status) {
+  const box = $("#brainswitch");
+  const toggle = $("#brain-toggle");
+  if (!box || !toggle) return;
+
+  const cloud = status.provider === CLOUD_PROVIDER;
+  const keyless = cloud && !status.api_key_present;
+  box.dataset.where = status.provider === LOCAL_PROVIDER ? "local" : cloud ? "cloud" : "other";
+  box.dataset.keyless = String(keyless);
+  toggle.setAttribute("aria-checked", String(cloud));
+
+  /* The third provider has no position on a two-ended switch, so it says so
+   * rather than pretending to be one of the two. */
+  const other = status.provider !== LOCAL_PROVIDER && !cloud;
+  $("#brain-cloud").textContent = keyless ? "Claude · no key" : other ? status.provider : "Claude";
+  box.title = other
+    ? `${status.provider} is answering, chosen in Settings. This switch moves between the local model and Claude.`
+    : cloud
+      ? keyless
+        ? "Claude is selected but there is no API key in .env, so nothing will answer. Click to go back to the local model."
+        : "Claude is answering. Click to go back to the model on this machine."
+      : "Answers are generated on this machine. Click to hand the next question to Claude.";
+}
+
+$("#brain-toggle").addEventListener("click", async () => {
+  const toggle = $("#brain-toggle");
+  const wanted = toggle.getAttribute("aria-checked") === "true" ? LOCAL_PROVIDER : CLOUD_PROVIDER;
+  toggle.disabled = true;
+  try {
+    await api("PUT", "/api/settings", { provider: wanted });
+  } catch (error) {
+    setStatus("error", error.message);
+  } finally {
+    toggle.disabled = false;
+  }
+  /* Both, because the switch is drawn from /api/status and the settings drawer
+   * may be open behind it showing the same choice as a dropdown. */
+  await loadDashboard();
+  if (state.view === "settings") await loadSettings();
+});
 
 function renderRailContext(event) {
   const box = $("#rail-context");

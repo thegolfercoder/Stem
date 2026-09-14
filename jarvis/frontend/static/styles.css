@@ -14,6 +14,8 @@
 :root {
   /* Ground: charcoal with a warm bias toward the signal, so the neutrals read
      as chosen rather than as default grey. */
+  --topbar-h: 46px;
+
   --void: #0a0908;
   --ground: #100e0d;
   --panel: #171413;
@@ -761,7 +763,7 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   gap: 8px;
   padding: 0 14px;
-  height: 46px;
+  height: var(--topbar-h);
   background: var(--panel);
   border-bottom: 1px solid var(--line);
   flex: none;
@@ -802,6 +804,63 @@ input:focus, select:focus, textarea:focus {
 .chip.ghost { border-style: dashed; }
 .chip.ghost[aria-pressed="false"] { opacity: .55; }
 .chip:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+
+/* The brain switch: where answers come from, as a physical position rather
+ * than a stored preference you have to go and read. Left (knob at rest) is the
+ * machine you are sitting at; right is Claude. The amber only lights the side
+ * that is actually answering, so a glance settles it. */
+.brainswitch {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.brainswitch .end { color: var(--ink-faint); transition: color .16s ease; }
+.brainswitch[data-where="local"] .end[data-end="local"] { color: var(--good); }
+.brainswitch[data-where="cloud"] .end[data-end="cloud"] { color: var(--signal); }
+/* A cloud end selected with no key is not a working state, and saying so on
+ * the label is better than letting the next question fail to explain it. */
+.brainswitch[data-keyless="true"] .end[data-end="cloud"] { color: var(--alert); }
+
+.switch {
+  border: 0;
+  background: none;
+  padding: 2px;
+  cursor: pointer;
+  line-height: 0;
+}
+.switch .track {
+  display: block;
+  width: 34px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--inset);
+  border: 1px solid var(--line);
+  position: relative;
+  transition: border-color .16s ease, background-color .16s ease;
+}
+.switch .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--good);
+  transition: transform .18s cubic-bezier(.2, .8, .3, 1), background-color .16s ease;
+}
+.switch[aria-checked="true"] .track { border-color: var(--signal-deep); }
+.switch[aria-checked="true"] .knob { transform: translateX(16px); background: var(--signal); }
+.brainswitch[data-keyless="true"] .switch[aria-checked="true"] .knob { background: var(--alert); }
+.switch[disabled] { opacity: .5; cursor: progress; }
+.switch:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; border-radius: 999px; }
+@media (prefers-reduced-motion: reduce) {
+  .switch .knob, .switch .track, .brainswitch .end { transition: none; }
+}
 
 /* --- stage: thread + rail --------------------------------------------------- */
 
@@ -982,7 +1041,11 @@ kbd {
 
 /* --- drawers ---------------------------------------------------------------- */
 
-.drawer { position: fixed; inset: 0; z-index: 30; }
+/* Below the top bar, not over it. A drawer is a panel you consult while the
+ * machine keeps running, so the readings and the brain switch have to stay
+ * live behind it - covering them made the top bar decorative the moment
+ * anything was open. */
+.drawer { position: fixed; inset: var(--topbar-h) 0 0 0; z-index: 30; }
 .drawer[hidden] { display: none; }
 .drawer-scrim { position: absolute; inset: 0; background: rgba(10, 9, 8, .62); }
 .drawer-sheet {
@@ -1045,4 +1108,8 @@ kbd {
   .panel .scroll { padding: 14px 15px 40px; }
   .panel-head { padding: 14px 15px 0; }
   .chip { max-width: 44vw; }
+  /* The switch stays - it is the one control you reach for mid-thought - but
+     the words either side go. The knob's position and colour still say which
+     brain is answering, and the chip beside it names the model outright. */
+  .brainswitch .end { display: none; }
 }

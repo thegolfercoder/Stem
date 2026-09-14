@@ -22,10 +22,15 @@ from jarvis.models import AppSetting
 
 AI_SETTINGS_KEY = "ai"
 
-# Where the intelligence comes from. Two, because the point of the second is
-# that the assistant keeps working when the first is unavailable, unaffordable,
-# or simply not something you want to depend on.
+# Where the intelligence comes from. More than one, because the point of the
+# others is that the assistant keeps working when any of them is unavailable,
+# unaffordable, or simply not something you want to depend on.
 PROVIDERS = ("anthropic", "openai", "ollama")
+
+# The two ends of the switch in the top bar. The third provider is a deliberate
+# trip to the settings page: a switch with three positions is not a switch.
+LOCAL_PROVIDER = "ollama"
+CLOUD_PROVIDER = "anthropic"
 
 # Where each half of voice runs. "off" is distinct from voice_enabled=False:
 # it turns off one direction while leaving the other working.
@@ -33,13 +38,19 @@ VOICE_BACKENDS = ("browser", "gemini", "off")
 
 
 class AISettings(BaseModel):
-    """How JARVIS talks to the cloud model."""
+    """Which model answers, and how."""
 
-    # Which model answers. "anthropic" is the better reasoner; "ollama" is a
-    # model running on this machine, which needs no key and sends nothing
-    # anywhere. Switching is a dropdown, so the trade is made per-need rather
-    # than once at install.
-    provider: str = "anthropic"
+    # Which model answers. "ollama" is a model running on this machine, which
+    # needs no key and sends nothing anywhere; "anthropic" is the better
+    # reasoner, and costs a key and a round trip off the machine.
+    #
+    # The default is the local one, and deliberately. A fresh install has no
+    # key, and defaulting to the cloud makes the very first question fail with
+    # "no API key" - which reads as the app being broken rather than as a
+    # choice nobody has made yet. Starting local means it answers out of the
+    # box, and the switch in the top bar is one click when the harder question
+    # arrives.
+    provider: str = "ollama"
     model: str = DEFAULT_MODEL
     # Used only when provider is "ollama". Kept separate from `model` so that
     # switching back and forth does not lose whichever name you had set.

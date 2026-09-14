@@ -300,16 +300,39 @@ seeing every note, and neither belongs in a default.
 SQLite's FTS5 is available and is the other obvious upgrade path if keyword
 search needs to get faster before it needs to get smarter.
 
-## Three providers, one seam
+## Three providers, one seam, one switch
 
-Settings → *Where the intelligence comes from* picks one of three, without a
-restart:
+The default is the model on your own machine. A fresh install has no API key,
+and defaulting to the cloud would make the very first question fail with "no API
+key" — which reads as a broken program rather than as a setting nobody has
+chosen yet.
+
+Moving off that default is one click. The top bar carries a switch:
+
+```
+local ──●── Claude
+```
+
+It is a switch rather than a menu because of *when* it gets used: the moment you
+want the cloud model is the moment a question turns out to be harder than
+expected — mid-thought, question already typed. A trip through a settings page
+is the wrong cost for that. The end that is answering is the end that lights up,
+and selecting Claude with no key in `.env` says `Claude · no key` in red rather
+than waiting for the next question to fail and explain it.
+
+The switch has two ends and there are three providers; OpenAI is chosen in
+Settings, and the switch says so plainly rather than pretending to be a
+three-position control. The knob is drawn from what the server stored, never
+from the click, so a refused change cannot leave it claiming the wrong brain.
+
+Settings → *Where the intelligence comes from* still picks any of the three,
+without a restart:
 
 | | needs | where the data goes | notes |
 |---|---|---|---|
-| **Claude** | `JARVIS_ANTHROPIC_API_KEY` | Anthropic | the default |
+| **Ollama** | nothing | nowhere — this machine | the default: no key, no bill, weaker at hard reasoning |
+| **Claude** | `JARVIS_ANTHROPIC_API_KEY` | Anthropic | the switch in the top bar |
 | **OpenAI** | `JARVIS_OPENAI_API_KEY` | OpenAI, billed to that account | `gpt-5.5` by default; any chat model works |
-| **Ollama** | nothing | nowhere — this machine | no key, no bill, weaker at hard reasoning |
 
 `ai/base.py` defines `ChatProvider` and the neutral types; each provider maps
 them to one API. The chat service imports none of them, which is why the second
@@ -334,8 +357,9 @@ Everything here has been local since phase 1 - the data, the retrieval, the
 tools, the whole boundary. The intelligence was the exception: it needed an API
 key, an account, a bill, and a company that has to keep existing.
 
-It no longer does. Settings → *Where the intelligence comes from* switches
-between Claude and a model running on your own machine through
+It no longer does, and the local model is now what it reaches for by default.
+The switch in the top bar — or Settings → *Where the intelligence comes from* —
+moves between Claude and a model running on your own machine through
 [Ollama](https://ollama.com):
 
 ```bash
@@ -352,8 +376,9 @@ there is no key to lose.
 meaningfully weaker than the best cloud model: it follows long instructions less
 reliably and calls tools worse. For "what's due this week?" over your own notes
 it is entirely adequate. For hard reasoning it is not. Both are configured at
-once and switching is a dropdown, which is the point - the cloud when you want
-the better answer, your own machine when you would rather be beholden to nobody.
+once and switching is one click in the top bar, which is the point - the cloud
+when you want the better answer, your own machine when you would rather be
+beholden to nobody.
 
 No SDK was added: Ollama's API is two JSON endpoints and newline-delimited JSON
 streaming, and nothing in `ai/ollama_provider.py` is imported unless you select

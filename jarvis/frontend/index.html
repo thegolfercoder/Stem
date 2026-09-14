@@ -64,6 +64,22 @@
       <span class="dot"></span><span class="label" id="status-label">ready</span>
     </div>
     <div class="spacer"></div>
+
+    <!-- The brain switch. Left is the model on this machine, right is Claude.
+         It is a switch rather than a menu because it is the one setting that
+         gets changed mid-thought - you reach for the cloud when a question
+         turns out to be hard, and you want that to cost one click, not a trip
+         through a settings page. The end labels are part of the control: the
+         knob alone would tell you a position but not what it means. -->
+    <div class="brainswitch" id="brainswitch">
+      <span class="end" data-end="local">local</span>
+      <button class="switch" id="brain-toggle" type="button" role="switch" aria-checked="false"
+              aria-label="Answer with Claude instead of the model on this machine">
+        <span class="track"><span class="knob"></span></span>
+      </button>
+      <span class="end" data-end="cloud" id="brain-cloud">Claude</span>
+    </div>
+
     <button class="chip" id="chip-model" type="button" title="Where the intelligence comes from - open Settings" data-open="settings">&mdash;</button>
     <button class="chip" id="chip-voice" type="button" title="Where audio goes - open Settings" data-open="settings" hidden>voice</button>
     <button class="chip" id="chip-threads" type="button" title="Past conversations" data-open="threads">threads</button>
