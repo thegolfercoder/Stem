@@ -2,16 +2,21 @@
 
 [![checks](https://github.com/thegolfercoder/Stem/actions/workflows/checks.yml/badge.svg)](https://github.com/thegolfercoder/Stem/actions/workflows/checks.yml)
 
-Two pieces of work on measuring a golf swing without a launch monitor's price
-tag. They share a set of principles and no code.
+Three projects. Two measure a golf swing without a launch monitor's price tag;
+the third is unrelated to either. They share a set of principles and no code.
 
 | Path | What it is | State |
 |---|---|---|
 | `swingml/` | **Swing analysis from a single phone camera.** Pose estimation, a temporal model over the eight swing events, and the metrics that follow. Runs as a local web app, a command line tool, or one self-contained HTML file with no install. | Working. |
 | `launchmon-py/` | **Radar DSP for a launch monitor.** A 24 GHz CW Doppler front end arriving as USB-C audio, and the signal processing that turns it into ball and club speed. | Working. No hardware yet. |
+| `carconfig/` | **Vehicle and aftermarket-parts compatibility database**, with a build configurator over it. Next.js and TypeScript rather than Python. Answers whether a part fits a car and says why, or says it does not know. | Working MVP. Data unverified. |
 
-Both suites run on every push - lint, types and tests - and the badge above is
-the only place a test count belongs. Written into prose it goes stale the day
+`carconfig/` has nothing to do with golf and would sit more naturally in its own
+repository. It is here because that is where it was started; splitting it out
+later costs nothing, since it shares no code with the other two.
+
+All three suites run on every push - lint, types and tests - and the badge above
+is the only place a test count belongs. Written into prose it goes stale the day
 after somebody adds a test, and this file carried "151 tests" for a while after
 the number was 195.
 
@@ -62,11 +67,30 @@ vector suite: Python generates synthetic inputs with known ground truth plus its
 own outputs, and the other implementation must reproduce them. Algorithm changes
 happen in Python first, regenerate the fixtures, then port.
 
+## The car configurator
+
+A structured database of vehicles and aftermarket parts, and a rules engine that
+decides whether a given part fits a given car - answering compatible, requires
+modification, incompatible or unknown, always with the reason and the two numbers
+it compared. Missing data produces "unknown" and never "compatible", which is the
+same refusal principle the golf projects are built on.
+
+```bash
+cd carconfig
+npm install
+npm run dev
+```
+
+Nothing in its dataset has been verified against a primary source and the
+interface says so on every figure. `carconfig/README.md` covers the engine, the
+schema and the limitations.
+
 ## Principles these codebases are held to
 
 1. **Measured, derived, low-confidence and modelled values are distinguishable
-   everywhere.** This is enforced by a type - `launchmon.quantity.Quantity` and
-   `swingml.quantity.Quantity` - not by a naming convention. A modelled value cannot be constructed without listing
+   everywhere.** This is enforced by a type - `launchmon.quantity.Quantity`,
+   `swingml.quantity.Quantity`, and `Provenance` in `carconfig` - not by a
+   naming convention. A modelled value cannot be constructed without listing
    the assumptions behind it.
 2. **No invented accuracy figures.** No tolerance appears in a docstring, a UI
    string or a comment unless it came from validation data or from the project
@@ -106,17 +130,19 @@ US 9,039,527. An MIT licence grants no patent rights and cannot grant rights
 nobody here holds. This is a university research prototype and that is fine for
 private research. **Nobody should assume this is safe to sell.**
 
-## Working on either project
+## Working on these projects
 
-They are separate installs sharing one virtual environment. `SETUP.md` covers
-the swing analyser in more detail; this is the whole of it for the radar.
+The two Python projects are separate installs sharing one virtual environment.
+`SETUP.md` covers the swing analyser in more detail; this is the whole of it for
+the radar. The configurator is Node and shares nothing with either.
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e "swingml[dev]" -e "launchmon-py[dev]"
 
-cd swingml     && pytest -q && ruff check . && mypy -p swingml -p synth && mypy scripts
+cd swingml      && pytest -q && ruff check . && mypy -p swingml -p synth && mypy scripts
 cd launchmon-py && PYTHONPATH=. pytest -q && ruff check . && mypy launchmon tests scripts
+cd carconfig    && npm ci && npm run lint && npm run typecheck && npm test && npm run build
 ```
 
 The MediaPipe pose landmarker is about 30 MB and is downloaded on first run

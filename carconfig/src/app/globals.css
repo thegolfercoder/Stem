@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+/*
+ * The visual system.
+ *
+ * Dark, flat, and quiet. This is a tool for reading specifications and
+ * comparing numbers, so the job of the styling is to stay out of the way of a
+ * table of measurements. No gradients, no shadows doing decorative work, one
+ * accent colour, and four status colours that mean exactly one thing each.
+ */
+
+@theme {
+  --color-base: #0a0c0e;
+  --color-surface: #121518;
+  --color-surface-2: #181c20;
+  --color-line: #242a2f;
+  --color-line-bright: #323a41;
+
+  --color-ink: #e9ecee;
+  --color-ink-dim: #a3abb2;
+  --color-ink-faint: #6b757d;
+
+  --color-accent: #4c9aff;
+  --color-accent-dim: #1d3a63;
+
+  /* Status colours. These are load-bearing: each one means one verdict. */
+  --color-ok: #3ec07f;
+  --color-ok-bg: #0f2b1e;
+  --color-warn: #e3a325;
+  --color-warn-bg: #2e2310;
+  --color-unknown: #8a93d6;
+  --color-unknown-bg: #1b1d33;
+  --color-bad: #e8615a;
+  --color-bad-bg: #2f1616;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas,
+    monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-base);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Specification figures are read by comparing them down a column, so they are
+ * set in a monospaced face with tabular figures. This is the single most
+ * useful typographic decision in the whole product.
+ */
+.numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* A hairline that reads as a panel division rather than as a border. */
+.rule {
+  border-color: var(--color-line);
+}
+
+::selection {
+  background: var(--color-accent-dim);
+  color: var(--color-ink);
+}
+
+/* Scrollbars, because the part list is a long scrolling column. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-bright) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--color-line-bright);
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
