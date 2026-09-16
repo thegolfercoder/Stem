@@ -1,0 +1,149 @@
+# Carbon — vehicle build configurator
+
+A structured vehicle and aftermarket-parts compatibility database, with a
+configurator on top of it.
+
+The product is not the 3D viewer. The product is the answer to "will this
+actually fit my car, and how do you know" — the database and the rules engine
+that reasons over it. The viewer exists to make an answer visible.
+
+```bash
+npm install
+npm run dev          # http://localhost:3000
+npm test             # the compatibility engine and the costing
+npm run lint && npm run typecheck
+```
+
+## The loop this proves
+
+Pick a car → pick a part → see the fitment checked, with reasons → see the car
+change → see the cost → save or share it. Everything else is deferred until
+that loop is good.
+
+## What is here
+
+| Path | What it is |
+|---|---|
+| `db/schema.sql` | The normalized Postgres schema. The long-term source of truth for the data model. |
+| `src/types/` | The domain model. No React, no I/O, no dependencies. |
+| `src/data/` | Seed vehicles and parts, each carrying its own provenance. |
+| `src/lib/compatibility/` | The rules engine. Pure functions, one file per family of rules. |
+| `src/lib/catalog/` | The repository interface and its seed-backed implementation. |
+| `src/lib/pricing/`, `src/lib/performance/` | Costing and the performance estimator. |
+| `src/lib/build/` | Build state, share-link encoding, browser persistence. |
+| `src/components/` | UI, grouped by the thing it shows. |
+| `tests/` | The engine's tests. |
+
+## How the compatibility engine works
+
+A rule is a pure function from `(vehicle, part, rest-of-build)` to a list of
+findings. Each finding carries a status, a sentence saying why in terms of the
+two things compared, the numbers it compared, and how trustworthy the data
+behind it was. A part's verdict is the worst status any rule returned.
+
+```ts
+evaluateCompatibility({ vehicle, part, selected, fitment }) // → CompatibilityResult
+```
+
+Four statuses, and the ordering between them matters:
+
+| Status | Meaning |
+|---|---|
+| `compatible` | Every check passed. |
+| `requires_modification` | It will work, with named extra work — spacers, cancellers, a supporting part. |
+| `unknown` | Nobody has established whether this fits. |
+| `incompatible` | A check failed, with a reason. |
+
+`unknown` outranks `requires_modification` when combining, so a headline verdict
+never sounds more certain than the data behind it. Missing data produces
+`unknown` and never `compatible` — that rule is the reason the project exists,
+and `tests/compatibility.test.ts` asserts it directly.
+
+Rules that reason from arithmetic (bolt pattern, centre bore, rim diameter) can
+overrule a positive fitment record, because a catalogue being wrong does not
+make 5x120 into 5x112. Rules about legality — a catless downpipe, a track tire
+compound — are marked `advisory` and are deliberately excluded from the verdict:
+whether a part fits and whether you may drive it are different questions, and
+merging them would get both wrong.
+
+Adding a rule means adding one file under `src/lib/compatibility/rules/`, listing
+it in `DEFAULT_RULES`, and writing its tests. No UI changes.
+
+## Data quality
+
+**Nothing in this repository has been verified against a primary source, and
+nothing in it claims to be.** Every record carries a `Provenance` — source, URL,
+verification level, date — and the UI renders that level next to the figure.
+
+| Level | In this build |
+|---|---|
+| `verified` | Nothing. The engine supports it; no seed data claims it. |
+| `unverified` | Vehicle specs, part specs, the few fitment records. |
+| `estimated` | Wheel clearance envelopes, brake clearance heuristics, all performance estimates. |
+| `demo` | Every price. Invented for development. |
+
+Some vehicles deliberately carry no clearance envelope, so the engine answers
+`unknown` for them rather than guessing. Removing those gaps would make the demo
+tidier and the engine less honest. `/data` says all of this in the app itself.
+
+The performance estimator adds up manufacturers' claims, discounting any claim
+whose stated prerequisites are missing from the build. It does not model
+diminishing returns, so a stacked build's real figure is normally lower than
+what it shows. It says so, next to the number.
+
+## Database
+
+`db/schema.sql` is the normalized design: manufacturers → models → generations →
+trims, engines joined to trims through `vehicles`, parts with a JSONB spec
+validated per category in the application layer, `vehicle_parts` for explicit
+fitment claims, and `builds` / `build_parts` / `users` for saved builds.
+
+The app does not connect to it yet. The catalogue is served from
+`src/data/` through `CatalogRepository`, so moving to Postgres means writing one
+more implementation of that interface and changing one line in
+`src/lib/catalog/index.ts`. The schema is applied and checked in CI so the two
+cannot drift apart unnoticed.
+
+Prices are integer cents everywhere. Part cost and installation cost are kept
+separate all the way to the total, because installation is the number people
+forget and on a brake kit it is a fifth of the price.
+
+## Saving and sharing
+
+Builds save to `localStorage` — no account, nothing uploaded, and consequently
+per-device and lost if browser data is cleared. Share links carry the whole build
+encoded in the URL, so a link works immediately with no database and no build is
+enumerable. Everything decoded from a link is schema-validated and then looked up
+in the catalogue; an unrecognised slug is dropped rather than rendered. A saved
+build snapshots its prices, so reopening it later shows what it cost when it was
+saved.
+
+## The 3D viewer
+
+Placeholder geometry built from primitives — no downloaded assets, no licensing
+questions, and it renders with no network. The proportions are generic and the
+app says so on the canvas. What is real is the wheels: their size comes from the
+actual rolling radius of the selected wheel and tire, so a 17 fits inside a 19,
+and lowering the car visibly closes the gap.
+
+`deriveViewerConfig()` turns a vehicle and a set of parts into a `ViewerConfig`,
+and the viewer renders only that. Swapping in real GLTF models means consuming
+the same structure.
+
+## What is deliberately not here
+
+Accounts, real prices, retailer integrations, a public API, and a verified
+fitment database. The `users` table exists and `builds.owner_id` references it,
+so authentication is a matter of populating it rather than migrating everything.
+
+## Known limitations
+
+- Fifteen vehicles and about forty parts. Chosen to exercise the engine, not to
+  be a reference.
+- Clearance envelopes are estimates, and the offset and width rules lean on them
+  heavily. They are the least reliable thing in the database.
+- The brake-clearance heuristic (rotor diameter + 3.5in, rounded up) is
+  calibrated against the kits in the seed catalogue and is not a substitute for
+  a manufacturer's clearance template.
+- Power estimates add claims together and will over-read on a stacked build.
+- Share links grow with the build; a very large build makes a long URL.
