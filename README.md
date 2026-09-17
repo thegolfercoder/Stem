@@ -1,14 +1,16 @@
-# Stem
+# Launch Monitor ML
 
-[![checks](https://github.com/thegolfercoder/Stem/actions/workflows/checks.yml/badge.svg)](https://github.com/thegolfercoder/Stem/actions/workflows/checks.yml)
+[![checks](https://github.com/thegolfercoder/launch-monitor-ml/actions/workflows/checks.yml/badge.svg)](https://github.com/thegolfercoder/launch-monitor-ml/actions/workflows/checks.yml)
 
-Two pieces of work on measuring a golf swing without a launch monitor's price
-tag. They share a set of principles and no code.
+Measuring a golf swing and a golf ball without a launch monitor's price tag. Two
+pieces of work toward that, sharing a set of principles and no code: swing
+analysis from a phone camera, and radar DSP for the ball.
 
 | Path | What it is | State |
 |---|---|---|
 | `swingml/` | **Swing analysis from a single phone camera.** Pose estimation, a temporal model over the eight swing events, and the metrics that follow. Runs as a local web app, a command line tool, or one self-contained HTML file with no install. | Working. |
 | `launchmon-py/` | **Radar DSP for a launch monitor.** A 24 GHz CW Doppler front end arriving as USB-C audio, and the signal processing that turns it into ball and club speed. | Working. No hardware yet. |
+| [`GolfLaunchMonitor_V1_Proposal.pdf`](GolfLaunchMonitor_V1_Proposal.pdf) | The V1 build proposal both halves are aimed at. | — |
 
 Both suites run on every push - lint, types and tests - and the badge above is
 the only place a test count belongs. Written into prose it goes stale the day
@@ -25,9 +27,9 @@ Video of a swing goes in. Out comes the eight positions of the swing with a time
 for each, the tempo ratio, rotation at the top and movement against the ground -
 each carrying a measured error band and a label saying how it was arrived at.
 
-Accuracy on a freshly generated holdout no model has trained on: **83% of events
-within one frame and 93% within two**, with tempo carrying a measured spread of
-**±12%**. Those figures are for the ensemble, they come from rendered swings put
+Accuracy on a freshly generated holdout no model has trained on: **85.5% of events
+within one frame and 94.5% within two**, with tempo carrying a measured spread of
+**±9%**. Those figures are for the ensemble, they come from rendered swings put
 through the real pose estimator, and `swingml/README.md` is explicit about both -
 and about the one real clip in the repository, which is the only evidence here
 about an actual person and is treated as a gate on what ships rather than as a

@@ -174,7 +174,8 @@ def _locate_events(
     toe_up = _first_crossing(shaft_vertical, address_frame, top_frame, rising=True)
     follow_through = _first_crossing(shaft_vertical, impact, finish_frame, rising=True)
 
-    lead_shoulder_index = 12 if pose.landmarks_xyz.shape[1] and left_handed_flag else 11
+    # Right shoulder for a left-hander, left for a right-hander.
+    lead_shoulder_index = 12 if left_handed_flag else 11
     lead_arm = pose.hands_xyz[:, 1] - pose.landmarks_xyz[:, lead_shoulder_index, 1]
     mid_backswing = _first_crossing(lead_arm, address_frame, top_frame, rising=True)
     mid_downswing = _first_crossing(lead_arm, top_frame, impact, rising=False)

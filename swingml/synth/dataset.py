@@ -14,6 +14,8 @@ sample, at every tempo, from every angle.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field
@@ -116,6 +118,36 @@ class Sample(BaseModel):
     tempo_ratio: float
     capture_rate_hz: float
     azimuth_deg: float
+    supervised_events: NDArray[np.bool_] | None = None
+    """Which of the eight labels this clip may be trained against. None means all.
+
+    Real footage and this generator do not always mean the same instant by the
+    same event name. Measured on GolfDB against this corpus, in matched tempo
+    bands, and stated as frames at the canonical rate:
+
+    | event           | 2.5-3.2 | 3.2-4.0 | 4.0-5.2 |
+    |-----------------|---------|---------|---------|
+    | top             |    +0.7 |    -0.4 |    -0.3 |
+    | mid-downswing   |    -0.0 |    -0.3 |    -0.4 |
+    | mid-follow      |    -1.5 |    -2.8 |    -2.2 |
+    | toe-up          |    +3.6 |    +4.5 |    +7.1 |
+    | mid-backswing   |    +9.1 |   +11.0 |   +12.9 |
+    | finish          |   +12.2 |   +14.2 |   +11.0 |
+
+    Matching the tempo band is what makes the table mean anything. The top's
+    position as a share of the address-to-impact span *is* the tempo ratio
+    rewritten - share/(1 - share) is the ratio exactly - so pooling all tempos
+    together showed the top 2.6 frames out when the two label sets in fact agree
+    on it to under a frame, and the whole apparent gap was the generator's drawn
+    tempo median sitting below the real one.
+
+    So the four events they agree on, within a frame, are address, the top,
+    mid-downswing and impact, which are also the ones the reported tempo is built
+    from. A clip that disagrees on the other four is still worth having for
+    those, and this is how it says so: the events left out are withheld from the
+    loss rather than averaged into it, so real footage is never made to argue
+    with the generator about where mid-backswing is.
+    """
     pose: PoseSequence | None = None
 
     @property
@@ -316,9 +348,18 @@ def draw_swing(
 
 
 def label_frames(
-    swing: GeneratedSwing, grid: NDArray[np.float64], rate_hz: float, n_frames: int
+    event_times_s: NDArray[np.float64] | Sequence[float],
+    grid: NDArray[np.float64],
+    rate_hz: float,
+    n_frames: int,
 ) -> NDArray[np.int64] | None:
     """Where the events land on the resampled grid, or None if they collide.
+
+    Takes the event times rather than the swing they came from, because there is
+    now a third source of them. The generator knows when it put each event; the
+    rendered path reads the same times back; and GolfDB gives frame numbers in a
+    real video, which become times by dividing by that video's own frame rate.
+    All three want this arithmetic and none of them should have its own copy.
 
     Nearest grid point, not searchsorted. Searchsorted always rounds up, which
     puts every label systematically half a frame late and biases the tempo ratio
@@ -330,8 +371,7 @@ def label_frames(
     invent a gap. The second matters because a model given no frames after the
     finish cannot be asked to find it.
     """
-    event_times = np.asarray(swing.truth.event_times_s)
-    frames = np.rint((event_times - grid[0]) * rate_hz).astype(np.int64)
+    frames = np.rint((np.asarray(event_times_s) - grid[0]) * rate_hz).astype(np.int64)
     clipped: NDArray[np.int64] = np.clip(frames, 0, n_frames - 1).astype(np.int64)
     if np.any(np.diff(clipped) <= 0) or clipped[-1] >= n_frames - 1:
         return None
@@ -359,7 +399,9 @@ def generate_sample(
     if resampled.n_frames < 32:
         return None
 
-    event_frames = label_frames(swing, grid, feature_config.canonical_rate_hz, resampled.n_frames)
+    event_frames = label_frames(
+        swing.truth.event_times_s, grid, feature_config.canonical_rate_hz, resampled.n_frames
+    )
     if event_frames is None:
         return None
 

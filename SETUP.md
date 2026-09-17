@@ -5,8 +5,8 @@
 Either clone it:
 
 ```bash
-git clone https://github.com/thegolfercoder/Stem
-cd Stem
+git clone https://github.com/thegolfercoder/launch-monitor-ml
+cd launch-monitor-ml
 code .
 ```
 

@@ -71,35 +71,68 @@ looked into.
 ## Measured accuracy
 
 On a freshly generated holdout of 160 clips that no model has trained on, event
-timings land **within one frame 83% of the time and within two frames 93%** — two
-frames being 33 ms. The previous model scored 76% and 89% on the same clips.
+timings land **within one frame 85.5% of the time and within two frames 94.5%** —
+two frames being 33 ms. The model before this one scored 83.0% and 92.8% on the
+same clips; the one before that, 76.0% and 88.8%.
 
 That is the five-member ensemble, which is what a machine with a trained `out/`
 runs. A fresh install and the browser page carry one checkpoint, because five is
-too heavy to bundle: on the same clips that single model is **81.1% and 92.0%**,
-with a median tempo error of 6.7%. Which of the five gets bundled is decided by
-`scripts/choose_bundled_model.py`, and the real clip below is a gate in that
-decision rather than a tiebreak.
+too heavy to bundle: on the same clips that single model is **83.1% and 93.6%**.
+The measured tempo band is ±9% for the ensemble and ±10% for the single model,
+down from ±12%.
 
-Where the error is has been measured rather than assumed. The four interior
-events — top, mid-downswing, impact, mid-follow-through — land within one frame
-94 to 98 percent of the time. Everything else is address, toe-up, mid-backswing
-and the finish, and those four fail for two different reasons that want opposite
-treatments. Address and mid-backswing score seventeen and twenty-one points
-better on training clips than held-out ones, which is a generalisation gap and
-answers to more data. The finish scores 61 percent on clips the model trained on,
-so it cannot fit it at all: hand speed decays smoothly through the labelled frame
-with no feature there, because the finish is defined by the swing's timing rather
-than by any geometry. It is intrinsically imprecise, and it is the one event
-tempo does not depend on.
+Those clips span tempo ratios of 1.50 to 5.40 with a median of 3.06, against the
+1.2 to 6.0 the pipeline will accept, so the figure is not quoted off a narrow
+slice. Worth one caveat: the 180 real swings extracted from GolfDB have a median
+of 3.51, all of them tour players, so the holdout under-weights the faster half
+of real swings without excluding it — 10% of it sits at or above GolfDB's 90th
+percentile. The secondary benchmark test split used by `--test` is narrower
+still and stops at 4.00.
 
-The corpus behind all of this is 1,610 rendered swings put through the real pose
-estimator, of which 1,262 are used for training. Adding the most recent 450 —
-which also widened the tempo range from 2.1-4.0 to 1.5-5.2, where the corpus had
-never gone although the plausibility gate accepts 1.2-6.0 — is what produced the
-improvement above. On the fresh holdout the previous model's tempo error is 10.5%
-on swings outside the range it was trained on against 7.1% inside; the current one
-is 7.9% and 6.4%.
+Where the error is was measured rather than assumed, and the measurement made a
+prediction that has now been checked. The four interior events — top,
+mid-downswing, impact, mid-follow-through — were already at 94 to 98 percent, so
+there was nothing there to win. Address and mid-backswing scored seventeen and
+twenty-one points better on training clips than held-out ones, which is a
+generalisation gap and answers to more data. The finish scored 61 percent on
+clips the model *trained on*, so it could not fit it at all: hand speed decays
+smoothly through the labelled frame with no feature there, because the finish is
+defined by the swing's timing rather than by any geometry.
+
+Adding 900 clips did what that predicts and nothing more:
+
+| Event | Before | After |
+|---|---|---|
+| Address | 65.6% | **72.5%** |
+| Toe up | 78.1% | 80.0% |
+| Mid backswing | 80.0% | 81.2% |
+| Top | 87.5% | 90.6% |
+| Mid downswing | 96.2% | 98.8% |
+| Impact | 97.5% | 98.1% |
+| Mid follow-through | 95.0% | 98.8% |
+| Finish | 63.7% | 64.4% |
+
+Address gained seven points. The finish gained seven tenths, which is the
+difference between a gap that data closes and one that data does not, arriving
+exactly where it was predicted to.
+
+The new footage was weighted toward the camera angles that measurably lose, and
+that moved too: down the line from 74.2% to 77.2%, behind from 71.9% to 77.3%,
+against face on at 91.4%. The gap to face on is still fourteen points and is the
+largest single thing left.
+
+The corpus behind all of this is 2,670 rendered swings put through the real pose
+estimator, of which 2,162 are used for training — every clip content-hashed
+against every other, so the held-out set is verifiably held out. The most recent
+900 also widened what the corpus contains rather than only how much of it there
+is: they are the first clips with any variation in body width, per-segment length
+or torso rotation, and the first landscape footage in the whole corpus. Both
+omissions were bugs rather than decisions; see *Things that were tried and did not
+work*.
+
+Every improvement quoted here is a paired bootstrap over clips, not a comparison
+of two numbers. The 2.6-point gain above has a 95% interval of [+1.25, +3.91] and
+the better model wins in 100% of resamples.
 
 Across fifteen clips shaped like real footage — face on, down the line, at
 forty-five degrees, tilted phone, left handed, near, far, feet cut off, portrait
@@ -127,36 +160,55 @@ regression fixture. One clip proves nothing about the general case. What it does
 catch a change that looks fine on generated data and breaks the real thing.
 
 On it the bundled model puts address exactly on the frame the golfer starts
-moving, the top two frames late, impact one frame early, and the finish one frame
-late. How each of those was established independently of the model is recorded in
-`real_swing_01.json` beside the clip, along with the tolerance each is held to.
+moving, the top three frames late, impact one frame early, and the finish five
+frames late. Every one of those is inside the tolerance recorded beside the clip
+in `real_swing_01.json`, along with how it was established independently of the
+model.
 
-**Those four small errors produce one large one, and that is the honest headline
-for this clip.** Tempo is a ratio of two short intervals: two frames late at the
-top and one frame early at impact turn a ten-frame downswing into a seven-frame
-one, and tempo reads **3.26** where the clip's own evidence says about 2.1 to 2.4.
-The ensemble is no better — 3.08, from the same compressed downswing. At thirty
-frames a second one frame is ten percent of a downswing, so nothing here needs a
-gross failure to go this wrong; two frames in opposite directions is enough.
-±12% does not reach 2.44, so on this clip the band does not cover the truth
-either.
+**And the tempo it reports is 3.70 where the clip's own evidence says about 2.1.**
+That is the honest headline for this clip and it has not improved. Tempo is a
+ratio of two short intervals: three frames late at the top and one early at impact
+turn a ten-frame downswing into a six-frame one. At thirty frames a second one
+frame is ten percent of a downswing, so four in-tolerance events are enough to put
+the number the interface leads with off by three quarters.
 
-One clip against a hundred and sixty is not close as evidence, and the models
-ship. It is recorded because it is the clearest single sign that the synthetic
-corpus is not the same thing as real footage, and because a result like this is
-the kind that quietly disappears.
+The cause is substantially upstream of the model. This clip is thirty frames a
+second and the estimator loses the hands through impact — the fixture's own notes
+record hand speed reading 19.8, 6.7, 1.9 then 3.9 across four consecutive frames,
+which no body does. Every checkpoint ever trained here places impact at frame 114
+and the top at 107 or 108, against a truth of 115 and 105. Eleven models, one
+answer: the landmarks have already lost impact before the temporal model sees
+them, and no amount of temporal modelling recovers it.
 
-**What the clip does decide is which model ships.** `scripts/choose_bundled_model.py`
-treats it as a gate rather than a tiebreak: a checkpoint that misses any of the
-four events by more than the fixture's own tolerance is not eligible, whatever it
-scores on generated swings. That rule exists because it was not there. The member
-bundled before this one had been picked purely on the best score over generated
-clips, and it put the finish **thirty-eight frames late** on this swing. Three of
-the five ensemble members fail the gate. Of the two that pass, the one that ships
-also happens to be the better of them on generated clips — 81.1% within one frame
-against 79.9, and 6.7% median tempo error against 8.0 — so the gate cost 0.7
-points against the excluded best and bought a model that is not wrong about the
-only person in this repository.
+**The error bands do not cover it either.** Two of the four events fall outside
+their measured bands on this clip. That is not the bands being wrong in general —
+on the 160 generated clips they contain the truth 84.4% of the time against a
+claimed 80%, which is correct and slightly conservative. It is the domain gap
+stated precisely: bands measured on rendered footage are approximately right for
+rendered footage and too tight for video of a person.
+
+One clip against a hundred and sixty is not close as evidence and the model ships.
+It is recorded because it is the clearest single sign that the synthetic corpus is
+not the same thing as real footage, and because a result like this is the kind that
+quietly disappears.
+
+**What the clip does decide is which model ships.**
+`scripts/choose_bundled_model.py` treats it as a gate rather than a tiebreak: a
+checkpoint that misses any of the four independently established events by more
+than the fixture's own tolerance is not eligible, whatever it scores on generated
+swings. That rule exists because it was not there — the member bundled two
+versions ago had been picked purely on the best score over generated clips, and it
+put the finish **thirty-eight frames late** on this swing. One in five members
+lands in that failure mode; it recurred in the next ensemble too, so it is a
+property of the training rather than an unlucky seed.
+
+The clip decides more than the gate, because across five members the 160-clip
+holdout could not separate them at all — the spread within one frame was 82.1 to
+83.5 and a paired bootstrap puts the interval on any such difference at about ±2
+points. When the primary evidence cannot choose, what remains is the real clip:
+how wrong its tempo is, and whether the candidate's own measured bands cover it.
+Of the four that pass the gate, two keep half the events inside their bands and
+two do not, and that is what settled it.
 
 ### Error bands
 
@@ -197,6 +249,69 @@ has to take that on trust.
 ## Things that were tried and did not work
 
 Kept because a negative result nobody wrote down gets re-discovered at full price.
+
+**Holding the first and last frames beyond the ends of a clip**, instead of
+reading zeros there. The reasoning was specific and looked strong: the network's
+receptive field is 253 frames and a clip is 119 to 206, so every frame's context
+runs off both ends, and zero is not "unknown" for these features — it is a
+particular hand position and a particular normalised velocity. The discontinuity
+lands a few frames before address and a few after the finish, which are the two
+events the model is worst at.
+
+It made no difference at all. Two configurations by two seeds, scored on the
+fresh holdout with a paired bootstrap: **+0.00 points** within one frame, 95%
+interval [-1.64, +1.64], better in 48.3% of resamples. The seed-to-seed spread
+*inside* the edge-padding arm was larger than the gap between the two arms.
+Median tempo ran 0.45 points better in the same direction in both seeds and in
+78% of resamples, which is suggestive and is not resolved at this sample size.
+
+The flag is still there — `--edge-padding` on the experiment script, a
+`padding_mode` on the network, and a matching implementation in the browser port
+checked against PyTorch to 5e-7 — switched off, with this measurement beside it.
+The idea is not obviously wrong; it just is not what limits this model.
+
+**Loose clip framing as the explanation for the real-footage gap.** The bundled
+model scores 19.7% within one frame on 360 real GolfDB clips, over the four
+events whose labels agree with this generator, against 83.1% on generated ones.
+The shape of the error pointed straight at framing: address landed 23.6 frames
+late with an interquartile range of 61 and the finish 10 early, which is a model
+finding a shorter swing inside a longer clip. And the framing gap is real —
+generated clips carry at most 1.40 s before address and 1.10 s after the finish,
+while 45% of real clips carry more lead-in than that and 76% more tail, with
+median clip lengths of 500 frames against 164 and a receptive field of 253.
+
+Trimming the real clips to a generated-sized window settles it, and the answer
+is no:
+
+| Real clips | Median length | ±1f | ±2f | Address error |
+|---|---|---|---|---|
+| As extracted | 500 frames | 19.7% | 34.6% | 23.7 |
+| Trimmed to 1.00s / 1.00s | 251 frames | 20.5% | 35.6% | 24.9 |
+| Trimmed to 0.50s / 0.50s | 194 frames | 20.8% | 36.2% | 25.3 |
+
+A point, against a gap of sixty. Address stays about 25 frames out when only 30
+frames of lead-in exist at all, so the model is placing it inside the backswing
+regardless of how the clip is cut. Extraction was checked in the same pass and
+is sound: GolfDB's impact label sits 1.0 frame from peak hand speed, so the
+labels and the features are aligned and the model is simply wrong on this
+footage. The cause is the pose domain, and the answer is training on real clips.
+
+`extend_ends` stayed, off by default, as the counterpart `crop_ends` never had —
+augmentation could only ever make a clip shorter, so no setting could cover
+footage framed more loosely than the generator drew it. It closes a coverage
+hole that is genuinely there. It does not close this one.
+
+**Body shape, torso rotation and landscape footage were absent from the training
+corpus** without anyone deciding they should be. Two generators drew the
+randomised golfer and had silently drifted: the rendered path, which is the only
+one the shipped model trains on, drew no body-width variation whatsoever against
+a declared range of 0.55 to 1.15, no per-segment length jitter, and identical
+pelvis and thorax rotation for every golfer. Not one of the first 1,770 clips was
+landscape, because frames were sized by height and a landscape render therefore
+cost three times the pixels. Both paths kept working the whole time, which is
+what made it invisible. There is one draw function now, and a test that pins every
+range the config declares to each end in turn and fails if moving it changes
+nothing.
 
 **Refining the address frame** by walking back to where hand speed crossed a
 threshold. It made address *worse* — mean error 14.5 frames to 20.5, tempo error
@@ -304,6 +419,63 @@ python scripts/calibrate_events.py --data out/detected/*.npz \
 python scripts/export_web_model.py && python scripts/build_web_app.py
 ```
 
+### Real footage
+
+Everything above is generated. [GolfDB](https://github.com/wmcnally/golfdb) is
+1,400 clips of real swings off YouTube, annotated with eight events that are the
+same eight this pipeline predicts, which makes it the first real training signal
+here that is not one checked-in fixture clip.
+
+```bash
+# Extract. Three workers, chunked, because a container restart has twice cost a
+# long unattended run everything it had not written yet.
+for w in 0 1 2; do
+  python scripts/make_golfdb_dataset.py --annotations golfdb/data/golfDB.mat \
+      --videos videos_160 --out out/golfdb/w$w.npz --start $w --stride 3 --chunk 60 &
+done; wait
+
+# Split by golfer *and* by source video, then train on one side and score the other.
+python scripts/split_golfdb.py --annotations golfdb/data/golfDB.mat \
+    --archives out/golfdb/*.npz --train-out out/golfdb/train.npz \
+    --holdout-out out/golfdb/holdout.npz --assignment-out out/golfdb/split.json
+
+python scripts/experiment.py --name real --seed 0 \
+    --extra-train out/golfdb/train.npz --extra-events address,top,mid_downswing,impact \
+    --holdout out/golfdb/holdout.npz --out out/exp/real
+```
+
+Three things about that are not obvious.
+
+**Handedness has to be inferred**, because GolfDB does not record it and the
+features need to know which arm leads. Whichever shoulder the hands sit nearer
+at the top answers it 45 times out of the 48 clips it will answer at all, on 51
+clips of players whose handedness is known. Two cues that sound stronger are
+worse — lead-arm extension at the top gets 39 of 48, and shoulder tilt at
+address, which ought to follow from the trail hand sitting lower on the grip,
+gets 38 of 51. Requiring two cues to agree reaches 41 of 42 but spends nine
+clips of the fifty-one, which is refused on a measurement: flipping the label on
+every test clip moves the detector 1.8 points at one frame, and at a realistic
+6% error rate 0.1 points, because handedness reaches five channels out of 132.
+A clip nobody can call is dropped rather than assigned the commoner answer.
+
+**GolfDB's own four splits are not disjoint by golfer** — 100 of its 246 players
+appear in all four — so a holdout taken from them would put the same golfer,
+often the same tournament and camera, on both sides. The split here is over the
+connected components of the player-video graph, because fifteen source videos
+carry more than one player and most videos contributed two clips of one swing
+from two positions, so neither key contains the other.
+
+**Only four of the eight events are trained on.** Measured in matched tempo
+bands, GolfDB's labels and this generator's agree within a frame on address, the
+top, mid-downswing and impact, and disagree by four to seven frames on toe-up,
+nine to thirteen on mid-backswing and eleven to fourteen on the finish. The rest
+are withheld from the loss rather than averaged into it. Matching the tempo band
+is what makes that table mean anything: the top's position as a share of the
+address-to-impact span *is* the tempo ratio rewritten, so pooling all tempos
+showed the top 2.6 frames out when the two agree on it to under a frame.
+
+The four that agree are the four the reported tempo is built from.
+
 Steps 4 and 5 are the ones worth insisting on. Every improvement here has been a
 few points on a few hundred clips, which is the regime where a difference can be
 entirely which clips were drawn; and a model chosen on generated footage alone
@@ -346,3 +518,29 @@ Motion's patent portfolio, including US 9,039,527, and no copyright licence
 grants patent rights - least of all rights nobody here holds. This is a
 university research prototype, which is fine. Nobody should assume it is safe to
 sell.
+
+### GolfDB
+
+Nothing derived from GolfDB is in this repository, and `out/` is ignored, so the
+archives the section above builds stay on the machine that built them. GolfDB is
+licensed [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) —
+attribution, non-commercial — and its clips are third-party YouTube footage
+whose copyright belongs to whoever uploaded them, so it ships annotations and a
+download script rather than video. Using it here is research use of a research
+dataset; it is one more reason not to assume any of this is safe to sell.
+
+```
+@InProceedings{McNally_2019_CVPR_Workshops,
+author = {McNally, William and Vats, Kanav and Pinto, Tyler and Dulhanty, Chris
+          and McPhee, John and Wong, Alexander},
+title = {GolfDB: A Video Database for Golf Swing Sequencing},
+booktitle = {The IEEE Conference on Computer Vision and Pattern Recognition
+             (CVPR) Workshops},
+month = {June},
+year = {2019}
+}
+```
+
+The accuracy figures above are not comparable with the PCE numbers in that
+paper. PCE is a different metric on a different holdout, and it has not been
+computed here.

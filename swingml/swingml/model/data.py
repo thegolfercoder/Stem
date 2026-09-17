@@ -43,6 +43,45 @@ def soft_targets(
     return target.astype(np.float32)
 
 
+UNSUPERVISED_RADIUS_FRAMES = 18
+"""Frames either side of a withheld event that are dropped from the loss.
+
+Two things have to be covered. The soft target puts a bump of width
+`sigma_frames` at the event, which is spent by three sigma - six frames at the
+default. And the label itself sits somewhere else than the other label set would
+have put it, by up to fourteen frames for the finish and thirteen for
+mid-backswing, measured in matched tempo bands, so the frames the other
+convention would have called the event have to go too.
+
+Eighteen is those two added and rounded, which makes it a policy rather than a
+measurement: it is wide enough to contain the largest disagreement measured, and
+every frame it covers is a frame the model learns nothing from.
+"""
+
+
+def unsupervised_veto(
+    event_frames: NDArray[np.int64],
+    supervised_events: NDArray[np.bool_],
+    n_frames: int,
+    radius_frames: int = UNSUPERVISED_RADIUS_FRAMES,
+) -> NDArray[np.float32]:
+    """1.0 where the loss applies, 0.0 around an event whose label is not trusted.
+
+    Multiplied into the per-frame weight rather than subtracted from the target.
+    Removing the bump would leave those frames labelled background, which is a
+    different claim and a false one - the event is there, its frame is just not
+    known well enough to train on. Zero weight says nothing either way, which is
+    the truth of the matter.
+    """
+    keep = np.ones(n_frames, dtype=np.float32)
+    for event, trusted in enumerate(supervised_events):
+        if trusted:
+            continue
+        centre = int(event_frames[event])
+        keep[max(0, centre - radius_frames) : centre + radius_frames + 1] = 0.0
+    return keep
+
+
 class SwingDataset(Dataset[dict[str, torch.Tensor]]):
     """Feature sequences, their targets, and a mask marking the real frames."""
 
@@ -55,6 +94,7 @@ class SwingDataset(Dataset[dict[str, torch.Tensor]]):
         max_frames: int | None = None,
         rng_seed: int = 0,
         augment: AugmentConfig | None = None,
+        unsupervised_radius_frames: int = UNSUPERVISED_RADIUS_FRAMES,
     ) -> None:
         self.samples = samples
         self.sigma_frames = sigma_frames
@@ -63,6 +103,7 @@ class SwingDataset(Dataset[dict[str, torch.Tensor]]):
         self.max_frames = max_frames
         self.rng = np.random.default_rng(rng_seed)
         self.augment = augment or AugmentConfig()
+        self.unsupervised_radius_frames = unsupervised_radius_frames
         self.layout = feature_layout()
 
     def __len__(self) -> int:
@@ -93,11 +134,22 @@ class SwingDataset(Dataset[dict[str, torch.Tensor]]):
         if self.max_frames is not None and features.shape[0] > self.max_frames:
             # Crop, but never through an event: a window that cuts the finish off
             # would teach the model that swings sometimes lack one.
-            latest_start = min(int(events[0]), features.shape[0] - self.max_frames)
-            earliest_start = max(0, int(events[-1]) - self.max_frames + 1)
-            start = int(self.rng.integers(earliest_start, max(earliest_start, latest_start) + 1))
-            features = features[start : start + self.max_frames]
-            events = events - start
+            #
+            # A swing longer than the cap cannot be cropped at all, and the
+            # arithmetic below does not notice: `earliest_start` overtakes
+            # `latest_start`, the window opens after the address, and the shifted
+            # address comes out negative - a target sitting outside its own clip.
+            # Generated clips never reach that, so nothing caught it; real
+            # slow-motion footage has swings spanning 839 frames.
+            span = int(events[-1]) - int(events[0]) + 1
+            if span <= self.max_frames:
+                latest_start = min(int(events[0]), features.shape[0] - self.max_frames)
+                earliest_start = max(0, int(events[-1]) - self.max_frames + 1)
+                start = int(
+                    self.rng.integers(earliest_start, max(earliest_start, latest_start) + 1)
+                )
+                features = features[start : start + self.max_frames]
+                events = events - start
 
         if self.feature_noise > 0.0:
             features = features + self.rng.normal(0.0, self.feature_noise, features.shape).astype(
@@ -107,6 +159,10 @@ class SwingDataset(Dataset[dict[str, torch.Tensor]]):
         n_frames = features.shape[0]
         target = soft_targets(events, n_frames, self.sigma_frames)
         weight = 1.0 + self.event_weight * (1.0 - target[:, BACKGROUND_CLASS])
+        if sample.supervised_events is not None and not sample.supervised_events.all():
+            weight = weight * unsupervised_veto(
+                events, sample.supervised_events, n_frames, self.unsupervised_radius_frames
+            )
 
         return {
             "features": torch.from_numpy(np.ascontiguousarray(features)),
