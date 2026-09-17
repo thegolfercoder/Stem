@@ -76,6 +76,16 @@ class Setup:
     data at all. Two runs that differ in their corpus and agree in every recorded
     field look, in the log, like a reproducibility problem.
     """
+    holdout: tuple[str, ...] = ()
+    """Archives scored separately, never trained on and never in a split.
+
+    The four detected archives are the benchmark, and every number in the log was
+    measured on the clips a fixed seed draws out of them, so real footage cannot
+    join that pool without making the history incomparable. It goes to training
+    through --extra-train instead - which would leave the real-footage accuracy,
+    the thing this is all for, measured on one fixture clip. A holdout scored
+    apart gives it a number of its own without touching the benchmark.
+    """
     edge_padding: bool = False
     """Replicate the ends of a clip rather than padding them with zeros.
 
@@ -323,6 +333,13 @@ def main() -> None:
         default=[],
         help="clip files added to training only, never to validation or test",
     )
+    parser.add_argument(
+        "--holdout",
+        type=Path,
+        nargs="*",
+        default=[],
+        help="clip files scored on their own, never trained on and never split",
+    )
     parser.add_argument("--test", action="store_true", help="also score the test split")
     args = parser.parse_args()
 
@@ -331,6 +348,7 @@ def main() -> None:
         notes=args.notes,
         data=tuple(str(path) for path in args.data),
         extra_train=tuple(str(path) for path in args.extra_train),
+        holdout=tuple(str(path) for path in args.holdout),
         channels=args.channels,
         dilations=tuple(args.dilations),
         kernel_size=args.kernel_size,
@@ -371,6 +389,15 @@ def main() -> None:
         print(f"\n{setup.name} TEST: {test.summary()}")
         print(test.report())
         scores["test"] = test
+
+    if args.holdout:
+        held = load_samples(args.holdout)
+        if not held:
+            raise SystemExit(f"no clips in {[str(p) for p in args.holdout]}")
+        holdout = evaluate(model, held)
+        print(f"\n{setup.name} HOLDOUT ({len(held)} clips): {holdout.summary()}")
+        print(holdout.report())
+        scores["holdout"] = holdout
 
     record(args.log, setup.name, setup.notes or json.dumps(setup.__dict__, default=str), scores)
     print(
