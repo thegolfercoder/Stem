@@ -17,17 +17,20 @@ import argparse
 import json
 import sys
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
 import numpy as np
 import torch
+from numpy.typing import NDArray
 from torch.utils.data import DataLoader
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from swingml.analysis import load_model, save_model
+from swingml.events import NUM_EVENTS, SwingEvent
 from swingml.features import feature_dimension
 from swingml.model.augment import AugmentConfig
 from swingml.model.benchmark import (
@@ -75,6 +78,15 @@ class Setup:
     typed into --notes, so a checkpoint on disk could not be traced back to its
     data at all. Two runs that differ in their corpus and agree in every recorded
     field look, in the log, like a reproducibility problem.
+    """
+    extra_events: tuple[str, ...] = ()
+    """Which events the --extra-train clips are trained against. Empty means all.
+
+    A property of the run, not of the archive. Whether real footage and this
+    generator mean the same instant by "mid-backswing" is a judgement about two
+    label sets, and writing it into the data file would freeze one answer into
+    every future run and hide it from the log. Here it lands in the record beside
+    the corpus it applies to.
     """
     holdout: tuple[str, ...] = ()
     """Archives scored separately, never trained on and never in a split.
@@ -283,6 +295,25 @@ def train(
     return model, final, meta
 
 
+def supervised_mask(names: Sequence[str]) -> NDArray[np.bool_]:
+    """Turn event names into the eight-long mask the dataset withholds by.
+
+    Unknown names raise rather than being skipped. A typo that silently selected
+    nothing would train against every event while the log recorded that it had
+    not, which is the one failure mode worth spending an exception on.
+    """
+    mask = np.zeros(NUM_EVENTS, dtype=bool)
+    for name in names:
+        try:
+            mask[int(SwingEvent[name.strip().upper()])] = True
+        except KeyError:
+            known = ", ".join(event.name.lower() for event in SwingEvent.ordered())
+            raise SystemExit(f"unknown event {name!r}; known events are {known}") from None
+    if not mask.any():
+        raise SystemExit("--extra-events named no events")
+    return mask
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--name", required=True)
@@ -334,6 +365,14 @@ def main() -> None:
         help="clip files added to training only, never to validation or test",
     )
     parser.add_argument(
+        "--extra-events",
+        default="",
+        help=(
+            "comma-separated events the --extra-train clips are trained against, "
+            "e.g. address,top,mid_downswing,impact; empty means all eight"
+        ),
+    )
+    parser.add_argument(
         "--holdout",
         type=Path,
         nargs="*",
@@ -348,6 +387,7 @@ def main() -> None:
         notes=args.notes,
         data=tuple(str(path) for path in args.data),
         extra_train=tuple(str(path) for path in args.extra_train),
+        extra_events=tuple(name for name in args.extra_events.split(",") if name),
         holdout=tuple(str(path) for path in args.holdout),
         channels=args.channels,
         dilations=tuple(args.dilations),
@@ -375,6 +415,13 @@ def main() -> None:
         corpus = corpus.model_copy(update={"train": corpus.train[: args.limit_train]})
         setup.notes = f"{setup.notes} [first {args.limit_train} training clips]".strip()
     extra = load_samples(args.extra_train) if args.extra_train else []
+    if setup.extra_events:
+        if not extra:
+            raise SystemExit("--extra-events given with no --extra-train clips to apply it to")
+        extra = [
+            sample.model_copy(update={"supervised_events": supervised_mask(setup.extra_events)})
+            for sample in extra
+        ]
     print(
         f"{setup.name}: {corpus.describe()}"
         + (f", plus {len(extra)} training-only" if extra else "")

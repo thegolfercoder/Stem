@@ -118,6 +118,21 @@ class Sample(BaseModel):
     tempo_ratio: float
     capture_rate_hz: float
     azimuth_deg: float
+    supervised_events: NDArray[np.bool_] | None = None
+    """Which of the eight labels this clip may be trained against. None means all.
+
+    Real footage and this generator do not always mean the same instant by the
+    same event name. Measured as a share of the address-to-impact span, they agree
+    to about a percent on address, the top, mid-downswing and impact, and differ
+    by six to twelve percent on toe-up, mid-backswing, mid-follow-through and the
+    finish - the generator reads those off the rig's geometry, and a human
+    annotator watching real video does not arrive at the same frame.
+
+    A clip whose labels disagree on four events out of eight is still worth having
+    for the other four, and this is how it says so: the events left out are
+    withheld from the loss rather than averaged into it, so real footage is never
+    made to argue with the generator about where mid-backswing is.
+    """
     pose: PoseSequence | None = None
 
     @property
