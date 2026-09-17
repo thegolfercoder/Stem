@@ -81,6 +81,14 @@ too heavy to bundle: on the same clips that single model is **83.1% and 93.6%**.
 The measured tempo band is ±9% for the ensemble and ±10% for the single model,
 down from ±12%.
 
+Those clips span tempo ratios of 1.50 to 5.40 with a median of 3.06, against the
+1.2 to 6.0 the pipeline will accept, so the figure is not quoted off a narrow
+slice. Worth one caveat: the 180 real swings extracted from GolfDB have a median
+of 3.51, all of them tour players, so the holdout under-weights the faster half
+of real swings without excluding it — 10% of it sits at or above GolfDB's 90th
+percentile. The secondary benchmark test split used by `--test` is narrower
+still and stops at 4.00.
+
 Where the error is was measured rather than assumed, and the measurement made a
 prediction that has now been checked. The four interior events — top,
 mid-downswing, impact, mid-follow-through — were already at 94 to 98 percent, so
@@ -380,6 +388,63 @@ python scripts/calibrate_events.py --data out/detected/*.npz \
 python scripts/export_web_model.py && python scripts/build_web_app.py
 ```
 
+### Real footage
+
+Everything above is generated. [GolfDB](https://github.com/wmcnally/golfdb) is
+1,400 clips of real swings off YouTube, annotated with eight events that are the
+same eight this pipeline predicts, which makes it the first real training signal
+here that is not one checked-in fixture clip.
+
+```bash
+# Extract. Three workers, chunked, because a container restart has twice cost a
+# long unattended run everything it had not written yet.
+for w in 0 1 2; do
+  python scripts/make_golfdb_dataset.py --annotations golfdb/data/golfDB.mat \
+      --videos videos_160 --out out/golfdb/w$w.npz --start $w --stride 3 --chunk 60 &
+done; wait
+
+# Split by golfer *and* by source video, then train on one side and score the other.
+python scripts/split_golfdb.py --annotations golfdb/data/golfDB.mat \
+    --archives out/golfdb/*.npz --train-out out/golfdb/train.npz \
+    --holdout-out out/golfdb/holdout.npz --assignment-out out/golfdb/split.json
+
+python scripts/experiment.py --name real --seed 0 \
+    --extra-train out/golfdb/train.npz --extra-events address,top,mid_downswing,impact \
+    --holdout out/golfdb/holdout.npz --out out/exp/real
+```
+
+Three things about that are not obvious.
+
+**Handedness has to be inferred**, because GolfDB does not record it and the
+features need to know which arm leads. Whichever shoulder the hands sit nearer
+at the top answers it 45 times out of the 48 clips it will answer at all, on 51
+clips of players whose handedness is known. Two cues that sound stronger are
+worse — lead-arm extension at the top gets 39 of 48, and shoulder tilt at
+address, which ought to follow from the trail hand sitting lower on the grip,
+gets 38 of 51. Requiring two cues to agree reaches 41 of 42 but spends nine
+clips of the fifty-one, which is refused on a measurement: flipping the label on
+every test clip moves the detector 1.8 points at one frame, and at a realistic
+6% error rate 0.1 points, because handedness reaches five channels out of 132.
+A clip nobody can call is dropped rather than assigned the commoner answer.
+
+**GolfDB's own four splits are not disjoint by golfer** — 100 of its 246 players
+appear in all four — so a holdout taken from them would put the same golfer,
+often the same tournament and camera, on both sides. The split here is over the
+connected components of the player-video graph, because fifteen source videos
+carry more than one player and most videos contributed two clips of one swing
+from two positions, so neither key contains the other.
+
+**Only four of the eight events are trained on.** Measured in matched tempo
+bands, GolfDB's labels and this generator's agree within a frame on address, the
+top, mid-downswing and impact, and disagree by four to seven frames on toe-up,
+nine to thirteen on mid-backswing and eleven to fourteen on the finish. The rest
+are withheld from the loss rather than averaged into it. Matching the tempo band
+is what makes that table mean anything: the top's position as a share of the
+address-to-impact span *is* the tempo ratio rewritten, so pooling all tempos
+showed the top 2.6 frames out when the two agree on it to under a frame.
+
+The four that agree are the four the reported tempo is built from.
+
 Steps 4 and 5 are the ones worth insisting on. Every improvement here has been a
 few points on a few hundred clips, which is the regime where a difference can be
 entirely which clips were drawn; and a model chosen on generated footage alone
@@ -422,3 +487,29 @@ Motion's patent portfolio, including US 9,039,527, and no copyright licence
 grants patent rights - least of all rights nobody here holds. This is a
 university research prototype, which is fine. Nobody should assume it is safe to
 sell.
+
+### GolfDB
+
+Nothing derived from GolfDB is in this repository, and `out/` is ignored, so the
+archives the section above builds stay on the machine that built them. GolfDB is
+licensed [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) —
+attribution, non-commercial — and its clips are third-party YouTube footage
+whose copyright belongs to whoever uploaded them, so it ships annotations and a
+download script rather than video. Using it here is research use of a research
+dataset; it is one more reason not to assume any of this is safe to sell.
+
+```
+@InProceedings{McNally_2019_CVPR_Workshops,
+author = {McNally, William and Vats, Kanav and Pinto, Tyler and Dulhanty, Chris
+          and McPhee, John and Wong, Alexander},
+title = {GolfDB: A Video Database for Golf Swing Sequencing},
+booktitle = {The IEEE Conference on Computer Vision and Pattern Recognition
+             (CVPR) Workshops},
+month = {June},
+year = {2019}
+}
+```
+
+The accuracy figures above are not comparable with the PCE numbers in that
+paper. PCE is a different metric on a different holdout, and it has not been
+computed here.
