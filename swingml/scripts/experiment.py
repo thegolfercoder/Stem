@@ -79,6 +79,13 @@ class Setup:
     data at all. Two runs that differ in their corpus and agree in every recorded
     field look, in the log, like a reproducibility problem.
     """
+    extend_probability: float = 0.0
+    """Chance of padding idle footage onto a clip's ends during training.
+
+    Recorded rather than left to the augmenter's default, because it changes the
+    length of what the model is shown: a run with it on is not comparable with
+    one without, and the log has to be able to say which it was.
+    """
     extra_events: tuple[str, ...] = ()
     """Which events the --extra-train clips are trained against. Empty means all.
 
@@ -136,7 +143,7 @@ def loaders(
         event_weight=setup.event_weight,
         feature_noise=setup.feature_noise,
         rng_seed=setup.seed,
-        augment=AugmentConfig(enabled=setup.augment),
+        augment=AugmentConfig(enabled=setup.augment, extend_probability=setup.extend_probability),
     )
     return (
         DataLoader(
@@ -365,6 +372,16 @@ def main() -> None:
         help="clip files added to training only, never to validation or test",
     )
     parser.add_argument(
+        "--extend-ends",
+        type=float,
+        default=0.0,
+        metavar="P",
+        help=(
+            "probability of padding idle footage onto a clip's ends, to cover the "
+            "loose framing of real clips; 0 leaves clips as drawn"
+        ),
+    )
+    parser.add_argument(
         "--extra-events",
         default="",
         help=(
@@ -387,6 +404,7 @@ def main() -> None:
         notes=args.notes,
         data=tuple(str(path) for path in args.data),
         extra_train=tuple(str(path) for path in args.extra_train),
+        extend_probability=args.extend_ends,
         extra_events=tuple(name for name in args.extra_events.split(",") if name),
         holdout=tuple(str(path) for path in args.holdout),
         channels=args.channels,
