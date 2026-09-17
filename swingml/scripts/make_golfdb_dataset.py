@@ -45,6 +45,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from typing import NamedTuple
 
@@ -298,6 +299,21 @@ def write_archive(
     print(f"  wrote {path}: {len(features)} clips", flush=True)
 
 
+def already_extracted(paths: Sequence[Path]) -> set[int]:
+    """Clip ids these archives already hold, so a resumed run can skip them.
+
+    Read from the `seeds` column, which is the GolfDB clip id rather than a
+    generator seed. Naming the clip in the archive is what makes this possible at
+    all: without it a resumed run could only guess by position, and position
+    depends on how many clips were refused.
+    """
+    done: set[int] = set()
+    for path in paths:
+        if Path(path).is_file():
+            done.update(int(v) for v in np.load(path)["seeds"])
+    return done
+
+
 def report_handedness(meta: list[dict[str, float]], records: list[Annotation]) -> None:
     """How the inference did, against players whose swing side is known."""
     by_id = {int(m["seed"]): m for m in meta}
@@ -335,9 +351,25 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=0, help="stop after this many clips")
     parser.add_argument("--start", type=int, default=0, help="skip this many annotations first")
     parser.add_argument("--stride", type=int, default=1, help="take every nth, for parallel runs")
+    parser.add_argument(
+        "--done",
+        type=Path,
+        nargs="*",
+        default=[],
+        help=(
+            "archives already extracted; their clips are skipped. A clip costs "
+            "fifteen seconds of pose estimation, so an interrupted run should not "
+            "have to buy the same ones again"
+        ),
+    )
     args = parser.parse_args()
 
     records = read_annotations(args.annotations)[args.start :: args.stride]
+    already = already_extracted(args.done)
+    if already:
+        before = len(records)
+        records = [r for r in records if r.clip_id not in already]
+        print(f"skipping {before - len(records)} clips already in {len(args.done)} archives")
     print(f"{len(records)} annotations to try from {args.annotations}", flush=True)
 
     estimator = MediaPipePoseEstimator()
