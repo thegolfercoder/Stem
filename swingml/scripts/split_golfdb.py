@@ -1,0 +1,255 @@
+"""Split the extracted GolfDB clips into training footage and a real holdout.
+
+The synthetic benchmark corpus is a fixed list of four archives, permuted with a
+fixed seed, and every number in the project's log was measured on the validation
+and test clips that fall out of it. Real footage must therefore not join that
+pool: it goes into training through `--extra-train`, which leaves the held-out
+sets exactly where they were.
+
+That alone would leave no real-footage measurement at all beyond the single
+fixture clip, which is the one thing the whole exercise is meant to improve. So
+this carves a second, separate holdout out of the real clips, reported alongside
+the synthetic numbers rather than mixed into them. Two metrics, neither able to
+contaminate the other.
+
+**Why not GolfDB's own splits.** GolfDB ships four, so results are comparable
+across the papers that use it, but they are not disjoint by golfer: 100 of the
+246 players appear in all four. Holding out split 4 would put the same golfer -
+frequently the same tournament, camera and lens - on both sides, and the real
+footage number, the one that matters most here, would come out flattering and
+wrong.
+
+**Why groups, not players.** Most of the 580 source videos contributed two
+clips, so a video is the tighter unit of near-duplication: two clips off one
+video are one golfer in one session, often one swing from two camera positions.
+Fifteen videos carry more than one player, so grouping by player does not
+contain videos and grouping by video does not contain players. The groups here
+are the connected components of the player-video graph, which contains both.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from collections import defaultdict
+from collections.abc import Sequence
+from hashlib import blake2b
+from pathlib import Path
+
+import numpy as np
+from numpy.typing import NDArray
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from make_golfdb_dataset import Annotation, read_annotations
+
+HOLDOUT_FRACTION = 0.2
+"""Share of real clips withheld from training.
+
+A fifth of thirteen hundred clips is a couple of hundred, which is enough for a
+percentage at one frame to mean something and small enough that the training set
+keeps almost all of the real footage - which is the scarce input here.
+"""
+
+COLUMNS = (
+    "seeds",
+    "tempo_ratio",
+    "azimuth_deg",
+    "capture_rate_hz",
+    "left_handed",
+    "landscape",
+    "detection_rate",
+    "handedness_margin",
+    "slow",
+    "golfdb_split",
+)
+"""The per-clip columns, all of them one value per clip, carried across unchanged."""
+
+
+class Groups:
+    """Union-find over the player and video labels sharing a clip."""
+
+    def __init__(self) -> None:
+        self.parent: dict[str, str] = {}
+
+    def find(self, key: str) -> str:
+        self.parent.setdefault(key, key)
+        while self.parent[key] != key:
+            self.parent[key] = self.parent[self.parent[key]]
+            key = self.parent[key]
+        return key
+
+    def union(self, a: str, b: str) -> None:
+        ra, rb = self.find(a), self.find(b)
+        if ra != rb:
+            self.parent[ra] = rb
+
+
+def group_of_clip(records: Sequence[Annotation]) -> dict[int, str]:
+    """Map each clip id to the name of its leakage group.
+
+    The group is named after the alphabetically first label in it, so the name
+    depends on the group's membership rather than on the order the rows were
+    read: the same corpus yields the same names whichever way it is iterated.
+    """
+    groups = Groups()
+    for record in records:
+        groups.union(f"player:{record.player.upper()}", f"video:{record.youtube_id}")
+
+    members: dict[str, list[str]] = defaultdict(list)
+    for key in list(groups.parent):
+        members[groups.find(key)].append(key)
+    canonical = {root: min(names) for root, names in members.items()}
+
+    return {
+        record.clip_id: canonical[groups.find(f"player:{record.player.upper()}")]
+        for record in records
+    }
+
+
+def order_key(name: str) -> str:
+    """A stable shuffling key, so the holdout does not move when clips are added.
+
+    Hashed rather than permuted by index: a permutation is a function of how many
+    groups there are, so one new golfer in the corpus would reshuffle every
+    assignment and silently move footage across the boundary.
+    """
+    return blake2b(name.encode(), digest_size=8).hexdigest()
+
+
+def choose_holdout(group_sizes: dict[str, int], fraction: float) -> set[str]:
+    """Whole groups, in hashed order, until the clip target is met."""
+    target = fraction * sum(group_sizes.values())
+    held: set[str] = set()
+    running = 0
+    for name in sorted(group_sizes, key=order_key):
+        if running >= target:
+            break
+        held.add(name)
+        running += group_sizes[name]
+    return held
+
+
+def load_archives(paths: Sequence[Path]) -> dict[str, NDArray[np.float64]]:
+    """Concatenate the worker archives back into one corpus."""
+    lengths: list[NDArray[np.int64]] = []
+    features: list[NDArray[np.float32]] = []
+    events: list[NDArray[np.int64]] = []
+    columns: dict[str, list[NDArray[np.float64]]] = {name: [] for name in COLUMNS}
+    for path in paths:
+        data = np.load(path)
+        lengths.append(data["lengths"])
+        features.append(data["features"])
+        events.append(data["events"])
+        for name in COLUMNS:
+            columns[name].append(data[name])
+    merged: dict[str, NDArray[np.float64]] = {
+        "lengths": np.concatenate(lengths),
+        "features": np.concatenate(features),
+        "events": np.concatenate(events),
+    }
+    for name in COLUMNS:
+        merged[name] = np.concatenate(columns[name])
+    return merged
+
+
+def write_subset(path: Path, corpus: dict[str, NDArray[np.float64]], chosen: Sequence[int]) -> None:
+    """Write the named clips out, feature blocks reassembled.
+
+    The columns are named one by one rather than unpacked from a dict. It reads
+    as duplication of `COLUMNS`, and it is, but an archive written by unpacking a
+    mapping is an archive whose schema is whatever the mapping happened to hold;
+    spelling them out here means a column that goes missing upstream fails at the
+    write rather than producing a file the loader silently reads short.
+    """
+    rows = list(chosen)
+    lengths = corpus["lengths"].astype(np.int64)
+    offsets = np.concatenate(([0], np.cumsum(lengths)))
+
+    def column(name: str) -> NDArray[np.float64]:
+        return corpus[name][rows]
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        path,
+        lengths=lengths[rows],
+        features=np.concatenate([corpus["features"][offsets[i] : offsets[i + 1]] for i in rows]),
+        events=corpus["events"][rows],
+        seeds=column("seeds").astype(np.int64),
+        tempo_ratio=column("tempo_ratio"),
+        azimuth_deg=column("azimuth_deg"),
+        capture_rate_hz=column("capture_rate_hz"),
+        left_handed=column("left_handed"),
+        landscape=column("landscape"),
+        detection_rate=column("detection_rate"),
+        handedness_margin=column("handedness_margin"),
+        slow=column("slow"),
+        golfdb_split=column("golfdb_split"),
+    )
+    print(f"  wrote {path}: {len(rows)} clips")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--annotations", type=Path, required=True, help="golfDB.mat")
+    parser.add_argument("--archives", type=Path, nargs="+", required=True)
+    parser.add_argument("--train-out", type=Path, required=True)
+    parser.add_argument("--holdout-out", type=Path, required=True)
+    parser.add_argument("--assignment-out", type=Path, required=True)
+    args = parser.parse_args()
+
+    records = read_annotations(args.annotations)
+    group = group_of_clip(records)
+    corpus = load_archives(args.archives)
+    clip_ids = [int(v) for v in corpus["seeds"]]
+    print(f"{len(clip_ids)} extracted clips of {len(records)} annotated")
+
+    sizes: dict[str, int] = defaultdict(int)
+    for clip_id in clip_ids:
+        sizes[group[clip_id]] += 1
+    held = choose_holdout(dict(sizes), HOLDOUT_FRACTION)
+
+    holdout_rows = [i for i, c in enumerate(clip_ids) if group[c] in held]
+    train_rows = [i for i, c in enumerate(clip_ids) if group[c] not in held]
+    print(
+        f"{len(sizes)} groups -> {len(held)} held out\n"
+        f"  train   {len(train_rows)} clips\n"
+        f"  holdout {len(holdout_rows)} clips "
+        f"({len(holdout_rows) / max(len(clip_ids), 1):.1%})"
+    )
+
+    by_id = {r.clip_id: r for r in records}
+    for label, rows in (("player", "player"), ("video", "youtube_id")):
+        left = {getattr(by_id[clip_ids[i]], rows).upper() for i in train_rows}
+        right = {getattr(by_id[clip_ids[i]], rows).upper() for i in holdout_rows}
+        shared = left & right
+        # The whole point of the grouping. If this ever prints a name, the
+        # holdout number is measuring memorisation and must not be quoted.
+        print(
+            f"  {label}s on both sides: {len(shared)}"
+            + (f" {sorted(shared)[:5]}" if shared else "")
+        )
+        if shared:
+            raise SystemExit(f"leak: {len(shared)} {label}s in both train and holdout")
+
+    write_subset(args.train_out, corpus, train_rows)
+    write_subset(args.holdout_out, corpus, holdout_rows)
+    args.assignment_out.write_text(
+        json.dumps(
+            {
+                "holdout_fraction": HOLDOUT_FRACTION,
+                "holdout_groups": sorted(held),
+                "train_clips": sorted(clip_ids[i] for i in train_rows),
+                "holdout_clips": sorted(clip_ids[i] for i in holdout_rows),
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+    print(f"\nwrote {args.train_out}, {args.holdout_out}, {args.assignment_out}")
+
+
+if __name__ == "__main__":
+    main()

@@ -89,6 +89,13 @@ class Annotation(NamedTuple):
 
     clip_id: int
     player: str
+    youtube_id: str
+    """Which source video the clip was cut from.
+
+    Carried because most videos contributed two clips, so a video is a tighter
+    unit of near-duplication than a player: two clips off one video are the same
+    golfer in the same session, often the same swing from two positions.
+    """
     view: str
     club: str
     slow: bool
@@ -106,6 +113,7 @@ def read_annotations(path: Path) -> list[Annotation]:
             Annotation(
                 clip_id=int(np.asarray(record["id"]).ravel()[0]),
                 player=str(np.asarray(record["player"]).ravel()[0]),
+                youtube_id=str(np.asarray(record["youtube_id"]).ravel()[0]),
                 view=str(np.asarray(record["view"]).ravel()[0]),
                 club=str(np.asarray(record["club"]).ravel()[0]),
                 slow=bool(np.asarray(record["slow"]).ravel()[0]),
