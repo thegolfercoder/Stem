@@ -1,12 +1,20 @@
 """Withholding the events where real footage and the generator disagree.
 
-Measured as a share of the address-to-impact span, GolfDB's labels and this
-generator's agree to about a percent on address, the top, mid-downswing and
-impact, and differ by six to twelve percent on toe-up, mid-backswing,
-mid-follow-through and the finish. The generator reads all eight off the rig's
-geometry - its midpoint fallbacks never fire across four hundred draws - so the
-gap is a real difference between the rig's kinematics and a human annotator's
-reading of real video, not a bug in either label set.
+Measured on GolfDB against this corpus, in matched tempo bands, the two label
+sets agree within a frame on address, the top, mid-downswing and impact, and
+disagree by four to seven frames on toe-up, nine to thirteen on mid-backswing,
+and eleven to fourteen on the finish.
+
+Matching the tempo band is the whole trick. The top's position as a share of the
+address-to-impact span is the tempo ratio rewritten, so pooling all tempos put
+the top 2.6 frames out when the two in fact agree on it to under a frame - the
+gap was the generator's drawn tempo median sitting below the real one, not a
+disagreement about what the top is.
+
+The generator reads all eight events off the rig's geometry, and its midpoint
+fallbacks never fire across four hundred draws, so where a gap survives the
+tempo control it is a real difference between the rig and a human annotator
+watching real video, not a bug in either label set.
 
 A clip that disagrees on four events is still worth having for the other four.
 These tests pin the mechanism that says so.

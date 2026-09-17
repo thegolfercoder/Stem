@@ -48,13 +48,14 @@ UNSUPERVISED_RADIUS_FRAMES = 18
 
 Two things have to be covered. The soft target puts a bump of width
 `sigma_frames` at the event, which is spent by three sigma - six frames at the
-default. And the label itself is in the wrong place by up to twelve percent of
-the address-to-impact span, which at the canonical rate is a dozen frames, so
-the frames the other convention would have called the event have to go too.
+default. And the label itself sits somewhere else than the other label set would
+have put it, by up to fourteen frames for the finish and thirteen for
+mid-backswing, measured in matched tempo bands, so the frames the other
+convention would have called the event have to go too.
 
 Eighteen is those two added and rounded, which makes it a policy rather than a
-measurement: it is wide enough to contain the disagreement that was measured,
-and every frame it covers is a frame the model learns nothing from.
+measurement: it is wide enough to contain the largest disagreement measured, and
+every frame it covers is a frame the model learns nothing from.
 """
 
 
