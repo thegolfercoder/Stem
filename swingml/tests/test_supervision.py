@@ -113,3 +113,41 @@ def test_withholding_leaves_the_trusted_events_at_full_weight() -> None:
         frame = int(EVENTS[int(SwingEvent[name.upper()])])
         assert float(item["weight"][frame]) == float(plain["weight"][frame])
         assert float(item["weight"][frame]) > 1.0
+
+
+def test_a_swing_longer_than_the_frame_cap_is_left_uncropped() -> None:
+    """The crop arithmetic had no guard for this, and real slow-motion hits it.
+
+    When the events span more frames than the cap, the window that would hold
+    them does not exist. The old arithmetic opened the window after the address
+    anyway and shifted it negative, handing the model a target outside its own
+    clip. Generated clips top out near 160 frames so nothing reached it; real
+    slow-motion footage has swings spanning 839.
+    """
+    long_events = np.array([10, 60, 110, 180, 240, 300, 360, 420], dtype=np.int64)
+    sample = Sample(
+        features=np.zeros((500, 132), dtype=np.float32),
+        event_frames=long_events,
+        handedness=Handedness.RIGHT,
+        tempo_ratio=3.0,
+        capture_rate_hz=60.0,
+        azimuth_deg=0.0,
+    )
+    item = SwingDataset([sample], sigma_frames=2.0, max_frames=200)[0]
+    assert int(item["events"].min()) >= 0, "an event was cropped outside the clip"
+    assert int(item["events"].max()) < int(item["length"]), "an event fell past the end"
+
+
+def test_a_swing_inside_the_cap_is_still_cropped() -> None:
+    """The guard must not turn the cap off for the clips it was meant for."""
+    sample = Sample(
+        features=np.zeros((500, 132), dtype=np.float32),
+        event_frames=EVENTS.copy(),
+        handedness=Handedness.RIGHT,
+        tempo_ratio=3.0,
+        capture_rate_hz=60.0,
+        azimuth_deg=0.0,
+    )
+    item = SwingDataset([sample], sigma_frames=2.0, max_frames=250)[0]
+    assert int(item["length"]) == 250
+    assert int(item["events"].min()) >= 0

@@ -79,6 +79,34 @@ class Setup:
     data at all. Two runs that differ in their corpus and agree in every recorded
     field look, in the log, like a reproducibility problem.
     """
+    extra_validation: tuple[str, ...] = ()
+    """Real clips that decide which epoch is kept, scored apart from the synthetic ones.
+
+    Validation was entirely generated footage, and choosing on generated footage
+    is how this project once kept a checkpoint that put the finish thirty-eight
+    frames late on the only real swing it had. A model meant to work on real
+    video has to be chosen on real video.
+
+    Scored apart rather than pooled in, and the two headline numbers averaged, so
+    that neither domain can be traded away for the other: pooling would let a
+    hundred synthetic clips outvote thirty real ones and the choice would be the
+    old one again with extra steps.
+    """
+    selection_events: tuple[str, ...] = ()
+    """Events the real validation clips are judged on. Empty means all eight.
+
+    The clips whose labels disagree with this generator on four events are not
+    trained on those events, so judging them there would score the model against
+    a target it was deliberately never shown.
+    """
+    max_frames: int | None = None
+    """Cap on the frames of any one training clip.
+
+    Real clips run to five hundred frames and more where generated ones sit near
+    a hundred and sixty, and collation pads every clip in a batch to the longest
+    one in it, so a single long clip sets the width - and the cost - for all
+    thirty-one beside it. The crop never cuts through an event.
+    """
     extend_probability: float = 0.0
     """Chance of padding idle footage onto a clip's ends during training.
 
@@ -86,8 +114,17 @@ class Setup:
     length of what the model is shown: a run with it on is not comparable with
     one without, and the log has to be able to say which it was.
     """
+    real_train: tuple[str, ...] = ()
+    """Real footage added to training, kept apart from the generated extras.
+
+    Separate from `extra_train` because the two are supervised differently: the
+    generated extras agree with the generated splits on all eight events, and the
+    real clips agree on four. One flag covering both would have applied the real
+    clips' mask to the generated ones and quietly stopped training four events on
+    the corpus that defines them.
+    """
     extra_events: tuple[str, ...] = ()
-    """Which events the --extra-train clips are trained against. Empty means all.
+    """Which events the --real-train clips are trained against. Empty means all.
 
     A property of the run, not of the archive. Whether real footage and this
     generator mean the same instant by "mid-backswing" is a judgement about two
@@ -142,6 +179,7 @@ def loaders(
         sigma_frames=setup.sigma_frames,
         event_weight=setup.event_weight,
         feature_noise=setup.feature_noise,
+        max_frames=setup.max_frames,
         rng_seed=setup.seed,
         augment=AugmentConfig(enabled=setup.augment, extend_probability=setup.extend_probability),
     )
@@ -190,8 +228,12 @@ class Averaged:
 
 
 def train(
-    corpus: Corpus, setup: Setup, out: Path | None, extra: list[Sample] | None = None
-) -> tuple[SwingEventNet, Score, dict[str, object]]:
+    corpus: Corpus,
+    setup: Setup,
+    out: Path | None,
+    extra: list[Sample] | None = None,
+    real_validation: list[Sample] | None = None,
+) -> tuple[SwingEventNet, Score, Score | None, dict[str, object]]:
     torch.manual_seed(setup.seed)
     np.random.seed(setup.seed)
 
@@ -264,6 +306,16 @@ def train(
             continue
         judged = averaged.apply_to(model) if averaged is not None else model
         result = evaluate(judged, validation)
+        real = evaluate(judged, real_validation) if real_validation else None
+
+        # The mean of the two domains' headlines, not a pool of their clips. A
+        # pool lets whichever domain brought more clips decide, which for 174
+        # generated against a few dozen real is the generated-only choice again.
+        ranked = (
+            result.headline
+            if real is None
+            else 0.5 * (result.headline + within_on(real, setup.selection_events))
+        )
         history.append(
             {
                 "epoch": epoch,
@@ -271,21 +323,35 @@ def train(
                 "within_1": result.within[1],
                 "within_2": result.within[2],
                 "tempo": result.tempo_median_relative_error,
+                "ranked": ranked,
+                **(
+                    {}
+                    if real is None
+                    else {
+                        "real_within_1": within_on(real, setup.selection_events, 1),
+                        "real_within_2": within_on(real, setup.selection_events, 2),
+                    }
+                ),
             }
         )
-        if result.headline > best:
-            best = result.headline
+        if ranked > best:
+            best = ranked
             best_state = {k: v.detach().clone() for k, v in judged.state_dict().items()}
-        print(
+        line = (
             f"  epoch {epoch + 1:3d}/{setup.epochs}  loss {history[-1]['loss']:.4f}  "
-            f"val ±1f {100 * result.within[1]:5.1f}%  ±2f {100 * result.within[2]:5.1f}%  "
-            f"tempo {100 * result.tempo_median_relative_error:4.1f}%",
-            flush=True,
+            f"val ±1f {100 * result.within[1]:5.1f}%  ±2f {100 * result.within[2]:5.1f}%"
         )
+        if real is not None:
+            line += (
+                f"  | real ±1f {100 * within_on(real, setup.selection_events, 1):5.1f}%"
+                f"  ±2f {100 * within_on(real, setup.selection_events, 2):5.1f}%"
+            )
+        print(f"{line}  ranked {100 * ranked:5.1f}%", flush=True)
 
     model.load_state_dict(best_state)
     model.eval()
     final = evaluate(model, validation)
+    final_real = evaluate(model, real_validation) if real_validation else None
     meta = {
         "minutes": (time.time() - started) / 60.0,
         "parameters": sum(p.numel() for p in model.parameters()),
@@ -299,7 +365,7 @@ def train(
             json.dumps({"setup": setup.__dict__, "meta": meta}, indent=1, default=str),
             encoding="utf-8",
         )
-    return model, final, meta
+    return model, final, final_real, meta
 
 
 def supervised_mask(names: Sequence[str]) -> NDArray[np.bool_]:
@@ -319,6 +385,19 @@ def supervised_mask(names: Sequence[str]) -> NDArray[np.bool_]:
     if not mask.any():
         raise SystemExit("--extra-events named no events")
     return mask
+
+
+def within_on(score: Score, events: Sequence[str], tolerance: int = 2) -> float:
+    """`score`'s within-tolerance rate over just these events.
+
+    Read off `within_per_event` rather than recomputed, so it cannot drift from
+    the number the report prints beside it.
+    """
+    per_event = score.within_per_event[tolerance]
+    if not events:
+        return float(np.mean(per_event))
+    picked = [per_event[int(SwingEvent[name.strip().upper()])] for name in events]
+    return float(np.mean(picked))
 
 
 def main() -> None:
@@ -372,6 +451,44 @@ def main() -> None:
         help="clip files added to training only, never to validation or test",
     )
     parser.add_argument(
+        "--real-train",
+        type=Path,
+        nargs="*",
+        default=[],
+        help=(
+            "real footage added to training, supervised only on --extra-events; "
+            "kept apart from --extra-train, which is generated and agrees on all eight"
+        ),
+    )
+    parser.add_argument(
+        "--extra-validation",
+        type=Path,
+        nargs="*",
+        default=[],
+        help=(
+            "real clips that decide which epoch is kept, scored apart from the "
+            "generated validation split and the two headlines averaged"
+        ),
+    )
+    parser.add_argument(
+        "--selection-events",
+        default="",
+        help=(
+            "events the --extra-validation clips are judged on; empty means all "
+            "eight. Match it to --extra-events or the model is scored against a "
+            "target it was never shown"
+        ),
+    )
+    parser.add_argument(
+        "--max-frames",
+        type=int,
+        default=0,
+        help=(
+            "cap the frames of any one training clip, so a long real clip does "
+            "not set the batch width for every clip beside it; 0 leaves them whole"
+        ),
+    )
+    parser.add_argument(
         "--extend-ends",
         type=float,
         default=0.0,
@@ -404,6 +521,10 @@ def main() -> None:
         notes=args.notes,
         data=tuple(str(path) for path in args.data),
         extra_train=tuple(str(path) for path in args.extra_train),
+        real_train=tuple(str(path) for path in args.real_train),
+        extra_validation=tuple(str(path) for path in args.extra_validation),
+        selection_events=tuple(name for name in args.selection_events.split(",") if name),
+        max_frames=args.max_frames or None,
         extend_probability=args.extend_ends,
         extra_events=tuple(name for name in args.extra_events.split(",") if name),
         holdout=tuple(str(path) for path in args.holdout),
@@ -433,22 +554,33 @@ def main() -> None:
         corpus = corpus.model_copy(update={"train": corpus.train[: args.limit_train]})
         setup.notes = f"{setup.notes} [first {args.limit_train} training clips]".strip()
     extra = load_samples(args.extra_train) if args.extra_train else []
+    real = load_samples(args.real_train) if args.real_train else []
     if setup.extra_events:
-        if not extra:
-            raise SystemExit("--extra-events given with no --extra-train clips to apply it to")
-        extra = [
-            sample.model_copy(update={"supervised_events": supervised_mask(setup.extra_events)})
-            for sample in extra
-        ]
+        if not real:
+            raise SystemExit("--extra-events given with no --real-train clips to apply it to")
+        mask = supervised_mask(setup.extra_events)
+        real = [sample.model_copy(update={"supervised_events": mask}) for sample in real]
+    extra = extra + real
     print(
         f"{setup.name}: {corpus.describe()}"
-        + (f", plus {len(extra)} training-only" if extra else "")
+        + (f", plus {len(extra) - len(real)} generated" if len(extra) > len(real) else "")
+        + (f", plus {len(real)} real" if real else "")
     )
-    model, validation, meta = train(corpus, setup, args.out, extra)
+    real_validation = load_samples(args.extra_validation) if args.extra_validation else []
+    if setup.selection_events:
+        supervised_mask(setup.selection_events)  # Fail on a typo before training, not after.
+    if real_validation:
+        print(f"selecting on {len(real_validation)} real clips as well as the generated split")
+
+    model, validation, real_final, meta = train(corpus, setup, args.out, extra, real_validation)
     print(f"\n{setup.name} validation: {validation.summary()}")
     print(validation.report())
 
     scores = {"validation": validation}
+    if real_final is not None:
+        print(f"\n{setup.name} real validation: {real_final.summary()}")
+        print(real_final.report())
+        scores["real_validation"] = real_final
     if args.test:
         test = evaluate(model, corpus.test)
         print(f"\n{setup.name} TEST: {test.summary()}")

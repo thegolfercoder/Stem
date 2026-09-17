@@ -46,11 +46,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from make_golfdb_dataset import Annotation, read_annotations
 
 HOLDOUT_FRACTION = 0.2
-"""Share of real clips withheld from training.
+"""Share of real clips withheld from training and from model selection.
 
 A fifth of thirteen hundred clips is a couple of hundred, which is enough for a
 percentage at one frame to mean something and small enough that the training set
-keeps almost all of the real footage - which is the scarce input here.
+keeps most of the real footage - which is the scarce input here.
+"""
+
+VALIDATION_FRACTION = 0.15
+"""Share of real clips used to pick which epoch to keep.
+
+Separate from the holdout because a set used to choose a checkpoint is not a set
+that checkpoint can then be measured on. This project has already paid for that
+once: a model chosen on generated footage alone put the finish thirty-eight
+frames late on the only real swing in the repository, and the answer is not to
+choose on generated footage and hope, it is to choose on real footage and keep a
+different real set back to check the choice.
 """
 
 COLUMNS = (
@@ -121,15 +132,31 @@ def order_key(name: str) -> str:
 
 def choose_holdout(group_sizes: dict[str, int], fraction: float) -> set[str]:
     """Whole groups, in hashed order, until the clip target is met."""
-    target = fraction * sum(group_sizes.values())
-    held: set[str] = set()
-    running = 0
-    for name in sorted(group_sizes, key=order_key):
-        if running >= target:
-            break
-        held.add(name)
-        running += group_sizes[name]
-    return held
+    return choose_spans(group_sizes, (fraction,))[0]
+
+
+def choose_spans(group_sizes: dict[str, int], fractions: Sequence[float]) -> list[set[str]]:
+    """Consecutive stretches of the hashed order, one per fraction.
+
+    Taken in one pass over the same order so that adding a fraction on the end
+    cannot disturb the ones before it: the holdout a checkpoint was measured on
+    stays the same set when a validation slice is carved out after it.
+    """
+    total = sum(group_sizes.values())
+    order = sorted(group_sizes, key=order_key)
+    spans: list[set[str]] = []
+    cursor = 0
+    for fraction in fractions:
+        target = fraction * total
+        chosen: set[str] = set()
+        running = 0
+        while cursor < len(order) and running < target:
+            name = order[cursor]
+            chosen.add(name)
+            running += group_sizes[name]
+            cursor += 1
+        spans.append(chosen)
+    return spans
 
 
 def load_archives(paths: Sequence[Path]) -> dict[str, NDArray[np.float64]]:
@@ -196,6 +223,7 @@ def main() -> None:
     parser.add_argument("--annotations", type=Path, required=True, help="golfDB.mat")
     parser.add_argument("--archives", type=Path, nargs="+", required=True)
     parser.add_argument("--train-out", type=Path, required=True)
+    parser.add_argument("--validation-out", type=Path, required=True)
     parser.add_argument("--holdout-out", type=Path, required=True)
     parser.add_argument("--assignment-out", type=Path, required=True)
     args = parser.parse_args()
@@ -209,46 +237,52 @@ def main() -> None:
     sizes: dict[str, int] = defaultdict(int)
     for clip_id in clip_ids:
         sizes[group[clip_id]] += 1
-    held = choose_holdout(dict(sizes), HOLDOUT_FRACTION)
+    held, validated = choose_spans(dict(sizes), (HOLDOUT_FRACTION, VALIDATION_FRACTION))
 
-    holdout_rows = [i for i, c in enumerate(clip_ids) if group[c] in held]
-    train_rows = [i for i, c in enumerate(clip_ids) if group[c] not in held]
-    print(
-        f"{len(sizes)} groups -> {len(held)} held out\n"
-        f"  train   {len(train_rows)} clips\n"
-        f"  holdout {len(holdout_rows)} clips "
-        f"({len(holdout_rows) / max(len(clip_ids), 1):.1%})"
-    )
+    rows = {
+        "holdout": [i for i, c in enumerate(clip_ids) if group[c] in held],
+        "validation": [i for i, c in enumerate(clip_ids) if group[c] in validated],
+        "train": [i for i, c in enumerate(clip_ids) if group[c] not in held | validated],
+    }
+    print(f"{len(sizes)} groups -> {len(held)} held out, {len(validated)} for selection")
+    for name in ("train", "validation", "holdout"):
+        share = len(rows[name]) / max(len(clip_ids), 1)
+        print(f"  {name:<11}{len(rows[name]):>5} clips ({share:.1%})")
 
     by_id = {r.clip_id: r for r in records}
-    for label, rows in (("player", "player"), ("video", "youtube_id")):
-        left = {getattr(by_id[clip_ids[i]], rows).upper() for i in train_rows}
-        right = {getattr(by_id[clip_ids[i]], rows).upper() for i in holdout_rows}
-        shared = left & right
-        # The whole point of the grouping. If this ever prints a name, the
-        # holdout number is measuring memorisation and must not be quoted.
-        print(
-            f"  {label}s on both sides: {len(shared)}"
-            + (f" {sorted(shared)[:5]}" if shared else "")
-        )
-        if shared:
-            raise SystemExit(f"leak: {len(shared)} {label}s in both train and holdout")
+    for label, field in (("player", "player"), ("video", "youtube_id")):
+        names = {
+            part: {getattr(by_id[clip_ids[i]], field).upper() for i in indices}
+            for part, indices in rows.items()
+        }
+        # The whole point of the grouping. If this ever prints a name, the number
+        # that side produces is measuring memorisation and must not be quoted.
+        for a, b in (("train", "validation"), ("train", "holdout"), ("validation", "holdout")):
+            shared = names[a] & names[b]
+            if shared:
+                print(f"  {label}s in both {a} and {b}: {sorted(shared)[:5]}")
+                raise SystemExit(f"leak: {len(shared)} {label}s in both {a} and {b}")
+        print(f"  no {label} appears in more than one part")
 
-    write_subset(args.train_out, corpus, train_rows)
-    write_subset(args.holdout_out, corpus, holdout_rows)
+    write_subset(args.train_out, corpus, rows["train"])
+    write_subset(args.validation_out, corpus, rows["validation"])
+    write_subset(args.holdout_out, corpus, rows["holdout"])
     args.assignment_out.write_text(
         json.dumps(
             {
                 "holdout_fraction": HOLDOUT_FRACTION,
+                "validation_fraction": VALIDATION_FRACTION,
                 "holdout_groups": sorted(held),
-                "train_clips": sorted(clip_ids[i] for i in train_rows),
-                "holdout_clips": sorted(clip_ids[i] for i in holdout_rows),
+                "validation_groups": sorted(validated),
+                "train_clips": sorted(clip_ids[i] for i in rows["train"]),
+                "validation_clips": sorted(clip_ids[i] for i in rows["validation"]),
+                "holdout_clips": sorted(clip_ids[i] for i in rows["holdout"]),
             },
             indent=2,
         )
         + "\n"
     )
-    print(f"\nwrote {args.train_out}, {args.holdout_out}, {args.assignment_out}")
+    print(f"\nwrote {args.train_out}, {args.validation_out}, {args.holdout_out}")
 
 
 if __name__ == "__main__":

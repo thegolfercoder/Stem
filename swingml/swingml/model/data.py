@@ -134,11 +134,22 @@ class SwingDataset(Dataset[dict[str, torch.Tensor]]):
         if self.max_frames is not None and features.shape[0] > self.max_frames:
             # Crop, but never through an event: a window that cuts the finish off
             # would teach the model that swings sometimes lack one.
-            latest_start = min(int(events[0]), features.shape[0] - self.max_frames)
-            earliest_start = max(0, int(events[-1]) - self.max_frames + 1)
-            start = int(self.rng.integers(earliest_start, max(earliest_start, latest_start) + 1))
-            features = features[start : start + self.max_frames]
-            events = events - start
+            #
+            # A swing longer than the cap cannot be cropped at all, and the
+            # arithmetic below does not notice: `earliest_start` overtakes
+            # `latest_start`, the window opens after the address, and the shifted
+            # address comes out negative - a target sitting outside its own clip.
+            # Generated clips never reach that, so nothing caught it; real
+            # slow-motion footage has swings spanning 839 frames.
+            span = int(events[-1]) - int(events[0]) + 1
+            if span <= self.max_frames:
+                latest_start = min(int(events[0]), features.shape[0] - self.max_frames)
+                earliest_start = max(0, int(events[-1]) - self.max_frames + 1)
+                start = int(
+                    self.rng.integers(earliest_start, max(earliest_start, latest_start) + 1)
+                )
+                features = features[start : start + self.max_frames]
+                events = events - start
 
         if self.feature_noise > 0.0:
             features = features + self.rng.normal(0.0, self.feature_noise, features.shape).astype(
