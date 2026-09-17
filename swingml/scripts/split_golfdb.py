@@ -35,6 +35,7 @@ import sys
 from collections import defaultdict
 from collections.abc import Sequence
 from hashlib import blake2b
+from itertools import combinations
 from pathlib import Path
 
 import numpy as np
@@ -51,6 +52,20 @@ HOLDOUT_FRACTION = 0.2
 A fifth of thirteen hundred clips is a couple of hundred, which is enough for a
 percentage at one frame to mean something and small enough that the training set
 keeps most of the real footage - which is the scarce input here.
+"""
+
+CALIBRATION_FRACTION = 0.15
+"""Share of real clips the error bands are measured from.
+
+A third set, because the bands are a promise about clips the model has not seen
+and the two sets that already exist are both spent: the training clips it learnt
+from, and the selection clips it was chosen on. Measuring bands on either
+returns a band that fits the past and under-states the next clip.
+
+The README records that bands measured on rendered footage come out too tight
+for video of a person, which is the same failure one step removed - the wrong
+domain rather than the wrong clips. Real footage can fix that only if the clips
+it is measured on are real clips nothing else has used.
 """
 
 VALIDATION_FRACTION = 0.15
@@ -224,6 +239,12 @@ def main() -> None:
     parser.add_argument("--archives", type=Path, nargs="+", required=True)
     parser.add_argument("--train-out", type=Path, required=True)
     parser.add_argument("--validation-out", type=Path, required=True)
+    parser.add_argument(
+        "--calibration-out",
+        type=Path,
+        default=None,
+        help="clips reserved for measuring error bands; omitted, they go to training",
+    )
     parser.add_argument("--holdout-out", type=Path, required=True)
     parser.add_argument("--assignment-out", type=Path, required=True)
     args = parser.parse_args()
@@ -237,17 +258,28 @@ def main() -> None:
     sizes: dict[str, int] = defaultdict(int)
     for clip_id in clip_ids:
         sizes[group[clip_id]] += 1
-    held, validated = choose_spans(dict(sizes), (HOLDOUT_FRACTION, VALIDATION_FRACTION))
+    wanted = [HOLDOUT_FRACTION, VALIDATION_FRACTION]
+    if args.calibration_out is not None:
+        wanted.append(CALIBRATION_FRACTION)
+    spans = choose_spans(dict(sizes), wanted)
+    held, validated = spans[0], spans[1]
+    calibrated = spans[2] if len(spans) > 2 else set()
+    spoken_for = held | validated | calibrated
 
     rows = {
         "holdout": [i for i, c in enumerate(clip_ids) if group[c] in held],
         "validation": [i for i, c in enumerate(clip_ids) if group[c] in validated],
-        "train": [i for i, c in enumerate(clip_ids) if group[c] not in held | validated],
+        "calibration": [i for i, c in enumerate(clip_ids) if group[c] in calibrated],
+        "train": [i for i, c in enumerate(clip_ids) if group[c] not in spoken_for],
     }
-    print(f"{len(sizes)} groups -> {len(held)} held out, {len(validated)} for selection")
-    for name in ("train", "validation", "holdout"):
+    parts = [name for name in ("train", "validation", "calibration", "holdout") if rows[name]]
+    print(
+        f"{len(sizes)} groups -> {len(held)} held out, {len(validated)} for selection"
+        + (f", {len(calibrated)} for calibration" if calibrated else "")
+    )
+    for name in parts:
         share = len(rows[name]) / max(len(clip_ids), 1)
-        print(f"  {name:<11}{len(rows[name]):>5} clips ({share:.1%})")
+        print(f"  {name:<12}{len(rows[name]):>5} clips ({share:.1%})")
 
     by_id = {r.clip_id: r for r in records}
     for label, field in (("player", "player"), ("video", "youtube_id")):
@@ -257,7 +289,7 @@ def main() -> None:
         }
         # The whole point of the grouping. If this ever prints a name, the number
         # that side produces is measuring memorisation and must not be quoted.
-        for a, b in (("train", "validation"), ("train", "holdout"), ("validation", "holdout")):
+        for a, b in combinations(parts, 2):
             shared = names[a] & names[b]
             if shared:
                 print(f"  {label}s in both {a} and {b}: {sorted(shared)[:5]}")
@@ -266,16 +298,23 @@ def main() -> None:
 
     write_subset(args.train_out, corpus, rows["train"])
     write_subset(args.validation_out, corpus, rows["validation"])
+    if args.calibration_out is not None:
+        write_subset(args.calibration_out, corpus, rows["calibration"])
     write_subset(args.holdout_out, corpus, rows["holdout"])
     args.assignment_out.write_text(
         json.dumps(
             {
                 "holdout_fraction": HOLDOUT_FRACTION,
                 "validation_fraction": VALIDATION_FRACTION,
+                "calibration_fraction": (
+                    CALIBRATION_FRACTION if args.calibration_out is not None else 0.0
+                ),
                 "holdout_groups": sorted(held),
                 "validation_groups": sorted(validated),
+                "calibration_groups": sorted(calibrated),
                 "train_clips": sorted(clip_ids[i] for i in rows["train"]),
                 "validation_clips": sorted(clip_ids[i] for i in rows["validation"]),
+                "calibration_clips": sorted(clip_ids[i] for i in rows["calibration"]),
                 "holdout_clips": sorted(clip_ids[i] for i in rows["holdout"]),
             },
             indent=2,
