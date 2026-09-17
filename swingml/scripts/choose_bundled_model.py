@@ -11,8 +11,18 @@ So the real clip is a gate rather than a tiebreak, which is what the fixture has
 always claimed it is for: it is not a benchmark and proves nothing about the
 general case, but it stops a change that looks fine on generated data from
 quietly breaking the real thing. A member that misses it does not ship, whatever
-it scores. Among the members that pass, the best score on held-out generated
-clips wins, because that is a hundred and sixty clips against one.
+it scores.
+
+Among the members that pass, the ranking is the mean of two held-out sets: the
+generated clips, and real GolfDB clips grouped so that no golfer or source video
+appears in training. The mean of the two rates rather than a pool of their clips,
+because a pool lets whichever set brought more clips decide, and the two measure
+different things - one says the model still works in the domain every earlier
+number was taken in, the other says it works on video of a person. A model that
+trades either away is not the one to ship.
+
+With no real holdout given this falls back to the generated set alone, which is
+what every result before real footage existed was ranked on.
 
 The tolerances are the fixture's own, so this and the regression test cannot
 disagree about what passing means.
@@ -75,6 +85,20 @@ def real_clip(landmarks: Path) -> PoseSequence:
     )
 
 
+def within_on(score: Score, events: tuple[str, ...], tolerance: int = 1) -> float:
+    """`score`'s within-tolerance rate over just these events.
+
+    Read off `within_per_event` rather than recomputed, so it cannot drift from
+    what the report prints beside it.
+    """
+    per_event = score.within_per_event[tolerance]
+    if not events:
+        return float(np.mean(per_event))
+    # Through the enum rather than EVENT_OF, which holds only the four events the
+    # fixture annotates and would raise on mid-downswing.
+    return float(np.mean([per_event[int(SwingEvent[name.strip().upper()])] for name in events]))
+
+
 def gate(model: object, sequence: PoseSequence, truth: dict[str, Any]) -> tuple[bool, float, str]:
     """Whether this checkpoint may ship, how wrong its tempo is, and what it did.
 
@@ -130,6 +154,22 @@ def main() -> None:
         required=True,
         help="generated clips no candidate was trained on",
     )
+    parser.add_argument(
+        "--real-holdout",
+        type=Path,
+        nargs="*",
+        default=[],
+        help="real clips no candidate trained on, grouped by golfer and source video",
+    )
+    parser.add_argument(
+        "--real-events",
+        default="address,top,mid_downswing,impact",
+        help=(
+            "events the real holdout is scored on. Its labels disagree with the "
+            "generator on the other four, so scoring them measures a convention "
+            "rather than the model"
+        ),
+    )
     parser.add_argument("--landmarks", type=Path, default=FIXTURES / "real_swing_01.npz")
     parser.add_argument("--truth", type=Path, default=FIXTURES / "real_swing_01.json")
     parser.add_argument(
@@ -143,25 +183,40 @@ def main() -> None:
     samples = load_samples(args.holdout)
     if not samples:
         raise SystemExit("no holdout clips")
+    real_samples = load_samples(args.real_holdout) if args.real_holdout else []
+    real_events = tuple(name for name in args.real_events.split(",") if name)
     sequence = real_clip(args.landmarks)
     truth = json.loads(args.truth.read_text(encoding="utf-8"))
 
-    print(f"{len(samples)} held-out clips, and the real swing as a gate\n")
-    print("  member            ±1f     ±2f   tempo    real clip")
-    scored: list[tuple[Score, float, Path]] = []
+    print(
+        f"{len(samples)} held-out generated clips"
+        + (f", {len(real_samples)} held-out real clips" if real_samples else "")
+        + ", and the real swing as a gate\n"
+    )
+    header = "  member            ±1f     ±2f   tempo"
+    print(header + ("   real ±1f  ranked    real clip" if real_samples else "    real clip"))
+    scored: list[tuple[Score, float, float, Path]] = []
     for path in args.members:
         model = load_model(path)
         score = evaluate(model, samples)
-        allowed, tempo_error, detail = gate(model, sequence, truth)
-        print(
-            f"  {path.name:<14} {100 * score.within[1]:5.1f}%  {100 * score.within[2]:5.1f}%  "
-            f"{100 * score.tempo_median_relative_error:5.1f}%   "
-            f"{'pass' if allowed else 'FAIL'}  {detail}"
+        real = evaluate(model, real_samples) if real_samples else None
+        ranked = (
+            score.within[1]
+            if real is None
+            else 0.5 * (score.within[1] + within_on(real, real_events))
         )
+        allowed, tempo_error, detail = gate(model, sequence, truth)
+        line = (
+            f"  {path.name:<14} {100 * score.within[1]:5.1f}%  {100 * score.within[2]:5.1f}%  "
+            f"{100 * score.tempo_median_relative_error:5.1f}%"
+        )
+        if real is not None:
+            line += f"     {100 * within_on(real, real_events):5.1f}%  {100 * ranked:5.1f}%"
+        print(f"{line}   {'pass' if allowed else 'FAIL'}  {detail}")
         if allowed:
-            scored.append((score, tempo_error, path))
+            scored.append((score, ranked, tempo_error, path))
 
-    best_score = max(row[0].within[1] for row in scored) if scored else 0.0
+    best_score = max(row[1] for row in scored) if scored else 0.0
     if not scored:
         raise SystemExit(
             "\nno candidate passed the real clip. Shipping one anyway would mean shipping a "
@@ -190,8 +245,8 @@ def main() -> None:
     # is the number the interface leads with and the thing no generated clip can
     # speak to. Both rules were changed after seeing what they picked, which is
     # worth stating; neither justification depends on that.
-    close = [row for row in scored if row[0].within[1] >= best_score - MARGIN_POINTS]
-    best, tempo_error, winner = min(close, key=lambda row: row[1])
+    close = [row for row in scored if row[1] >= best_score - MARGIN_POINTS]
+    best, _, tempo_error, winner = min(close, key=lambda row: row[2])
     if len(close) > 1:
         print(
             f"\n{len(close)} of {len(scored)} are within {100 * MARGIN_POINTS:.0f} "
