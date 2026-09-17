@@ -373,7 +373,10 @@ def main() -> None:
             all_features, all_events, all_meta = [], [], []
 
         done = written + len(all_features)
-        if done and done % 20 == 0 and attempt % 20 == 0:
+        # On `attempt` alone. It used to be on both counters at once, which is a
+        # conjunction of two numbers that part company at the first refusal, so a
+        # two-hour extraction printed nothing at all after its first line.
+        if attempt % 20 == 0:
             rate = (time.time() - started) / max(done, 1)
             print(
                 f"  {done} kept, {refused} refused, {rate:.1f}s each, "
