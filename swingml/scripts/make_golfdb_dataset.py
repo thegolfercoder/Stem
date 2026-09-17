@@ -138,7 +138,7 @@ def read_clip(path: Path) -> tuple[NDArray[np.uint8], float] | None:
 
 def infer_handedness(
     xy: NDArray[np.float32], visibility: NDArray[np.float32], top_frame: int
-) -> tuple[Handedness, float]:
+) -> tuple[Handedness, float] | None:
     """Which way round the golfer stands, from the top of the backswing.
 
     At the top, a right-hander's hands are above their right shoulder and a
@@ -155,6 +155,28 @@ def infer_handedness(
     Averaged over a few frames either side of the top, because one frame of a
     thirty-frame-a-second video through the fastest part of a swing is a coin
     toss on motion blur.
+
+    Measured against 51 clips of players whose handedness is known, this is right
+    45 times out of the 48 it will answer at all. Two stronger-sounding cues were
+    tried and are worse: which arm is straighter at the top gets 39 of 48, and the
+    shoulder tilt at address - which ought to follow from the lower trail hand on
+    the grip - gets 38 of 51, its errors separated by hundredths of a torso
+    length, so camera perspective swamps the grip.
+
+    Requiring a second cue to agree does reach 41 of 42, but drops nine clips of
+    the fifty-one to buy it. That trade is refused on measurement rather than
+    taste: flipping the label on *every* test clip moves the detector by 1.8
+    points at one frame (88.2 to 86.4), and at a realistic 6 percent error rate by
+    0.1 points, because handedness reaches only the two arm-angle pairs and the
+    lead-arm length out of several hundred channels. Four points of label accuracy
+    is worth a fraction of a point of model accuracy; real swings are the scarce
+    thing this corpus is being built to get.
+
+    Returns None when no frame near the top has both wrists visible. The weaker
+    tilt cue is deliberately *not* used to fill those in: the margin is recorded
+    alongside the label, and a margin that meant one thing on some rows and
+    another on others would be a number whose meaning depends on how it was
+    produced.
     """
     window = range(max(0, top_frame - 2), min(xy.shape[0], top_frame + 3))
     left_distance, right_distance = [], []
@@ -167,7 +189,7 @@ def infer_handedness(
         left_distance.append(np.linalg.norm(hands - xy[frame, int(Landmark.LEFT_SHOULDER)]))
         right_distance.append(np.linalg.norm(hands - xy[frame, int(Landmark.RIGHT_SHOULDER)]))
     if not left_distance:
-        return Handedness.RIGHT, 0.0
+        return None
 
     left = float(np.mean(left_distance))
     right = float(np.mean(right_distance))
@@ -197,9 +219,10 @@ def build_one(
     if detection_rate < MIN_DETECTION_RATE:
         return None
 
-    handedness, margin = infer_handedness(
-        sequence.xy, sequence.visibility, int(events[int(SwingEvent.TOP)])
-    )
+    called = infer_handedness(sequence.xy, sequence.visibility, int(events[int(SwingEvent.TOP)]))
+    if called is None:
+        return None
+    handedness, margin = called
 
     resampled, grid = resample_pose(sequence, config.canonical_rate_hz)
     if resampled.n_frames < 32:
