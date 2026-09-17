@@ -270,6 +270,37 @@ The flag is still there — `--edge-padding` on the experiment script, a
 checked against PyTorch to 5e-7 — switched off, with this measurement beside it.
 The idea is not obviously wrong; it just is not what limits this model.
 
+**Loose clip framing as the explanation for the real-footage gap.** The bundled
+model scores 19.7% within one frame on 360 real GolfDB clips, over the four
+events whose labels agree with this generator, against 83.1% on generated ones.
+The shape of the error pointed straight at framing: address landed 23.6 frames
+late with an interquartile range of 61 and the finish 10 early, which is a model
+finding a shorter swing inside a longer clip. And the framing gap is real —
+generated clips carry at most 1.40 s before address and 1.10 s after the finish,
+while 45% of real clips carry more lead-in than that and 76% more tail, with
+median clip lengths of 500 frames against 164 and a receptive field of 253.
+
+Trimming the real clips to a generated-sized window settles it, and the answer
+is no:
+
+| Real clips | Median length | ±1f | ±2f | Address error |
+|---|---|---|---|---|
+| As extracted | 500 frames | 19.7% | 34.6% | 23.7 |
+| Trimmed to 1.00s / 1.00s | 251 frames | 20.5% | 35.6% | 24.9 |
+| Trimmed to 0.50s / 0.50s | 194 frames | 20.8% | 36.2% | 25.3 |
+
+A point, against a gap of sixty. Address stays about 25 frames out when only 30
+frames of lead-in exist at all, so the model is placing it inside the backswing
+regardless of how the clip is cut. Extraction was checked in the same pass and
+is sound: GolfDB's impact label sits 1.0 frame from peak hand speed, so the
+labels and the features are aligned and the model is simply wrong on this
+footage. The cause is the pose domain, and the answer is training on real clips.
+
+`extend_ends` stayed, off by default, as the counterpart `crop_ends` never had —
+augmentation could only ever make a clip shorter, so no setting could cover
+footage framed more loosely than the generator drew it. It closes a coverage
+hole that is genuinely there. It does not close this one.
+
 **Body shape, torso rotation and landscape footage were absent from the training
 corpus** without anyone deciding they should be. Two generators drew the
 randomised golfer and had silently drifted: the rendered path, which is the only
