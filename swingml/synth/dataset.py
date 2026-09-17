@@ -14,6 +14,8 @@ sample, at every tempo, from every angle.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field
@@ -316,9 +318,18 @@ def draw_swing(
 
 
 def label_frames(
-    swing: GeneratedSwing, grid: NDArray[np.float64], rate_hz: float, n_frames: int
+    event_times_s: NDArray[np.float64] | Sequence[float],
+    grid: NDArray[np.float64],
+    rate_hz: float,
+    n_frames: int,
 ) -> NDArray[np.int64] | None:
     """Where the events land on the resampled grid, or None if they collide.
+
+    Takes the event times rather than the swing they came from, because there is
+    now a third source of them. The generator knows when it put each event; the
+    rendered path reads the same times back; and GolfDB gives frame numbers in a
+    real video, which become times by dividing by that video's own frame rate.
+    All three want this arithmetic and none of them should have its own copy.
 
     Nearest grid point, not searchsorted. Searchsorted always rounds up, which
     puts every label systematically half a frame late and biases the tempo ratio
@@ -330,8 +341,7 @@ def label_frames(
     invent a gap. The second matters because a model given no frames after the
     finish cannot be asked to find it.
     """
-    event_times = np.asarray(swing.truth.event_times_s)
-    frames = np.rint((event_times - grid[0]) * rate_hz).astype(np.int64)
+    frames = np.rint((np.asarray(event_times_s) - grid[0]) * rate_hz).astype(np.int64)
     clipped: NDArray[np.int64] = np.clip(frames, 0, n_frames - 1).astype(np.int64)
     if np.any(np.diff(clipped) <= 0) or clipped[-1] >= n_frames - 1:
         return None
@@ -359,7 +369,9 @@ def generate_sample(
     if resampled.n_frames < 32:
         return None
 
-    event_frames = label_frames(swing, grid, feature_config.canonical_rate_hz, resampled.n_frames)
+    event_frames = label_frames(
+        swing.truth.event_times_s, grid, feature_config.canonical_rate_hz, resampled.n_frames
+    )
     if event_frames is None:
         return None
 
