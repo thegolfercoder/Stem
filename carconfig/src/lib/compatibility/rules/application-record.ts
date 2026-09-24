@@ -1,6 +1,7 @@
 import type { Finding } from "@/types/compatibility";
 import type { PartCategorySlug } from "@/types/part";
 import { partCategory } from "@/types/part";
+import { catalogVehicleName } from "@/types/vehicle";
 import type { CompatibilityRule, RuleContext } from "../types";
 
 /**
@@ -104,12 +105,12 @@ export const applicationRecordRule: CompatibilityRule = {
         detail:
           `${label.charAt(0).toUpperCase() + label.slice(1)} parts are made for ` +
           `specific vehicles, and there is no record confirming this one fits a ` +
-          `${context.vehicle.year} ${context.vehicle.manufacturer} ${context.vehicle.model}. ` +
+          `${catalogVehicleName(context.vehicle)}. ` +
           `That is not the same as it not fitting — it means nobody has checked. ` +
           `Confirm against the manufacturer's application list before buying.`,
         evidence: {
           category: context.part.category,
-          vehicle: context.vehicle.slug,
+          vehicle: context.vehicle.key,
         },
         provenance: {
           verification: "unverified",
@@ -135,7 +136,7 @@ export const universalFitRule: CompatibilityRule = {
           "A finish is quoted by panel area rather than by application, so " +
           "there is no fitment question. The price shown is a demo figure and " +
           "a real quote depends on the car's size and condition.",
-        evidence: { vehicle: context.vehicle.slug },
+        evidence: { vehicle: context.vehicle.key },
       },
     ];
   },

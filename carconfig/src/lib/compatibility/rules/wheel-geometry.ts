@@ -1,6 +1,6 @@
 import type { Finding } from "@/types/compatibility";
 import type { WheelDimensions, WheelPartSpec } from "@/types/part";
-import type { Axle, Vehicle, WheelSpec } from "@/types/vehicle";
+import type { Axle, VehicleProfile, WheelSpec } from "@/types/vehicle";
 import { boltPatternLabel, wheelSizeLabel } from "@/types/vehicle";
 import type { CompatibilityRule, RuleContext } from "../types";
 
@@ -24,8 +24,20 @@ function dimsFor(spec: WheelPartSpec, axle: Axle): WheelDimensions {
   return axle === "front" ? spec.front : spec.rear;
 }
 
-function vehicleWheel(vehicle: Vehicle, axle: Axle): WheelSpec {
-  return vehicle.wheels[axle];
+function vehicleWheel(profile: VehicleProfile, axle: Axle): WheelSpec {
+  return profile.wheels[axle];
+}
+
+/**
+ * The car's measurements, or null when nobody has recorded any for it.
+ *
+ * Every geometric rule starts here and returns nothing when it comes back
+ * null. Saying "the bolt pattern does not match" about a car whose bolt
+ * pattern we have never recorded would be a fabrication, so the rules stay
+ * quiet and fitment.no_vehicle_profile reports the gap once.
+ */
+function profileOf(context: RuleContext): VehicleProfile | null {
+  return context.vehicle.profile;
 }
 
 /**
@@ -45,9 +57,10 @@ export const boltPatternRule: CompatibilityRule = {
   appliesTo: ["wheels"],
   evaluate(context: RuleContext): readonly Finding[] {
     const spec = wheelSpec(context.part);
-    if (!spec) return [];
+    const profile = profileOf(context);
+    if (!spec || !profile) return [];
 
-    const hub = vehicleWheel(context.vehicle, "front");
+    const hub = vehicleWheel(profile, "front");
     const wheelPattern = `${spec.boltCount}x${spec.boltCircleMm}`;
     const carPattern = boltPatternLabel(hub);
 
@@ -91,9 +104,10 @@ export const centerBoreRule: CompatibilityRule = {
   appliesTo: ["wheels"],
   evaluate(context: RuleContext): readonly Finding[] {
     const spec = wheelSpec(context.part);
-    if (!spec) return [];
+    const profile = profileOf(context);
+    if (!spec || !profile) return [];
 
-    const hub = vehicleWheel(context.vehicle, "front");
+    const hub = vehicleWheel(profile, "front");
     const evidence = {
       wheelBoreMm: spec.centerBoreMm,
       vehicleHubMm: hub.centerBoreMm,
@@ -157,13 +171,14 @@ export const offsetRule: CompatibilityRule = {
   appliesTo: ["wheels"],
   evaluate(context: RuleContext): readonly Finding[] {
     const spec = wheelSpec(context.part);
-    if (!spec) return [];
+    const profile = profileOf(context);
+    if (!spec || !profile) return [];
 
     const findings: Finding[] = [];
 
     for (const axle of AXLES) {
       const dims = dimsFor(spec, axle);
-      const car = vehicleWheel(context.vehicle, axle);
+      const car = vehicleWheel(profile, axle);
       const { minOffsetMm, maxOffsetMm } = car;
 
       if (minOffsetMm === undefined || maxOffsetMm === undefined) {
@@ -258,13 +273,14 @@ export const widthRule: CompatibilityRule = {
   appliesTo: ["wheels"],
   evaluate(context: RuleContext): readonly Finding[] {
     const spec = wheelSpec(context.part);
-    if (!spec) return [];
+    const profile = profileOf(context);
+    if (!spec || !profile) return [];
 
     const findings: Finding[] = [];
 
     for (const axle of AXLES) {
       const dims = dimsFor(spec, axle);
-      const car = vehicleWheel(context.vehicle, axle);
+      const car = vehicleWheel(profile, axle);
 
       if (car.maxWidthIn === undefined) {
         findings.push({
@@ -336,13 +352,14 @@ export const diameterRule: CompatibilityRule = {
   appliesTo: ["wheels"],
   evaluate(context: RuleContext): readonly Finding[] {
     const spec = wheelSpec(context.part);
-    if (!spec) return [];
+    const profile = profileOf(context);
+    if (!spec || !profile) return [];
 
     const findings: Finding[] = [];
 
     for (const axle of AXLES) {
       const dims = dimsFor(spec, axle);
-      const car = vehicleWheel(context.vehicle, axle);
+      const car = vehicleWheel(profile, axle);
       const { minDiameterIn, maxDiameterIn } = car;
 
       if (minDiameterIn === undefined || maxDiameterIn === undefined) {

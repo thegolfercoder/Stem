@@ -1,13 +1,26 @@
 import type { Provenance } from "./provenance";
 
 /**
- * The read model for a vehicle.
+ * Two different things are called a "vehicle" in this product, and keeping
+ * them apart is what lets the catalogue hold every car without lying about
+ * any of them.
  *
- * db/schema.sql normalizes this across manufacturers / models / generations /
- * trims / engines / vehicles, which is right for writing. Reading it back
- * joined into one object is what every screen in the app actually wants, so
- * the catalog layer presents this shape and the adapter does the joining. The
- * seed adapter has it easy; a Postgres adapter will do it in one query.
+ *   VehicleIdentity  - this make sold this model in this year. Imported from
+ *                      NHTSA vPIC, so there are tens of thousands of them and
+ *                      the list is not hand-maintained.
+ *
+ *   VehicleProfile   - the measurements a compatibility rule can reason about:
+ *                      bolt pattern, hub bore, clearance envelopes, rotor
+ *                      sizes, power, weight. Hand-curated, expensive, and
+ *                      therefore rare.
+ *
+ *   CatalogVehicle   - an identity plus its profile *if one exists*. Most cars
+ *                      have no profile, and that is a fact the engine reports
+ *                      as "unknown" rather than papering over.
+ *
+ * db/schema.sql normalizes the profile across manufacturers / models /
+ * generations / trims / engines, which is right for writing. Reading it back
+ * joined into one object is what every screen actually wants.
  */
 
 export type Drivetrain = "fwd" | "rwd" | "awd";
@@ -106,7 +119,7 @@ export type VehicleTrait =
 /** Which placeholder body the 3D viewer draws. Swappable for real assets. */
 export type BodyProfile = "coupe" | "sedan" | "hatch" | "wagon" | "suv" | "roadster";
 
-export interface Vehicle {
+export interface VehicleProfile {
   readonly id: string;
   readonly slug: string;
 
@@ -139,12 +152,12 @@ export interface Vehicle {
 }
 
 /** "2023 BMW M3 Competition xDrive" */
-export function vehicleFullName(vehicle: Vehicle): string {
+export function vehicleFullName(vehicle: VehicleProfile): string {
   return `${vehicle.year} ${vehicle.manufacturer} ${vehicle.model} ${vehicle.trim}`;
 }
 
 /** "BMW M3 (G80)" */
-export function vehicleShortName(vehicle: Vehicle): string {
+export function vehicleShortName(vehicle: VehicleProfile): string {
   return `${vehicle.manufacturer} ${vehicle.model} (${vehicle.generationCode})`;
 }
 
@@ -165,4 +178,95 @@ export function wheelSizeLabel(spec: {
 /** "275/35R19" */
 export function tireSizeLabel(tire: TireSpec): string {
   return `${tire.widthMm}/${tire.aspect}R${tire.diameterIn}`;
+}
+
+// ---------------------------------------------------------------------------
+// Identity: every car that exists
+// ---------------------------------------------------------------------------
+
+/** Passenger vehicle classes carried over from the vPIC import. */
+export type BodyType = "car" | "mpv" | "truck";
+
+export const BODY_TYPE_LABELS: Record<BodyType, string> = {
+  car: "Car",
+  mpv: "SUV / MPV",
+  truck: "Truck",
+};
+
+/**
+ * One model line as the importer found it: a make, a model, and the years it
+ * was sold. Carries no measurements at all.
+ */
+export interface ModelLine {
+  readonly makeSlug: string;
+  readonly make: string;
+  readonly modelSlug: string;
+  readonly model: string;
+  readonly years: readonly number[];
+  readonly types: readonly BodyType[];
+}
+
+/** One buildable car: a model line narrowed to a single year. */
+export interface VehicleIdentity {
+  /** Stable URL key: "bmw/m3/2023". */
+  readonly key: string;
+  readonly makeSlug: string;
+  readonly make: string;
+  readonly modelSlug: string;
+  readonly model: string;
+  readonly year: number;
+  readonly types: readonly BodyType[];
+}
+
+/**
+ * What the configurator actually works with.
+ *
+ * `profile` is null for the overwhelming majority of cars, and that is the
+ * honest state of the world rather than a gap to be filled with guesses. The
+ * compatibility engine reports "unknown" for anything it cannot measure, so a
+ * car with no profile still opens, still costs a build, and still refuses to
+ * claim a part fits.
+ */
+export interface CatalogVehicle extends VehicleIdentity {
+  readonly profile: VehicleProfile | null;
+}
+
+export function identityKey(
+  makeSlug: string,
+  modelSlug: string,
+  year: number,
+): string {
+  return `${makeSlug}/${modelSlug}/${year}`;
+}
+
+/** "2023 BMW M3" — works with or without a profile. */
+export function catalogVehicleName(v: VehicleIdentity): string {
+  return `${v.year} ${v.make} ${v.model}`;
+}
+
+/**
+ * Which identities a hand-curated profile speaks for.
+ *
+ * Stated explicitly rather than derived from the profile's own model name:
+ * vPIC calls the car "M3" where the profile calls it "M3 Competition xDrive",
+ * and guessing at that mapping is how a profile silently attaches to the wrong
+ * car.
+ */
+export interface ProfileMatch {
+  readonly makeSlug: string;
+  readonly modelSlug: string;
+  /** Inclusive. A null end means "still in production". */
+  readonly years: readonly [number, number | null];
+}
+
+/** A manufacturer in the catalogue, with how many model lines it has. */
+export interface MakeSummary {
+  readonly slug: string;
+  readonly name: string;
+  readonly modelCount: number;
+}
+
+/** A search result: a model line, flagged with whether it has measurements. */
+export interface ModelSearchHit extends ModelLine {
+  readonly hasProfile: boolean;
 }

@@ -34,7 +34,11 @@ export default async function SharedBuildPage({
   if (!shared) return <BrokenLink reason="That link could not be read." />;
 
   const catalog = getCatalog();
-  const vehicle = await catalog.getVehicleBySlug(shared.vehicleSlug);
+  const [makeSlug, modelSlug, yearText] = shared.vehicleKey.split("/");
+  const vehicle =
+    makeSlug && modelSlug && yearText
+      ? await catalog.getVehicle(makeSlug, modelSlug, Number(yearText))
+      : null;
 
   if (!vehicle) {
     return (
@@ -44,7 +48,7 @@ export default async function SharedBuildPage({
 
   const [parts, fitment] = await Promise.all([
     catalog.listParts(),
-    catalog.getFitmentForVehicle(vehicle.id),
+    catalog.getFitmentForVehicle(vehicle.profile?.id ?? vehicle.key),
   ]);
 
   const bySlug = new Map(parts.map((p) => [p.slug, p]));

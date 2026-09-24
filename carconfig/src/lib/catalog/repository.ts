@@ -1,5 +1,10 @@
 import type { FitmentRecord, Part, PartCategorySlug } from "@/types/part";
-import type { Vehicle } from "@/types/vehicle";
+import type {
+  CatalogVehicle,
+  MakeSummary,
+  ModelLine,
+  ModelSearchHit,
+} from "@/types/vehicle";
 
 /**
  * The catalog read interface.
@@ -14,9 +19,31 @@ import type { Vehicle } from "@/types/vehicle";
  * the day the data comes over a network.
  */
 export interface CatalogRepository {
-  listVehicles(): Promise<readonly Vehicle[]>;
-  getVehicleBySlug(slug: string): Promise<Vehicle | null>;
-  getVehicleById(id: string): Promise<Vehicle | null>;
+  /** Every manufacturer in the catalogue, with how many model lines each has. */
+  listMakes(): Promise<readonly MakeSummary[]>;
+
+  /** Every model line for one make. */
+  listModels(makeSlug: string): Promise<readonly ModelLine[]>;
+
+  /** One model line, for picking a year. */
+  getModelLine(makeSlug: string, modelSlug: string): Promise<ModelLine | null>;
+
+  /**
+   * One buildable car. Returns an identity with `profile: null` when the
+   * catalogue knows the car exists but has no measurements for it, which is
+   * the normal case and not an error.
+   */
+  getVehicle(
+    makeSlug: string,
+    modelSlug: string,
+    year: number,
+  ): Promise<CatalogVehicle | null>;
+
+  /** Substring search across makes and models. */
+  searchModels(query: string, limit?: number): Promise<readonly ModelSearchHit[]>;
+
+  /** The cars that do have a fitment profile. Small, and worth showing first. */
+  listProfiledVehicles(): Promise<readonly CatalogVehicle[]>;
 
   listParts(filter?: PartFilter): Promise<readonly Part[]>;
   getPartBySlug(slug: string): Promise<Part | null>;

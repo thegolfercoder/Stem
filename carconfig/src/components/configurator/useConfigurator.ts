@@ -9,7 +9,7 @@ import type { CompatibilityResult } from "@/types/compatibility";
 import { worstStatus } from "@/types/compatibility";
 import type { FitmentRecord, Part } from "@/types/part";
 import { partCategory } from "@/types/part";
-import type { Vehicle } from "@/types/vehicle";
+import type { CatalogVehicle } from "@/types/vehicle";
 
 /**
  * The configurator's state, and everything derived from it.
@@ -30,7 +30,7 @@ export interface ConfiguratorInit {
 }
 
 export function useConfigurator(
-  vehicle: Vehicle,
+  vehicle: CatalogVehicle,
   catalogue: readonly Part[],
   fitmentRecords: readonly FitmentRecord[],
   init?: ConfiguratorInit,
@@ -104,8 +104,13 @@ export function useConfigurator(
     [selectedParts],
   );
 
+  // No profile means no stock power or weight to reason from, so there is
+  // nothing to estimate and the panel is hidden rather than showing zeroes.
   const performance = useMemo(
-    () => estimatePerformance(vehicle, selectedParts),
+    () =>
+      vehicle.profile
+        ? estimatePerformance(vehicle.profile, selectedParts)
+        : null,
     [vehicle, selectedParts],
   );
 

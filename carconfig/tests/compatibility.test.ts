@@ -5,7 +5,7 @@ import { evaluateCompatibility, summarize } from "@/lib/compatibility/engine";
 import type { RuleContext } from "@/lib/compatibility/types";
 import type { Finding } from "@/types/compatibility";
 import type { FitmentRecord, Part } from "@/types/part";
-import type { Vehicle } from "@/types/vehicle";
+import type { CatalogVehicle, VehicleProfile } from "@/types/vehicle";
 
 /**
  * The compatibility engine is the part of this product that has to be right.
@@ -17,10 +17,25 @@ import type { Vehicle } from "@/types/vehicle";
  * data is supposed to say.
  */
 
-function vehicle(slug: string): Vehicle {
+function vehicle(slug: string): VehicleProfile {
   const found = VEHICLES_BY_SLUG.get(slug);
   if (!found) throw new Error(`test vehicle missing: ${slug}`);
   return found;
+}
+
+/** Wrap a curated profile as the catalogue entry the engine now takes. */
+function catalogued(slug: string): CatalogVehicle {
+  const profile = vehicle(slug);
+  return {
+    key: `${profile.manufacturerSlug}/${profile.model}/${profile.year}`,
+    makeSlug: profile.manufacturerSlug,
+    make: profile.manufacturer,
+    modelSlug: profile.model.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    model: profile.model,
+    year: profile.year,
+    types: ["car"],
+    profile,
+  };
 }
 
 function part(slug: string): Part {
@@ -36,7 +51,7 @@ function context(
   fitment?: FitmentRecord,
 ): RuleContext {
   return {
-    vehicle: vehicle(vehicleSlug),
+    vehicle: catalogued(vehicleSlug),
     part: part(partSlug),
     selected: selected.map(part),
     fitment,

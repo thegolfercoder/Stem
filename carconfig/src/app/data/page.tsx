@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { VerificationBadge } from "@/components/ui/badges";
 import { PARTS } from "@/data/parts";
-import { VEHICLES } from "@/data/vehicles";
+import { CATALOG_STATS, IDENTITY_SOURCE } from "@/lib/catalog/identities";
 import { DEFAULT_RULES } from "@/lib/compatibility/engine";
 import { VERIFICATION_DESCRIPTIONS, VERIFICATION_LEVELS } from "@/types/provenance";
 
@@ -25,15 +25,48 @@ export default function DataPage() {
     <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <h1 className="text-[26px] font-semibold tracking-tight">Data quality</h1>
       <p className="mt-3 text-[15px] leading-relaxed text-[var(--color-ink-dim)]">
-        This is a working prototype, and the honest summary is that{" "}
+        The catalogue lists{" "}
         <strong className="text-[var(--color-ink)]">
-          nothing in it has been verified against a primary source
+          {CATALOG_STATS.modelYears.toLocaleString()} model-years
+        </strong>{" "}
+        across {CATALOG_STATS.makes} makes, and{" "}
+        <strong className="text-[var(--color-ink)]">
+          {CATALOG_STATS.profiled} of them have been measured for fitment
         </strong>
-        . The catalogue is {VEHICLES.length} vehicles and {PARTS.length} parts,
-        chosen to exercise the compatibility engine rather than to be a
-        reference. Everything below says which kind of claim each figure is, so
-        nothing here has to be taken on trust.
+        . That gap is the product. Listing a car is cheap; knowing its bolt
+        pattern, hub bore and clearance envelope is not, and the engine reports
+        &ldquo;unknown&rdquo; for every car it has not been told about rather
+        than guessing. Nothing here has been verified against a primary source,
+        and {PARTS.length} parts are seeded to exercise the rules.
       </p>
+
+      <section className="mt-10">
+        <h2 className="text-[17px] font-semibold tracking-tight">
+          Where the vehicle list comes from
+        </h2>
+        <div className="mt-4 rounded border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3">
+          <p className="text-[13px] leading-relaxed text-[var(--color-ink-dim)]">
+            Vehicle identities — which make sold which model in which year — are
+            imported from{" "}
+            <a
+              href={IDENTITY_SOURCE.sourceUrl}
+              className="text-[var(--color-accent)] hover:underline"
+              rel="noreferrer noopener"
+              target="_blank"
+            >
+              {IDENTITY_SOURCE.source}
+            </a>
+            , {IDENTITY_SOURCE.licence}. Imported {IDENTITY_SOURCE.importedOn},
+            covering model years {IDENTITY_SOURCE.yearRange[0]}–
+            {IDENTITY_SOURCE.yearRange[1]}.
+          </p>
+          <p className="mt-2 text-[13px] leading-relaxed text-[var(--color-ink-dim)]">
+            vPIC is a US registration database, so the coverage is US-market
+            vehicles. It carries no fitment data of any kind — every
+            measurement in this product is hand-entered on top of it.
+          </p>
+        </div>
+      </section>
 
       <section className="mt-10">
         <h2 className="text-[17px] font-semibold tracking-tight">
@@ -63,7 +96,7 @@ export default function DataPage() {
         <ul className="mt-4 space-y-3 text-[13px] leading-relaxed text-[var(--color-ink-dim)]">
           <li className="rounded border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3">
             <strong className="text-[var(--color-ink)]">
-              Vehicle power, torque, weight and stock fitment
+              VehicleProfile power, torque, weight and stock fitment
             </strong>{" "}
             — <VerificationBadge level="unverified" />. Transcribed from generally
             published manufacturer figures. These vary by market and model year,

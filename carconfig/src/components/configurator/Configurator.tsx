@@ -11,13 +11,14 @@ import { encodeShareCode, generateId } from "@/lib/build/share";
 import { saveBuild } from "@/lib/build/storage";
 import type { Build } from "@/types/build";
 import type { FitmentRecord, Part } from "@/types/part";
-import type { Vehicle } from "@/types/vehicle";
+import type { CatalogVehicle } from "@/types/vehicle";
 import {
   DRIVETRAIN_LABELS,
   boltPatternLabel,
   tireSizeLabel,
   wheelSizeLabel,
 } from "@/types/vehicle";
+import { CATALOG_STATS } from "@/lib/catalog/identities";
 import { useConfigurator, type ConfiguratorInit } from "./useConfigurator";
 
 /**
@@ -39,7 +40,7 @@ export function Configurator({
   fitmentRecords,
   init,
 }: {
-  vehicle: Vehicle;
+  vehicle: CatalogVehicle;
   catalogue: readonly Part[];
   fitmentRecords: readonly FitmentRecord[];
   init?: ConfiguratorInit;
@@ -83,7 +84,7 @@ export function Configurator({
   );
 }
 
-function VehicleHeader({ vehicle }: { vehicle: Vehicle }) {
+function VehicleHeader({ vehicle }: { vehicle: CatalogVehicle }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <Link
@@ -94,17 +95,26 @@ function VehicleHeader({ vehicle }: { vehicle: Vehicle }) {
       </Link>
 
       <h1 className="text-[18px] font-semibold tracking-tight">
-        {vehicle.year} {vehicle.manufacturer} {vehicle.model}
-        <span className="ml-2 text-[13px] font-normal text-[var(--color-ink-dim)]">
-          {vehicle.trim} · {vehicle.generationCode} · {vehicle.engine.code}
-        </span>
+        {vehicle.year} {vehicle.make} {vehicle.model}
+        {vehicle.profile ? (
+          <span className="ml-2 text-[13px] font-normal text-[var(--color-ink-dim)]">
+            {vehicle.profile.trim} · {vehicle.profile.generationCode} ·{" "}
+            {vehicle.profile.engine.code}
+          </span>
+        ) : null}
       </h1>
 
       <div className="ml-auto">
-        <VerificationBadge
-          level={vehicle.provenance.verification}
-          note={vehicle.provenance.note}
-        />
+        {vehicle.profile ? (
+          <VerificationBadge
+            level={vehicle.profile.provenance.verification}
+            note={vehicle.profile.provenance.note}
+          />
+        ) : (
+          <span className="rounded border border-[var(--color-unknown)]/30 bg-[var(--color-unknown-bg)] px-2 py-1 text-[11px] font-medium text-[var(--color-unknown)]">
+            No fitment data for this car yet
+          </span>
+        )}
       </div>
     </div>
   );
@@ -166,14 +176,44 @@ function PaintPicker({ state }: { state: ReturnType<typeof useConfigurator> }) {
   );
 }
 
-function StockSpecPanel({ vehicle }: { vehicle: Vehicle }) {
-  const front = vehicle.wheels.front;
-  const rear = vehicle.wheels.rear;
-  const staggered = vehicle.traits.includes("staggered_stock_fitment");
+function StockSpecPanel({ vehicle }: { vehicle: CatalogVehicle }) {
+  const profile = vehicle.profile;
+
+  // The honest empty state. This is most of the catalogue, and the product's
+  // whole argument is that saying so beats inventing a spec sheet.
+  if (!profile) {
+    return (
+      <section className="rounded border border-[var(--color-line)] bg-[var(--color-surface)]">
+        <div className="flex items-center justify-between gap-2 border-b border-[var(--color-line)] px-3 py-2.5">
+          <h2 className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--color-ink-dim)]">
+            Factory specification
+          </h2>
+        </div>
+        <div className="px-3 py-4">
+          <p className="text-[12px] leading-relaxed text-[var(--color-ink-dim)]">
+            Nobody has recorded this car&apos;s bolt pattern, hub bore, wheel
+            sizes or brake dimensions yet, so every fitment check comes back
+            unknown. That is the truth about this car in this database, not a
+            loading state.
+          </p>
+          <p className="mt-2 text-[11px] leading-relaxed text-[var(--color-ink-faint)]">
+            The catalogue lists {CATALOG_STATS.modelLines.toLocaleString()} model
+            lines and {CATALOG_STATS.profiled} of them are measured. Measuring
+            one car is a afternoon with a tape measure and a fitment guide;
+            measuring all of them is the work this product exists to do.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  const front = profile.wheels.front;
+  const rear = profile.wheels.rear;
+  const staggered = profile.traits.includes("staggered_stock_fitment");
 
   const rows: readonly (readonly [string, string])[] = [
-    ["Engine", `${vehicle.engine.displayName} (${vehicle.engine.code})`],
-    ["Drivetrain", DRIVETRAIN_LABELS[vehicle.drivetrain]],
+    ["Engine", `${profile.engine.displayName} (${profile.engine.code})`],
+    ["Drivetrain", DRIVETRAIN_LABELS[profile.drivetrain]],
     ["Bolt pattern", boltPatternLabel(front)],
     ["Hub bore", `${front.centerBoreMm}mm`],
     [
@@ -190,7 +230,7 @@ function StockSpecPanel({ vehicle }: { vehicle: Vehicle }) {
     ],
     [
       "Brakes",
-      `${vehicle.brakes.front.rotorDiameterMm}mm front / ${vehicle.brakes.rear.rotorDiameterMm}mm rear`,
+      `${profile.brakes.front.rotorDiameterMm}mm front / ${profile.brakes.rear.rotorDiameterMm}mm rear`,
     ],
   ];
 
@@ -201,8 +241,8 @@ function StockSpecPanel({ vehicle }: { vehicle: Vehicle }) {
           Factory specification
         </h2>
         <VerificationBadge
-          level={vehicle.provenance.verification}
-          note={vehicle.provenance.note}
+          level={profile.provenance.verification}
+          note={profile.provenance.note}
         />
       </div>
 
@@ -230,7 +270,7 @@ function SaveShareBar({ state }: { state: ReturnType<typeof useConfigurator> }) 
 
   const shareCode = () =>
     encodeShareCode({
-      vehicleSlug: state.vehicle.slug,
+      vehicleKey: state.vehicle.key,
       name: state.name,
       parts: state.selectedParts.map((p) => ({ slug: p.slug, quantity: 1 })),
       paintHex: state.viewerConfig.paintHex,
@@ -242,7 +282,7 @@ function SaveShareBar({ state }: { state: ReturnType<typeof useConfigurator> }) 
       id: generateId(),
       shareCode: shareCode(),
       name: state.name,
-      vehicleId: state.vehicle.id,
+      vehicleId: state.vehicle.key,
       parts: state.selectedParts.map((p) => ({
         partId: p.id,
         quantity: 1,

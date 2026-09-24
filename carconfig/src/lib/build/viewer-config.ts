@@ -1,5 +1,5 @@
 import type { Part, TirePartSpec, WheelPartSpec } from "@/types/part";
-import type { BodyProfile, Vehicle } from "@/types/vehicle";
+import type { BodyProfile, CatalogVehicle } from "@/types/vehicle";
 
 /**
  * What the 3D viewer needs to draw, derived from the vehicle and the build.
@@ -54,28 +54,47 @@ export function tireWidthM(wheel: ViewerWheel): number {
   return (wheel.tireWidthMm * 0.92) / 1000;
 }
 
+/**
+ * What to draw for a car nobody has measured.
+ *
+ * A generic silhouette on generic 18s. The viewer already tells the user its
+ * geometry is a placeholder; for an unprofiled car the wheel sizes are
+ * placeholders too, and the configurator says so rather than implying these
+ * are the car's real dimensions.
+ */
+const UNPROFILED_FALLBACK = {
+  bodyProfile: "coupe" as BodyProfile,
+  paintHex: "#6e7377",
+  wheel: { diameterIn: 18, widthIn: 8, tireWidthMm: 235, tireAspect: 40 },
+};
+
 export function deriveViewerConfig(
-  vehicle: Vehicle,
+  vehicle: CatalogVehicle,
   parts: readonly Part[],
   paintOverrideHex?: string,
 ): ViewerConfig {
+  const profile = vehicle.profile;
   const wheelPart = parts.find((p) => p.category === "wheels");
   const wheelSpec = wheelPart?.spec as WheelPartSpec | undefined;
   const tirePart = parts.find((p) => p.category === "tires");
   const tireSpec = tirePart?.spec as TirePartSpec | undefined;
 
+  const stockFront = profile?.wheels.front;
+  const stockRear = profile?.wheels.rear;
+  const fb = UNPROFILED_FALLBACK.wheel;
+
   const front: ViewerWheel = {
-    diameterIn: wheelSpec?.front.diameterIn ?? vehicle.wheels.front.diameterIn,
-    widthIn: wheelSpec?.front.widthIn ?? vehicle.wheels.front.widthIn,
-    tireWidthMm: tireSpec?.front.widthMm ?? vehicle.wheels.front.tire.widthMm,
-    tireAspect: tireSpec?.front.aspect ?? vehicle.wheels.front.tire.aspect,
+    diameterIn: wheelSpec?.front.diameterIn ?? stockFront?.diameterIn ?? fb.diameterIn,
+    widthIn: wheelSpec?.front.widthIn ?? stockFront?.widthIn ?? fb.widthIn,
+    tireWidthMm: tireSpec?.front.widthMm ?? stockFront?.tire.widthMm ?? fb.tireWidthMm,
+    tireAspect: tireSpec?.front.aspect ?? stockFront?.tire.aspect ?? fb.tireAspect,
   };
 
   const rear: ViewerWheel = {
-    diameterIn: wheelSpec?.rear.diameterIn ?? vehicle.wheels.rear.diameterIn,
-    widthIn: wheelSpec?.rear.widthIn ?? vehicle.wheels.rear.widthIn,
-    tireWidthMm: tireSpec?.rear.widthMm ?? vehicle.wheels.rear.tire.widthMm,
-    tireAspect: tireSpec?.rear.aspect ?? vehicle.wheels.rear.tire.aspect,
+    diameterIn: wheelSpec?.rear.diameterIn ?? stockRear?.diameterIn ?? fb.diameterIn,
+    widthIn: wheelSpec?.rear.widthIn ?? stockRear?.widthIn ?? fb.widthIn,
+    tireWidthMm: tireSpec?.rear.widthMm ?? stockRear?.tire.widthMm ?? fb.tireWidthMm,
+    tireAspect: tireSpec?.rear.aspect ?? stockRear?.tire.aspect ?? fb.tireAspect,
   };
 
   // Ride height stacks: springs and coilovers both lower the car, and fitting
@@ -97,9 +116,12 @@ export function deriveViewerConfig(
   );
 
   return {
-    bodyProfile: vehicle.bodyProfile,
+    bodyProfile: profile?.bodyProfile ?? UNPROFILED_FALLBACK.bodyProfile,
     paintHex:
-      paintOverrideHex ?? paintPart?.visual?.paintHex ?? vehicle.defaultPaintHex,
+      paintOverrideHex ??
+      paintPart?.visual?.paintHex ??
+      profile?.defaultPaintHex ??
+      UNPROFILED_FALLBACK.paintHex,
     paintFinish: paintPart?.visual?.paintFinish ?? "gloss",
     wheelStyle: wheelPart?.visual?.wheelStyle ?? "five_spoke",
     wheelFinishHex: wheelPart?.visual?.wheelFinishHex ?? "#6e767d",

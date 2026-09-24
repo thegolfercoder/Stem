@@ -51,7 +51,7 @@ interface TargetWheel {
   readonly description: string;
 }
 
-function targetWheel(context: RuleContext, axle: Axle): TargetWheel {
+function targetWheel(context: RuleContext, axle: Axle): TargetWheel | null {
   const selected = context.selected.find((p) => p.category === "wheels");
   const spec = selected?.spec as WheelPartSpec | undefined;
 
@@ -64,7 +64,12 @@ function targetWheel(context: RuleContext, axle: Axle): TargetWheel {
     };
   }
 
-  const stock = context.vehicle.wheels[axle];
+  // No wheel chosen and no profile to fall back on: there is nothing to
+  // measure this tire against, so the rule says nothing.
+  const profile = context.vehicle.profile;
+  if (!profile) return null;
+
+  const stock = profile.wheels[axle];
   return {
     diameterIn: stock.diameterIn,
     widthIn: stock.widthIn,
@@ -86,6 +91,7 @@ export const tireDiameterRule: CompatibilityRule = {
     for (const axle of axles) {
       const tire: TireDimensions = axle === "front" ? spec.front : spec.rear;
       const wheel = targetWheel(context, axle);
+      if (!wheel) continue;
       const evidence = {
         tireRimDiameterIn: tire.diameterIn,
         wheelDiameterIn: wheel.diameterIn,
@@ -134,6 +140,8 @@ export const tireRimWidthRule: CompatibilityRule = {
     for (const axle of axles) {
       const tire: TireDimensions = axle === "front" ? spec.front : spec.rear;
       const wheel = targetWheel(context, axle);
+      if (!wheel) continue;
+
       const [minRim, maxRim] = estimateRimWidthRangeIn(tire.widthMm);
 
       const evidence = {

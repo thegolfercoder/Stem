@@ -26,9 +26,16 @@ const SLUG = z
   .max(120)
   .regex(/^[a-z0-9-]+$/, "slugs are lowercase alphanumeric and hyphens");
 
+/** "bmw/m3/2023" — the catalogue's stable vehicle key. */
+const VEHICLE_KEY = z
+  .string()
+  .min(3)
+  .max(120)
+  .regex(/^[a-z0-9-]+\/[a-z0-9-]+\/\d{4}$/, "vehicle keys are make/model/year");
+
 const encodedBuildSchema = z.object({
   v: z.literal(1),
-  c: SLUG,
+  c: VEHICLE_KEY,
   n: z.string().min(1).max(80),
   p: z
     .array(z.union([SLUG, z.tuple([SLUG, z.number().int().min(1).max(99)])]))
@@ -40,7 +47,7 @@ const encodedBuildSchema = z.object({
 });
 
 export interface ShareableBuild {
-  readonly vehicleSlug: string;
+  readonly vehicleKey: string;
   readonly name: string;
   readonly parts: readonly { slug: string; quantity: number }[];
   readonly paintHex?: string;
@@ -63,7 +70,7 @@ function fromBase64Url(input: string): string {
 export function encodeShareCode(build: ShareableBuild): string {
   const payload: EncodedBuild = {
     v: 1,
-    c: build.vehicleSlug,
+    c: build.vehicleKey,
     n: build.name.slice(0, 80),
     p: build.parts.map((p) =>
       p.quantity === 1 ? p.slug : ([p.slug, p.quantity] as const),
@@ -92,7 +99,7 @@ export function decodeShareCode(code: string): ShareableBuild | null {
 
     const data = parsed.data;
     return {
-      vehicleSlug: data.c,
+      vehicleKey: data.c,
       name: data.n,
       parts: data.p.map((entry) =>
         typeof entry === "string"

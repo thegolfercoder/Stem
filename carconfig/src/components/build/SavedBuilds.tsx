@@ -10,7 +10,8 @@ import {
   subscribeBuilds,
 } from "@/lib/build/storage";
 import { formatCents } from "@/lib/pricing";
-import type { Vehicle } from "@/types/vehicle";
+import type { CatalogVehicle } from "@/types/vehicle";
+import { catalogVehicleName } from "@/types/vehicle";
 
 /**
  * Saved builds.
@@ -22,14 +23,14 @@ import type { Vehicle } from "@/types/vehicle";
  * a build updates the page without anything here having to re-read it.
  */
 
-export function SavedBuilds({ vehicles }: { vehicles: readonly Vehicle[] }) {
+export function SavedBuilds({ vehicles }: { vehicles: readonly CatalogVehicle[] }) {
   const builds = useSyncExternalStore(
     subscribeBuilds,
     getBuildsSnapshot,
     getServerBuildsSnapshot,
   );
 
-  const vehiclesById = new Map(vehicles.map((v) => [v.id, v]));
+  const vehiclesByKey = new Map(vehicles.map((v) => [v.key, v]));
 
   if (builds.length === 0) {
     return (
@@ -50,7 +51,7 @@ export function SavedBuilds({ vehicles }: { vehicles: readonly Vehicle[] }) {
   return (
     <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {builds.map((build) => {
-        const vehicle = vehiclesById.get(build.vehicleId);
+        const vehicle = vehiclesByKey.get(build.vehicleId);
 
         // Prices are snapshotted at save time, so the total shown here is what
         // the build cost when it was saved rather than what it would cost now.
@@ -73,9 +74,7 @@ export function SavedBuilds({ vehicles }: { vehicles: readonly Vehicle[] }) {
                   {build.name}
                 </h2>
                 <p className="mt-0.5 truncate text-[12px] text-[var(--color-ink-dim)]">
-                  {vehicle
-                    ? `${vehicle.year} ${vehicle.manufacturer} ${vehicle.model}`
-                    : "Vehicle no longer in the catalogue"}
+                  {vehicle ? catalogVehicleName(vehicle) : build.vehicleId}
                 </p>
               </div>
               {build.paintHex ? (

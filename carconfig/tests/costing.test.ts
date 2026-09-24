@@ -103,7 +103,7 @@ describe("performance estimation", () => {
 describe("share codes", () => {
   it("round-trips a build", () => {
     const code = encodeShareCode({
-      vehicleSlug: "bmw-m3-g80-competition-xdrive-2023",
+      vehicleKey: "bmw/m3/2023",
       name: "Track M3",
       parts: [
         { slug: "bbs-ch-r-19x95-et35-5x112", quantity: 1 },
@@ -114,7 +114,7 @@ describe("share codes", () => {
 
     const decoded = decodeShareCode(code);
 
-    expect(decoded?.vehicleSlug).toBe("bmw-m3-g80-competition-xdrive-2023");
+    expect(decoded?.vehicleKey).toBe("bmw/m3/2023");
     expect(decoded?.name).toBe("Track M3");
     expect(decoded?.parts).toEqual([
       { slug: "bbs-ch-r-19x95-et35-5x112", quantity: 1 },
@@ -125,7 +125,7 @@ describe("share codes", () => {
 
   it("produces URL-safe codes", () => {
     const code = encodeShareCode({
-      vehicleSlug: "porsche-718-cayman-gts-40-2022",
+      vehicleKey: "porsche/718-cayman/2022",
       name: "Weekend car",
       parts: [{ slug: "michelin-cup2-275-35-19", quantity: 1 }],
     });

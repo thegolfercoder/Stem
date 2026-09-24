@@ -1,4 +1,4 @@
-import type { Vehicle } from "@/types/vehicle";
+import type { VehicleProfile } from "@/types/vehicle";
 import { defineVehicle } from "./define";
 
 /**
@@ -18,7 +18,7 @@ import { defineVehicle } from "./define";
  * gap would make the demo look tidier and the engine less honest.
  */
 
-export const VEHICLES: readonly Vehicle[] = [
+export const VEHICLES: readonly VehicleProfile[] = [
   defineVehicle({
     slug: "bmw-m3-g80-competition-xdrive-2023",
     manufacturer: "BMW",
@@ -627,10 +627,10 @@ export const VEHICLES: readonly Vehicle[] = [
   }),
 ];
 
-export const VEHICLES_BY_SLUG: ReadonlyMap<string, Vehicle> = new Map(
+export const VEHICLES_BY_SLUG: ReadonlyMap<string, VehicleProfile> = new Map(
   VEHICLES.map((v) => [v.slug, v]),
 );
 
-export const VEHICLES_BY_ID: ReadonlyMap<string, Vehicle> = new Map(
+export const VEHICLES_BY_ID: ReadonlyMap<string, VehicleProfile> = new Map(
   VEHICLES.map((v) => [v.id, v]),
 );

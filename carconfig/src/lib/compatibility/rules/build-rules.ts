@@ -84,10 +84,11 @@ export const engineApplicationRule: CompatibilityRule = {
   appliesTo: ["engine"],
   evaluate(context: RuleContext): readonly Finding[] {
     const spec = context.part.spec as EnginePartSpec;
-    if (spec?.kind !== "engine") return [];
+    const profile = context.vehicle.profile;
+    if (spec?.kind !== "engine" || !profile) return [];
     if (!spec.engineCodes || spec.engineCodes.length === 0) return [];
 
-    const carEngine = context.vehicle.engine.code;
+    const carEngine = profile.engine.code;
     const supported = spec.engineCodes.includes(carEngine);
     const evidence = {
       vehicleEngine: carEngine,
@@ -160,11 +161,12 @@ export const suspensionTraitRule: CompatibilityRule = {
   appliesTo: ["suspension"],
   evaluate(context: RuleContext): readonly Finding[] {
     const spec = context.part.spec as SuspensionPartSpec;
-    if (spec?.kind !== "suspension") return [];
+    const profile = context.vehicle.profile;
+    if (spec?.kind !== "suspension" || !profile) return [];
     if (!spec.conflictsWithTraits || spec.conflictsWithTraits.length === 0) return [];
 
     const conflicts = spec.conflictsWithTraits.filter((t) =>
-      context.vehicle.traits.includes(t),
+      profile.traits.includes(t),
     );
     if (conflicts.length === 0) return [];
 

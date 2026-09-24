@@ -4,7 +4,7 @@ import type {
   BrakeSpec,
   Drivetrain,
   Engine,
-  Vehicle,
+  VehicleProfile,
   VehicleTrait,
   WheelSpec,
 } from "@/types/vehicle";
@@ -12,7 +12,7 @@ import { FITMENT_ENVELOPE_ESTIMATE, OEM_BRAKES, OEM_PUBLISHED } from "./provenan
 
 /**
  * A terser input shape for writing seed vehicles by hand, expanded into the
- * full Vehicle read model.
+ * full VehicleProfile read model (the curated fitment data).
  *
  * The point is that the provenance stamps get attached in one place. Hand-
  * writing them on every corner spec would mean that the day somebody forgets,
@@ -97,7 +97,7 @@ function toBrakeSpec(corner: CornerInput): BrakeSpec {
   };
 }
 
-export function defineVehicle(input: VehicleInput): Vehicle {
+export function defineVehicle(input: VehicleInput): VehicleProfile {
   const rear = input.rear ?? input.front;
   const wheels: Record<Axle, WheelSpec> = {
     front: toWheelSpec(input, input.front),

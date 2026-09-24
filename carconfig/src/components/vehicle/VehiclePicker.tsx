@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { VerificationBadge } from "@/components/ui/badges";
-import type { Vehicle } from "@/types/vehicle";
+import type { VehicleProfile } from "@/types/vehicle";
 import {
   DRIVETRAIN_LABELS,
   boltPatternLabel,
@@ -30,7 +30,7 @@ const FILTERS: readonly { value: DrivetrainFilter; label: string }[] = [
   { value: "fwd", label: "FWD" },
 ];
 
-export function VehiclePicker({ vehicles }: { vehicles: readonly Vehicle[] }) {
+export function VehiclePicker({ vehicles }: { vehicles: readonly VehicleProfile[] }) {
   const [query, setQuery] = useState("");
   const [drivetrain, setDrivetrain] = useState<DrivetrainFilter>("all");
 
@@ -104,7 +104,7 @@ export function VehiclePicker({ vehicles }: { vehicles: readonly Vehicle[] }) {
   );
 }
 
-function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
+function VehicleCard({ vehicle }: { vehicle: VehicleProfile }) {
   const front = vehicle.wheels.front;
   const rear = vehicle.wheels.rear;
   const staggered = vehicle.traits.includes("staggered_stock_fitment");

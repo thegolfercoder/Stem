@@ -65,7 +65,8 @@ export const wheelClearsBrakesRule: CompatibilityRule = {
   appliesTo: ["wheels"],
   evaluate(context: RuleContext): readonly Finding[] {
     const spec = context.part.spec as WheelPartSpec;
-    if (spec?.kind !== "wheels") return [];
+    const profile = context.vehicle.profile;
+    if (spec?.kind !== "wheels" || !profile) return [];
 
     const kit = selectedBigBrakeKit(context);
     const kitSpec = kit ? brakeSpec(kit) : null;
@@ -119,7 +120,7 @@ export const wheelClearsBrakesRule: CompatibilityRule = {
       }
 
       // No kit selected: check against the car's own rotors.
-      const rotorMm = context.vehicle.brakes[axle].rotorDiameterMm;
+      const rotorMm = profile.brakes[axle].rotorDiameterMm;
       const required = estimateMinWheelDiameterIn(rotorMm);
       const evidence = {
         wheelDiameterIn: wheelDiameter,
@@ -170,7 +171,8 @@ export const brakeKitNeedsWheelRule: CompatibilityRule = {
   appliesTo: ["brakes"],
   evaluate(context: RuleContext): readonly Finding[] {
     const spec = brakeSpec(context.part);
-    if (!spec || spec.type !== "big_brake_kit") return [];
+    const profile = context.vehicle.profile;
+    if (!spec || spec.type !== "big_brake_kit" || !profile) return [];
     if (spec.minWheelDiameterIn === undefined) return [];
 
     const required = spec.minWheelDiameterIn;
@@ -182,7 +184,7 @@ export const brakeKitNeedsWheelRule: CompatibilityRule = {
     const current =
       wheelSpec?.kind === "wheels"
         ? (axle === "front" ? wheelSpec.front.diameterIn : wheelSpec.rear.diameterIn)
-        : context.vehicle.wheels[axle].diameterIn;
+        : profile.wheels[axle].diameterIn;
 
     const source =
       wheelSpec?.kind === "wheels"

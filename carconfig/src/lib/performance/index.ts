@@ -1,5 +1,5 @@
 import type { Part } from "@/types/part";
-import type { Vehicle } from "@/types/vehicle";
+import type { VehicleProfile } from "@/types/vehicle";
 
 /**
  * Performance estimation.
@@ -62,7 +62,7 @@ function requiredCategories(part: Part): readonly string[] {
 }
 
 export function estimatePerformance(
-  vehicle: Vehicle,
+  vehicle: VehicleProfile,
   parts: readonly Part[],
 ): PerformanceEstimate {
   const categoriesPresent = new Set(parts.map((p) => p.category));

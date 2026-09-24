@@ -51,8 +51,8 @@ export function BuildSummary({ state }: { state: ConfiguratorState }) {
           className="mt-3 w-full rounded border border-transparent bg-transparent px-0 py-1 text-[16px] font-semibold tracking-tight text-[var(--color-ink)] hover:border-[var(--color-line)] focus:border-[var(--color-accent)] focus:px-2 focus:outline-none"
         />
         <p className="text-[12px] text-[var(--color-ink-dim)]">
-          {state.vehicle.year} {state.vehicle.manufacturer} {state.vehicle.model} ·{" "}
-          {state.vehicle.trim}
+          {state.vehicle.year} {state.vehicle.make} {state.vehicle.model}
+          {state.vehicle.profile ? ` · ${state.vehicle.profile.trim}` : null}
         </p>
       </div>
 

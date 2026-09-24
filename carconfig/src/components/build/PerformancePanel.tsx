@@ -65,6 +65,27 @@ function Row({
 
 export function PerformancePanel({ state }: { state: ConfiguratorState }) {
   const p = state.performance;
+
+  // Nothing has been recorded about this car's power or weight, so there is
+  // nothing to estimate from. Saying so beats a table of zeroes.
+  if (!p) {
+    return (
+      <section className="rounded border border-[var(--color-line)] bg-[var(--color-surface)]">
+        <div className="flex items-center justify-between gap-2 border-b border-[var(--color-line)] px-3 py-2.5">
+          <h2 className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--color-ink-dim)]">
+            Performance
+          </h2>
+          <VerificationBadge level="unverified" />
+        </div>
+        <p className="px-3 py-4 text-[12px] leading-relaxed text-[var(--color-ink-dim)]">
+          No power or weight figures are recorded for this car, so there is
+          nothing to estimate from. Parts you add still show their makers&apos;
+          claims individually in the build.
+        </p>
+      </section>
+    );
+  }
+
   const modified =
     p.powerDeltaHp !== 0 || p.torqueDeltaNm !== 0 || p.weightDeltaKg !== 0;
 

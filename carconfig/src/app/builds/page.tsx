@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BuildsPage() {
-  const vehicles = await getCatalog().listVehicles();
+  const vehicles = await getCatalog().listProfiledVehicles();
 
   return (
     <main className="mx-auto max-w-[1800px] px-4 py-10 sm:px-6">

@@ -1,6 +1,6 @@
 import type { FitmentRecord, Part, PartCategorySlug } from "@/types/part";
 import type { Finding } from "@/types/compatibility";
-import type { Vehicle } from "@/types/vehicle";
+import type { CatalogVehicle } from "@/types/vehicle";
 
 /**
  * Everything a rule is allowed to look at.
@@ -11,7 +11,12 @@ import type { Vehicle } from "@/types/vehicle";
  * cannot be tested is an opinion.
  */
 export interface RuleContext {
-  readonly vehicle: Vehicle;
+  /**
+   * The car, which may or may not have a fitment profile. Most cars in the
+   * catalogue do not: a rule that needs measurements returns nothing and lets
+   * the no-profile rule speak for it, rather than guessing.
+   */
+  readonly vehicle: CatalogVehicle;
   /** The part being evaluated. */
   readonly part: Part;
   /**
