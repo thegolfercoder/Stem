@@ -349,6 +349,11 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=Path("out/golfdb/golfdb.npz"))
     parser.add_argument("--chunk", type=int, default=100, help="clips per archive")
     parser.add_argument("--limit", type=int, default=0, help="stop after this many clips")
+    parser.add_argument(
+        "--player",
+        default="",
+        help="only this golfer's clips, as GolfDB spells the name; empty means everyone",
+    )
     parser.add_argument("--start", type=int, default=0, help="skip this many annotations first")
     parser.add_argument("--stride", type=int, default=1, help="take every nth, for parallel runs")
     parser.add_argument(
@@ -365,6 +370,8 @@ def main() -> None:
     args = parser.parse_args()
 
     records = read_annotations(args.annotations)[args.start :: args.stride]
+    if args.player:
+        records = [r for r in records if r.player.upper() == args.player.upper()]
     already = already_extracted(args.done)
     if already:
         before = len(records)

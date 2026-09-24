@@ -247,6 +247,21 @@ def main() -> None:
     )
     parser.add_argument("--holdout-out", type=Path, required=True)
     parser.add_argument("--assignment-out", type=Path, required=True)
+    parser.add_argument(
+        "--hold-out-player",
+        default="",
+        help=(
+            "a golfer whose every clip goes to the holdout, whatever the hash order "
+            "says, so results on them are a blind test. Decided before training, "
+            "and the general holdout is still reported alongside"
+        ),
+    )
+    parser.add_argument(
+        "--player-out",
+        type=Path,
+        default=None,
+        help="also write that golfer's held-out clips on their own, to report separately",
+    )
     args = parser.parse_args()
 
     records = read_annotations(args.annotations)
@@ -258,11 +273,17 @@ def main() -> None:
     sizes: dict[str, int] = defaultdict(int)
     for clip_id in clip_ids:
         sizes[group[clip_id]] += 1
+    by_id = {r.clip_id: r for r in records}
+    named = args.hold_out_player.upper()
+    forced = {group[c] for c in clip_ids if named and by_id[c].player.upper() == named}
+    if named and not forced:
+        raise SystemExit(f"no extracted clips of {args.hold_out_player}")
+
     wanted = [HOLDOUT_FRACTION, VALIDATION_FRACTION]
     if args.calibration_out is not None:
         wanted.append(CALIBRATION_FRACTION)
-    spans = choose_spans(dict(sizes), wanted)
-    held, validated = spans[0], spans[1]
+    spans = choose_spans({g: n for g, n in sizes.items() if g not in forced}, wanted)
+    held, validated = spans[0] | forced, spans[1]
     calibrated = spans[2] if len(spans) > 2 else set()
     spoken_for = held | validated | calibrated
 
@@ -281,7 +302,6 @@ def main() -> None:
         share = len(rows[name]) / max(len(clip_ids), 1)
         print(f"  {name:<12}{len(rows[name]):>5} clips ({share:.1%})")
 
-    by_id = {r.clip_id: r for r in records}
     for label, field in (("player", "player"), ("video", "youtube_id")):
         names = {
             part: {getattr(by_id[clip_ids[i]], field).upper() for i in indices}
@@ -301,6 +321,18 @@ def main() -> None:
     if args.calibration_out is not None:
         write_subset(args.calibration_out, corpus, rows["calibration"])
     write_subset(args.holdout_out, corpus, rows["holdout"])
+    if args.player_out is not None and forced:
+        # The golfer's own clips only. Their group is larger - a source video
+        # showing them beside other golfers chains those golfers in, and the whole
+        # group has to be held out together or the blind test leaks - but a result
+        # reported under their name should be about their swings.
+        player_rows = [i for i, c in enumerate(clip_ids) if by_id[c].player.upper() == named]
+        group_rows = sum(1 for c in clip_ids if group[c] in forced)
+        print(
+            f"  {args.hold_out_player}: {len(player_rows)} of their own clips, in a group of "
+            f"{group_rows} held out together"
+        )
+        write_subset(args.player_out, corpus, player_rows)
     args.assignment_out.write_text(
         json.dumps(
             {
