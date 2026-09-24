@@ -11,7 +11,7 @@
 
 import { PoseSequence, resamplePose, extractFeatures, normalisePose,
          BONES, EVENT_NAMES, CLUB_DEFINED, L } from "./engine.js";
-import { SwingEventNet, decodeEvents, errorBand } from "./model.js";
+import { SwingEventModel, decodeEvents, errorBand } from "./model.js";
 import { computeMetrics, implausible } from "./metrics.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
@@ -1903,7 +1903,7 @@ export function boot(payload) {
   connectCoach();
   el("coach-ask").onclick = () => askCoach();
   el("coach-stop").onclick = () => { if (coach.ctl) coach.ctl.abort(); };
-  state.net = new SwingEventNet(payload);
+  state.net = new SwingEventModel(payload);
   state.handedness = "auto";
   wireLightbox();
 

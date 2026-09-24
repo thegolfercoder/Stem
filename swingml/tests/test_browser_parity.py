@@ -34,10 +34,12 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
 
 from swingml.analysis import AnalysisConfig, analyse_pose_sequence, load_model, save_model
 from swingml.events import NUM_EVENTS, SwingEvent
 from swingml.model.decode import decode_events
+from swingml.model.ensemble import SERVING_TIME_WARPS, EnsembleConfig, SwingEventEnsemble
 from swingml.model.tcn import SwingEventNet
 from swingml.pose.base import PoseSequence
 from swingml.quantity import NoReading, Quantity
@@ -93,8 +95,17 @@ def python_side(sequence: PoseSequence):  # type: ignore[no-untyped-def]
     network is not the comparison this test is making.
     """
     payload = json.loads(PAYLOAD.read_text(encoding="utf-8"))
-    model = load_model(Path(payload["source_model"]))
-    return analyse_pose_sequence(sequence, model, AnalysisConfig(handedness=Handedness.RIGHT))
+    return analyse_pose_sequence(
+        sequence, payload_model(payload), AnalysisConfig(handedness=Handedness.RIGHT)
+    )
+
+
+def payload_model(payload: dict) -> SwingEventNet | SwingEventEnsemble:
+    """The model an exported payload was made from: one network, or all its members."""
+    sources = [Path(p) for p in payload.get("source_models", [payload["source_model"]])]
+    if len(sources) == 1:
+        return load_model(sources[0])
+    return SwingEventEnsemble.load(sources, EnsembleConfig(time_warps=tuple(payload["time_warps"])))
 
 
 def run_browser(sequence: PoseSequence, payload: Path, workdir: Path) -> dict:
@@ -438,6 +449,56 @@ def test_the_browser_agrees_when_the_network_holds_its_edges(
     )
     assert browser["ok"] is not isinstance(desktop.events, NoReading)
     assert not isinstance(desktop.events, NoReading)
+    assert list(browser["frames"]) == list(desktop.events.frames)
+    assert np.allclose(browser["confidence"], desktop.events.confidence, rtol=0, atol=TIGHT), (
+        f"browser {browser['confidence']}\npython {desktop.events.confidence}"
+    )
+
+
+def test_the_browser_ensemble_matches_the_python_one(
+    sequence: PoseSequence, tmp_path: Path
+) -> None:
+    """Several networks at several speeds, averaged, the same on both sides.
+
+    Two members are made from the shipped weights - the original and a copy with
+    its output layer nudged, so they disagree a little and averaging has something
+    to do - and exported together. Both sides then run each member at each serving
+    speed, put every answer back on the clip's frames and average probabilities.
+    Any slip in the port (a warp the wrong way round, per-second channels left
+    unscaled, logits averaged instead of probabilities) moves the confidences by
+    far more than float32 rounding.
+    """
+    payload = json.loads(PAYLOAD.read_text(encoding="utf-8"))
+    first = load_model(Path(payload["source_model"]))
+    second = load_model(Path(payload["source_model"]))
+    with torch.no_grad():
+        for name, tensor in second.state_dict().items():
+            if name.startswith("head") or name.startswith("output"):
+                tensor.mul_(1.1)
+    paths = [tmp_path / "member_0.pt", tmp_path / "member_1.pt"]
+    save_model(first, paths[0])
+    save_model(second, paths[1])
+    exported = tmp_path / "model.json"
+    built = subprocess.run(
+        [sys.executable, str(EXPORT), "--model", *map(str, paths), "--out", str(exported)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if built.returncode != 0:
+        pytest.fail(f"the export would not run:\n{built.stderr[-2000:]}")
+    shipped = json.loads(exported.read_text(encoding="utf-8"))
+    assert len(shipped["members"]) == 2
+    assert tuple(shipped["time_warps"]) == SERVING_TIME_WARPS
+
+    browser = run_browser(sequence, exported, tmp_path)
+    desktop = analyse_pose_sequence(
+        sequence,
+        SwingEventEnsemble([first, second], EnsembleConfig(time_warps=SERVING_TIME_WARPS)),
+        AnalysisConfig(handedness=Handedness.RIGHT),
+    )
+    assert not isinstance(desktop.events, NoReading)
+    assert browser["ok"]
     assert list(browser["frames"]) == list(desktop.events.frames)
     assert np.allclose(browser["confidence"], desktop.events.confidence, rtol=0, atol=TIGHT), (
         f"browser {browser['confidence']}\npython {desktop.events.confidence}"

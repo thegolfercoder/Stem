@@ -268,3 +268,95 @@ export function errorBand(calibration, event, confidence) {
     measuredOn: table.measured_on,
   };
 }
+
+/* One trained network or several, answering as one.
+ *
+ * The same arithmetic as swingml.model.ensemble: every member is run on the clip
+ * at each of the payload's speeds, each answer is put back on the clip's own frame
+ * grid, and the class probabilities are averaged. Probabilities rather than logits,
+ * because independently trained networks do not share a scale - one can be more
+ * emphatic than another without being more right. The calibration shipped with
+ * the payload was measured through exactly these members at exactly these speeds.
+ *
+ * A single member at one speed returns its own logits untouched, so a one-model
+ * payload behaves exactly as it did before ensembles existed.
+ */
+export class SwingEventModel {
+  constructor(payload) {
+    const members = payload.members || [payload];
+    this.nets = members.map((m) => new SwingEventNet({
+      architecture: payload.architecture, tensors: m.tensors, weights_base64: m.weights_base64,
+    }));
+    this.warps = payload.time_warps && payload.time_warps.length ? payload.time_warps : [1.0];
+    this.classes = payload.architecture.classes;
+    const layout = payload.features.layout;
+    // Channels measured per second, which change when the clip is played faster.
+    this.perSecond = [layout.velocities, layout.speeds, layout.hand_velocity, layout.hand_speed];
+  }
+
+  get size() { return this.nets.length; }
+
+  /* The clip played at `factor` times its duration, as swingml.model.augment.time_warp. */
+  _warp(features, n, width, factor) {
+    const target = Math.max(16, Math.round(n * factor));
+    const out = new Float32Array(target * width);
+    for (let i = 0; i < target; i++) {
+      const source = target === 1 ? 0 : (i * (n - 1)) / (target - 1);
+      const lower = Math.floor(source);
+      const upper = Math.min(lower + 1, n - 1);
+      const blend = Math.fround(source - lower);
+      for (let f = 0; f < width; f++) {
+        out[i * width + f] = features[lower * width + f] * (1 - blend) + features[upper * width + f] * blend;
+      }
+    }
+    for (const [start, end] of this.perSecond) {
+      for (let i = 0; i < target; i++) {
+        for (let f = start; f < end; f++) out[i * width + f] /= factor;
+      }
+    }
+    return { warped: out, target };
+  }
+
+  forward(features, n, width) {
+    const C = this.classes;
+    if (this.nets.length === 1 && this.warps.length === 1 && this.warps[0] === 1.0) {
+      return this.nets[0].forward(features, n, width);
+    }
+    const sum = new Float64Array(n * C);
+    let count = 0;
+    for (const factor of this.warps) {
+      const { warped, target } = factor === 1.0
+        ? { warped: features, target: n }
+        : this._warp(features, n, width, factor);
+      for (const net of this.nets) {
+        const probs = softmaxRows(net.forward(warped, target, width), target, C);
+        // Back onto the clip's own frames.
+        for (let t = 0; t < n; t++) {
+          const source = n === 1 ? 0 : (t * (target - 1)) / (n - 1);
+          const lower = Math.floor(source);
+          const upper = Math.min(lower + 1, target - 1);
+          const blend = source - lower;
+          for (let c = 0; c < C; c++) {
+            sum[t * C + c] += probs[lower * C + c] * (1 - blend) + probs[upper * C + c] * blend;
+          }
+        }
+        count++;
+      }
+    }
+    const out = new Float32Array(n * C);
+    for (let i = 0; i < out.length; i++) out[i] = Math.log(Math.max(sum[i] / count, 1e-12));
+    return out;
+  }
+}
+
+function softmaxRows(logits, n, C) {
+  const out = new Float64Array(n * C);
+  for (let t = 0; t < n; t++) {
+    let max = -Infinity;
+    for (let c = 0; c < C; c++) max = Math.max(max, logits[t * C + c]);
+    let total = 0;
+    for (let c = 0; c < C; c++) { const e = Math.exp(logits[t * C + c] - max); out[t * C + c] = e; total += e; }
+    for (let c = 0; c < C; c++) out[t * C + c] /= total;
+  }
+  return out;
+}
