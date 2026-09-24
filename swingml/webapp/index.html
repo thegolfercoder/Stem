@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
 <title>Swing Story</title>
 <style>
 :root {
@@ -161,6 +162,7 @@ h2.section{font-size:19px;margin:28px 0 4px;letter-spacing:-.01em}
 .prov-measured{color:var(--good)}
 .prov-derived{color:var(--accent)}
 .prov-projected{color:var(--accent-warm)}
+.prov-set_by_you{color:var(--ink);border-color:var(--accent);align-self:flex-start;margin-top:2px}
 .empty{color:var(--ink-dim);background:var(--panel);border:1px solid var(--line);
   border-radius:var(--radius);padding:18px;margin:0}
 .btn{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);padding:8px 14px;
@@ -193,16 +195,23 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
   display:flex;flex-direction:column;gap:10px}
 .lightbox canvas{max-width:100%;max-height:78vh;object-fit:contain;border-radius:12px;
   border:1px solid var(--line);background:#000;display:block;margin:0 auto}
+/* The backdrop is dark in both themes, so the text on it is light in both. */
 .lightbox figcaption{display:flex;justify-content:space-between;gap:14px;align-items:baseline;
-  color:var(--ink);font-size:15px;font-weight:560}
-.lightbox .lb-time{color:var(--ink-faint);font-family:var(--mono);font-size:13px;font-weight:400}
+  color:#f2f4f7;font-size:15px;font-weight:560}
+.lightbox .lb-time{color:#b8bec8;font-family:var(--mono);font-size:13px;font-weight:400}
 .lb-close{position:absolute;top:16px;right:18px;background:var(--panel);color:var(--ink);
   border:1px solid var(--line);border-radius:9px;width:34px;height:34px;font-size:19px;
   line-height:1;cursor:pointer}
 .lb-nav{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:9px;
   padding:7px 13px;font:inherit;font-size:13.5px;cursor:pointer}
 .lb-nav:hover,.lb-close:hover{border-color:var(--accent)}
-.lb-controls{display:flex;gap:8px;justify-content:center}
+.lb-controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.lb-use{border-color:var(--accent)}
+.lb-use:disabled{opacity:.45;cursor:default;border-color:var(--line)}
+.lb-note{margin:0;text-align:center;color:#c9ced6;font-size:13px}
+.lb-link{background:none;border:0;color:var(--accent);font:inherit;cursor:pointer;
+  text-decoration:underline;padding:0 0 0 6px}
+.lightbox .lb-link{color:#8cc4ff}
 .frame{cursor:zoom-in}
 .hidden{display:none}
 [hidden]{display:none}
@@ -239,7 +248,8 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
   <div class="options">
     <span class="options-label">Golfer is</span>
     <div class="segmented" id="handedness" role="group" aria-label="Handedness">
-      <button type="button" data-value="right" aria-pressed="true">Right-handed</button>
+      <button type="button" data-value="auto" aria-pressed="true">Detect</button>
+      <button type="button" data-value="right" aria-pressed="false">Right-handed</button>
       <button type="button" data-value="left" aria-pressed="false">Left-handed</button>
     </div>
   </div>
@@ -332,9 +342,16 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
       <div id="lb-canvas"></div>
       <figcaption><span id="lb-label"></span><span class="lb-time" id="lb-time"></span></figcaption>
       <div class="lb-controls">
-        <button class="lb-nav" id="lb-prev" type="button">&larr; Previous</button>
-        <button class="lb-nav" id="lb-next" type="button">Next &rarr;</button>
+        <button class="lb-nav" id="lb-prev" type="button">&larr; Previous position</button>
+        <button class="lb-nav" id="lb-next" type="button">Next position &rarr;</button>
       </div>
+      <div class="lb-controls lb-adjust">
+        <button class="lb-nav" id="lb-back" type="button" aria-label="One frame earlier" title="One frame earlier (,)">&lsaquo; Frame</button>
+        <button class="lb-nav lb-use" id="lb-use" type="button">Use this frame</button>
+        <button class="lb-nav" id="lb-fwd" type="button" aria-label="One frame later" title="One frame later (.)">Frame &rsaquo;</button>
+      </div>
+      <p class="lb-note"><span id="lb-note"></span>
+        <button class="lb-link" id="lb-reset" type="button" hidden>Back to the model's frame</button></p>
     </figure>
   </div>
 

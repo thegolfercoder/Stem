@@ -10,7 +10,7 @@
  */
 
 import { PoseSequence, resamplePose, extractFeatures, normalisePose,
-         BONES, EVENT_NAMES, CLUB_DEFINED } from "./engine.js";
+         BONES, EVENT_NAMES, CLUB_DEFINED, L } from "./engine.js";
 import { SwingEventNet, decodeEvents, errorBand } from "./model.js";
 import { computeMetrics, implausible } from "./metrics.js";
 
@@ -1026,11 +1026,31 @@ async function analyse(file) {
         "Standing further back so the whole body fits beats filling the frame and losing the feet.");
     }
 
-    const handedness = state.handedness;
-    const { features, n, width } = extractFeatures(resampled, handedness, config);
-    const logits = state.net.forward(features, n, width);
-    const decoded = decodeEvents(logits, n, state.payload.architecture.classes,
-                                 thresholds.min_mean_confidence);
+    const model = (hand) => {
+      const { features, n, width } = extractFeatures(resampled, hand, config);
+      const logits = state.net.forward(features, n, width);
+      return decodeEvents(logits, n, state.payload.architecture.classes,
+                          thresholds.min_mean_confidence);
+    };
+    // Handedness only reaches a few of the model's inputs, so a first pass either
+    // way finds the top well enough to ask the body which way round it is.
+    let handedness = state.handedness === "left" ? "left" : "right";
+    let decoded = model(handedness);
+    let handednessFrom = "chosen";
+    if (state.handedness === "auto" && decoded.ok) {
+      const call = inferHandedness(resampled, decoded.frames[3]);
+      if (call) {
+        handednessFrom = "detected";
+        run.note({ handedness: call.hand, handednessMargin: Number(call.margin.toFixed(3)) });
+        if (call.hand !== handedness) {
+          handedness = call.hand;
+          decoded = model(handedness);
+        }
+      } else {
+        handednessFrom = "assumed";
+      }
+    }
+    state.handednessFrom = handednessFrom;
     run.stage("modelled");
     if (!decoded.ok) {
       return refuse(decoded.reason,
@@ -1048,7 +1068,7 @@ async function analyse(file) {
     }
 
     state.analysis = { sequence, resampled, grid, decoded, metrics, detectionRate,
-                       handedness, config };
+                       handedness, config, model: decoded, userSet: new Set() };
     progress(0.92);
     stage(3);
     status("Drawing the key frames", "");
@@ -1078,6 +1098,32 @@ function releaseClip() {
   state.analysis = null;
   state.images = null;
   state.frames = null;
+}
+
+/* Which way round the golfer stands, from where the hands are at the top.
+ *
+ * At the top a right-hander's hands are above the right shoulder and a
+ * left-hander's above the left. The estimator names left and right by anatomy,
+ * not by side of the picture, so this holds from any camera position. It is the
+ * rule the training data was labelled with, which on 48 clips of players whose
+ * handedness is known was right 45 times. A few frames either side of the top are
+ * averaged, because one frame through the fastest part of a swing is often a blur.
+ * Nothing is returned when neither wrist can be seen there. */
+function inferHandedness(sequence, top) {
+  const square = sequence.squareXY();
+  let left = 0, right = 0, seen = 0;
+  for (let f = Math.max(0, top - 4); f <= Math.min(sequence.n - 1, top + 4); f++) {
+    const v = sequence.visibility[f];
+    if (Math.min(v[L.LEFT_WRIST], v[L.RIGHT_WRIST]) < 0.3) continue;
+    const p = square[f];
+    const hx = 0.5 * (p[L.LEFT_WRIST][0] + p[L.RIGHT_WRIST][0]);
+    const hy = 0.5 * (p[L.LEFT_WRIST][1] + p[L.RIGHT_WRIST][1]);
+    left += Math.hypot(hx - p[L.LEFT_SHOULDER][0], hy - p[L.LEFT_SHOULDER][1]);
+    right += Math.hypot(hx - p[L.RIGHT_SHOULDER][0], hy - p[L.RIGHT_SHOULDER][1]);
+    seen++;
+  }
+  if (!seen) return null;
+  return { hand: right < left ? "right" : "left", margin: Math.abs(right - left) / Math.max(right + left, 1e-9) };
 }
 
 /* Say what happened, under a heading that matches what happened.
@@ -1191,7 +1237,7 @@ async function frameCanvas(sequence, index) {
 /* Fetch back only the frames worth looking at. The clip was streamed and thrown
  * away as it was tracked, which is what lets it be any length; eight seeks are
  * cheap, and the video stays open so a position can be moved afterwards. */
-async function renderFrames(sequence, decoded, metrics, detectionRate) {
+async function renderFrames(sequence, decoded, metrics, detectionRate, quiet = false) {
   const strip = el("strip");
   strip.innerHTML = "";
   const frames = [];
@@ -1218,14 +1264,19 @@ async function renderFrames(sequence, decoded, metrics, detectionRate) {
     figure.appendChild(shrunk);
 
     const caption = document.createElement("figcaption");
+    // A position the user set is theirs: the model's band and confidence were
+    // about the model's frame, and say nothing about this one.
+    const mine = state.analysis && state.analysis.userSet.has(e);
     caption.innerHTML =
       `<span class="frame-label">${EVENT_NAMES[e]}${CLUB_DEFINED.has(e) ? '<span class="ast">*</span>' : ""}</span>` +
       `<span class="frame-time">${metrics.eventTimes[e].toFixed(3)} s</span>` +
-      bandMarkup(state.payload.calibration, e, decoded.confidence[e]) +
-      `<span class="conf"><i style="width:${(decoded.confidence[e] * 100).toFixed(0)}%"></i></span>`;
+      (mine
+        ? `<span class="prov prov-set_by_you">set by you</span>`
+        : bandMarkup(state.payload.calibration, e, decoded.confidence[e]) +
+          `<span class="conf"><i style="width:${(decoded.confidence[e] * 100).toFixed(0)}%"></i></span>`);
     figure.appendChild(caption);
     strip.appendChild(figure);
-    progress(0.92 + 0.08 * ((e + 1) / 8));
+    if (!quiet) progress(0.92 + 0.08 * ((e + 1) / 8));
   }
   state.frames = frames;
 
@@ -1233,7 +1284,7 @@ async function renderFrames(sequence, decoded, metrics, detectionRate) {
   showMetrics(metrics, decoded, detectionRate, sequence);
   renderStory(metrics);
   show("results", true);
-  el("results").scrollIntoView({ behavior: "smooth", block: "start" });
+  if (!quiet) el("results").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 /* An event's measured error band, or nothing at all where none was measured.
@@ -1373,9 +1424,14 @@ function renderStory(m) {
 function showMetrics(m, decoded, detectionRate, sequence) {
   el("summary").textContent =
     `${sequence.width}×${sequence.height}, ${sequence.n} frames, ` +
-    `body found in ${Math.round(detectionRate * 100)}% of them` +
+    `body found in ${Math.round(detectionRate * 100)}% of them \u00b7 ` +
+    `${state.analysis ? state.analysis.handedness : state.handedness}-handed ` +
+    `(${{ detected: "detected", chosen: "as you set it", assumed: "assumed: hands not seen at the top" }[state.handednessFrom] || "as you set it"})` +
     (state.how === "stepped"
       ? " \u00b7 read by seeking, because this browser has no frame callback"
+      : "") +
+    (state.analysis && state.analysis.userSet.size
+      ? ` \u00b7 positions set by you: ${[...state.analysis.userSet].sort().map((e) => EVENT_NAMES[e]).join(", ")}`
       : "");
 
   el("tempo-cards").innerHTML =
@@ -1403,7 +1459,11 @@ function showMetrics(m, decoded, detectionRate, sequence) {
        the ground. Stand further back and the whole body will fit.</p>`;
 
   state.last = { metrics: m, decoded };
-  const text = JSON.stringify({ metrics: m, events: decoded }, null, 2);
+  const extra = state.analysis && state.analysis.userSet.size
+    ? { set_by_user: [...state.analysis.userSet].sort().map((e) => EVENT_NAMES[e]),
+        model_events: state.analysis.model }
+    : {};
+  const text = JSON.stringify({ metrics: m, events: decoded, ...extra }, null, 2);
   if (LOCAL && LOCAL.copyInsteadOfDownload) {
     // Downloads are refused where this build is served, so the numbers go to the
     // clipboard instead - and say so, rather than looking like nothing happened.
@@ -1439,15 +1499,126 @@ function openFrame(index) {
   const frames = state.frames || [];
   if (!frames.length) return;
   state.frameIndex = ((index % frames.length) + frames.length) % frames.length;
-  const item = frames[state.frameIndex];
-
-  const holder = el("lb-canvas");
-  holder.innerHTML = "";
-  holder.appendChild(item.canvas);
-  el("lb-label").textContent = item.label;
-  el("lb-time").textContent = `${item.time.toFixed(3)} s`;
+  state.lbFrame = frames[state.frameIndex].index;
+  showLightboxFrame();
   show("lightbox", true);
   el("lb-close").focus();
+}
+
+/* Draw whichever tracked frame the lightbox is on, and say how it relates to the
+ * position being looked at. Frames are drawn from what was kept while tracking,
+ * so stepping never goes back to the video. */
+let lightboxDraw = 0;
+async function showLightboxFrame() {
+  const analysis = state.analysis;
+  const item = state.frames[state.frameIndex];
+  const e = state.frameIndex;
+  const index = state.lbFrame;
+  const onPosition = index === item.index;
+  const ticket = ++lightboxDraw;
+  const canvas = onPosition ? item.canvas : await frameCanvas(analysis.sequence, index);
+  if (ticket !== lightboxDraw) return;
+  const holder = el("lb-canvas");
+  holder.innerHTML = "";
+  holder.appendChild(canvas);
+  const time = analysis.sequence.times[index];
+  const steps = index - item.index;
+  el("lb-label").textContent = item.label;
+  el("lb-time").textContent = `${time.toFixed(3)} s` +
+    (onPosition ? "" : ` \u00b7 ${steps > 0 ? "+" : ""}${steps} frame${Math.abs(steps) === 1 ? "" : "s"}`);
+  el("lb-use").textContent = `Use this frame for ${item.label}`;
+  el("lb-use").disabled = onPosition;
+  el("lb-reset").hidden = !analysis.userSet.has(e);
+  el("lb-note").textContent = analysis.userSet.has(e)
+    ? "You set this position. Every number and the story use it."
+    : "Not the right moment? Step to the frame where it happens and use that one.";
+}
+
+function stepFrame(delta) {
+  if (el("lightbox").hidden || !state.analysis) return;
+  const n = state.analysis.sequence.n;
+  state.lbFrame = Math.max(0, Math.min(n - 1, state.lbFrame + delta));
+  showLightboxFrame();
+}
+
+/* Put position e at a clip time and recompute everything that depends on it.
+ * Returns why not, when the time would put the positions out of order. */
+async function setPosition(e, time) {
+  const analysis = state.analysis;
+  const { resampled, grid, sequence } = analysis;
+  const rate = analysis.config.canonical_rate_hz;
+  const position = Math.max(0, Math.min(resampled.n - 1, (time - grid[0]) * rate));
+  const decoded = analysis.decoded;
+  for (let other = 0; other < 8; other++) {
+    if (other < e && decoded.subframe[other] >= position) {
+      return `That is not after ${EVENT_NAMES[other]}. Move ${EVENT_NAMES[other]} first, or pick a later frame.`;
+    }
+    if (other > e && decoded.subframe[other] <= position) {
+      return `That is not before ${EVENT_NAMES[other]}. Move ${EVENT_NAMES[other]} first, or pick an earlier frame.`;
+    }
+  }
+  const next = {
+    ...decoded,
+    frames: decoded.frames.slice(),
+    subframe: decoded.subframe.slice(),
+  };
+  next.frames[e] = Math.round(position);
+  next.subframe[e] = position;
+  return apply(next, e);
+}
+
+async function apply(next, e) {
+  const analysis = state.analysis;
+  analysis.decoded = next;
+  analysis.metrics = computeMetrics(analysis.resampled, next, analysis.handedness, analysis.config);
+  const byModel = computeMetrics(analysis.resampled, analysis.model, analysis.handedness, analysis.config);
+  // How far off the model was, kept with the run report: the only measure there
+  // is of how it does on footage like this person's.
+  if (state.run) {
+    state.run.body.corrections = state.run.body.corrections || {};
+    state.run.body.corrections[EVENT_NAMES[e]] = analysis.userSet.has(e)
+      ? Math.round(1000 * (analysis.metrics.eventTimes[e] - byModel.eventTimes[e]))
+      : null;
+    saveRun(state.run);
+  }
+  await renderFrames(analysis.sequence, next, analysis.metrics, analysis.detectionRate, true);
+  return null;
+}
+
+async function useLightboxFrame() {
+  const e = state.frameIndex;
+  const time = state.analysis.sequence.times[state.lbFrame];
+  const wasSet = state.analysis.userSet.has(e);
+  state.analysis.userSet.add(e);
+  const problem = await setPosition(e, time);
+  if (problem) {
+    if (!wasSet) state.analysis.userSet.delete(e);
+    el("lb-note").textContent = problem;
+    return;
+  }
+  openFrame(e);
+}
+
+async function resetLightboxPosition() {
+  const analysis = state.analysis;
+  const e = state.frameIndex;
+  analysis.userSet.delete(e);
+  const next = { ...analysis.decoded, frames: analysis.decoded.frames.slice(),
+                 subframe: analysis.decoded.subframe.slice() };
+  next.frames[e] = analysis.model.frames[e];
+  next.subframe[e] = analysis.model.subframe[e];
+  // The model's frame may now sit out of order with one the user moved.
+  for (let other = 0; other < 8; other++) {
+    if ((other < e && next.subframe[other] >= next.subframe[e]) ||
+        (other > e && next.subframe[other] <= next.subframe[e])) {
+      analysis.userSet.add(e);
+      el("lb-note").textContent =
+        `The model's frame for this is out of order with ${EVENT_NAMES[other]}, which you moved. Put that back first.`;
+      return;
+    }
+  }
+  await apply(next, e);
+  openFrame(e);
 }
 
 function closeFrame() {
@@ -1459,6 +1630,10 @@ function wireLightbox() {
   el("lb-close").onclick = closeFrame;
   el("lb-prev").onclick = () => openFrame(state.frameIndex - 1);
   el("lb-next").onclick = () => openFrame(state.frameIndex + 1);
+  el("lb-back").onclick = () => stepFrame(-1);
+  el("lb-fwd").onclick = () => stepFrame(1);
+  el("lb-use").onclick = () => useLightboxFrame();
+  el("lb-reset").onclick = () => resetLightboxPosition();
   el("lightbox").addEventListener("click", (event) => {
     if (event.target === el("lightbox")) closeFrame();
   });
@@ -1467,6 +1642,8 @@ function wireLightbox() {
     if (event.key === "Escape") closeFrame();
     if (event.key === "ArrowLeft") openFrame(state.frameIndex - 1);
     if (event.key === "ArrowRight") openFrame(state.frameIndex + 1);
+    if (event.key === ",") stepFrame(-1);
+    if (event.key === ".") stepFrame(1);
   });
 }
 
@@ -1475,7 +1652,7 @@ export function boot(payload) {
   state.payload = payload;
   connectReports();
   state.net = new SwingEventNet(payload);
-  state.handedness = "right";
+  state.handedness = "auto";
   wireLightbox();
 
   const input = el("file");
@@ -1483,7 +1660,7 @@ export function boot(payload) {
   el("browse").onclick = (e) => { e.stopPropagation(); pick(); };
   input.onchange = () => { if (input.files[0]) analyse(input.files[0]); input.value = ""; };
 
-  // Two choices, so two buttons rather than a dropdown: the state is visible
+  // Three choices, so three buttons rather than a dropdown: the state is visible
   // without opening anything, and it is one click instead of three.
   const group = el("handedness");
   group.addEventListener("click", (event) => {
@@ -1512,7 +1689,7 @@ export function boot(payload) {
       event.stopPropagation();
       try {
         // The same clip in two encodings, taking whichever this browser decodes:
-        // H.264 is everywhere Apple and Google ship a browser, WebM everywhere else.
+        // H.264 is everywhere Apple and Google ship a browser, VP9 everywhere else.
         const probe = document.createElement("video");
         const pick = LOCAL.sample.find((s) => probe.canPlayType(s.type)) || LOCAL.sample[0];
         const response = await fetch(here(pick.src));
@@ -1527,8 +1704,8 @@ export function boot(payload) {
       "Runs entirely in your browser. The clip never leaves this device, and the pose " +
       "estimator is loaded from this page rather than from anyone else's servers. Each " +
       "run leaves a short technical note for the page's owner - browser, video format, " +
-      "timings and any error, never the video, a frame or its name - so failures can be " +
-      "fixed.";
+      "timings, any error, and how far any position you moved was from the model's - " +
+      "never the video, a frame or its name - so failures can be fixed.";
   }
 
   for (const id of ["again", "again-bottom"]) {

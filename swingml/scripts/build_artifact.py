@@ -20,6 +20,7 @@ import base64
 import json
 import re
 import shutil
+import subprocess
 import sys
 import urllib.request
 from pathlib import Path
@@ -84,26 +85,26 @@ def split_model(out: Path) -> list[str]:
     return names
 
 
-def write_webm(source: Path, target: Path) -> bool:
-    """The sample again in VP8, for the browsers that ship without an H.264 decoder."""
-    import cv2
+def write_vp9(source: Path, target: Path) -> bool:
+    """The sample again as VP9 in MP4, for the browsers that ship without H.264.
 
-    capture = cv2.VideoCapture(str(source))
-    size = (int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-    writer = cv2.VideoWriter(
-        str(target),
-        cv2.VideoWriter_fourcc(*"VP80"),  # type: ignore[attr-defined]
-        capture.get(cv2.CAP_PROP_FPS),
-        size,
-    )
-    if not writer.isOpened():
+    MP4 rather than WebM because the page decodes MP4 frame by frame itself; a WebM
+    goes through the video element, which drops frames when the machine is busy.
+    Every frame is kept at its original time, so both copies are the same swing.
+    """
+    try:
+        import imageio_ffmpeg
+    except ImportError:
         return False
-    while True:
-        ok, frame = capture.read()
-        if not ok:
-            break
-        writer.write(frame)
-    writer.release()
+    command = [
+        imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-i", str(source),
+        "-map", "0:v:0", "-an", "-c:v", "libvpx-vp9", "-crf", "30", "-b:v", "0",
+        "-row-mt", "1", "-fps_mode", "passthrough", "-movflags", "+faststart", str(target),
+    ]
+    try:
+        subprocess.run(command, check=True)
+    except (OSError, subprocess.CalledProcessError):
+        return False
     return target.is_file() and target.stat().st_size > 0
 
 
@@ -126,8 +127,11 @@ def main() -> None:
         (args.out / "sample").mkdir(exist_ok=True)
         shutil.copyfile(args.sample, args.out / "sample/sample-swing.mp4")
         sample = [{"src": "sample/sample-swing.mp4", "type": 'video/mp4; codecs="avc1.42E01E"'}]
-        if write_webm(args.sample, args.out / "sample/sample-swing.webm"):
-            sample.append({"src": "sample/sample-swing.webm", "type": 'video/webm; codecs="vp8"'})
+        stale = args.out / "sample/sample-swing.webm"
+        if stale.is_file():
+            stale.unlink()
+        if write_vp9(args.sample, args.out / "sample/sample-swing-vp9.mp4"):
+            sample.append({"src": "sample/sample-swing-vp9.mp4", "type": 'video/mp4; codecs="vp09.00.10.08"'})
 
     html = (args.source / "index.html").read_text(encoding="utf-8")
     for token, name in zip(
