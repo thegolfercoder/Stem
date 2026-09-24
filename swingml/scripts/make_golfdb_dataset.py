@@ -59,7 +59,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from swingml.events import SwingEvent
 from swingml.features import FeatureConfig, extract_features, resample_pose
 from swingml.pose.mediapipe_pose import MediaPipePoseEstimator
-from swingml.skeleton import Handedness, Landmark
+from swingml.skeleton import Handedness, infer_handedness
 from synth.dataset import label_frames
 
 MIN_DETECTION_RATE = 0.6
@@ -143,67 +143,6 @@ def read_clip(path: Path) -> tuple[NDArray[np.uint8], float] | None:
     if not frames or not np.isfinite(rate) or rate <= 0:
         return None
     return np.asarray(frames, dtype=np.uint8), rate
-
-
-def infer_handedness(
-    xy: NDArray[np.float32], visibility: NDArray[np.float32], top_frame: int
-) -> tuple[Handedness, float] | None:
-    """Which way round the golfer stands, from the top of the backswing.
-
-    At the top, a right-hander's hands are above their right shoulder and a
-    left-hander's above their left. That is a fact about anatomy rather than about
-    the camera, and the estimator labels left and right anatomically, so the test
-    holds from any view - which matters here, because a third of these clips are
-    filmed from neither of the two usual positions.
-
-    The labels give the top frame outright, so this needs no model and cannot be
-    contaminated by one. The returned margin is the difference between the two
-    distances over their sum: near zero means the hands were squarely between the
-    shoulders and the call is weak.
-
-    Averaged over a few frames either side of the top, because one frame of a
-    thirty-frame-a-second video through the fastest part of a swing is a coin
-    toss on motion blur.
-
-    Measured against 51 clips of players whose handedness is known, this is right
-    45 times out of the 48 it will answer at all. Two stronger-sounding cues were
-    tried and are worse: which arm is straighter at the top gets 39 of 48, and the
-    shoulder tilt at address - which ought to follow from the lower trail hand on
-    the grip - gets 38 of 51, its errors separated by hundredths of a torso
-    length, so camera perspective swamps the grip.
-
-    Requiring a second cue to agree does reach 41 of 42, but drops nine clips of
-    the fifty-one to buy it. That trade is refused on measurement rather than
-    taste: flipping the label on *every* test clip moves the detector by 1.8
-    points at one frame (88.2 to 86.4), and at a realistic 6 percent error rate by
-    0.1 points, because handedness reaches only the two arm-angle pairs and the
-    lead-arm length out of several hundred channels. Four points of label accuracy
-    is worth a fraction of a point of model accuracy; real swings are the scarce
-    thing this corpus is being built to get.
-
-    Returns None when no frame near the top has both wrists visible. The weaker
-    tilt cue is deliberately *not* used to fill those in: the margin is recorded
-    alongside the label, and a margin that meant one thing on some rows and
-    another on others would be a number whose meaning depends on how it was
-    produced.
-    """
-    window = range(max(0, top_frame - 2), min(xy.shape[0], top_frame + 3))
-    left_distance, right_distance = [], []
-    for frame in window:
-        seen = visibility[frame]
-        wrists = [Landmark.LEFT_WRIST, Landmark.RIGHT_WRIST]
-        if min(seen[int(w)] for w in wrists) < 0.3:
-            continue
-        hands = 0.5 * (xy[frame, int(Landmark.LEFT_WRIST)] + xy[frame, int(Landmark.RIGHT_WRIST)])
-        left_distance.append(np.linalg.norm(hands - xy[frame, int(Landmark.LEFT_SHOULDER)]))
-        right_distance.append(np.linalg.norm(hands - xy[frame, int(Landmark.RIGHT_SHOULDER)]))
-    if not left_distance:
-        return None
-
-    left = float(np.mean(left_distance))
-    right = float(np.mean(right_distance))
-    margin = abs(right - left) / max(right + left, 1e-9)
-    return (Handedness.RIGHT if right < left else Handedness.LEFT), margin
 
 
 def build_one(

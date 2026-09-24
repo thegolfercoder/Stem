@@ -16,9 +16,11 @@ dependencies = [
 
 [project.scripts]
 swingml = "swingml.cli:main"
+swingml-desktop = "swingml.desktop:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=7.4", "ruff>=0.4", "mypy>=1.8"]
+desktop = ["pywebview>=5.0"]
 
 [build-system]
 requires = ["setuptools>=68"]

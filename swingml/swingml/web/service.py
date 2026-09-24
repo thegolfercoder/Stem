@@ -53,10 +53,21 @@ from swingml.model.tcn import SwingEventNet
 from swingml.pose.base import PoseSequence
 from swingml.pose.mediapipe_pose import MediaPipePoseEstimator
 from swingml.quantity import NoReading
-from swingml.skeleton import Handedness
+from swingml.skeleton import Handedness, infer_handedness
 from swingml.store import SwingStore
 from swingml.video.reader import VideoInfo, VideoReader
 from swingml.web.frames import extract_event_frames, extract_sequence_frames
+
+POSE_MAX_SIDE = 640
+"""Frames are shrunk to this before the pose estimator sees them.
+
+It works at a few hundred pixels whatever it is handed, so a 4K frame is time spent
+for nothing, and the event model was trained on landmarks from small video. The
+browser app does the same, so the two answer alike.
+"""
+
+POSE_MAX_RATE_HZ = 60.0
+"""The model looks at sixty frames a second; a 240 fps clip is tracked at this."""
 
 
 class JobState(StrEnum):
@@ -181,7 +192,7 @@ class AnalysisService:
         self,
         upload_path: Path,
         original_name: str,
-        handedness: Handedness,
+        handedness: Handedness | None,
         club: str | None = None,
         label: str | None = None,
     ) -> Job:
@@ -211,7 +222,7 @@ class AnalysisService:
         job: Job,
         upload_path: Path,
         original_name: str,
-        handedness: Handedness,
+        handedness: Handedness | None,
         club: str | None,
         label: str | None,
     ) -> None:
@@ -227,12 +238,7 @@ class AnalysisService:
 
                 job.state = JobState.ANALYSING
                 job.message = "finding the swing"
-                analysis = analyse_pose_sequence(
-                    sequence,
-                    model,
-                    AnalysisConfig(handedness=handedness, calibration=self.calibration),
-                    video=video_info,
-                )
+                analysis = self.analyse(sequence, model, handedness, video_info)
 
                 job.state = JobState.RENDERING
                 job.message = "saving the key frames"
@@ -257,12 +263,46 @@ class AnalysisService:
             job.message = "analysis failed"
             traceback.print_exc()
 
+    def analyse(
+        self,
+        sequence: PoseSequence,
+        model: SwingEventNet | SwingEventEnsemble,
+        handedness: Handedness | None,
+        video: VideoInfo | None = None,
+    ) -> SwingAnalysis:
+        """Analyse a tracked clip, working out which way round the golfer stands
+        when not told.
+
+        Handedness reaches only a few of the model's inputs, so a first pass either
+        way finds the top well enough to ask the body: at the top a right-hander's
+        hands are over the right shoulder. If the first pass finds no swing at all,
+        the other way round gets its own chance before anything is refused.
+        """
+
+        def run(hand: Handedness) -> SwingAnalysis:
+            config = AnalysisConfig(handedness=hand, calibration=self.calibration)
+            return analyse_pose_sequence(sequence, model, config, video=video)
+
+        if handedness is not None:
+            return run(handedness)
+        analysis = run(Handedness.RIGHT)
+        if isinstance(analysis.events, NoReading):
+            other = run(Handedness.LEFT)
+            return analysis if isinstance(other.events, NoReading) else other
+        top = int(analysis.event_source_frames[int(SwingEvent.TOP)])
+        called = infer_handedness(sequence.xy, sequence.visibility, top)
+        if called is not None and called[0] is not Handedness.RIGHT:
+            other = run(called[0])
+            if not isinstance(other.events, NoReading):
+                return other
+        return analysis
+
     def _extract_pose(self, path: Path, job: Job) -> tuple[PoseSequence, VideoInfo]:
         with VideoReader(path) as reader:
             job.frames_expected = max(0, reader.declared_frames)
 
             def frames() -> Iterator[tuple[NDArray[np.uint8], float]]:
-                yield from reader.frames()
+                yield from reader.frames(max_side=POSE_MAX_SIDE, max_rate_hz=POSE_MAX_RATE_HZ)
 
             def progress(done: int) -> None:
                 job.frames_done = done

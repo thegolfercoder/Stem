@@ -423,10 +423,13 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
         if not ready:
             return jsonify({"error": why}), 503
 
-        handedness = (
+        chosen = request.form.get("handedness", "auto")
+        handedness: Handedness | None = (
             Handedness.LEFT
-            if request.form.get("handedness", "right") == "left"
+            if chosen == "left"
             else Handedness.RIGHT
+            if chosen == "right"
+            else None
         )
         club = (request.form.get("club") or "").strip() or None
         label = (request.form.get("label") or "").strip() or None
