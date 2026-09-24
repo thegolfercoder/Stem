@@ -60,6 +60,21 @@ def bundle(source: str, name: str) -> str:
     )
 
 
+def mp4box(source: Path) -> str:
+    """The MP4 demuxer, inlined, with the copyright notice its licence requires.
+
+    Inlined rather than loaded from a CDN because hosts that serve this page refuse
+    scripts from most places, and a demuxer that fails to load would quietly send
+    every phone clip down the slow path that drops frames.
+    """
+    vendor = source / "vendor"
+    notice = (vendor / "mp4box.LICENSE").read_text(encoding="utf-8").strip()
+    code = (vendor / "mp4box.all.min.js").read_text(encoding="utf-8")
+    if "</script" in code.lower():
+        raise SystemExit("mp4box.all.min.js contains </script and cannot be inlined")
+    return "/* mp4box.js - " + notice.replace("*/", "* /") + " */\n" + code
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path, default=Path("out/web/model.json"))
@@ -80,6 +95,7 @@ def main() -> None:
 
     payload = args.model.read_text(encoding="utf-8")
     html = html.replace("/*__PAYLOAD__*/", payload)
+    html = html.replace("/*__MP4BOX__*/", mp4box(args.source))
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(html, encoding="utf-8")

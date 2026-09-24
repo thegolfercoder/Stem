@@ -27,7 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from build_web_app import MODULES, bundle
+from build_web_app import MODULES, bundle, mp4box
 
 from swingml.pose.mediapipe_pose import resolve_model_path
 
@@ -137,6 +137,7 @@ def main() -> None:
     ):
         html = html.replace(token, bundle((args.source / name).read_text("utf-8"), name))
     html = html.replace("/*__PAYLOAD__*/", args.model.read_text(encoding="utf-8"))
+    html = html.replace("/*__MP4BOX__*/", mp4box(args.source))
 
     assets = {
         "mediapipe": "mediapipe",

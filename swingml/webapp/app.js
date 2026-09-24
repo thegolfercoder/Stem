@@ -30,6 +30,94 @@ const LOCAL = globalThis.SWING_ASSETS || null;
 const here = (path) => new URL(path, document.baseURI).href;
 
 const el = (id) => document.getElementById(id);
+
+/* A short technical record of each run, kept where the page's owner can read it.
+ *
+ * The page failed on somebody's phone, and the whole report that could be given was
+ * that it did not work. What decides these failures - the browser, whether it can
+ * decode the codec, whether WebAssembly is allowed where the page is hosted, which
+ * stage stopped and after how long - is nothing a person can be expected to know,
+ * so the page writes it down. Never the video, a frame, or the file's name.
+ *
+ * Written at the start of a run and again at each stage, not only at the end: a run
+ * that freezes the tab never reaches its end, and that is the run most worth
+ * seeing.
+ */
+const reports = { db: null, chain: Promise.resolve() };
+function connectReports() {
+  const claude = window.claude;
+  if (!claude || typeof claude.use !== "function") return;
+  reports.db = claude.use("db").catch(() => null);
+}
+
+function environment() {
+  const probe = document.createElement("video");
+  const can = (type) => probe.canPlayType(type) || "no";
+  let webgl2 = false;
+  try { webgl2 = Boolean(document.createElement("canvas").getContext("webgl2")); } catch { /* no */ }
+  let wasm = "yes";
+  try { new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])); }
+  catch (error) { wasm = String((error && error.message) || error).slice(0, 160); }
+  return {
+    ua: navigator.userAgent.slice(0, 300),
+    cores: navigator.hardwareConcurrency || null,
+    memoryGb: navigator.deviceMemory || null,
+    screen: `${screen.width}x${screen.height}@${window.devicePixelRatio || 1}`,
+    webgl2,
+    wasm,
+    frameCallback: typeof probe.requestVideoFrameCallback === "function",
+    h264: can('video/mp4; codecs="avc1.42E01E"'),
+    hevc: can('video/mp4; codecs="hvc1.1.6.L93.B0"'),
+    vp9: can('video/webm; codecs="vp9"'),
+    hosted: Boolean(LOCAL),
+  };
+}
+
+function beginRun(file) {
+  const t0 = performance.now();
+  const run = {
+    id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    done: false,
+    body: {
+      at: new Date().toISOString(),
+      env: environment(),
+      file: {
+        type: file.type || "",
+        ext: (file.name.split(".").pop() || "").toLowerCase().slice(0, 8),
+        mb: Number((file.size / 1e6).toFixed(1)),
+      },
+      stages: {},
+      notes: {},
+      outcome: "running",
+    },
+  };
+  run.stage = (name) => {
+    run.body.stages[name] = Math.round(performance.now() - t0);
+    saveRun(run);
+  };
+  run.note = (fields) => Object.assign(run.body.notes, fields);
+  run.end = (fields) => {
+    if (run.done) return;
+    run.done = true;
+    run.body.stages.total = Math.round(performance.now() - t0);
+    Object.assign(run.body, fields);
+    saveRun(run);
+  };
+  state.run = run;
+  saveRun(run);
+  return run;
+}
+
+/* One write at a time, in order, and never allowed to break the analysis. */
+function saveRun(run) {
+  const body = JSON.parse(JSON.stringify(run.body));
+  reports.chain = reports.chain.then(async () => {
+    const db = reports.db ? await reports.db : null;
+    if (!db) return;
+    try { await db.collection("runs").doc(run.id).set(body); }
+    catch (error) { console.warn("run report not saved:", error && error.code); }
+  });
+}
 const state = { net: null, landmarker: null, busy: false, last: null, clockMs: -1 };
 
 /* Show and hide, without caring which of the two mechanisms the markup used.
@@ -135,6 +223,7 @@ async function ready() {
   try {
     state.landmarker = await deadline(
       vision.PoseLandmarker.createFromOptions(files, options), 180000, NO_ESTIMATOR);
+    state.delegate = "GPU";
   } catch (error) {
     if (String(error.message).startsWith("Could not load")) throw error;
     status("Loading the pose estimator", "no graphics acceleration; using the processor");
@@ -143,6 +232,7 @@ async function ready() {
         ...options,
         baseOptions: { ...source(), delegate: "CPU" },
       }), 180000, NO_ESTIMATOR);
+    state.delegate = "CPU";
   }
 }
 
@@ -216,18 +306,78 @@ const UNREADABLE =
   "Two ways round it: set the phone to Settings \u203a Camera \u203a Formats \u203a " +
   "Most Compatible before recording, or open this page in Safari.";
 
-/* Step the whole clip, one frame at a time, collecting landmarks and throwing the
- * pixels away. Only the frames the interface will actually show are kept.
+/* How the clip is read, and why these numbers.
  *
- * Two ways of stepping, because the good one is not everywhere. Chrome and Safari
- * have requestVideoFrameCallback, which hands over each frame as it is decoded
- * along with the exact time it belongs to - that is the one to use, because the
- * time comes from the container rather than being assumed. Firefox does not have
- * it at all, and there are builds where it exists and never fires. Seeking frame
- * by frame works everywhere, so that is the fallback, and the page says which one
- * it used rather than quietly producing worse numbers.
+ * Phone video is the case this has to be right for, and it is the case the first
+ * version was never tried on: a 360-pixel test clip at thirty frames a second hid
+ * every one of the following.
+ *
+ * Frames are tracked at TRACK_LONG_SIDE, not at the video's own size. An iPhone
+ * records 4K, and tracking at 4K meant a 3840-pixel canvas drawn and handed to the
+ * estimator hundreds of times, when the estimator crops the body to 256 pixels
+ * anyway. It also changed the answer: the same frame tracked at 4K and at 720 pixels
+ * put the wrist in visibly different places, and the model learnt from landmarks
+ * tracked on small video, so a small fixed size is the one it knows.
+ *
+ * Frames closer together than 1/MAX_RATE_HZ are skipped. The model resamples to
+ * sixty a second before it looks, so a 240 fps slow-motion clip tracked in full was
+ * four times the work for nothing.
+ *
+ * Clips longer than SCAN_ABOVE_S are searched for the swing first, a few frames a
+ * second, and only the stretch around it is tracked in full. Somebody filming
+ * themselves records the walk up, the waggles and the walk away; tracking all of it
+ * frame by frame was most of why a phone clip took minutes.
+ *
+ * Key frames are kept at KEEP_LONG_SIDE. Eight of them at 4K was a quarter of a
+ * gigabyte of canvas, which is enough on its own to kill a tab on a phone.
  */
-async function extractPose(file, wanted) {
+const TRACK_LONG_SIDE = 640;
+const KEEP_LONG_SIDE = 960;
+const MAX_RATE_HZ = 60;
+const SCAN_ABOVE_S = 12;
+const SCAN_RATE_HZ = 6;
+
+const HEVC_UNREADABLE =
+  "This video is HEVC (H.265), which is how iPhones record by default, and this " +
+  "browser cannot decode it.\n\n" +
+  "On an iPhone, iPad or Mac, open this page in Safari and it will work. Otherwise " +
+  "set the phone to Settings › Camera › Formats › Most Compatible and record " +
+  "again, or send the video to yourself from Photos, which usually converts it.";
+
+/* Which codec a file holds, read from its header rather than learned by failing.
+ *
+ * MP4 and MOV name the codec in a four-letter code inside the sample description;
+ * WebM names it in a string. The header is usually at the start and, in files some
+ * phones write, at the end, so both ends are read. HEVC is looked for first
+ * because an HEVC file can still list "avc1" among the brands it is compatible
+ * with. */
+async function sniffCodec(file) {
+  const codes = [["hvc1", "hevc"], ["hev1", "hevc"], ["av01", "av1"], ["vp09", "vp9"],
+                 ["V_VP9", "vp9"], ["V_AV1", "av1"], ["V_VP8", "vp8"], ["avc1", "h264"]];
+  const span = 4 << 20;
+  const slices = [file.slice(0, span)];
+  if (file.size > span) slices.push(file.slice(file.size - span));
+  const decoder = new TextDecoder("latin1");
+  try {
+    for (const slice of slices) {
+      const text = decoder.decode(new Uint8Array(await slice.arrayBuffer()));
+      for (const [code, name] of codes) if (text.includes(code)) return name;
+    }
+  } catch { /* unreadable header: let the video element have its say */ }
+  return "unknown";
+}
+
+/* Whether a file is an ISO media file (MP4, MOV, M4V) by its first box, not its name. */
+async function isIsoMedia(file) {
+  try {
+    const head = new TextDecoder("latin1").decode(new Uint8Array(await file.slice(0, 12).arrayBuffer()));
+    return ["ftyp", "moov", "mdat", "wide", "free", "skip"].includes(head.slice(4, 8));
+  } catch {
+    return false;
+  }
+}
+
+async function openVideo(file, codec) {
   const video = el("scratch-video");
   video.muted = true;
   video.playsInline = true;
@@ -235,17 +385,21 @@ async function extractPose(file, wanted) {
   const url = URL.createObjectURL(file);
   video.src = url;
   video.load();
-
+  const unreadable = codec === "hevc" ? HEVC_UNREADABLE : UNREADABLE;
   try {
-    await waitFor(video, "loadedmetadata", { timeout: 20000, what: UNREADABLE });
+    await waitFor(video, "loadedmetadata", { timeout: 20000, what: unreadable });
+    // A container can be read by a browser that cannot decode what is inside it,
+    // so metadata alone is not proof. The first decoded frame is.
+    if (video.readyState < 2) {
+      await waitFor(video, "loadeddata", { timeout: 20000, what: unreadable });
+    }
   } catch (error) {
     URL.revokeObjectURL(url);
     throw error;
   }
-
   if (!video.videoWidth || !video.videoHeight) {
     URL.revokeObjectURL(url);
-    throw new Error(UNREADABLE);
+    throw new Error(unreadable);
   }
   if (!(video.duration > 0) || !isFinite(video.duration)) {
     URL.revokeObjectURL(url);
@@ -253,89 +407,278 @@ async function extractPose(file, wanted) {
       "That file has no readable duration, so it cannot be stepped through frame " +
       "by frame. Re-exporting it from Photos usually fixes it.");
   }
+  return { video, url };
+}
 
+async function seekTo(video, time) {
+  const seeked = waitFor(video, "seeked", { timeout: 8000, what: "seek stalled" });
+  video.currentTime = Math.max(0, Math.min(time, video.duration - 1e-3));
+  await seeked;
+}
+
+/* Every frame of an MP4 or MOV, decoded one at a time.
+ *
+ * The first version played the video and took frames as the browser presented
+ * them. That is at the mercy of the decoder keeping up: when it cannot, frames are
+ * dropped without a sound, and dropped frames do not just slow things down - they
+ * change the answer. The same swing padded into a longer clip came back with a
+ * tempo of 3.66 instead of 3.32 because 13 of its 144 frames never arrived.
+ *
+ * So MP4 and MOV - which is what every phone records - are demuxed here and each
+ * frame is decoded explicitly with WebCodecs, in hardware where there is hardware,
+ * with the exact time the file gives it. Nothing is played, nothing races a clock,
+ * and no frame can be skipped by accident.
+ *
+ * Two things the video element used to do silently have to be done here. Phones
+ * store portrait video sideways with a rotation flag, and a decoded frame comes out
+ * sideways; drawn as it is, the golfer lies on their side and is not found. And
+ * times are counted from the first frame shown, so a file whose first frame is
+ * stamped a little after zero lines up with the timeline everything else uses.
+ */
+async function parseMp4(file) {
+  if (typeof VideoDecoder !== "function" || typeof EncodedVideoChunk !== "function" ||
+      typeof MP4Box === "undefined") return null;
+  const mp4 = MP4Box.createFile();
+  let info = null;
+  let failure = null;
+  const samples = [];
+  mp4.onError = (error) => { failure = error; };
+  mp4.onReady = (ready) => {
+    info = ready;
+    const track = ready.videoTracks && ready.videoTracks[0];
+    if (!track) return;
+    mp4.onSamples = (_id, _user, list) => { for (const s of list) samples.push(s); };
+    mp4.setExtractionOptions(track.id, null, { nbSamples: 1e9 });
+    mp4.start();
+  };
+  const chunk = 8 << 20;
+  let offset = 0;
+  while (offset < file.size && !failure) {
+    const buffer = await file.slice(offset, offset + chunk).arrayBuffer();
+    buffer.fileStart = offset;
+    const next = mp4.appendBuffer(buffer);
+    offset = typeof next === "number" && next > offset ? next : offset + buffer.byteLength;
+    status("Reading the clip", `${Math.min(100, Math.round((100 * offset) / file.size))}%`);
+  }
+  mp4.flush();
+  if (failure || !info || !info.videoTracks || !info.videoTracks.length || !samples.length) {
+    return null;
+  }
+
+  const track = info.videoTracks[0];
+  const entry = mp4.getTrackById(track.id).mdia.minf.stbl.stsd.entries[0];
+  const box = entry.avcC || entry.hvcC || entry.vpcC || entry.av1C;
+  let description;
+  if (box) {
+    const stream = new DataStream(undefined, 0, DataStream.BIG_ENDIAN);
+    box.write(stream);
+    description = new Uint8Array(stream.buffer, 8);
+  }
+  const config = {
+    codec: track.codec.startsWith("vp08") ? "vp8" : track.codec,
+    codedWidth: track.video.width,
+    codedHeight: track.video.height,
+  };
+  if (description) config.description = description;
+  let supported = false;
+  try { supported = (await VideoDecoder.isConfigSupported(config)).supported; } catch { /* no */ }
+  if (!supported) return { unsupported: track.codec };
+
+  // The rotation flag: the first column of the track matrix, in 16.16 fixed point.
+  const m = track.matrix || [65536, 0, 0, 0, 65536, 0, 0, 0, 1073741824];
+  const rotation = ((Math.round(Math.atan2(m[1], m[0]) * 180 / Math.PI / 90) * 90) + 360) % 360;
+  let first = Infinity;
+  for (const s of samples) first = Math.min(first, s.cts / s.timescale);
+  const w = track.video.width, h = track.video.height;
+  return {
+    samples,
+    config,
+    rotation,
+    first,
+    width: rotation % 180 ? h : w,
+    height: rotation % 180 ? w : h,
+    codec: track.codec,
+  };
+}
+
+/* Decode [start, end] of a parsed file, handing over frames at least minGap apart. */
+async function decodeRange(media, { start = 0, end = Infinity, minGap = 0, onFrame, label }) {
+  const { samples, config, rotation, first } = media;
+  const time = (s) => s.cts / s.timescale - first;
+  // Decoding has to begin on a key frame, so start from the last one before the
+  // window and throw away what comes out ahead of it.
+  let begin = 0;
+  for (let i = 0; i < samples.length; i++) {
+    if (time(samples[i]) > start) break;
+    if (samples[i].is_sync) begin = i;
+  }
+  let failure = null;
+  let kept = -Infinity;
+  const handed = [];
+  const decoder = new VideoDecoder({
+    output: (frame) => {
+      const t = frame.timestamp / 1e6;
+      try {
+        if (t >= start - 1e-3 && t <= end + 1e-3 && t - kept >= minGap - 2e-3) {
+          kept = t;
+          handed.push(onFrame(t, frame, rotation));
+        }
+      } catch (error) {
+        failure = failure || error;
+      } finally {
+        frame.close();
+      }
+    },
+    error: (error) => { failure = failure || error; },
+  });
+  decoder.configure(config);
+  const span = Math.max(1e-3, Math.min(end, time(samples[samples.length - 1])) - start);
+  for (let i = begin; i < samples.length && !failure; i++) {
+    const s = samples[i];
+    const t = time(s);
+    // A little past the end, for frames that are decoded out of order.
+    if (t > end + 0.5 && s.is_sync) break;
+    decoder.decode(new EncodedVideoChunk({
+      type: s.is_sync ? "key" : "delta",
+      timestamp: Math.round(t * 1e6),
+      duration: Math.round((1e6 * s.duration) / s.timescale),
+      data: s.data,
+    }));
+    while (decoder.decodeQueueSize > 8 && !failure) {
+      await new Promise((resolve) => setTimeout(resolve, 4));
+    }
+    if (label) label(Math.max(0, Math.min(1, (t - start) / span)));
+  }
+  if (!failure) await decoder.flush().catch((error) => { failure = error; });
+  decoder.close();
+  await Promise.all(handed);
+  if (failure) throw failure;
+}
+
+/* Draw a frame the right way up. */
+function drawOriented(context, source, rotation, width, height) {
+  if (!rotation) {
+    context.drawImage(source, 0, 0, width, height);
+    return;
+  }
+  context.save();
+  context.translate(width / 2, height / 2);
+  context.rotate((rotation * Math.PI) / 180);
+  const sideways = rotation % 180 !== 0;
+  const w = sideways ? height : width, h = sideways ? width : height;
+  context.drawImage(source, -w / 2, -h / 2, w, h);
+  context.restore();
+}
+
+/* The two canvases every frame passes through: one small, for the estimator, and
+ * one larger, kept as a JPEG so the key frames and the position editor show the
+ * exact frame each pose came from - not a frame found again by seeking, which can
+ * land one either side of it. */
+function makeTracker(width, height) {
+  const keepScale = Math.min(1, KEEP_LONG_SIDE / Math.max(width, height));
+  const keep = document.createElement("canvas");
+  keep.width = Math.max(1, Math.round(width * keepScale));
+  keep.height = Math.max(1, Math.round(height * keepScale));
+  const keepContext = keep.getContext("2d");
+  const trackScale = Math.min(1, TRACK_LONG_SIDE / Math.max(width, height));
   const canvas = el("scratch-canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const context = canvas.getContext("2d", { willReadFrequently: true });
-  const collected = { xy: [], visibility: [], world: [], detected: [], times: [] };
+  canvas.width = Math.max(1, Math.round(width * trackScale));
+  canvas.height = Math.max(1, Math.round(height * trackScale));
+  const context = canvas.getContext("2d");
 
-  const record = (time) => {
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    // The estimator's clock, not the clip's. In video mode it tracks the body from
-    // frame to frame and refuses any timestamp not after the last one it saw -
-    // over its whole life, not per clip. Restarting at zero for each clip meant the
-    // first clip worked and every one after it had every frame rejected, which the
-    // page then reported as no golfer found. The clip's own times are what tempo
-    // is measured from and are kept separately below, untouched.
-    let stamp = collected.baseMs + Math.round(time * 1000);
+  const detect = (time, baseMs, source, rotation, store) => {
+    drawOriented(keepContext, source, rotation, keep.width, keep.height);
+    context.drawImage(keep, 0, 0, canvas.width, canvas.height);
+    // The estimator's clock, not the clip's: in video mode it refuses any timestamp
+    // not after the last one it saw, over its whole life rather than per clip.
+    let stamp = baseMs + Math.round(time * 1000);
     if (stamp <= state.clockMs) stamp = state.clockMs + 1;
     state.clockMs = stamp;
-
     let result = null;
     try { result = state.landmarker.detectForVideo(canvas, stamp); } catch { result = null; }
+    const image = store
+      ? new Promise((resolve) => keep.toBlob(resolve, "image/jpeg", 0.82))
+      : null;
+    return { result, image };
+  };
+  return { detect, width, height };
+}
 
+/* Find the swing in a long clip: the fastest the hands move, and the motion around it.
+ *
+ * Hand speed is measured in torso lengths a second, so it means the same thing
+ * whether the golfer fills the frame or stands at the back of it. The window is the
+ * stretch around the peak where the hands are still moving, padded so the model
+ * sees the address before it and the held finish after it - it was trained on clips
+ * with both - and never shorter than a normal swing needs, because a slow-motion
+ * clip stretches all of it.
+ */
+async function scanForSwing(duration, tracker, frames) {
+  const baseMs = state.clockMs + 1000;
+  const samples = [];
+  await frames(1 / SCAN_RATE_HZ, (t, source, rotation) => {
+    const { result } = tracker.detect(t, baseMs, source, rotation, false);
+    const marks = result && result.landmarks && result.landmarks[0];
+    samples.push({ t, marks: marks || null });
+    progress(0.05 + 0.2 * Math.min(1, t / duration));
+    status("Looking for the swing", `${t.toFixed(0)} of ${duration.toFixed(0)} s`);
+  });
+  const w = tracker.width, h = tracker.height;
+  const mid = (m, a, b) => [(m[a].x + m[b].x) * 0.5 * w, (m[a].y + m[b].y) * 0.5 * h];
+  const speed = samples.map(() => 0);
+  for (let i = 1; i < samples.length; i++) {
+    const a = samples[i - 1].marks, b = samples[i].marks;
+    if (!a || !b) continue;
+    const [sx, sy] = mid(b, 11, 12), [hx, hy] = mid(b, 23, 24);
+    const torso = Math.hypot(sx - hx, sy - hy);
+    if (torso < 1) continue;
+    const [ax, ay] = mid(a, 15, 16), [bx, by] = mid(b, 15, 16);
+    speed[i] = Math.hypot(bx - ax, by - ay) / torso / Math.max(1e-3, samples[i].t - samples[i - 1].t);
+  }
+  const smooth = speed.map((_, i) =>
+    (speed[Math.max(0, i - 1)] + 2 * speed[i] + speed[Math.min(speed.length - 1, i + 1)]) / 4);
+  let peak = 0;
+  for (let i = 1; i < smooth.length; i++) if (smooth[i] > smooth[peak]) peak = i;
+  if (!(smooth[peak] > 0)) return null;
+  const active = 0.25 * smooth[peak];
+  let left = peak, right = peak;
+  while (left > 0 && Math.max(smooth[left - 1], smooth[Math.max(0, left - 2)]) > active) left--;
+  while (right < smooth.length - 1 &&
+         Math.max(smooth[right + 1], smooth[Math.min(smooth.length - 1, right + 2)]) > active) right++;
+  const tp = samples[peak].t;
+  return {
+    start: Math.max(0, Math.min(samples[left].t - 1.2, tp - 2.4)),
+    end: Math.min(duration, Math.max(samples[right].t + 1.2, tp + 2.0)),
+    peak: tp,
+  };
+}
+
+/* Track every frame the model needs in [start, end], keeping each as a JPEG. */
+async function trackRange(tracker, frames, start, end) {
+  const collected = { xy: [], visibility: [], world: [], detected: [], times: [], images: [] };
+  const baseMs = state.clockMs + 1000;
+  const span = Math.max(end - start, 1e-3);
+  await frames(1 / MAX_RATE_HZ, (time, source, rotation) => {
+    const { result, image } = tracker.detect(time, baseMs, source, rotation, true);
     const marks = result && result.landmarks && result.landmarks[0];
     const found = Boolean(marks);
     const previous = collected.xy.length ? collected.xy[collected.xy.length - 1] : null;
-
-    // An undetected frame keeps the last known pose at zero confidence rather
-    // than being dropped: dropping it would compress the time axis, and time is
-    // what tempo is measured from.
+    // An undetected frame keeps the last known pose at zero confidence rather than
+    // being dropped: dropping it would compress the time axis, and time is what
+    // tempo is measured from.
     collected.xy.push(found ? marks.map((m) => [m.x, m.y])
                             : (previous || Array.from({ length: 33 }, () => [0, 0])));
     collected.visibility.push(found
       ? marks.map((m) => Math.min(m.visibility ?? 1, m.presence ?? 1))
       : new Array(33).fill(0));
-    const w = result && result.worldLandmarks && result.worldLandmarks[0];
-    collected.world.push(w ? w.map((m) => [m.x, m.y, m.z]) : new Array(33).fill([0, 0, 0]));
+    const world = result && result.worldLandmarks && result.worldLandmarks[0];
+    collected.world.push(world ? world.map((m) => [m.x, m.y, m.z]) : new Array(33).fill([0, 0, 0]));
     collected.detected.push(found);
     collected.times.push(time + collected.times.length * 1e-9);
-
-    const index = collected.times.length - 1;
-    if (wanted && wanted.has(index)) {
-      const keep = document.createElement("canvas");
-      keep.width = canvas.width; keep.height = canvas.height;
-      keep.getContext("2d").drawImage(canvas, 0, 0);
-      wanted.set(index, keep);
-    }
-
-    progress(0.05 + 0.75 * Math.min(1, time / video.duration));
+    collected.images.push(image);
+    progress(0.25 + 0.6 * Math.min(1, (time - start) / span));
     status("Finding the body in each frame", `${collected.times.length} frames`);
-  };
-  // A second's gap from whatever the estimator saw last, so a new clip never
-  // reads to its tracker as the continuation of the previous one.
-  collected.baseMs = state.clockMs + 1000;
-
-  const hasFrameCallback = typeof video.requestVideoFrameCallback === "function";
-  let how = hasFrameCallback ? "played" : "stepped";
-  if (hasFrameCallback) {
-    await playThrough(video, record);
-    // It exists and produced nothing, which happens. Seeking still might work.
-    if (collected.times.length < 2) {
-      how = "stepped";
-      collected.xy.length = 0; collected.visibility.length = 0; collected.world.length = 0;
-      collected.detected.length = 0; collected.times.length = 0;
-      collected.baseMs = state.clockMs + 1000;
-    }
-  }
-  if (how === "stepped") {
-    const reached = await seekThrough(video, record);
-    // Stopping short and analysing what was read would hand the model the first
-    // part of the clip and then report that no swing was found in it - true of
-    // the fragment and false of the clip. It happened: a busy machine hit the time
-    // limit after 1.7 seconds of a 7-second swing and the page blamed the video.
-    if (reached < video.duration - 0.5) {
-      URL.revokeObjectURL(url);
-      throw new Error(
-        `This browser read only ${reached.toFixed(1)} of the clip's ` +
-        `${video.duration.toFixed(1)} seconds before giving up, so the rest was never ` +
-        "looked at. Chrome or Safari on a computer reads clips far faster than most " +
-        "phones; a shorter clip, trimmed to just the swing, also helps.");
-    }
-  }
-
-  URL.revokeObjectURL(url);
+  }, start, end);
   if (collected.times.length < 2) {
     throw new Error(
       "The video opened but no frames could be read from it. That usually means the " +
@@ -345,35 +688,70 @@ async function extractPose(file, wanted) {
   return {
     sequence: new PoseSequence(collected.xy, collected.visibility, collected.world,
                                collected.detected, collected.times,
-                               video.videoWidth, video.videoHeight),
-    video,
-    how,
+                               tracker.width, tracker.height),
+    images: collected.images,
   };
 }
 
-/* Play the clip and take each frame the decoder hands over.
+/* Frames from a parsed MP4: explicit decoding, every frame, in order. */
+function mp4Frames(media) {
+  return (minGap, onFrame, start = 0, end = Infinity) =>
+    decodeRange(media, {
+      start, end, minGap,
+      onFrame: (t, frame, rotation) => onFrame(t, frame, rotation),
+    });
+}
+
+/* Frames from the video element, for files WebCodecs cannot take: played with a
+ * frame callback where the browser has one, sought one by one where it does not. */
+function elementFrames(video) {
+  return async (minGap, onFrame, start = 0, end = video.duration) => {
+    let got = 0;
+    const record = (t) => { got++; onFrame(t, video, 0); };
+    if (typeof video.requestVideoFrameCallback === "function") {
+      if (start > 0.02) await seekTo(video, start);
+      await playThrough(video, record, end, minGap);
+      state.how = "played";
+      if (got >= 2) return;
+    }
+    state.how = "stepped";
+    const reached = await seekThrough(video, record, start, end, minGap);
+    // Stopping short and analysing what was read would hand the model part of the
+    // swing and report that no swing was found in it. It happened: a busy machine
+    // hit the time limit after 1.7 seconds of a 7-second swing.
+    if (reached < Math.min(end, video.duration) - 0.5) {
+      throw new Error(
+        `This browser read only ${(reached - start).toFixed(1)} of the ` +
+        `${(Math.min(end, video.duration) - start).toFixed(1)} seconds it needed before ` +
+        "giving up, so the rest was never looked at. Chrome or Safari on a computer " +
+        "reads clips far faster than most phones; a shorter clip also helps.");
+    }
+  };
+}
+
+/* Play the clip from where it stands and take each frame the decoder hands over.
  *
- * The watchdog is the point. If frames stop arriving - the decoder gives up
- * halfway, the tab is backgrounded, the callback simply never fires - this
- * returns with whatever it has instead of waiting for an event that is not
- * coming. Whatever it has is either enough to analyse or few enough that the
- * caller falls back to seeking.
+ * The watchdog is the point. If frames stop arriving - the decoder gives up, the tab
+ * is backgrounded, the callback never fires - this returns with whatever it has
+ * instead of waiting for an event that is not coming.
  */
-function playThrough(video, record) {
+function playThrough(video, record, end, minGap = 1 / MAX_RATE_HZ) {
+  const until = end === undefined ? video.duration : end;
   return new Promise((resolve) => {
     let last = performance.now();
+    let kept = -Infinity;
     let finished = false;
-    const stop = () => { if (!finished) { finished = true; clearInterval(watchdog); resolve(); } };
+    const stop = () => {
+      if (!finished) { finished = true; clearInterval(watchdog); video.pause(); resolve(); }
+    };
     const watchdog = setInterval(() => {
       if (performance.now() - last > 8000) stop();
     }, 1000);
 
-    /* Pausing inside the frame callback is the whole technique - it is what stops
-     * frames being dropped while the estimator thinks - and it rejects whichever
-     * play() is still outstanding with an AbortError. That abort is this code's
-     * own doing and means nothing has gone wrong. Treating it as a failure ends
-     * the loop after a single frame, and the clip then falls through to the slow
-     * path and comes back with different numbers, which is how it was found. */
+    /* Pausing inside the frame callback is what stops frames being dropped while
+     * the estimator thinks, and it rejects whichever play() is still outstanding
+     * with an AbortError. That abort is this code's own doing and means nothing has
+     * gone wrong; treating it as a failure ended the loop after one frame. */
     const resume = () => video.play().catch((error) => {
       if (error && error.name === "AbortError") return;
       stop();
@@ -381,16 +759,25 @@ function playThrough(video, record) {
 
     const onFrame = (_now, meta) => {
       if (finished) return;
-      video.pause();
       last = performance.now();
+      const time = meta.mediaTime;
+      if (time > until + 1e-3) { stop(); return; }
+      // Closer than the model will ever look: let the video run on without
+      // stopping for it. This is what keeps a 240 fps clip at 60 fps of work.
+      if (time - kept < minGap - 2e-3) {
+        video.requestVideoFrameCallback(onFrame);
+        return;
+      }
+      video.pause();
+      kept = time;
       try {
-        record(meta.mediaTime);
+        record(time);
       } catch (error) {
         console.error(error);
         stop();
         return;
       }
-      if (video.ended || meta.mediaTime >= video.duration - 1e-3) { stop(); return; }
+      if (video.ended || time >= Math.min(until, video.duration - 1e-3)) { stop(); return; }
       video.requestVideoFrameCallback(onFrame);
       resume();
     };
@@ -402,54 +789,41 @@ function playThrough(video, record) {
   });
 }
 
-/* Walk the clip by seeking, for browsers with no frame callback.
+/* Walk [start, end] by seeking, for browsers with no frame callback.
  *
- * Nothing here can ask a video element what its frame rate is, so the clip is
- * sampled at a fixed sixty per second - fast enough not to miss a frame of
- * anything a phone records. A thirty-frame clip is therefore visited twice per
- * frame, and the second visit has to be thrown away rather than recorded.
- *
- * Thrown away by looking at the picture, because the obvious test does not work:
- * after a seek, currentTime reads back the time that was asked for rather than
- * the time of the frame actually being shown, so consecutive samples never look
- * like duplicates however duplicated they are. Recording them anyway held every
- * frame for two samples, which turned smooth motion into a staircase, put a
- * sawtooth through every velocity the model reads, and moved the tempo it
- * returned by a quarter. Comparing a sixteen-by-sixteen thumbnail of each frame
- * against the last one costs nothing and settles it on what is actually on
- * screen.
+ * Sampled at MAX_RATE_HZ, and a sample that shows the same picture as the last one
+ * is thrown away: after a seek, currentTime reads back the time asked for rather
+ * than the time of the frame shown, so a 30 fps clip sampled at 60 would otherwise
+ * record every frame twice - a staircase through every velocity the model reads,
+ * which once moved the tempo by a quarter. A 16x16 thumbnail settles it on what is
+ * actually on screen.
  */
-async function seekThrough(video, record) {
-  const step = 1 / 60;
-  // Generous, because this is the slow path on the slow machines: a phone with no
-  // frame callback can take minutes over a long clip and still be right. Each seek
-  // has its own short timeout for a stall; this one only stops a runaway.
+async function seekThrough(video, record, start = 0, end = video.duration, minGap = 1 / MAX_RATE_HZ) {
+  const step = minGap;
+  // Generous, because this is the slow path on the slow machines. Each seek has its
+  // own short timeout for a stall; this one only stops a runaway.
   const limit = performance.now() + 900000;
   const thumb = document.createElement("canvas");
   thumb.width = 16;
   thumb.height = 16;
   const thumbContext = thumb.getContext("2d", { willReadFrequently: true });
   let previous = null;
-  let reached = 0;
-
-  for (let t = 0; t < video.duration - 1e-3; t += step) {
+  let reached = start;
+  for (let t = start; t < Math.min(end, video.duration - 1e-3); t += step) {
     if (performance.now() > limit) break;
-    const seeked = waitFor(video, "seeked", { timeout: 8000, what: "seek stalled" });
-    video.currentTime = Math.min(t, video.duration - 1e-3);
     try {
-      await seeked;
+      await seekTo(video, t);
     } catch {
       break;
     }
-
     thumbContext.drawImage(video, 0, 0, thumb.width, thumb.height);
     const signature = thumbContext.getImageData(0, 0, thumb.width, thumb.height).data;
-    if (previous && sameFrame(previous, signature)) continue;
+    if (previous && sameFrame(previous, signature)) { reached = t; continue; }
     previous = signature.slice();
     record(t);
     reached = t;
   }
-  return reached;
+  return Math.min(end, reached + step);
 }
 
 function sameFrame(a, b) {
@@ -487,28 +861,74 @@ function drawPose(canvas, coordsFrame, visibilityFrame) {
 async function analyse(file) {
   if (state.busy) return;
   state.busy = true;
+  releaseClip();
   show("results", false);
   show("refusal", false);
   show("working", true);
   stage(0);
   // Confirm what was picked. Without it the panel looks identical whether the
-  // file was taken or silently ignored, which is exactly the ambiguity that made
-  // the last failure so hard to describe.
+  // file was taken or silently ignored.
   el("drop-main").textContent = file.name;
   el("drop-sub").textContent =
     `${(file.size / 1e6).toFixed(1)} MB \u00b7 choose another to start again`;
   progress(0.02);
+  const run = beginRun(file);
 
   try {
+    const codec = await sniffCodec(file);
+    state.codec = codec;
+    run.note({ codec });
+
     await ready();
+    run.note({ delegate: state.delegate || "" });
+    run.stage("estimator");
     stage(1);
     status("Reading the clip", file.name);
 
-    const wanted = new Map();
-    const { sequence, how } = await extractPose(file, wanted);
-    state.how = how;
+    const { video, url } = await openVideo(file, codec);
+    state.clip = { url, video };
+    run.note({
+      width: video.videoWidth,
+      height: video.videoHeight,
+      duration: Number(video.duration.toFixed(2)),
+    });
+    run.stage("opened");
 
-    progress(0.84);
+    // WebCodecs for every MP4 and MOV it can decode, which is every phone clip on a
+    // current browser; the video element for anything else.
+    let media = null;
+    if (await isIsoMedia(file)) {
+      try { media = await parseMp4(file); } catch (error) { media = null; run.note({ parseError: String(error).slice(0, 200) }); }
+      if (media && media.unsupported) {
+        run.note({ webcodecs: `unsupported ${media.unsupported}` });
+        media = null;
+      }
+    }
+    const frames = media ? mp4Frames(media) : elementFrames(video);
+    state.how = media ? "decoded" : null;
+    const tracker = makeTracker(media ? media.width : video.videoWidth,
+                                media ? media.height : video.videoHeight);
+    if (media) run.note({ rotation: media.rotation, streamCodec: media.codec });
+
+    let start = 0;
+    let end = video.duration;
+    if (video.duration > SCAN_ABOVE_S) {
+      const found = await scanForSwing(video.duration, tracker, frames);
+      if (found) ({ start, end } = found);
+      run.note({ window: found ? [Number(start.toFixed(2)), Number(end.toFixed(2))] : "none" });
+      run.stage("scanned");
+    }
+    const { sequence, images } = await trackRange(tracker, frames, start, end);
+    state.images = images;
+    const how = state.how || "decoded";
+    run.note({
+      how,
+      frames: sequence.n,
+      trackedFps: Number((sequence.n / Math.max(end - start, 1e-3)).toFixed(1)),
+    });
+    run.stage("tracked");
+
+    progress(0.87);
     stage(2);
     status("Finding the swing", "");
     await new Promise((r) => setTimeout(r, 30));
@@ -518,6 +938,7 @@ async function analyse(file) {
     const { sequence: resampled, grid } = resamplePose(sequence, config.canonical_rate_hz);
 
     const detectionRate = resampled.detected.reduce((a, b) => a + (b ? 1 : 0), 0) / resampled.n;
+    run.note({ detection: Number(detectionRate.toFixed(3)) });
     if (detectionRate < thresholds.min_detection_rate) {
       return refuse(
         `a body was found in only ${Math.round(detectionRate * 100)} percent of frames, ` +
@@ -531,6 +952,7 @@ async function analyse(file) {
     const logits = state.net.forward(features, n, width);
     const decoded = decodeEvents(logits, n, state.payload.architecture.classes,
                                  thresholds.min_mean_confidence);
+    run.stage("modelled");
     if (!decoded.ok) {
       return refuse(decoded.reason,
         "This is most often a clip that stops before the finish, or one filmed from " +
@@ -546,21 +968,18 @@ async function analyse(file) {
         "takeaway and keep going until the finish is held.");
     }
 
-    // Back onto the frames of the file the user actually gave us.
-    const sourceFrames = metrics.eventTimes.map((t) => {
-      let best = 0, gap = Infinity;
-      for (let i = 0; i < sequence.times.length; i++) {
-        const d = Math.abs(sequence.times[i] - t);
-        if (d < gap) { gap = d; best = i; }
-      }
-      return best;
-    });
-
+    state.analysis = { sequence, resampled, grid, decoded, metrics, detectionRate,
+                       handedness, config };
     progress(0.92);
     stage(3);
     status("Drawing the key frames", "");
-    const coords = normalisePose(resampled, config);
-    await renderFrames(file, sourceFrames, sequence, decoded, metrics, detectionRate);
+    await renderFrames(sequence, decoded, metrics, detectionRate);
+    run.end({
+      outcome: "analysed",
+      tempo: metrics.tempoRatio === null ? null : Number(metrics.tempoRatio.toFixed(3)),
+      eventTimes: metrics.eventTimes.map((t) => Number(t.toFixed(3))),
+      confidence: decoded.confidence.map((c) => Number(c.toFixed(3))),
+    });
     progress(1);
     stage(4);
   } catch (error) {
@@ -570,6 +989,16 @@ async function analyse(file) {
     state.busy = false;
     show("working", false);
   }
+}
+
+/* Let go of the previous clip's video. It is kept while its results are on screen,
+ * because correcting a position means showing frames from it again. */
+function releaseClip() {
+  if (state.clip && state.clip.url) URL.revokeObjectURL(state.clip.url);
+  state.clip = null;
+  state.analysis = null;
+  state.images = null;
+  state.frames = null;
 }
 
 /* Say what happened, under a heading that matches what happened.
@@ -582,6 +1011,13 @@ async function analyse(file) {
  * a codec sends them off to re-record for nothing.
  */
 function refuse(reason, advice, title) {
+  if (state.run) {
+    state.run.end({
+      outcome: title ? "error" : "refused",
+      reason: String(reason).slice(0, 600),
+      stage: el("status").textContent,
+    });
+  }
   show("results", false);
   show("refusal", true);
   el("refusal-title").textContent = title || "No swing was found in this clip";
@@ -612,54 +1048,70 @@ function failed(error) {
  * expected to know. So the page says.
  */
 function diagnostics() {
-  const probe = document.createElement("video");
-  const can = (type) => probe.canPlayType(type) || "no";
+  const env = environment();
   const parts = [
-    `frame callback: ${typeof probe.requestVideoFrameCallback === "function" ? "yes" : "no"}`,
-    `h264: ${can('video/mp4; codecs="avc1.42E01E"')}`,
-    `hevc: ${can('video/mp4; codecs="hvc1"')}`,
-    `quicktime: ${can("video/quicktime")}`,
-    navigator.userAgent,
+    `frame callback: ${env.frameCallback ? "yes" : "no"}`,
+    `file codec: ${state.codec || "unknown"}`,
+    `h264: ${env.h264}`,
+    `hevc: ${env.hevc}`,
+    `webassembly: ${env.wasm}`,
+    `webgl2: ${env.webgl2 ? "yes" : "no"}`,
+    `stage: ${el("status").textContent}`,
+    env.ua,
   ];
   return parts.join(" \u00b7 ");
 }
 
-/* Fetch back only the frames worth looking at. The clip was streamed and thrown
- * away, which is what lets it be any length; eight seeks is cheap. */
-async function renderFrames(file, sourceFrames, sequence, decoded, metrics, detectionRate) {
-  const video = el("scratch-video");
-  const url = URL.createObjectURL(file);
-  video.src = url;
-  video.load();
-  await waitFor(video, "loadeddata", { timeout: 20000, what: UNREADABLE });
+/* The tracked frame nearest a time, which is what a key frame shows. */
+function nearestFrame(sequence, time) {
+  let best = 0, gap = Infinity;
+  for (let i = 0; i < sequence.times.length; i++) {
+    const d = Math.abs(sequence.times[i] - time);
+    if (d < gap) { gap = d; best = i; }
+  }
+  return best;
+}
 
+/* A tracked frame, exactly as it was tracked, with its pose drawn on. */
+async function frameCanvas(sequence, index) {
+  const blob = state.images && (await state.images[index]);
+  const canvas = document.createElement("canvas");
+  if (blob) {
+    const bitmap = await createImageBitmap(blob);
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    canvas.getContext("2d").drawImage(bitmap, 0, 0);
+    bitmap.close();
+  } else {
+    // Nothing stored (a browser that would not encode it): find it again by seeking.
+    const video = state.clip.video;
+    await seekTo(video, sequence.times[index]);
+    const scale = Math.min(1, KEEP_LONG_SIDE / Math.max(video.videoWidth, video.videoHeight));
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+  }
+  drawPose(canvas, sequence.xy[index], sequence.visibility[index]);
+  return canvas;
+}
+
+/* Fetch back only the frames worth looking at. The clip was streamed and thrown
+ * away as it was tracked, which is what lets it be any length; eight seeks are
+ * cheap, and the video stays open so a position can be moved afterwards. */
+async function renderFrames(sequence, decoded, metrics, detectionRate) {
   const strip = el("strip");
   strip.innerHTML = "";
   const frames = [];
   for (let e = 0; e < 8; e++) {
-    const frameIndex = sourceFrames[e];
-    const time = sequence.times[Math.min(frameIndex, sequence.times.length - 1)];
-    const seeked = waitFor(video, "seeked", {
-      timeout: 8000,
-      what: "The clip stopped responding while its key frames were being fetched.",
-    });
-    video.currentTime = Math.min(time, video.duration - 1e-3);
-    await seeked;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-    drawPose(canvas, sequence.xy[frameIndex], sequence.visibility[frameIndex]);
+    const index = nearestFrame(sequence, metrics.eventTimes[e]);
+    const canvas = await frameCanvas(sequence, index);
+    frames.push({ canvas, label: EVENT_NAMES[e], time: metrics.eventTimes[e], index });
 
     const figure = document.createElement("figure");
     figure.className = "frame";
     figure.tabIndex = 0;
     figure.setAttribute("role", "button");
     figure.setAttribute("aria-label", `${EVENT_NAMES[e]}, see full size`);
-    // The full-resolution canvas never goes into the strip - only a thumbnail
-    // drawn from it does - so it is free to be handed to the lightbox and
-    // costs nothing to keep.
-    frames.push({ canvas, label: EVENT_NAMES[e], time: metrics.eventTimes[e] });
     const open = () => openFrame(e);
     figure.addEventListener("click", open);
     figure.addEventListener("keydown", (event) => {
@@ -682,7 +1134,6 @@ async function renderFrames(file, sourceFrames, sequence, decoded, metrics, dete
     strip.appendChild(figure);
     progress(0.92 + 0.08 * ((e + 1) / 8));
   }
-  URL.revokeObjectURL(video.src);
   state.frames = frames;
 
   showBandNote(state.payload.calibration, decoded);
@@ -929,6 +1380,7 @@ function wireLightbox() {
 
 export function boot(payload) {
   state.payload = payload;
+  connectReports();
   state.net = new SwingEventNet(payload);
   state.handedness = "right";
   wireLightbox();
@@ -980,7 +1432,10 @@ export function boot(payload) {
     };
     el("footer-note").textContent =
       "Runs entirely in your browser. The clip never leaves this device, and the pose " +
-      "estimator is loaded from this page rather than from anyone else's servers.";
+      "estimator is loaded from this page rather than from anyone else's servers. Each " +
+      "run leaves a short technical note for the page's owner - browser, video format, " +
+      "timings and any error, never the video, a frame or its name - so failures can be " +
+      "fixed.";
   }
 
   for (const id of ["again", "again-bottom"]) {
