@@ -1693,17 +1693,38 @@ function showMetrics(m, decoded, detectionRate, sequence) {
     : {};
   const text = JSON.stringify({ metrics: m, events: decoded, ...extra }, null, 2);
   if (LOCAL && LOCAL.copyInsteadOfDownload) {
-    // Downloads are refused where this build is served, so the numbers go to the
-    // clipboard instead - and say so, rather than looking like nothing happened.
-    el("download").textContent = "Copy the numbers as JSON";
-    el("download").onclick = async () => {
+    // A plain download link does nothing where this build is served. The viewer
+    // saves files for the page when asked through its own prompt; where it
+    // cannot, the numbers go to the clipboard instead - and say so, rather than
+    // looking like nothing happened.
+    const button = el("download");
+    const label = "Save the numbers as JSON";
+    const say = (text) => {
+      button.textContent = text;
+      setTimeout(() => { button.textContent = label; }, 2500);
+    };
+    button.textContent = label;
+    button.onclick = async () => {
+      const claude = window.claude;
+      const downloads = claude && typeof claude.use === "function"
+        ? await claude.use("downloads").catch(() => null) : null;
+      if (downloads) {
+        try {
+          await downloads.save({ filename: "swing.json", data: text });
+          say("Saved");
+          return;
+        } catch (error) {
+          const code = error && error.code;
+          if (code === "declined") { say("Not saved"); return; }
+          if (code === "rate_limited") { say("A save is already open"); return; }
+        }
+      }
       try {
         await navigator.clipboard.writeText(text);
-        el("download").textContent = "Copied";
+        say("Copied to the clipboard instead");
       } catch {
-        el("download").textContent = "Copy refused by this browser";
+        say("This browser refused both saving and copying");
       }
-      setTimeout(() => { el("download").textContent = "Copy the numbers as JSON"; }, 2000);
     };
     return;
   }
