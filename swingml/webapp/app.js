@@ -960,9 +960,20 @@ function elementFrames(video) {
 
 /* Play the clip from where it stands and take each frame the decoder hands over.
  *
- * The watchdog is the point. If frames stop arriving - the decoder gives up, the tab
- * is backgrounded, the callback never fires - this returns with whatever it has
- * instead of waiting for an event that is not coming.
+ * Playback does not wait for anyone: between resuming and the next callback a
+ * busy device lets the video run on, and the frames it runs past are simply never
+ * shown. A dropped frame is not a small loss - it changes the answer (a clip that
+ * lost 13 of 144 frames came back with a tempo of 3.66 instead of 3.32). So this
+ * plays slower than real time, notices a frame gone missing from the gap it
+ * leaves, and goes back for it: seek to the last frame kept and carry on at half
+ * the speed again. The estimator only ever sees frames in order.
+ *
+ * The frame interval is learned from the smallest step seen, which is the true
+ * one as soon as two neighbouring frames have both been shown.
+ *
+ * The watchdog is the other point. If frames stop arriving - the decoder gives up,
+ * the tab is backgrounded, the callback never fires - this returns with whatever it
+ * has instead of waiting for an event that is not coming.
  */
 function playThrough(video, record, end, minGap = 1 / MAX_RATE_HZ) {
   const until = end === undefined ? video.duration : end;
@@ -970,11 +981,25 @@ function playThrough(video, record, end, minGap = 1 / MAX_RATE_HZ) {
     let last = performance.now();
     let kept = -Infinity;
     let finished = false;
+    let rate = 0.5;
+    let nominal = Infinity;
+    let previous = null;
+    let repairs = 0;
+    let repairing = false;
+    const setRate = (r) => { try { video.playbackRate = r; } catch { /* keep the old rate */ } };
+    setRate(rate);
     const stop = () => {
-      if (!finished) { finished = true; clearInterval(watchdog); video.pause(); resolve(); }
+      if (!finished) {
+        finished = true;
+        clearInterval(watchdog);
+        video.pause();
+        setRate(1);
+        state.playRepairs = repairs;
+        resolve();
+      }
     };
     const watchdog = setInterval(() => {
-      if (performance.now() - last > 8000) stop();
+      if (!repairing && performance.now() - last > 8000) stop();
     }, 1000);
 
     /* Pausing inside the frame callback is what stops frames being dropped while
@@ -986,16 +1011,38 @@ function playThrough(video, record, end, minGap = 1 / MAX_RATE_HZ) {
       stop();
     });
 
-    const onFrame = (_now, meta) => {
+    const onFrame = async (_now, meta) => {
       if (finished) return;
       last = performance.now();
       const time = meta.mediaTime;
+      if (previous !== null && time > previous + 1e-4) nominal = Math.min(nominal, time - previous);
+      previous = time;
       if (time > until + 1e-3) { stop(); return; }
       // Closer than the model will ever look: let the video run on without
       // stopping for it. This is what keeps a 240 fps clip at 60 fps of work.
       if (time - kept < minGap - 2e-3) {
         video.requestVideoFrameCallback(onFrame);
         return;
+      }
+      // Further from the last kept frame than the next one due: something was
+      // skipped. Back to the last kept frame, slower.
+      if (kept > -Infinity && isFinite(nominal) && rate > 0.0625 && repairs < 60) {
+        const due = Math.max(1, Math.ceil((minGap - 2e-3) / nominal)) * nominal;
+        if (time - kept > due + 0.5 * nominal) {
+          video.pause();
+          repairs++;
+          rate = Math.max(0.0625, rate / 2);
+          setRate(rate);
+          repairing = true;
+          try { await seekTo(video, kept); } catch { /* carry on from wherever it is */ }
+          repairing = false;
+          last = performance.now();
+          previous = null;
+          if (finished) return;
+          video.requestVideoFrameCallback(onFrame);
+          resume();
+          return;
+        }
       }
       video.pause();
       kept = time;
@@ -1179,6 +1226,7 @@ async function analyse(file) {
     const how = state.how || "decoded";
     run.note({
       how,
+      repairs: how === "played" ? state.playRepairs || 0 : undefined,
       frames: sequence.n,
       trackedFps: Number((sequence.n / Math.max(end - start, 1e-3)).toFixed(1)),
     });
