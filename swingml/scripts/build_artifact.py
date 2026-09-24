@@ -16,6 +16,7 @@ page is told.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import re
 import shutil
@@ -37,12 +38,13 @@ MEDIAPIPE_FILES = (
     "vision_bundle.mjs",
     "wasm/vision_wasm_internal.js",
     "wasm/vision_wasm_internal.wasm",
-    "wasm/vision_wasm_nosimd_internal.js",
-    "wasm/vision_wasm_nosimd_internal.wasm",
 )
+"""The SIMD build only. Every current browser has WebAssembly SIMD, and the other
+build is nine megabytes the size budget below cannot spare."""
 
-CHUNK_BYTES = 10_500_000
-"""Under the ceiling a hosted artifact puts on one binary file, with room to spare."""
+CHUNK_BYTES = 7_500_000
+"""Raw bytes per chunk. Base64 grows that by a third, to about ten megabytes of
+text, comfortably under what a host will take as one text file."""
 
 WRAPPERS = re.compile(
     r"<!doctype html>\s*|<html[^>]*>\s*|</html>\s*|<head>\s*|</head>\s*|<body>\s*|</body>\s*"
@@ -66,13 +68,18 @@ def fetch_mediapipe(out: Path) -> list[str]:
 
 
 def split_model(out: Path) -> list[str]:
-    """The pose model in pieces small enough for any host to accept one at a time."""
+    """The pose model as base64 text, in pieces a host will accept one at a time.
+
+    Text because hosts that serve a page's files serve a fixed list of types and
+    an arbitrary binary is not on it, while plain text always is. The page decodes
+    the pieces and joins them back into the model.
+    """
     data = resolve_model_path(None).read_bytes()
     names = []
     for index, start in enumerate(range(0, len(data), CHUNK_BYTES)):
-        name = f"model/pose_landmarker_heavy.part{index}"
+        name = f"model/pose_landmarker_heavy.part{index}.b64.txt"
         (out / name).parent.mkdir(parents=True, exist_ok=True)
-        (out / name).write_bytes(data[start : start + CHUNK_BYTES])
+        (out / name).write_bytes(base64.b64encode(data[start : start + CHUNK_BYTES]))
         names.append(name)
     return names
 

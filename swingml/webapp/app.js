@@ -146,14 +146,25 @@ async function ready() {
   }
 }
 
-/* The estimator's weights, reassembled from the chunks published with the page. */
+function fromBase64(text) {
+  const binary = atob(text.trim());
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/* The estimator's weights, reassembled from the chunks published with the page.
+ * Chunks named .b64.txt are base64 text, for hosts that serve text but not an
+ * arbitrary binary file. */
 async function loadChunks(paths) {
   const parts = [];
   let total = 0;
   for (const [index, path] of paths.entries()) {
     const response = await fetch(here(path));
     if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
-    const part = new Uint8Array(await response.arrayBuffer());
+    const part = path.endsWith(".b64.txt")
+      ? fromBase64(await response.text())
+      : new Uint8Array(await response.arrayBuffer());
     parts.push(part);
     total += part.length;
     status("Loading the pose estimator", `${Math.round(total / 1e6)} of about 31 MB`);

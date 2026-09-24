@@ -42,6 +42,7 @@ from swingml.web.service import (
     save_upload,
     sequence_manifest,
 )
+from swingml.web.story import swing_story
 
 ALLOWED_SUFFIXES = {".mov", ".mp4", ".m4v", ".avi", ".mkv", ".webm"}
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
@@ -370,6 +371,7 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
             sequence=sequence_manifest(swing_id),
             events=event_rows(analysis, files),
             groups=metric_groups(analysis),
+            story=swing_story(stored.analysis.get("metrics", {})),
             refusal=refusal,
             advice=advice,
             clubs=swing_store.clubs(),

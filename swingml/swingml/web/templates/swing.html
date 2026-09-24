@@ -103,6 +103,20 @@
 <script id="event-data" type="application/json">{{ events|tojson }}</script>
 {% endif %}
 
+{% if story %}
+<section class="story-section">
+  <h2>The swing, start to finish</h2>
+  <p class="section-sub">What happened in each part, in order. Every figure is one of the
+    measurements below; nothing is added that was not measured.</p>
+  <ol class="beats">
+    {% for beat in story %}
+    <li><div><h3>{{ beat.title }}<span class="prov prov-{{ beat.provenance }}">{{ beat.provenance }}</span></h3>
+      <p>{{ beat.text }}</p></div></li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
+
 {% for group in groups %}
 <section class="metrics">
   <h2>{{ group.title }}</h2>

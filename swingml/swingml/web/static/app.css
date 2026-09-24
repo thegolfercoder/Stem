@@ -334,3 +334,18 @@ input[type=text]:focus, select:focus { outline: 2px solid var(--accent); outline
 }
 .trend-tip b { font-family: var(--mono); font-weight: 600; }
 .trend-tip span { color: var(--ink-faint); display: block; font-size: 11px; }
+
+/* The swing told in order. Numbered, because it is a sequence. */
+.story-section { margin-top: 28px; }
+.beats { list-style: none; margin: 14px 0 0; padding: 18px 20px; display: grid; gap: 12px;
+  counter-reset: beat; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); }
+.beats li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start;
+  counter-increment: beat; }
+.beats li::before { content: counter(beat); width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 12px; font-weight: 600; color: var(--ink-dim);
+  border: 1px solid var(--line); background: var(--panel-2); font-variant-numeric: tabular-nums; }
+.beats h3 { margin: 1px 0 2px; font-size: 14.5px; font-weight: 620; }
+.beats p { margin: 0; color: var(--ink-dim); max-width: 68ch; }
+.beats b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 620; }
+.beats .prov { margin-left: 6px; vertical-align: 1px; }
