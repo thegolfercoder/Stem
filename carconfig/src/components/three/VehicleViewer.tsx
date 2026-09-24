@@ -18,6 +18,7 @@ import { BODY_STYLES } from "@/lib/three/body-styles";
 import { CameraRig, type ViewName } from "./CameraRig";
 import { Car } from "./car/Car";
 import { ModelBoundary, RealCar } from "./car/RealCar";
+import type { SceneName } from "./scenes";
 import { Studio } from "./Studio";
 
 /**
@@ -33,10 +34,12 @@ export default function VehicleViewer({
   config,
   view,
   viewNonce,
+  scene,
 }: {
   config: ViewerConfig;
   view: ViewName;
   viewNonce: number;
+  scene: SceneName;
 }) {
   const [quality, setQuality] = useState<"high" | "low">("high");
 
@@ -66,7 +69,7 @@ export default function VehicleViewer({
       <PerformanceMonitor onDecline={() => setQuality("low")} flipflops={2} />
 
       <Suspense fallback={null}>
-        <Studio quality={quality} />
+        <Studio quality={quality} scene={scene} />
         {config.asset ? (
           // The generated car stands in while the model downloads, and for
           // good if it fails to load.

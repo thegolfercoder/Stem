@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import type { ViewerConfig } from "@/lib/build/viewer-config";
 import { VIEWS, type ViewName } from "./CameraRig";
+import { SCENES, type SceneName } from "./scenes";
 
 /**
  * The viewer's entry point, and its controls.
@@ -26,6 +27,7 @@ const VehicleViewer = dynamic(() => import("./VehicleViewer"), {
 export function ViewerPanel({ config }: { config: ViewerConfig }) {
   const [view, setView] = useState<ViewName>("hero");
   const [nonce, setNonce] = useState(0);
+  const [scene, setScene] = useState<SceneName>("studio");
 
   const credit = config.asset?.credit;
   const caption = credit
@@ -36,7 +38,23 @@ export function ViewerPanel({ config }: { config: ViewerConfig }) {
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded border border-[var(--color-line)] bg-[#0b0e11]">
-      <VehicleViewer config={config} view={view} viewNonce={nonce} />
+      <VehicleViewer config={config} view={view} viewNonce={nonce} scene={scene} />
+
+      <label className="absolute right-3 top-3 flex items-center gap-1.5 text-[11px] text-[var(--color-ink-dim)]">
+        <span className="sr-only sm:not-sr-only">Scene</span>
+        <select
+          value={scene}
+          onChange={(e) => setScene(e.target.value as SceneName)}
+          aria-label="Scene"
+          className="rounded border border-white/10 bg-black/40 px-2 py-1 text-[11px] text-[var(--color-ink)] backdrop-blur"
+        >
+          {SCENES.map((s) => (
+            <option key={s.name} value={s.name}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <div className="absolute left-3 top-3 flex flex-wrap gap-1" role="group" aria-label="Camera views">
         {VIEWS.map((v) => (

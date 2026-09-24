@@ -6,6 +6,7 @@ import {
   Lightformer,
   MeshReflectorMaterial,
 } from "@react-three/drei";
+import type { SceneName } from "./scenes";
 
 /**
  * The room the car stands in.
@@ -21,7 +22,40 @@ import {
  * gives the car a reflection to stand in, which grounds it far better than a
  * shadow alone.
  */
-export function Studio({ quality }: { quality: "high" | "low" }) {
+const HDRI: Record<Exclude<SceneName, "studio">, { file: string; ground: boolean; intensity: number }> = {
+  photo: { file: "/hdri/studio_small_09.hdr", ground: false, intensity: 1 },
+  road: { file: "/hdri/rural_asphalt_road.hdr", ground: true, intensity: 1 },
+  sunset: { file: "/hdri/venice_sunset.hdr", ground: true, intensity: 1.1 },
+  night: { file: "/hdri/cobblestone_street_night.hdr", ground: true, intensity: 0.9 },
+};
+
+export function Studio({ quality, scene = "studio" }: { quality: "high" | "low"; scene?: SceneName }) {
+  if (scene !== "studio") {
+    const h = HDRI[scene];
+    return (
+      <>
+        {h.ground ? (
+          <Environment
+            files={h.file}
+            background
+            environmentIntensity={h.intensity}
+            ground={{ height: 6, radius: 60, scale: 120 }}
+          />
+        ) : (
+          <>
+            <color attach="background" args={["#0b0e11"]} />
+            <Environment files={h.file} environmentIntensity={h.intensity} />
+            <mesh rotation-x={-Math.PI / 2} receiveShadow>
+              <circleGeometry args={[22, 96]} />
+              <meshStandardMaterial color="#1a1c1f" roughness={0.6} metalness={0.1} />
+            </mesh>
+          </>
+        )}
+        <ContactShadows position={[0, 0.004, 0]} opacity={0.9} scale={12} blur={2} far={2.2} resolution={1024} color="#000000" />
+      </>
+    );
+  }
+
   return (
     <>
       <color attach="background" args={["#0b0e11"]} />
