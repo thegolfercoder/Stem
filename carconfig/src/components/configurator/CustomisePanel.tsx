@@ -56,8 +56,8 @@ const STRIPES: readonly { value: StripeStyle; label: string }[] = [
 
 export function CustomisePanel({ state }: { state: ConfiguratorState }) {
   const { appearance: a, setAppearance, viewerConfig: cfg } = state;
-  // Body pieces and stripes are drawn on the generated body; a real model
-  // keeps its own bodywork.
+  // Stripes need a known surface to lie on, which only the generated body
+  // has; body pieces are hung on real models too.
   const realModel = cfg.asset !== null;
 
   return (
@@ -137,7 +137,7 @@ export function CustomisePanel({ state }: { state: ConfiguratorState }) {
         </p>
       </Section>
 
-      <Section title="Body" note={realModel ? "Shown on generated bodies; this car's 3D model keeps its own bodywork." : undefined}>
+      <Section title="Body" note={realModel ? "Stripes show on generated bodies only; this car uses a 3D model." : undefined}>
         <div className="flex flex-wrap gap-1">
           {AERO.map((o) => {
             const on = (a.aero ?? []).includes(o.value) || cfg.attachments.includes(o.value);
