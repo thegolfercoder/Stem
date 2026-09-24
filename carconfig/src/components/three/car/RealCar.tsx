@@ -5,6 +5,8 @@ import { Component, useEffect, useMemo, type ReactNode } from "react";
 import * as THREE from "three";
 import { rollingRadiusM, type ViewerConfig } from "@/lib/build/viewer-config";
 import type { ModelAsset, ModelTuning } from "@/lib/three/model-assets";
+import { createBodyShape } from "@/lib/three/body-shape";
+import { Aero } from "./Aero";
 import { paintMaterial } from "./materials";
 import { Wheel } from "./Wheel";
 
@@ -172,6 +174,13 @@ function prepare(scene: THREE.Object3D, length: number | null, fallbackLength: n
   return { root, paintSlots, corners };
 }
 
+/** Height of the model's top surface on the centreline at z, or null if nothing is there. */
+function deckHeight(root: THREE.Object3D, z: number): number | null {
+  const ray = new THREE.Raycaster(new THREE.Vector3(0, 10, z), new THREE.Vector3(0, -1, 0));
+  const hit = ray.intersectObject(root, true).find((h) => h.object.visible);
+  return hit ? hit.point.y : null;
+}
+
 /** The model is a scene-graph object owned by this component; painting it is a side effect. */
 function applyPaint(slots: Prepared["paintSlots"], paint: THREE.Material) {
   for (const { mesh, index } of slots) {
@@ -200,10 +209,41 @@ export function RealCar({ config, asset }: { config: ViewerConfig; asset: ModelA
     return () => paint.dispose();
   }, [prepared, paint]);
 
+  // Aero is placed from a generated shape of the same size. Only the boot
+  // lid's height tends to differ enough to matter, so it is measured on the
+  // model itself and the difference applied.
+  const proxy = useMemo(
+    () =>
+      createBodyShape({
+        style: config.style,
+        length: config.length,
+        width: config.width,
+        height: config.height,
+        wheelbase: config.wheelbase,
+        frontTireRadius: rollingRadiusM(config.front.stock),
+        rearTireRadius: rollingRadiusM(config.rear.stock),
+      }),
+    [config.style, config.length, config.width, config.height, config.wheelbase, config.front.stock, config.rear.stock],
+  );
+  const deckOffset = useMemo(() => {
+    const z = proxy.zRear + 0.25;
+    const real = deckHeight(prepared.root, z);
+    return real === null ? 0 : real - proxy.topAt(z);
+  }, [prepared, proxy]);
+  const aero =
+    config.attachments.length > 0 ? (
+      <Aero shape={proxy} attachments={config.attachments} deckOffset={deckOffset} />
+    ) : null;
+
   const { corners } = prepared;
   if (!corners) {
     // The model keeps its own wheels, so the stance cannot change either.
-    return <primitive object={prepared.root} />;
+    return (
+      <group>
+        <primitive object={prepared.root} />
+        {aero}
+      </group>
+    );
   }
 
   // Same arithmetic as the generated car: bigger tires lift the body, springs
@@ -235,6 +275,7 @@ export function RealCar({ config, asset }: { config: ViewerConfig; asset: ModelA
     <group>
       <group position={[0, lift, 0]} rotation={[pitch, 0, 0]}>
         <primitive object={prepared.root} />
+        {aero}
       </group>
       {placed.map(({ c, side, axle, radius, caliper, steer }) => (
         <group

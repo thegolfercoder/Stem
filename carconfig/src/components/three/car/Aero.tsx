@@ -93,11 +93,11 @@ function useCarbon() {
   return m;
 }
 
-function Wing({ shape }: { shape: BodyShape }) {
+function Wing({ shape, deckOffset = 0 }: { shape: BodyShape; deckOffset?: number }) {
   const carbon = useCarbon();
-  // Its trailing edge just past the bumper, under the rear valance.
+  // On the boot lid, near its trailing edge.
   const z = shape.zRear + 0.25;
-  const deck = shape.topAt(z);
+  const deck = shape.topAt(z) + deckOffset;
   const span = shape.tubSection(z).hw * 2 * 0.98;
   const height = 0.3;
 
@@ -181,10 +181,10 @@ function SwanNeckWing({ shape }: { shape: BodyShape }) {
   );
 }
 
-function Ducktail({ shape }: { shape: BodyShape }) {
+function Ducktail({ shape, deckOffset = 0 }: { shape: BodyShape; deckOffset?: number }) {
   const carbon = useCarbon();
   const z = shape.zBodyRear + 0.08;
-  const deck = shape.topAt(z);
+  const deck = shape.topAt(z) + deckOffset;
   const width = shape.tubSection(z).hw * 2 * 0.86;
 
   const lip = useMemo(() => {
@@ -299,18 +299,24 @@ export function Aero({
   shape,
   attachments,
   factoryWing = false,
+  deckOffset = 0,
 }: {
   shape: BodyShape;
   attachments: readonly Attachment[];
   /** The car's own swan-neck wing; an aftermarket wing or spoiler replaces it. */
   factoryWing?: boolean;
+  /**
+   * How far the real boot lid sits above the shape's, when the parts are
+   * being hung on a 3D model rather than the generated body.
+   */
+  deckOffset?: number;
 }) {
   const aftermarketRear = attachments.includes("wing") || attachments.includes("spoiler");
   return (
     <>
       {factoryWing && !aftermarketRear ? <SwanNeckWing shape={shape} /> : null}
-      {attachments.includes("wing") ? <Wing shape={shape} /> : null}
-      {attachments.includes("spoiler") ? <Ducktail shape={shape} /> : null}
+      {attachments.includes("wing") ? <Wing shape={shape} deckOffset={deckOffset} /> : null}
+      {attachments.includes("spoiler") ? <Ducktail shape={shape} deckOffset={deckOffset} /> : null}
       {attachments.includes("splitter") ? <Splitter shape={shape} /> : null}
       {attachments.includes("diffuser") ? <Diffuser shape={shape} /> : null}
       {attachments.includes("side_skirts") ? <SideSkirts shape={shape} /> : null}
