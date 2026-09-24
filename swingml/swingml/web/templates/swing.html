@@ -64,8 +64,8 @@
     distance that contained
     {{ band_coverage }}% of those errors at the confidence the model reported here, so a
     doubtful event gets a wider band than a certain one. A band appears only where
-    enough held-out clips landed at that confidence to measure one, and none of this is
-    a claim about footage of a real golfer on grass.
+    enough held-out clips landed at that confidence to measure one. Your own footage -
+    a phone, another angle - may differ from what the bands were measured on.
   </p>
   {% endif %}
   <p class="footnote">
@@ -116,6 +116,21 @@
   </ol>
 </section>
 {% endif %}
+
+<section class="coach-section" id="coach" hidden>
+  <h2>A coach's read <span class="prov prov-opinion">local AI</span></h2>
+  <p class="section-sub">A language model on this computer looks at the eight positions and
+    the measurements above and says what it would work on. It is an opinion, not a
+    measurement, and nothing is sent anywhere.</p>
+  <div class="coach-box">
+    <div class="coach-actions">
+      <button class="btn primary" id="coach-ask" type="button">Get a coach's read</button>
+      <span class="coach-status" id="coach-status" role="status"></span>
+    </div>
+    <div class="coach-text" id="coach-text" aria-live="polite"></div>
+    <p class="coach-meta" id="coach-meta"></p>
+  </div>
+</section>
 
 {% for group in groups %}
 <section class="metrics">
@@ -181,4 +196,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='swing.js') }}"></script>
+<script src="{{ url_for('static', filename='coach.js') }}"></script>
 {% endblock %}

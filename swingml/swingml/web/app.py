@@ -335,6 +335,10 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
     service = AnalysisService(swing_store, model_path=model_path)
     app.extensions["swingml"] = {"store": swing_store, "service": service}
 
+    from swingml.web.coach_routes import create_blueprint
+
+    app.register_blueprint(create_blueprint(swing_store))
+
     # -- pages -------------------------------------------------------------
 
     @app.get("/")
