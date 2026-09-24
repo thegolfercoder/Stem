@@ -1,0 +1,107 @@
+name: desktop app
+
+# Builds Swing Studio for macOS (Apple silicon), Windows and Linux, and proves
+# each build works before keeping it: the built application - not the source -
+# analyses the real swing in the test fixtures, headless, and has to find it with
+# the NumPy model, with its measured error bands attached and PyTorch never
+# loaded. A build that only starts is not a build that works.
+#
+# Run it from the Actions tab, or push a tag like desktop-v0.2.0 to also attach
+# the three builds to a GitHub release.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["desktop-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            name: macos-arm64
+          - os: windows-latest
+            name: windows-x64
+          - os: ubuntu-22.04
+            name: linux-x64
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.name }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: swingml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: swingml/packaging/requirements-desktop.txt
+
+      - name: Linux libraries for the window
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgirepository1.0-dev libcairo2-dev gir1.2-webkit2-4.1 \
+            libxcb-cursor0 libegl1 libgl1
+
+      - name: install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r packaging/requirements-desktop.txt
+          if [ "$RUNNER_OS" = "Linux" ]; then pip install PyGObject; fi
+
+      - name: pose model
+        run: |
+          curl -L --fail -o swingml/data/pose_landmarker_heavy.task \
+            https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task
+
+      - name: build
+        run: pyinstaller packaging/swing_studio.spec --noconfirm
+
+      - name: smoke test the built application
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            APP="dist/Swing Studio.app/Contents/MacOS/SwingStudio"
+          elif [ "$RUNNER_OS" = "Windows" ]; then
+            APP="dist/SwingStudio/SwingStudio.exe"
+          else
+            APP="dist/SwingStudio/SwingStudio"
+          fi
+          export SWINGML_HOME="$RUNNER_TEMP/swingml-home"
+          "$APP" --smoke-test tests/fixtures/real_swing_01.mov | tee smoke.json
+          python - <<'EOF'
+          import json
+          result = json.loads(open("smoke.json").read().strip().splitlines()[-1])
+          assert result["ok"], result
+          assert result["model"] == "NumpyEventNet", result
+          assert result["error_bands"], result
+          assert not result["torch_loaded"], result
+          print("built application analysed the swing:", result)
+          EOF
+
+      - name: package
+        run: |
+          mkdir -p ../release
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            ditto -c -k --keepParent "dist/Swing Studio.app" "../release/SwingStudio-${{ matrix.name }}.zip"
+          elif [ "$RUNNER_OS" = "Windows" ]; then
+            7z a -tzip "../release/SwingStudio-${{ matrix.name }}.zip" ./dist/SwingStudio
+          else
+            tar -czf "../release/SwingStudio-${{ matrix.name }}.tar.gz" -C dist SwingStudio
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SwingStudio-${{ matrix.name }}
+          path: release/*
+
+      - name: attach to the release
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*

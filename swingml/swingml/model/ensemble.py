@@ -20,6 +20,7 @@ without being any more right.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -65,11 +66,11 @@ class SwingEventEnsemble:
     """
 
     def __init__(
-        self, members: list[SwingEventNet | NumpyEventNet], config: EnsembleConfig | None = None
+        self, members: Sequence[SwingEventNet | NumpyEventNet], config: EnsembleConfig | None = None
     ) -> None:
         if not members:
             raise ValueError("an ensemble needs at least one model")
-        self.members = members
+        self.members = list(members)
         self.config = config or EnsembleConfig()
         self.layout = feature_layout()
         for member in self.members:
@@ -79,11 +80,11 @@ class SwingEventEnsemble:
     def load(
         cls, paths: list[Path] | Path, config: EnsembleConfig | None = None
     ) -> SwingEventEnsemble:
-        from swingml.analysis import load_model
+        from swingml.analysis import load_event_model
 
         if isinstance(paths, Path):
             paths = [paths]
-        return cls([load_model(path) for path in paths], config)
+        return cls([load_event_model(path) for path in paths], config)
 
     @property
     def n_members(self) -> int:

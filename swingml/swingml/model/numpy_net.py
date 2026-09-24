@@ -24,10 +24,25 @@ from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.special import erf
 
 GROUPS = 8
 EPSILON = 1e-5
+
+
+def erf(x: NDArray[np.float64]) -> NDArray[np.float64]:
+    """The error function, to 1.5e-7 (Abramowitz and Stegun 7.1.26).
+
+    Written out rather than taken from SciPy, which is seventy megabytes in the
+    packaged application for this one call. Its error is below float32's own
+    rounding over the network, which is what the PyTorch comparison is held to.
+    """
+    sign = np.sign(x)
+    a = np.abs(x)
+    t = 1.0 / (1.0 + 0.3275911 * a)
+    poly = t * (
+        0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429)))
+    )
+    return np.asarray(sign * (1.0 - poly * np.exp(-a * a)), dtype=np.float64)
 
 
 class NumpyEventNet:

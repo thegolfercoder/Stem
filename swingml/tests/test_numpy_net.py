@@ -18,7 +18,13 @@ import numpy as np
 import pytest
 import torch
 
-from swingml.analysis import AnalysisConfig, analyse_pose_sequence, load_model, model_fingerprint
+from swingml.analysis import (
+    AnalysisConfig,
+    analyse_pose_sequence,
+    load_event_model,
+    load_model,
+    model_fingerprint,
+)
 from swingml.assets import package_data
 from swingml.features import extract_features, resample_pose
 from swingml.model.calibration import load_calibration
@@ -74,7 +80,7 @@ def test_the_numpy_network_gives_pytorchs_scores(padding: str) -> None:
 
 def test_the_shipped_npz_is_the_shipped_model() -> None:
     """A retrained .pt with a stale .npz beside it would ship the old model."""
-    shipped = load_model(NUMPY_MODEL)
+    shipped = load_event_model(NUMPY_MODEL)
     assert isinstance(shipped, NumpyEventNet)
     assert model_fingerprint(shipped) == model_fingerprint(load_model(TORCH_MODEL)), (
         "swing_event_net.npz is out of date: run scripts/export_numpy_model.py"
@@ -83,13 +89,13 @@ def test_the_shipped_npz_is_the_shipped_model() -> None:
 
 def test_the_error_bands_recognise_the_numpy_copy() -> None:
     calibration = load_calibration(package_data() / "event_calibration.json")
-    assert calibration.matches(model_fingerprint(load_model(NUMPY_MODEL)))
+    assert calibration.matches(model_fingerprint(load_event_model(NUMPY_MODEL)))
 
 
 def test_the_analysis_is_the_same_either_way() -> None:
     config = AnalysisConfig(handedness=Handedness.RIGHT)
     a = analyse_pose_sequence(fixture_sequence(), load_model(TORCH_MODEL), config)
-    b = analyse_pose_sequence(fixture_sequence(), load_model(NUMPY_MODEL), config)
+    b = analyse_pose_sequence(fixture_sequence(), load_event_model(NUMPY_MODEL), config)
     assert not isinstance(a.events, NoReading) and not isinstance(b.events, NoReading)
     assert a.events.frames == b.events.frames
     assert np.allclose(a.events.confidence, b.events.confidence, atol=1e-5)

@@ -14,6 +14,7 @@ program never fails to start for want of a window.
 from __future__ import annotations
 
 import argparse
+import os
 import socket
 import threading
 import time
@@ -87,8 +88,58 @@ def _quietly(function: Callable[[], object]) -> Callable[[], None]:
     return run
 
 
+def smoke_test(clip: Path, model_path: Path | None = None) -> int:
+    """Analyse a clip the way the application does, headless; 0 if a swing was found.
+
+    For a packaged build: proof that the bundled pose estimator, swing model and
+    error bands all load and agree, on the machine the build was made for.
+    """
+    import json
+    import sys
+    import tempfile
+
+    from swingml.quantity import NoReading
+    from swingml.store import SwingStore
+    from swingml.web.service import AnalysisService, Job
+
+    started = time.monotonic()
+    with tempfile.TemporaryDirectory() as scratch:
+        service = AnalysisService(SwingStore(Path(scratch) / "smoke.db"), model_path=model_path)
+        ready, why = service.ready()
+        if not ready:
+            print(json.dumps({"ok": False, "error": why}))
+            return 2
+        model, _ = service._ensure_loaded()
+        sequence, info = service._extract_pose(clip, Job(id="smoke", filename=clip.name))
+        analysis = service.analyse(sequence, model, None, info)
+    found = not isinstance(analysis.events, NoReading)
+    tempo = getattr(getattr(analysis.metrics, "tempo_ratio", None), "value", None)
+    print(
+        json.dumps(
+            {
+                "ok": found,
+                "reason": None if found else analysis.events.reason,  # type: ignore[union-attr]
+                "model": type(model).__name__,
+                "error_bands": service.calibration is not None,
+                "frames": sequence.n_frames,
+                "handedness": analysis.handedness.value,
+                "tempo": tempo,
+                "torch_loaded": "torch" in sys.modules,
+                "seconds": round(time.monotonic() - started, 1),
+            }
+        )
+    )
+    return 0 if found else 1
+
+
 def open_window(url: str) -> bool:
     """Show the application in a native window; False if one cannot be opened."""
+    # OpenCV's full build points Qt at the plugins it carries for its own
+    # windows, which are not the ones a Qt web view needs; on Linux that stops
+    # the window opening at all. Nothing here uses OpenCV's windows.
+    plugin_path = os.environ.get("QT_QPA_PLATFORM_PLUGIN_PATH", "")
+    if "cv2" in plugin_path:
+        os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
     try:
         import webview  # type: ignore[import-not-found]  # pywebview
     except ImportError:
@@ -116,7 +167,16 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--browser", action="store_true", help="open in the default browser, not a window"
     )
+    parser.add_argument(
+        "--smoke-test",
+        type=Path,
+        default=None,
+        metavar="CLIP",
+        help="analyse one clip with no window, print the result as JSON and exit",
+    )
     args = parser.parse_args(argv)
+    if args.smoke_test is not None:
+        raise SystemExit(smoke_test(args.smoke_test, args.model))
 
     server = LocalServer(model_path=args.model, port=args.port).start()
     print(f"{TITLE} is running at {server.url}")

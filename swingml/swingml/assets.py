@@ -75,6 +75,7 @@ def find_pose_model() -> Path | None:
         POSE_MODEL_NAME,
         POSE_MODEL_ENV_VAR,
         [
+            package_data() / POSE_MODEL_NAME,
             root / "models" / POSE_MODEL_NAME,
             Path("models") / POSE_MODEL_NAME,
         ],

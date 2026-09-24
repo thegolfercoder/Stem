@@ -93,7 +93,7 @@ def write_vp9(source: Path, target: Path) -> bool:
     Every frame is kept at its original time, so both copies are the same swing.
     """
     try:
-        import imageio_ffmpeg
+        import imageio_ffmpeg  # type: ignore[import-untyped]
     except ImportError:
         return False
     command = [

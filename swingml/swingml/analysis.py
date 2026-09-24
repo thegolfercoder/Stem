@@ -269,17 +269,20 @@ def save_model(model: SwingEventNet, path: Path | str) -> None:
     )
 
 
-def load_model(checkpoint_path: Path | str) -> SwingEventNet | NumpyEventNet:
-    """Rebuild the trained model from a checkpoint.
+def load_event_model(checkpoint_path: Path | str) -> SwingEventNet | NumpyEventNet:
+    """Whichever network a file holds: the NumPy weights (.npz) the packaged
+    application runs, which need no PyTorch, or a PyTorch checkpoint (.pt)."""
+    if Path(checkpoint_path).suffix == ".npz":
+        return NumpyEventNet.load(checkpoint_path)
+    return load_model(checkpoint_path)
+
+
+def load_model(checkpoint_path: Path | str) -> SwingEventNet:
+    """Rebuild the trained model from a PyTorch checkpoint.
 
     Tolerant of a checkpoint that predates a field, because a model that took an
     hour to train should not become unloadable over a missing dictionary key.
-
-    An .npz is the same weights for the NumPy network the packaged application
-    runs, which needs no PyTorch; a .pt is the PyTorch checkpoint training writes.
     """
-    if Path(checkpoint_path).suffix == ".npz":
-        return NumpyEventNet.load(checkpoint_path)
     import torch
 
     from swingml.model.tcn import DEFAULT_DILATIONS, SwingEventNet
@@ -419,7 +422,7 @@ def resolve_model(
     paths: tuple[Path, ...]
     if explicit is not None:
         paths = (Path(explicit),)
-        model: SwingEventNet | NumpyEventNet | SwingEventEnsemble = load_model(explicit)
+        model: SwingEventNet | NumpyEventNet | SwingEventEnsemble = load_event_model(explicit)
     else:
         members = find_event_ensemble()
         if members:
@@ -433,7 +436,7 @@ def resolve_model(
             if single is None:
                 return None
             paths = (single,)
-            model = load_model(single)
+            model = load_event_model(single)
 
     # Whichever table was measured through these weights, if any of them was.
     # Choosing by fingerprint rather than by where the file sits means a machine

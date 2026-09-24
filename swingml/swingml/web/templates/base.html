@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Swing analysis{% endblock %}</title>
+<title>{% block title %}Swing Studio{% endblock %}</title>
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
@@ -11,7 +11,7 @@
 <header class="topbar">
   <a class="brand" href="{{ url_for('index') }}">
     <span class="mark" aria-hidden="true"></span>
-    <span>Swing&nbsp;analysis</span>
+    <span>Swing&nbsp;Studio</span>
   </a>
   <nav>
     <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="here"{% endif %}>Swings</a>

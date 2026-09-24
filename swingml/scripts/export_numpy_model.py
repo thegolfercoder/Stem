@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from swingml.analysis import load_model, model_fingerprint
+from swingml.analysis import load_event_model, load_model, model_fingerprint
 from swingml.assets import package_data
 from swingml.model.numpy_net import NumpyEventNet
 
@@ -27,7 +27,7 @@ def main() -> None:
     source = load_model(args.model)
     exported = NumpyEventNet.from_torch(source)
     exported.save(args.out)
-    reloaded = NumpyEventNet.load(args.out)
+    reloaded = load_event_model(args.out)
     assert model_fingerprint(reloaded) == model_fingerprint(source), "fingerprints differ"
     size = args.out.stat().st_size / 1e6
     print(f"wrote {args.out} ({size:.1f} MB), fingerprint {model_fingerprint(reloaded)}")
