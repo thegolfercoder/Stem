@@ -123,6 +123,7 @@ def main() -> None:
         },
         "thresholds": {
             "min_mean_confidence": analysis.min_mean_confidence,
+            "min_core_confidence": analysis.min_core_confidence,
             "min_detection_rate": analysis.min_detection_rate,
             "plausible_backswing_s": list(analysis.plausible_backswing_s),
             "plausible_downswing_s": list(analysis.plausible_downswing_s),

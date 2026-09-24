@@ -169,6 +169,8 @@ h2.section{font-size:19px;margin:28px 0 4px;letter-spacing:-.01em}
 .coach-status{color:var(--ink-dim);font-size:13.5px}
 .coach-text{white-space:pre-wrap;max-width:72ch;line-height:1.55}
 .coach-text:empty{display:none}
+.send-diag{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.send-diag-note{color:var(--ink-dim);font-size:13px;max-width:62ch}
 .prov-set_by_you{color:var(--ink);border-color:var(--accent);align-self:flex-start;margin-top:2px}
 .empty{color:var(--ink-dim);background:var(--panel);border:1px solid var(--line);
   border-radius:var(--radius);padding:18px;margin:0}
@@ -297,6 +299,12 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
       from a clip that did not contain a swing. A wrong number gets acted on; a missing one gets
       looked into.</p>
     <p class="footnote" id="refusal-diagnostics" hidden></p>
+    <div class="send-diag" id="send-diag-box" hidden>
+      <button class="btn" id="send-diag" type="button">Send this clip's diagnostics to Claude</button>
+      <span class="send-diag-note" id="send-diag-note">The poses found, the model's scores and
+        small pictures of the clip, filed with this run so it can be fixed. The video itself
+        goes too if it is under 20&nbsp;MB.</span>
+    </div>
   </div>
 
   <div id="results" hidden>
@@ -352,6 +360,7 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
       length, so no calibration is needed.</p>
     <div class="metric-grid" id="stability-cards"></div>
 
+    <div class="send-diag" id="send-diag-slot"></div>
     <div class="result-actions">
       <button class="btn" id="download" type="button">Download the numbers as JSON</button>
       <button class="btn" id="again-bottom" type="button">Analyse another clip</button>

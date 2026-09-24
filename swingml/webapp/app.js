@@ -43,11 +43,170 @@ const el = (id) => document.getElementById(id);
  * that freezes the tab never reaches its end, and that is the run most worth
  * seeing.
  */
-const reports = { db: null, chain: Promise.resolve() };
+const reports = { db: null, assets: null, chain: Promise.resolve() };
 function connectReports() {
   const claude = window.claude;
   if (!claude || typeof claude.use !== "function") return;
   reports.db = claude.use("db").catch(() => null);
+  // Only the page's owner gets this: it stores files with the page. It is what
+  // lets a clip that went wrong be sent back for fixing, on request.
+  reports.assets = claude.use("assets").catch(() => null);
+}
+
+/* Send what this run saw, so a clip that went wrong can be fixed without the
+ * person having to get the video to anyone.
+ *
+ * Only on a press of the button, and only for the page's owner. What goes: the
+ * poses the estimator found and the model's scores - enough to replay the whole
+ * analysis exactly - and two contact sheets, one of the whole clip and one of the
+ * stretch that was analysed. The clip itself goes too when it is small enough to
+ * store (20 MB); a phone's 4K clip is not, and the sheets show what it showed.
+ * Everything is filed under this run's report. */
+async function sendDiagnostics() {
+  const button = el("send-diag");
+  const note = el("send-diag-note");
+  const assets = reports.assets ? await reports.assets : null;
+  const run = state.run;
+  if (!assets || !run || !state.diag) return;
+  button.disabled = true;
+  const sent = {};
+  const upload = async (key, blob, type) => {
+    note.textContent = `Sending ${key}\u2026`;
+    try {
+      const result = await assets.upload(blob, type ? { type } : undefined);
+      sent[key] = result.id;
+    } catch (error) {
+      sent[key] = `failed: ${(error && error.code) || "error"}`;
+    }
+  };
+  try {
+    await upload("data", new Blob([JSON.stringify(diagnosticData())], { type: "application/json" }),
+                 "application/json");
+    const overview = await overviewSheet();
+    if (overview) await upload("overview", overview, "image/jpeg");
+    const stretch = await stretchSheet();
+    if (stretch) await upload("analysed", stretch, "image/jpeg");
+    const file = state.file;
+    if (file && file.size <= 20 * 1024 * 1024) {
+      const type = file.type === "video/quicktime" ? "video/quicktime"
+        : (file.type && file.type.startsWith("video/") ? file.type : "video/mp4");
+      await upload("clip", file, type);
+    }
+    run.body.diagnostics = sent;
+    saveRun(run);
+    const failures = Object.values(sent).filter((v) => String(v).startsWith("failed")).length;
+    note.textContent = failures
+      ? `Sent, with ${failures} part${failures > 1 ? "s" : ""} refused. Tell Claude in the chat.`
+      : "Sent. Tell Claude in the chat, and it can look at exactly what happened.";
+    button.textContent = "Sent";
+  } catch (error) {
+    note.textContent = "Could not send: " + ((error && error.message) || error);
+    button.disabled = false;
+  }
+}
+
+/* The send button, where the owner can use it: under a refusal, or under the
+ * results for a clip whose positions look wrong. */
+async function offerDiagnostics(where) {
+  const box = el("send-diag-box");
+  const assets = reports.assets ? await reports.assets : null;
+  if (!assets || !state.run) { box.hidden = true; return; }
+  const home = where === "results" ? el("send-diag-slot") : el("refusal");
+  if (box.parentNode !== home) home.appendChild(box);
+  el("send-diag").disabled = false;
+  el("send-diag").textContent = where === "results"
+    ? "Positions look wrong? Send this clip's diagnostics to Claude"
+    : "Send this clip's diagnostics to Claude";
+  box.hidden = false;
+}
+
+function diagnosticData() {
+  const d = state.diag || {};
+  const round = (x, k = 4) => Number(Number(x).toFixed(k));
+  const seq = d.sequence;
+  const v = d.verdict || {};
+  const decoded = v.decoded || {};
+  const logits = decoded.logits ? Array.from(decoded.logits, (x) => round(x, 3)) : null;
+  return {
+    run: state.run ? state.run.id : null,
+    report: state.run ? state.run.body : null,
+    attempts: d.attempts || [],
+    scan: d.scan || null,
+    tracked: seq ? {
+      width: seq.width, height: seq.height,
+      times: seq.times.map((t) => round(t, 4)),
+      xy: seq.xy.map((f) => f.map((p) => [round(p[0]), round(p[1])])),
+      visibility: seq.visibility.map((f) => f.map((x) => round(x, 3))),
+      detected: seq.detected.map(Boolean),
+    } : null,
+    model: {
+      ok: Boolean(v.ok), reason: v.reason || null, handedness: v.handedness || null,
+      handednessFrom: v.handednessFrom || null,
+      frames: decoded.frames || null, confidence: decoded.confidence || null,
+      meanConfidence: decoded.meanConfidence ?? null,
+      canonicalRateHz: state.payload.features.canonical_rate_hz,
+      classes: state.payload.architecture.classes,
+      logits,
+    },
+  };
+}
+
+/* Tiles on one sheet, each labelled with its time. */
+function sheetOf(tiles, tileH, perRow) {
+  if (!tiles.length) return null;
+  const tileW = Math.round((tileH * tiles[0].canvas.width) / tiles[0].canvas.height);
+  const rows = Math.ceil(tiles.length / perRow);
+  const sheet = document.createElement("canvas");
+  sheet.width = tileW * Math.min(perRow, tiles.length);
+  sheet.height = tileH * rows;
+  const g = sheet.getContext("2d");
+  g.fillStyle = "#000";
+  g.fillRect(0, 0, sheet.width, sheet.height);
+  tiles.forEach((tile, k) => {
+    const x = (k % perRow) * tileW, y = Math.floor(k / perRow) * tileH;
+    g.drawImage(tile.canvas, x, y, tileW, tileH);
+    g.font = "600 12px system-ui, sans-serif";
+    const label = tile.label;
+    g.fillStyle = "rgba(0,0,0,.7)";
+    g.fillRect(x + 2, y + 2, g.measureText(label).width + 8, 16);
+    g.fillStyle = "#fff";
+    g.fillText(label, x + 6, y + 14);
+  });
+  return new Promise((resolve) => sheet.toBlob(resolve, "image/jpeg", 0.8));
+}
+
+/* The whole clip, from the thumbnails the scan kept, poses drawn on. */
+async function overviewSheet() {
+  const thumbs = (state.diag && state.diag.thumbs) || [];
+  if (!thumbs.length) return null;
+  const step = Math.max(1, Math.ceil(thumbs.length / 60));
+  const tiles = [];
+  for (let k = 0; k < thumbs.length; k += step) {
+    const t = thumbs[k];
+    const canvas = document.createElement("canvas");
+    canvas.width = t.canvas.width;
+    canvas.height = t.canvas.height;
+    canvas.getContext("2d").drawImage(t.canvas, 0, 0);
+    if (t.marks) {
+      drawPose(canvas, t.marks.map((m) => [m.x, m.y]),
+               t.marks.map((m) => Math.min(m.visibility ?? 1, m.presence ?? 1)));
+    }
+    tiles.push({ canvas, label: `${t.t.toFixed(1)} s` });
+  }
+  return sheetOf(tiles, 120, 10);
+}
+
+/* The stretch that was analysed, every few frames, as tracked. */
+async function stretchSheet() {
+  const seq = state.diag && state.diag.sequence;
+  if (!seq || !state.images) return null;
+  const step = Math.max(1, Math.ceil(seq.n / 40));
+  const tiles = [];
+  for (let i = 0; i < seq.n; i += step) {
+    const canvas = await frameCanvas(seq, i);
+    tiles.push({ canvas, label: `${seq.times[i].toFixed(2)} s${seq.detected[i] ? "" : " no body"}` });
+  }
+  return sheetOf(tiles, 200, 8);
 }
 
 /* A coach's read from Claude, where the page is viewed inside Claude and the
@@ -400,6 +559,9 @@ async function ready() {
     minTrackingConfidence: 0.5,
   };
   try {
+    // A test driving this page on a machine whose only GPU is a software one can
+    // ask for the processor, which there is many times faster.
+    if (globalThis.__swingForceCpu) throw new Error("processor requested");
     state.landmarker = await deadline(
       vision.PoseLandmarker.createFromOptions(files, options), 180000, NO_ESTIMATOR);
     state.delegate = "GPU";
@@ -747,7 +909,7 @@ async function decodeRange(media, { start = 0, end = Infinity, minGap = 0, onFra
       try {
         if (t >= start - 1e-3 && t <= end + 1e-3 && t - kept >= minGap - 2e-3) {
           kept = t;
-          handed.push(onFrame(t, frame, rotation));
+          handed.push(onFrame(t, frame, turnFor(media, frame)));
         }
       } catch (error) {
         failure = failure || error;
@@ -779,6 +941,102 @@ async function decodeRange(media, { start = 0, end = Infinity, minGap = 0, onFra
   decoder.close();
   await Promise.all(handed);
   if (failure) throw failure;
+}
+
+/* How far a decoded frame still has to be turned to stand the right way up.
+ *
+ * The file says how it was filmed; the browser decides whether its decoder has
+ * already acted on that. Chromium hands frames over as stored, sideways for a
+ * phone held upright. WebKit on an iPhone can hand them over already turned, and
+ * turning those again lays the golfer on their side - which the estimator mostly
+ * fails to find and the model reads as no swing at all. So the frame's own shape
+ * decides: a frame already the shape the clip is meant to be shown at needs no
+ * more turning. A frame that carries its own rotation, which drawImage applies by
+ * itself, is left to it. What each browser did is kept with the run report. */
+function turnFor(media, frame) {
+  const rotation = media.rotation;
+  let turn = rotation;
+  if (media.turn !== undefined) {
+    turn = media.turn;
+  } else if (rotation) {
+    const own = typeof frame.rotation === "number" ? frame.rotation : 0;
+    const upright = rotation % 180 !== 0 && media.width !== media.height &&
+      frame.displayWidth === media.width && frame.displayHeight === media.height;
+    if (upright || own === rotation) turn = 0;
+  }
+  if (!media.reported) {
+    media.reported = true;
+    if (state.run) {
+      state.run.note({
+        frame: {
+          display: `${frame.displayWidth}x${frame.displayHeight}`,
+          coded: `${frame.codedWidth}x${frame.codedHeight}`,
+          own: typeof frame.rotation === "number" ? frame.rotation : null,
+          turned: turn,
+        },
+      });
+    }
+  }
+  return turn;
+}
+
+/* Which way up the frames really are, asked of the estimator rather than assumed.
+ *
+ * The rotation flag, the browser's decoder and drawImage each may or may not turn
+ * a frame, and a phone in one app can differ from the same phone in another. A
+ * frame drawn the wrong way round lays the golfer on their side, the estimator
+ * mostly misses them, and the model reports no swing - which is what the first
+ * run from an iPhone did. So one frame is drawn all four ways and handed to the
+ * estimator, and the way it finds a body standing upright - shoulders over hips
+ * over ankles - is the way every frame is drawn. A few moments of the clip are
+ * tried in case the golfer is out of shot in the first. When nobody is found
+ * any way up, the flag and the frame's shape decide, as before. */
+async function probeOrientation(media) {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  const upright = (marks) => {
+    if (!marks) return 0;
+    const mid = (a, b) => [(marks[a].x + marks[b].x) / 2, (marks[a].y + marks[b].y) / 2];
+    const seen = [11, 12, 23, 24, 27, 28].map((i) => Math.min(marks[i].visibility ?? 1, marks[i].presence ?? 1));
+    const confidence = seen.reduce((a, b) => a + b, 0) / seen.length;
+    const [sx, sy] = mid(11, 12), [ax, ay] = mid(27, 28);
+    const dx = (ax - sx) * canvas.width, dy = (ay - sy) * canvas.height;
+    const length = Math.hypot(dx, dy);
+    return length > 0 ? confidence * Math.max(0, dy / length) : 0;
+  };
+  const tried = [];
+  for (const fraction of [0.35, 0.6, 0.15, 0.85]) {
+    const at = fraction * media.duration;
+    let scores = null;
+    await decodeRange(media, {
+      start: at, end: at + 0.5, minGap: 60,
+      onFrame: (_t, frame) => {
+        if (scores) return;
+        const dw = frame.displayWidth, dh = frame.displayHeight;
+        scores = [0, 90, 180, 270].map((turn) => {
+          const cw = turn % 180 ? dh : dw, ch = turn % 180 ? dw : dh;
+          const scale = Math.min(1, TRACK_LONG_SIDE / Math.max(cw, ch));
+          canvas.width = Math.max(1, Math.round(cw * scale));
+          canvas.height = Math.max(1, Math.round(ch * scale));
+          drawOriented(context, frame, turn, canvas.width, canvas.height);
+          // Twice: in video mode the estimator looks where the body last was, and
+          // the last one it saw was lying the other way.
+          let result = null;
+          for (let k = 0; k < 2; k++) {
+            state.clockMs += 40;
+            try { result = state.landmarker.detectForVideo(canvas, state.clockMs); } catch { result = null; }
+          }
+          const marks = result && result.landmarks && result.landmarks[0];
+          return { turn, score: upright(marks), width: cw, height: ch };
+        });
+      },
+    });
+    if (!scores) continue;
+    tried.push({ at: Number(at.toFixed(2)), scores: scores.map((x) => Number(x.score.toFixed(2))) });
+    const best = scores.reduce((a, b) => (b.score > a.score ? b : a));
+    if (best.score >= 0.35) return { ...best, tried };
+  }
+  return { turn: null, tried };
 }
 
 /* Draw a frame the right way up. */
@@ -830,14 +1088,22 @@ function makeTracker(width, height) {
       : null;
     return { result, image };
   };
-  return { detect, width, height };
+  return { detect, width, height, keep };
 }
 
-/* Find the swing in a long clip: the fastest the hands move, and the motion around it.
+/* Find the stretches of a long clip most likely to hold the swing, best first.
+ *
+ * Sampled a few times a second. Every moment where the hands move fastest for a
+ * second either side is a candidate; each is scored by how fast the hands went,
+ * raised where they also rose above the shoulders (every full swing does, and
+ * waggles, picking up a ball and walking do not) and lowered where the feet were
+ * moving (a golfer swinging stands still; one walking to the camera does not).
+ * Up to three, at least two and a half seconds apart, go back to be tracked in
+ * full and put to the model, which decides.
  *
  * Hand speed is measured in torso lengths a second, so it means the same thing
- * whether the golfer fills the frame or stands at the back of it. The window is the
- * stretch around the peak where the hands are still moving, padded so the model
+ * whether the golfer fills the frame or stands at the back of it. Each window is
+ * the stretch around its peak where the hands are still moving, padded so the model
  * sees the address before it and the held finish after it - it was trained on clips
  * with both - and never shorter than a normal swing needs, because a slow-motion
  * clip stretches all of it.
@@ -845,41 +1111,103 @@ function makeTracker(width, height) {
 async function scanForSwing(duration, tracker, frames) {
   const baseMs = state.clockMs + 1000;
   const samples = [];
+  const thumbs = [];
   await frames(1 / SCAN_RATE_HZ, (t, source, rotation) => {
     const { result } = tracker.detect(t, baseMs, source, rotation, false);
     const marks = result && result.landmarks && result.landmarks[0];
     samples.push({ t, marks: marks || null });
+    // A thumbnail now and then, for the diagnostics a person can choose to send.
+    if (samples.length % 2 === 1) {
+      const thumb = document.createElement("canvas");
+      thumb.height = 120;
+      thumb.width = Math.max(1, Math.round((120 * tracker.keep.width) / tracker.keep.height));
+      thumb.getContext("2d").drawImage(tracker.keep, 0, 0, thumb.width, thumb.height);
+      thumbs.push({ t, canvas: thumb, marks: marks || null });
+    }
     progress(0.05 + 0.2 * Math.min(1, t / duration));
     status("Looking for the swing", `${t.toFixed(0)} of ${duration.toFixed(0)} s`);
   });
+  if (state.diag) {
+    state.diag.thumbs = thumbs;
+    state.diag.scan = samples.map((x) => ({
+      t: Number(x.t.toFixed(3)),
+      xy: x.marks ? x.marks.map((m) => [Number(m.x.toFixed(4)), Number(m.y.toFixed(4))]) : null,
+      v: x.marks ? x.marks.map((m) => Number(Math.min(m.visibility ?? 1, m.presence ?? 1).toFixed(2))) : null,
+    }));
+  }
+
   const w = tracker.width, h = tracker.height;
   const mid = (m, a, b) => [(m[a].x + m[b].x) * 0.5 * w, (m[a].y + m[b].y) * 0.5 * h];
-  const speed = samples.map(() => 0);
-  for (let i = 1; i < samples.length; i++) {
-    const a = samples[i - 1].marks, b = samples[i].marks;
-    if (!a || !b) continue;
-    const [sx, sy] = mid(b, 11, 12), [hx, hy] = mid(b, 23, 24);
-    const torso = Math.hypot(sx - hx, sy - hy);
+  const torsoOf = (m) => {
+    const [sx, sy] = mid(m, 11, 12), [hx, hy] = mid(m, 23, 24);
+    return Math.hypot(sx - hx, sy - hy);
+  };
+  const n = samples.length;
+  const speed = new Array(n).fill(0);
+  const feet = new Array(n).fill(0);
+  const high = new Array(n).fill(-Infinity);
+  for (let i = 0; i < n; i++) {
+    const b = samples[i].marks;
+    if (!b) continue;
+    const torso = torsoOf(b);
     if (torso < 1) continue;
+    // Positive when the hands are above the shoulders; image y grows downwards.
+    high[i] = (mid(b, 11, 12)[1] - mid(b, 15, 16)[1]) / torso;
+    const a = i > 0 ? samples[i - 1].marks : null;
+    if (!a) continue;
+    const dt = Math.max(1e-3, samples[i].t - samples[i - 1].t);
     const [ax, ay] = mid(a, 15, 16), [bx, by] = mid(b, 15, 16);
-    speed[i] = Math.hypot(bx - ax, by - ay) / torso / Math.max(1e-3, samples[i].t - samples[i - 1].t);
+    speed[i] = Math.hypot(bx - ax, by - ay) / torso / dt;
+    const [fax, fay] = mid(a, 27, 28), [fbx, fby] = mid(b, 27, 28);
+    feet[i] = Math.hypot(fbx - fax, fby - fay) / torso / dt;
   }
   const smooth = speed.map((_, i) =>
-    (speed[Math.max(0, i - 1)] + 2 * speed[i] + speed[Math.min(speed.length - 1, i + 1)]) / 4);
-  let peak = 0;
-  for (let i = 1; i < smooth.length; i++) if (smooth[i] > smooth[peak]) peak = i;
-  if (!(smooth[peak] > 0)) return null;
-  const active = 0.25 * smooth[peak];
-  let left = peak, right = peak;
-  while (left > 0 && Math.max(smooth[left - 1], smooth[Math.max(0, left - 2)]) > active) left--;
-  while (right < smooth.length - 1 &&
-         Math.max(smooth[right + 1], smooth[Math.min(smooth.length - 1, right + 2)]) > active) right++;
-  const tp = samples[peak].t;
-  return {
-    start: Math.max(0, Math.min(samples[left].t - 1.2, tp - 2.4)),
-    end: Math.min(duration, Math.max(samples[right].t + 1.2, tp + 2.0)),
-    peak: tp,
+    (speed[Math.max(0, i - 1)] + 2 * speed[i] + speed[Math.min(n - 1, i + 1)]) / 4);
+  const around = (i, before, after, pick) => {
+    const out = [];
+    for (let j = 0; j < n; j++) {
+      if (samples[j].t >= samples[i].t - before && samples[j].t <= samples[i].t + after) out.push(pick(j));
+    }
+    return out;
   };
+
+  const peaks = [];
+  for (let i = 0; i < n; i++) {
+    if (!(smooth[i] > 0)) continue;
+    const neighbourhood = around(i, 1.0, 1.0, (j) => smooth[j]);
+    if (smooth[i] < Math.max(...neighbourhood)) continue;
+    const raised = Math.max(...around(i, 2.0, 1.0, (j) => high[j]));
+    const walking = around(i, 1.5, 1.5, (j) => feet[j]);
+    const feetSpeed = walking.reduce((a, b) => a + b, 0) / Math.max(1, walking.length);
+    let score = smooth[i] * (1 + 2 * Math.max(0, Math.min(1, raised + 0.2)));
+    if (feetSpeed > 0.8) score *= 0.3;
+    peaks.push({ i, score });
+  }
+  peaks.sort((a, b) => b.score - a.score);
+  const chosen = [];
+  for (const p of peaks) {
+    if (chosen.length >= 3) break;
+    if (chosen.some((c) => Math.abs(samples[c.i].t - samples[p.i].t) < 2.5)) continue;
+    chosen.push(p);
+  }
+  return chosen.map(({ i: peak }) => {
+    const active = 0.25 * smooth[peak];
+    let left = peak, right = peak;
+    while (left > 0 && Math.max(smooth[left - 1], smooth[Math.max(0, left - 2)]) > active) left--;
+    while (right < n - 1 && Math.max(smooth[right + 1], smooth[Math.min(n - 1, right + 2)]) > active) right++;
+    const tp = samples[peak].t;
+    // Never more than about seven seconds: a clip where the hands keep moving
+    // would otherwise stretch one candidate over all of it.
+    // The fastest hands a few-times-a-second scan catches are often in the
+    // follow-through, a second and a half after address, so the window reaches
+    // three seconds back: the model was trained on clips with a settled address
+    // in them, and a window that starts at the takeaway leaves it guessing.
+    return {
+      start: Math.max(0, tp - 4.5, Math.min(samples[left].t - 1.5, tp - 3.0)),
+      end: Math.min(duration, tp + 3.5, Math.max(samples[right].t + 1.2, tp + 2.0)),
+      peak: tp,
+    };
+  });
 }
 
 /* Track every frame the model needs in [start, end], keeping each as a JPEG. */
@@ -906,7 +1234,8 @@ async function trackRange(tracker, frames, start, end) {
     collected.times.push(time + collected.times.length * 1e-9);
     collected.images.push(image);
     progress(0.25 + 0.6 * Math.min(1, (time - start) / span));
-    status("Finding the body in each frame", `${collected.times.length} frames`);
+    status("Finding the body in each frame",
+           `${collected.times.length} frames${state.stretch ? ", " + state.stretch : ""}`);
   }, start, end);
   if (collected.times.length < 2) {
     throw new Error(
@@ -1149,6 +1478,8 @@ async function analyse(file) {
     `${(file.size / 1e6).toFixed(1)} MB \u00b7 choose another to start again`;
   progress(0.02);
   const run = beginRun(file);
+  state.file = file;
+  state.diag = null;
 
   try {
     const codec = await sniffCodec(file);
@@ -1178,6 +1509,18 @@ async function analyse(file) {
     if (media) {
       state.clip = { media };
       duration = media.duration;
+      status("Working out which way up the clip is", "");
+      try {
+        const probe = await probeOrientation(media);
+        run.note({ orientation: { turn: probe.turn, tried: probe.tried } });
+        if (probe.turn !== null) {
+          media.turn = probe.turn;
+          media.width = probe.width;
+          media.height = probe.height;
+        }
+      } catch (error) {
+        run.note({ orientationError: String((error && error.message) || error).slice(0, 200) });
+      }
       run.note({ width: media.width, height: media.height, duration: Number(duration.toFixed(2)),
                  rotation: media.rotation, streamCodec: media.codec });
     } else {
@@ -1190,18 +1533,124 @@ async function analyse(file) {
     }
     run.stage("opened");
 
-    // Find the swing in a long clip, then track it frame by frame.
+    const config = state.payload.features;
+    const thresholds = state.payload.thresholds;
+    state.diag = { attempts: [] };
+
+    /* What the model makes of one tracked stretch: a verdict, never a throw. */
+    const judge = (sequence) => {
+      const { sequence: resampled, grid } = resamplePose(sequence, config.canonical_rate_hz);
+      const detectionRate =
+        resampled.detected.reduce((a, b) => a + (b ? 1 : 0), 0) / Math.max(1, resampled.n);
+      const verdict = { resampled, grid, detectionRate, ok: false, score: detectionRate - 1 };
+      if (detectionRate < thresholds.min_detection_rate) {
+        verdict.reason =
+          `a body was found in only ${Math.round(detectionRate * 100)} percent of frames, ` +
+          `below the ${Math.round(thresholds.min_detection_rate * 100)} percent a swing needs`;
+        verdict.advice =
+          "Make sure the golfer is fully in shot for the whole clip and reasonably well lit. " +
+          "Standing further back so the whole body fits beats filling the frame and losing the feet.";
+        return verdict;
+      }
+      const model = (hand) => {
+        const { features, n, width } = extractFeatures(resampled, hand, config);
+        const logits = state.net.forward(features, n, width);
+        const decoded = decodeEvents(logits, n, state.payload.architecture.classes,
+                                     thresholds.min_mean_confidence,
+                                     thresholds.min_core_confidence || 0);
+        decoded.logits = logits;
+        return decoded;
+      };
+      // Handedness only reaches a few of the model's inputs, so a first pass either
+      // way finds the top well enough to ask the body which way round it is. When
+      // the first pass finds nothing, the other way round gets its own chance.
+      let handedness = state.handedness === "left" ? "left" : "right";
+      let decoded = model(handedness);
+      let handednessFrom = "chosen";
+      if (state.handedness === "auto") {
+        if (!decoded.ok) {
+          const other = model("left");
+          if (other.ok || (other.meanConfidence || 0) > (decoded.meanConfidence || 0)) {
+            decoded = other;
+            handedness = "left";
+          }
+        }
+        handednessFrom = "assumed";
+        if (decoded.ok) {
+          const call = inferHandedness(resampled, decoded.frames[3]);
+          if (call) {
+            handednessFrom = "detected";
+            verdict.handednessCall = call;
+            if (call.hand !== handedness) {
+              const again = model(call.hand);
+              if (again.ok) { decoded = again; handedness = call.hand; }
+            }
+          }
+        }
+      }
+      Object.assign(verdict, { decoded, handedness, handednessFrom });
+      if (!decoded.ok) {
+        verdict.score = decoded.meanConfidence || 0;
+        verdict.reason = decoded.reason;
+        verdict.advice =
+          "This is most often a clip that stops before the finish, or one filmed from " +
+          "behind the golfer where the body hides itself. Face on, square to the target " +
+          "line, is what it handles best.";
+        return verdict;
+      }
+      const metrics = computeMetrics(resampled, decoded, handedness, config);
+      const problem = implausible(metrics, thresholds);
+      verdict.metrics = metrics;
+      if (problem) {
+        verdict.score = 0.5 * decoded.meanConfidence;
+        verdict.reason = problem;
+        verdict.advice =
+          "The clip probably does not contain a whole swing. Start recording before the " +
+          "takeaway and keep going until the finish is held.";
+        return verdict;
+      }
+      verdict.ok = true;
+      verdict.score = 1 + decoded.meanConfidence;
+      return verdict;
+    };
+
+    // A short clip is tracked whole. A long one is scanned for the stretches that
+    // look most like a swing, and each is tracked and put to the model in turn
+    // until one is plainly a swing; the one the model is surest of is kept. The
+    // fastest hands in a phone clip are not always the swing - walking up, a
+    // waggle, reaching for the phone to stop recording - and only the model can
+    // tell a swing from the rest.
     const read = async (frames, width, height) => {
       const tracker = makeTracker(width, height);
-      let from = 0;
-      let to = duration;
+      let windows = [{ start: 0, end: duration }];
       if (duration > SCAN_ABOVE_S) {
         const found = await scanForSwing(duration, tracker, frames);
-        if (found) ({ start: from, end: to } = found);
-        run.note({ window: found ? [Number(from.toFixed(2)), Number(to.toFixed(2))] : "none" });
+        if (found.length) windows = found;
+        run.note({ windows: found.map((w) => [Number(w.start.toFixed(2)), Number(w.end.toFixed(2))]) });
         run.stage("scanned");
       }
-      return { ...(await trackRange(tracker, frames, from, to)), start: from, end: to };
+      let best = null;
+      for (let i = 0; i < windows.length; i++) {
+        const w = windows[i];
+        state.stretch = windows.length > 1 ? `stretch ${i + 1} of ${windows.length}` : "";
+        const tracked = await trackRange(tracker, frames, w.start, w.end);
+        const verdict = judge(tracked.sequence);
+        const attempt = {
+          start: Number(w.start.toFixed(2)), end: Number(w.end.toFixed(2)),
+          frames: tracked.sequence.n,
+          detection: Number(verdict.detectionRate.toFixed(3)),
+          confidence: verdict.decoded && verdict.decoded.meanConfidence !== undefined
+            ? Number(verdict.decoded.meanConfidence.toFixed(3)) : null,
+          ok: verdict.ok,
+        };
+        state.diag.attempts.push(attempt);
+        run.note({ attempts: state.diag.attempts });
+        const candidate = { ...tracked, ...w, verdict };
+        if (!best || verdict.score > best.verdict.score) best = candidate;
+        if (verdict.ok && verdict.decoded.meanConfidence >= 0.5) break;
+      }
+      state.stretch = "";
+      return best;
     };
     let tracked;
     if (media) {
@@ -1216,81 +1665,38 @@ async function analyse(file) {
         video = opened.video;
         state.clip = { url: opened.url, video };
         state.how = null;
+        state.diag = { attempts: [] };
         tracked = await read(elementFrames(video), video.videoWidth, video.videoHeight);
       }
     } else {
       tracked = await read(elementFrames(video), video.videoWidth, video.videoHeight);
     }
-    const { sequence, images, start, end } = tracked;
+    const { sequence, images, start, end, verdict } = tracked;
     state.images = images;
+    state.diag.sequence = sequence;
+    state.diag.verdict = verdict;
     const how = state.how || "decoded";
     run.note({
       how,
       repairs: how === "played" ? state.playRepairs || 0 : undefined,
+      window: [Number(start.toFixed(2)), Number(end.toFixed(2))],
       frames: sequence.n,
       trackedFps: Number((sequence.n / Math.max(end - start, 1e-3)).toFixed(1)),
+      detection: Number(verdict.detectionRate.toFixed(3)),
     });
+    if (verdict.handednessCall) {
+      run.note({ handedness: verdict.handednessCall.hand,
+                 handednessMargin: Number(verdict.handednessCall.margin.toFixed(3)) });
+    }
     run.stage("tracked");
-
     progress(0.87);
     stage(2);
     status("Finding the swing", "");
     await new Promise((r) => setTimeout(r, 30));
-
-    const config = state.payload.features;
-    const thresholds = state.payload.thresholds;
-    const { sequence: resampled, grid } = resamplePose(sequence, config.canonical_rate_hz);
-
-    const detectionRate = resampled.detected.reduce((a, b) => a + (b ? 1 : 0), 0) / resampled.n;
-    run.note({ detection: Number(detectionRate.toFixed(3)) });
-    if (detectionRate < thresholds.min_detection_rate) {
-      return refuse(
-        `a body was found in only ${Math.round(detectionRate * 100)} percent of frames, ` +
-        `below the ${Math.round(thresholds.min_detection_rate * 100)} percent a swing needs`,
-        "Make sure the golfer is fully in shot for the whole clip and reasonably well lit. " +
-        "Standing further back so the whole body fits beats filling the frame and losing the feet.");
-    }
-
-    const model = (hand) => {
-      const { features, n, width } = extractFeatures(resampled, hand, config);
-      const logits = state.net.forward(features, n, width);
-      return decodeEvents(logits, n, state.payload.architecture.classes,
-                          thresholds.min_mean_confidence);
-    };
-    // Handedness only reaches a few of the model's inputs, so a first pass either
-    // way finds the top well enough to ask the body which way round it is.
-    let handedness = state.handedness === "left" ? "left" : "right";
-    let decoded = model(handedness);
-    let handednessFrom = "chosen";
-    if (state.handedness === "auto" && decoded.ok) {
-      const call = inferHandedness(resampled, decoded.frames[3]);
-      if (call) {
-        handednessFrom = "detected";
-        run.note({ handedness: call.hand, handednessMargin: Number(call.margin.toFixed(3)) });
-        if (call.hand !== handedness) {
-          handedness = call.hand;
-          decoded = model(handedness);
-        }
-      } else {
-        handednessFrom = "assumed";
-      }
-    }
-    state.handednessFrom = handednessFrom;
     run.stage("modelled");
-    if (!decoded.ok) {
-      return refuse(decoded.reason,
-        "This is most often a clip that stops before the finish, or one filmed from " +
-        "behind the golfer where the body hides itself. Face on, square to the target " +
-        "line, is what it handles best.");
-    }
-
-    const metrics = computeMetrics(resampled, decoded, handedness, config);
-    const problem = implausible(metrics, thresholds);
-    if (problem) {
-      return refuse(problem,
-        "The clip probably does not contain a whole swing. Start recording before the " +
-        "takeaway and keep going until the finish is held.");
-    }
+    state.handednessFrom = verdict.handednessFrom;
+    if (!verdict.ok) return refuse(verdict.reason, verdict.advice);
+    const { resampled, grid, decoded, handedness, metrics, detectionRate } = verdict;
 
     state.analysis = { sequence, resampled, grid, decoded, metrics, detectionRate,
                        handedness, config, model: decoded, userSet: new Set() };
@@ -1382,6 +1788,7 @@ function refuse(reason, advice, title) {
   show("refusal-footnote", !title);
   show("refusal-diagnostics", Boolean(title));
   el("refusal-diagnostics").textContent = title ? diagnostics() : "";
+  offerDiagnostics("refusal");
   el("refusal").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
@@ -1511,6 +1918,7 @@ async function renderFrames(sequence, decoded, metrics, detectionRate, quiet = f
   showMetrics(metrics, decoded, detectionRate, sequence);
   renderStory(metrics);
   resetCoach();
+  if (!quiet) offerDiagnostics("results");
   show("results", true);
   if (!quiet) el("results").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -1902,6 +2310,7 @@ export function boot(payload) {
   connectReports();
   connectCoach();
   el("coach-ask").onclick = () => askCoach();
+  el("send-diag").onclick = () => sendDiagnostics();
   el("coach-stop").onclick = () => { if (coach.ctl) coach.ctl.abort(); };
   state.net = new SwingEventModel(payload);
   state.handedness = "auto";
@@ -1957,7 +2366,8 @@ export function boot(payload) {
       "estimator is loaded from this page rather than from anyone else's servers. Each " +
       "run leaves a short technical note for the page's owner - browser, video format, " +
       "timings, any error, and how far any position you moved was from the model's - " +
-      "never the video, a frame or its name - so failures can be fixed.";
+      "never the video, a frame or its name - so failures can be fixed. Pictures and " +
+      "poses from a clip are sent only if you press the button that says so.";
   }
 
   for (const id of ["again", "again-bottom"]) {

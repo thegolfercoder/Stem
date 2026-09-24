@@ -16,13 +16,13 @@
     ],
     "half_width_frames": [
       [
-        19.0
+        18.0
       ],
       [
-        69.0
+        7.0
       ],
       [
-        30.0
+        5.0
       ],
       [
         5.0
@@ -31,13 +31,13 @@
         3.0
       ],
       [
-        3.0
+        2.0
       ],
       [
-        9.0
+        4.0
       ],
       [
-        125.0
+        92.0
       ]
     ],
     "counts": [
@@ -68,10 +68,10 @@
     ]
   },
   "tempo": {
-    "half_width_fraction": 0.2895816242821984,
+    "half_width_fraction": 0.2735849056603773,
     "coverage": 0.8,
     "n_calibration": 85,
     "measured_on": "real swings from broadcast footage it was never trained or chosen on, put through the same pose estimator"
   },
-  "fingerprint": "96f98b8c1b7f82f040fb6714a54d252d"
+  "fingerprint": "8c70fac9540d053b6936aca3cb4688fc"
 }

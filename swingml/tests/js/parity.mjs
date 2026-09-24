@@ -28,6 +28,7 @@ const net = new SwingEventModel(payload);
 const logits = net.forward(features, n, width);
 const decoded = decodeEvents(
   logits, n, payload.architecture.classes, payload.thresholds.min_mean_confidence,
+  payload.thresholds.min_core_confidence || 0,
 );
 
 const result = { n, ok: decoded.ok };

@@ -172,7 +172,9 @@ export function logSoftmax(logits, n, classes) {
  * each in a fixed order, so the decoder searches only sequences that satisfy
  * that, and an impossible answer cannot come back. Eight independent maxima can
  * and do put impact before the top of the backswing. */
-export function decodeEvents(logits, n, classes, minMeanConfidence) {
+const CORE_EVENTS = [0, 3, 4, 5];
+
+export function decodeEvents(logits, n, classes, minMeanConfidence, minCoreConfidence = 0) {
   if (n < NUM_EVENTS) {
     return { ok: false, reason: `clip is ${n} frames long and a swing needs at least ${NUM_EVENTS}` };
   }
@@ -232,14 +234,30 @@ export function decodeEvents(logits, n, classes, minMeanConfidence) {
   }
 
   const meanConfidence = Math.exp(logSum / NUM_EVENTS);
+  // Address, top, mid-downswing and impact: what every real swing is sure of, even
+  // when a cut-short finish drags the mean of all eight down.
+  const coreConfidence = Math.exp(CORE_EVENTS.reduce(
+    (sum, e) => sum + Math.log(Math.max(confidence[e], 1e-12)), 0) / CORE_EVENTS.length);
+  if (coreConfidence < minCoreConfidence) {
+    return {
+      ok: false,
+      meanConfidence,
+      coreConfidence,
+      reason: `address, top, mid-downswing and impact have a mean confidence of ` +
+        `${coreConfidence.toFixed(3)}, below the ${minCoreConfidence.toFixed(2)} required; ` +
+        "this clip probably does not contain a swing",
+    };
+  }
   if (meanConfidence < minMeanConfidence) {
     return {
       ok: false,
+      meanConfidence,
+      coreConfidence,
       reason: `best ordered sequence has a mean confidence of ${meanConfidence.toFixed(3)}, ` +
         `below the ${minMeanConfidence.toFixed(2)} required; this clip probably does not contain a swing`,
     };
   }
-  return { ok: true, frames: Array.from(frames), confidence, subframe, meanConfidence };
+  return { ok: true, frames: Array.from(frames), confidence, subframe, meanConfidence, coreConfidence };
 }
 
 /* Measured error bands, looked up exactly as the Python does.

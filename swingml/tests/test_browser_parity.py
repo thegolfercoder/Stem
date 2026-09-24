@@ -301,13 +301,14 @@ def decode_cases() -> list[dict]:
     classes = NUM_EVENTS + 1
     cases: list[dict] = []
 
-    def add(logits: np.ndarray, minimum: float = 0.0) -> None:
+    def add(logits: np.ndarray, minimum: float = 0.0, core: float = 0.0) -> None:
         cases.append(
             {
                 "logits": [float(v) for v in np.asarray(logits, dtype=np.float32).ravel()],
                 "n": int(logits.shape[0]),
                 "classes": classes,
                 "minMeanConfidence": minimum,
+                "minCoreConfidence": core,
             }
         )
 
@@ -316,6 +317,16 @@ def decode_cases() -> list[dict]:
     add(np.zeros((40, classes)))  # perfectly flat: all ties
     add(rng.normal(size=(9, classes)))  # barely more room than events
     add(rng.normal(size=(200, classes)), minimum=0.99)  # refused for confidence
+
+    # Sure of the core four and unsure of the rest, which is what a real swing
+    # with a cut-short finish looks like: kept by the core rule, refused by a
+    # strict mean of all eight, and the two sides must agree on both.
+    logits = rng.normal(scale=0.2, size=(80, classes))
+    for event, strength in enumerate((9.0, 1.0, 1.0, 9.0, 9.0, 9.0, 1.0, 0.5)):
+        logits[8 * (event + 1), event] += strength
+    add(logits, minimum=0.2, core=0.3)
+    add(logits, minimum=0.6, core=0.3)
+    add(logits, minimum=0.0, core=0.999)
 
     # Peaks crowded against the start, then against the end.
     for offset in (0, 1):
@@ -365,7 +376,9 @@ def decoded_pairs(tmp_path_factory: pytest.TempPathFactory) -> list[tuple[dict, 
     pairs = []
     for case, theirs in zip(cases, browser, strict=True):
         logits = np.asarray(case["logits"], dtype=np.float32).reshape(case["n"], case["classes"])
-        pairs.append((theirs, decode_events(logits, case["minMeanConfidence"])))
+        pairs.append(
+            (theirs, decode_events(logits, case["minMeanConfidence"], case["minCoreConfidence"]))
+        )
     return pairs
 
 

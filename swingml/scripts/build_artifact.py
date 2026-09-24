@@ -97,9 +97,28 @@ def write_vp9(source: Path, target: Path) -> bool:
     except ImportError:
         return False
     command = [
-        imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-i", str(source),
-        "-map", "0:v:0", "-an", "-c:v", "libvpx-vp9", "-crf", "30", "-b:v", "0",
-        "-row-mt", "1", "-fps_mode", "passthrough", "-movflags", "+faststart", str(target),
+        imageio_ffmpeg.get_ffmpeg_exe(),
+        "-y",
+        "-loglevel",
+        "error",
+        "-i",
+        str(source),
+        "-map",
+        "0:v:0",
+        "-an",
+        "-c:v",
+        "libvpx-vp9",
+        "-crf",
+        "30",
+        "-b:v",
+        "0",
+        "-row-mt",
+        "1",
+        "-fps_mode",
+        "passthrough",
+        "-movflags",
+        "+faststart",
+        str(target),
     ]
     try:
         subprocess.run(command, check=True)
@@ -131,7 +150,9 @@ def main() -> None:
         if stale.is_file():
             stale.unlink()
         if write_vp9(args.sample, args.out / "sample/sample-swing-vp9.mp4"):
-            sample.append({"src": "sample/sample-swing-vp9.mp4", "type": 'video/mp4; codecs="vp09.00.10.08"'})
+            sample.append(
+                {"src": "sample/sample-swing-vp9.mp4", "type": 'video/mp4; codecs="vp09.00.10.08"'}
+            )
 
     html = (args.source / "index.html").read_text(encoding="utf-8")
     for token, name in zip(

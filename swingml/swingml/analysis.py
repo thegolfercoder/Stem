@@ -67,18 +67,28 @@ class AnalysisConfig(BaseModel):
         ),
     )
     min_mean_confidence: float = Field(
+        default=0.20,
+        description=(
+            "Mean confidence over all eight events below which no swing is reported. "
+            "Read together with min_core_confidence; both must be met.\n\n"
+            "It was 0.30 on its own, set when the model had seen only rendered "
+            "swings. Measured on real ones that rule turned away 69 percent of the "
+            "real swings in the held-out GolfDB clips - a finish the clip cut short, "
+            "or a toe-up the estimator cannot see, drags a mean of all eight down "
+            "however sure the rest are. Both thresholds were then chosen on the "
+            "validation and calibration clips (170 swings, and 350 stretches of the "
+            "same videos with no swing in them: the golfer before address, after "
+            "the finish, and a backswing that never comes down) and reported on the "
+            "held-out ones (224 swings, 473 such stretches): with the installed model "
+            "they turn away 0.9 percent of real swings and accept 0.6 percent of the "
+            "stretches with none."
+        ),
+    )
+    min_core_confidence: float = Field(
         default=0.30,
         description=(
-            "Mean event confidence below which no swing is reported.\n\n"
-            "This was left switched off until there was something to set it from, "
-            "because a guessed threshold is worse than none. Measured over a set of "
-            "clips built to contain no swing - somebody standing at address, a swing "
-            "cut off at the top, an empty frame - the model returned 0.02, 0.27 and "
-            "0.15. Over clips that did contain a swing, filmed face on, down the "
-            "line, at forty-five degrees, tilted, left handed, near, far, and at "
-            "three frame rates, it returned 0.38 at worst and 0.89 or better on "
-            "eleven of twelve. The gap is wide and this sits in it, close enough to "
-            "the bad group to keep the hardest real angle."
+            "Mean confidence over address, top, mid-downswing and impact below which "
+            "no swing is reported: the positions every real swing is sure of."
         ),
     )
     min_detection_rate: float = Field(
@@ -470,7 +480,7 @@ def analyse_pose_sequence(
             handedness=config.handedness,
         )
 
-    events = decode_events(logits, config.min_mean_confidence)
+    events = decode_events(logits, config.min_mean_confidence, config.min_core_confidence)
     if isinstance(events, NoReading):
         return SwingAnalysis(
             video=video,
