@@ -7,6 +7,7 @@ import { rollingRadiusM, type ViewerConfig } from "@/lib/build/viewer-config";
 import { Aero } from "./Aero";
 import { Body } from "./Body";
 import { Doors, Exhaust, Lights, Mirrors } from "./Details";
+import { Stripes } from "./Stripes";
 import { Vents } from "./Vents";
 import { Wheel } from "./Wheel";
 
@@ -109,6 +110,7 @@ export function Car({ config }: { config: ViewerConfig }) {
           archInners={{ front: front.inner, rear: rear.inner }}
         />
         <Lights shape={shape} face={config.face} />
+        <Stripes shape={shape} style={config.stripe} hex={config.stripeHex} />
         <Doors shape={shape} />
         <Mirrors shape={shape} paintHex={config.paintHex} finish={config.paintFinish} />
         <Exhaust
@@ -140,7 +142,7 @@ export function Car({ config }: { config: ViewerConfig }) {
             fit={config.rear.fitted}
             rotorMm={config.rear.rotorMm}
             pistons={config.rear.caliperPistons}
-            caliperHex={config.brakeKit ? "#2b2e33" : config.caliperHex}
+            caliperHex={config.rearCaliperHex}
           />
         </group>
       ))}

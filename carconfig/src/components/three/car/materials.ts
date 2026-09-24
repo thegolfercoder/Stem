@@ -28,6 +28,18 @@ export function paintMaterial(
       return new THREE.MeshPhysicalMaterial({
         ...base, metalness: 0.78, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.04,
       });
+    case "pearl":
+      // A colour shift across the panel as it turns away from the light.
+      return new THREE.MeshPhysicalMaterial({
+        ...base, metalness: 0.45, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.03,
+        iridescence: 0.55, iridescenceIOR: 1.6, iridescenceThicknessRange: [180, 520],
+      });
+    case "chrome":
+      // A wrap, not a paint: a near-perfect mirror tinted by the colour.
+      return new THREE.MeshPhysicalMaterial({
+        ...base, metalness: 1, roughness: 0.06, clearcoat: 0.6, clearcoatRoughness: 0.02,
+        envMapIntensity: 1.6,
+      });
     case "gloss":
     default:
       return new THREE.MeshPhysicalMaterial({

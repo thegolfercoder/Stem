@@ -17,6 +17,7 @@ import type { ViewerConfig } from "@/lib/build/viewer-config";
 import { BODY_STYLES } from "@/lib/three/body-styles";
 import { CameraRig, type ViewName } from "./CameraRig";
 import { Car } from "./car/Car";
+import { ModelBoundary, RealCar } from "./car/RealCar";
 import { Studio } from "./Studio";
 
 /**
@@ -66,7 +67,17 @@ export default function VehicleViewer({
 
       <Suspense fallback={null}>
         <Studio quality={quality} />
-        <Car config={config} />
+        {config.asset ? (
+          // The generated car stands in while the model downloads, and for
+          // good if it fails to load.
+          <ModelBoundary fallback={<Car config={config} />}>
+            <Suspense fallback={<Car config={config} />}>
+              <RealCar config={config} asset={config.asset} />
+            </Suspense>
+          </ModelBoundary>
+        ) : (
+          <Car config={config} />
+        )}
       </Suspense>
 
       <CameraRig view={view} nonce={viewNonce} size={size} />

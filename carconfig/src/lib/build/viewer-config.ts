@@ -1,5 +1,7 @@
 import type { BrakePartSpec, Part, TirePartSpec, WheelPartSpec } from "@/types/part";
 import { bodyStyleFor } from "@/data/vehicles/model-styles";
+import type { PaintFinish, StripeStyle } from "./appearance";
+import { modelAssetFor, type ModelAsset } from "@/lib/three/model-assets";
 import { modelShapeFor, type ModelShape } from "@/lib/three/model-shapes";
 import { faceFamilyFor, type FaceFamily } from "@/lib/three/face-styles";
 import type { BodyProfile, CatalogVehicle } from "@/types/vehicle";
@@ -55,9 +57,14 @@ export interface ViewerConfig {
   readonly face: FaceFamily;
   /** A per-model shape and factory kit, for the few cars that have one. */
   readonly model: ModelShape | null;
+  /** A real 3D model of the car, when one has been fetched. */
+  readonly asset: ModelAsset | null;
 
   readonly paintHex: string;
-  readonly paintFinish: "gloss" | "satin" | "matte" | "metallic";
+  readonly paintFinish: PaintFinish;
+  /** Stripes over the body, and their colour. */
+  readonly stripe: StripeStyle;
+  readonly stripeHex: string;
 
   readonly wheelStyle: SpokeStyle;
   readonly wheelFinishHex: string;
@@ -75,6 +82,8 @@ export interface ViewerConfig {
   /** Tips grouped in the middle of the tail rather than at its corners. */
   readonly exhaustCentre: boolean;
   readonly caliperHex: string;
+  /** The rear keeps its stock caliper when a kit only covers the front. */
+  readonly rearCaliperHex: string;
   /** True when a big brake kit is in the build. */
   readonly brakeKit: boolean;
 }
@@ -187,6 +196,7 @@ export function deriveViewerConfig(
     dimensionSource: dims ? "published" : "typical",
     face: model?.face ?? faceFamilyFor(vehicle.makeSlug, style),
     model,
+    asset: modelAssetFor(profile?.slug),
 
     paintHex:
       paintOverrideHex ??
@@ -194,6 +204,8 @@ export function deriveViewerConfig(
       profile?.defaultPaintHex ??
       "#6e7377",
     paintFinish: paintPart?.visual?.paintFinish ?? "gloss",
+    stripe: "none",
+    stripeHex: "#f1f2f3",
 
     wheelStyle: wheelPart?.visual?.wheelStyle ?? model?.stockWheel?.style ?? "five_spoke",
     wheelFinishHex:
@@ -213,6 +225,10 @@ export function deriveViewerConfig(
     // Where the pipes leave the body is the car's, whoever made the silencer.
     exhaustCentre: model?.stockExhaust?.centre ?? false,
     caliperHex: kitPart?.visual?.caliperHex ?? model?.stockCaliperHex ?? STOCK_CALIPER,
+    rearCaliperHex:
+      kitPart && kitSpec?.axle === "front"
+        ? (model?.stockCaliperHex ?? STOCK_CALIPER)
+        : (kitPart?.visual?.caliperHex ?? model?.stockCaliperHex ?? STOCK_CALIPER),
     brakeKit: kitPart !== undefined,
   };
 }

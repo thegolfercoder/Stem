@@ -27,8 +27,10 @@ export function ViewerPanel({ config }: { config: ViewerConfig }) {
   const [view, setView] = useState<ViewName>("hero");
   const [nonce, setNonce] = useState(0);
 
-  const caption =
-    config.dimensionSource === "published"
+  const credit = config.asset?.credit;
+  const caption = credit
+    ? null
+    : config.dimensionSource === "published"
       ? "Proportions from the car's published dimensions. Wheels, tires, offsets and brakes drawn to scale from the build; bodywork is stylised."
       : "No dimensions on record for this car, so the body is a typical one for its type. Wheels and tires are drawn to scale; the rest is a stand-in.";
 
@@ -58,7 +60,30 @@ export function ViewerPanel({ config }: { config: ViewerConfig }) {
       </div>
 
       <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex items-end justify-between gap-3 p-3">
-        <p className="max-w-[62%] text-[10.5px] leading-snug text-[var(--color-ink-faint)]">{caption}</p>
+        {credit ? (
+          // Required by the model's licence: name the work, the author and the licence.
+          <p className="pointer-events-auto max-w-[62%] text-[10.5px] leading-snug text-[var(--color-ink-faint)]">
+            3D model:{" "}
+            <a href={credit.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--color-ink)]">
+              {credit.name}
+            </a>{" "}
+            by{" "}
+            {credit.authorUrl ? (
+              <a href={credit.authorUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--color-ink)]">
+                {credit.author}
+              </a>
+            ) : (
+              credit.author
+            )}
+            ,{" "}
+            <a href={credit.licenseUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--color-ink)]">
+              {credit.licenseLabel}
+            </a>
+            . Scaled to the car&apos;s published length.
+          </p>
+        ) : (
+          <p className="max-w-[62%] text-[10.5px] leading-snug text-[var(--color-ink-faint)]">{caption}</p>
+        )}
         <p className="shrink-0 text-[10.5px] text-[var(--color-ink-faint)]">
           Drag to orbit · scroll to zoom · right-drag to pan
         </p>
