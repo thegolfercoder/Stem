@@ -2,132 +2,76 @@
   "events": {
     "coverage": 0.8,
     "canonical_rate_hz": 60.0,
-    "measured_on": "174 rendered swings it was never trained on, put through the same pose estimator",
-    "n_clips": 174,
+    "measured_on": "real swings from broadcast footage it was never trained or chosen on, put through the same pose estimator",
+    "n_clips": 85,
     "confidence_edges": [
-      [
-        0.8904846046444125,
-        0.9135003763211275
-      ],
-      [
-        0.8500900163642549,
-        0.8778267279026064
-      ],
-      [
-        0.8469029793534943,
-        0.8714198791607854
-      ],
-      [
-        0.9208128447869492,
-        0.9404229529165903
-      ],
-      [
-        0.9296128092979207,
-        0.9440966560706506
-      ],
-      [
-        0.9263215541882109,
-        0.9451407934186358
-      ],
-      [
-        0.928972222899474,
-        0.9424012154529585
-      ],
-      [
-        0.8460211382474686,
-        0.8856548270830742
-      ]
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      []
     ],
     "half_width_frames": [
       [
-        2.0,
-        1.0,
-        1.0
+        19.0
       ],
       [
-        2.0,
-        1.0,
-        1.0
+        69.0
       ],
       [
-        1.0,
-        1.0,
-        1.0
+        30.0
       ],
       [
-        1.0,
-        1.0,
-        1.0
+        5.0
       ],
       [
-        1.0,
-        1.0,
-        1.0
+        3.0
       ],
       [
-        1.0,
-        1.0,
-        0.0
+        3.0
       ],
       [
-        1.0,
-        1.0,
-        1.0
+        9.0
       ],
       [
-        3.0,
-        1.0,
-        1.0
+        125.0
       ]
     ],
     "counts": [
       [
-        58,
-        58,
-        58
+        85
       ],
       [
-        58,
-        58,
-        58
+        85
       ],
       [
-        58,
-        58,
-        58
+        85
       ],
       [
-        58,
-        58,
-        58
+        85
       ],
       [
-        58,
-        58,
-        58
+        85
       ],
       [
-        58,
-        58,
-        58
+        85
       ],
       [
-        58,
-        58,
-        58
+        85
       ],
       [
-        58,
-        58,
-        58
+        85
       ]
     ]
   },
   "tempo": {
-    "half_width_fraction": 0.09316770186335402,
+    "half_width_fraction": 0.2895816242821984,
     "coverage": 0.8,
-    "n_calibration": 174,
-    "measured_on": "174 rendered swings it was never trained on, put through the same pose estimator"
+    "n_calibration": 85,
+    "measured_on": "real swings from broadcast footage it was never trained or chosen on, put through the same pose estimator"
   },
-  "fingerprint": "e47c04d161d48018dc8901ec72277513"
+  "fingerprint": "96f98b8c1b7f82f040fb6714a54d252d"
 }

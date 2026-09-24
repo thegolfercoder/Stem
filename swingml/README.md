@@ -78,6 +78,41 @@ looked into.
 
 ## Measured accuracy
 
+**On real footage, which is what matters.** The shipped model was fine-tuned on
+281 real swings from GolfDB and chosen on 85 more; the figures below are from 201
+it never saw, grouped by golfer and by source video so nobody in them appears in
+training. Scored on address, the top, mid-downswing and impact - the four events
+where GolfDB's labels and this project's agree within a frame once tempo is
+controlled for, and the four the tempo ratio is built from:
+
+| | ±1 frame | ±2 | ±5 | Tempo error, median | 80th percentile |
+|---|---|---|---|---|---|
+| Model before | 26.4% | 39.8% | 53.6% | 25.0% | 62.5% |
+| **Shipped** | **45.5%** | **62.4%** | **80.2%** | **15.4%** | **34.4%** |
+| Rory McIlroy, 23 swings held out, before | 18.5% | 38.0% | 45.7% | 30.1% | 112.7% |
+| **Rory McIlroy, shipped** | **41.3%** | **60.9%** | **81.5%** | **13.9%** | **34.2%** |
+
+A paired bootstrap over the 201 clips puts the gain within one frame at **+9.4
+points [+7.1, +11.8]** across all eight events and the tempo improvement at
+**-9.6 points [-16.6, -3.6]**; both intervals exclude zero.
+
+The error bands were re-measured through these weights on 85 real swings used for
+nothing else. The tempo band is **±29%**, and cross-validated it held for 82.4% of
+swings against the 80% it claims; per event, 82.5% of 680 held-out events fell
+inside their bands. They are wide where they should be: the top, mid-downswing and
+impact are placed to within three to five frames at 60 Hz, while the finish, which
+this project and a human annotator define differently, carries a band of about
+two seconds. A band that said otherwise would be the band that used to ship, which
+claimed ±9% and on the one real clip in the repository did not contain the truth.
+
+Rory's swings were held out before training, not picked afterwards; his group is 86
+clips because some of his source videos show other golfers, and all of them were
+held out together so nothing leaks.
+
+The rendered-footage figures that follow describe the previous model. The corpus
+they were measured on was lost with a container and has not been rebuilt, so they
+have not been re-measured for the shipped one.
+
 On a freshly generated holdout of 160 clips that no model has trained on, event
 timings land **within one frame 85.5% of the time and within two frames 94.5%** —
 two frames being 33 ms. The model before this one scored 83.0% and 92.8% on the
