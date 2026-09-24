@@ -12,6 +12,14 @@ pip install -e "swingml[dev]"
 swingml
 ```
 
+Or with nothing installed at all: the same analysis runs in a browser tab, pose
+estimator included. `scripts/build_web_app.py` makes one HTML file that fetches
+the estimator from Google the first time; `scripts/build_artifact.py` makes a
+folder that carries its own copy, for hosts that refuse requests to other
+servers. Either one takes any phone clip, draws the pose on the eight positions,
+and tells the swing start to finish - every sentence of it built from a measured
+number and labelled with how that number was obtained.
+
 ![the eight positions, a scrubber, and the metrics](docs/swing-page.png)
 
 ## What it measures
