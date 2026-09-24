@@ -18,8 +18,19 @@ const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14"
 const POSE_MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/" +
   "pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task";
 
+/* A copy of the estimator published beside the page, when there is one.
+ *
+ * Some places this page is served from refuse every request to another host,
+ * the CDN included, so the thirty megabytes cannot be fetched from Google there
+ * however good the connection. A build that ships its own copy sets this, and
+ * the model comes in as a few chunks - each file a host will take has a size
+ * ceiling, and the estimator is larger than it. Unset, nothing changes.
+ */
+const LOCAL = globalThis.SWING_ASSETS || null;
+const here = (path) => new URL(path, document.baseURI).href;
+
 const el = (id) => document.getElementById(id);
-const state = { net: null, landmarker: null, busy: false, last: null };
+const state = { net: null, landmarker: null, busy: false, last: null, clockMs: -1 };
 
 /* Show and hide, without caring which of the two mechanisms the markup used.
  *
@@ -99,17 +110,22 @@ async function ready() {
   stage(0);
   status("Loading the pose estimator", "about 30 MB, once - your browser will cache it");
 
+  const root = LOCAL ? here(LOCAL.mediapipe) : MEDIAPIPE;
   const vision = await deadline(
-    import(`${MEDIAPIPE}/vision_bundle.mjs`), 60000, NO_ESTIMATOR);
+    import(`${root}/vision_bundle.mjs`), 60000, NO_ESTIMATOR);
   const files = await deadline(
-    vision.FilesetResolver.forVisionTasks(`${MEDIAPIPE}/wasm`), 120000, NO_ESTIMATOR);
+    vision.FilesetResolver.forVisionTasks(`${root}/wasm`), 120000, NO_ESTIMATOR);
+  const buffer = LOCAL ? await deadline(loadChunks(LOCAL.model), 300000, NO_ESTIMATOR) : null;
+  // A fresh copy for each attempt: the estimator may take ownership of what it
+  // is handed, and the processor fallback below needs the bytes again.
+  const source = () => buffer ? { modelAssetBuffer: buffer.slice() } : { modelAssetPath: POSE_MODEL };
 
   // The GPU path is faster and is not everywhere: a machine without WebGL, or a
   // browser that has switched it off, fails here rather than falling back on its
   // own. Trying the processor afterwards costs one retry and turns a dead page
   // into a slow one.
   const options = {
-    baseOptions: { modelAssetPath: POSE_MODEL, delegate: "GPU" },
+    baseOptions: { ...source(), delegate: "GPU" },
     runningMode: "VIDEO",
     numPoses: 1,
     minPoseDetectionConfidence: 0.5,
@@ -125,9 +141,28 @@ async function ready() {
     state.landmarker = await deadline(
       vision.PoseLandmarker.createFromOptions(files, {
         ...options,
-        baseOptions: { modelAssetPath: POSE_MODEL, delegate: "CPU" },
+        baseOptions: { ...source(), delegate: "CPU" },
       }), 180000, NO_ESTIMATOR);
   }
+}
+
+/* The estimator's weights, reassembled from the chunks published with the page. */
+async function loadChunks(paths) {
+  const parts = [];
+  let total = 0;
+  for (const [index, path] of paths.entries()) {
+    const response = await fetch(here(path));
+    if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
+    const part = new Uint8Array(await response.arrayBuffer());
+    parts.push(part);
+    total += part.length;
+    status("Loading the pose estimator", `${Math.round(total / 1e6)} of about 31 MB`);
+    progress(0.02 + (0.12 * (index + 1)) / paths.length);
+  }
+  const whole = new Uint8Array(total);
+  let at = 0;
+  for (const part of parts) { whole.set(part, at); at += part.length; }
+  return whole;
 }
 
 /* Waiting on a video element, with the waiting made survivable.
@@ -216,9 +251,15 @@ async function extractPose(file, wanted) {
 
   const record = (time) => {
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    let stamp = Math.round(time * 1000);
-    if (stamp <= collected.lastMs) stamp = collected.lastMs + 1;
-    collected.lastMs = stamp;
+    // The estimator's clock, not the clip's. In video mode it tracks the body from
+    // frame to frame and refuses any timestamp not after the last one it saw -
+    // over its whole life, not per clip. Restarting at zero for each clip meant the
+    // first clip worked and every one after it had every frame rejected, which the
+    // page then reported as no golfer found. The clip's own times are what tempo
+    // is measured from and are kept separately below, untouched.
+    let stamp = collected.baseMs + Math.round(time * 1000);
+    if (stamp <= state.clockMs) stamp = state.clockMs + 1;
+    state.clockMs = stamp;
 
     let result = null;
     try { result = state.landmarker.detectForVideo(canvas, stamp); } catch { result = null; }
@@ -251,7 +292,9 @@ async function extractPose(file, wanted) {
     progress(0.05 + 0.75 * Math.min(1, time / video.duration));
     status("Finding the body in each frame", `${collected.times.length} frames`);
   };
-  collected.lastMs = -1;
+  // A second's gap from whatever the estimator saw last, so a new clip never
+  // reads to its tracker as the continuation of the previous one.
+  collected.baseMs = state.clockMs + 1000;
 
   const hasFrameCallback = typeof video.requestVideoFrameCallback === "function";
   let how = hasFrameCallback ? "played" : "stepped";
@@ -261,10 +304,25 @@ async function extractPose(file, wanted) {
     if (collected.times.length < 2) {
       how = "stepped";
       collected.xy.length = 0; collected.visibility.length = 0; collected.world.length = 0;
-      collected.detected.length = 0; collected.times.length = 0; collected.lastMs = -1;
+      collected.detected.length = 0; collected.times.length = 0;
+      collected.baseMs = state.clockMs + 1000;
     }
   }
-  if (how === "stepped") await seekThrough(video, record);
+  if (how === "stepped") {
+    const reached = await seekThrough(video, record);
+    // Stopping short and analysing what was read would hand the model the first
+    // part of the clip and then report that no swing was found in it - true of
+    // the fragment and false of the clip. It happened: a busy machine hit the time
+    // limit after 1.7 seconds of a 7-second swing and the page blamed the video.
+    if (reached < video.duration - 0.5) {
+      URL.revokeObjectURL(url);
+      throw new Error(
+        `This browser read only ${reached.toFixed(1)} of the clip's ` +
+        `${video.duration.toFixed(1)} seconds before giving up, so the rest was never ` +
+        "looked at. Chrome or Safari on a computer reads clips far faster than most " +
+        "phones; a shorter clip, trimmed to just the swing, also helps.");
+    }
+  }
 
   URL.revokeObjectURL(url);
   if (collected.times.length < 2) {
@@ -352,12 +410,16 @@ function playThrough(video, record) {
  */
 async function seekThrough(video, record) {
   const step = 1 / 60;
-  const limit = performance.now() + 180000;
+  // Generous, because this is the slow path on the slow machines: a phone with no
+  // frame callback can take minutes over a long clip and still be right. Each seek
+  // has its own short timeout for a stall; this one only stops a runaway.
+  const limit = performance.now() + 900000;
   const thumb = document.createElement("canvas");
   thumb.width = 16;
   thumb.height = 16;
   const thumbContext = thumb.getContext("2d", { willReadFrequently: true });
   let previous = null;
+  let reached = 0;
 
   for (let t = 0; t < video.duration - 1e-3; t += step) {
     if (performance.now() > limit) break;
@@ -374,7 +436,9 @@ async function seekThrough(video, record) {
     if (previous && sameFrame(previous, signature)) continue;
     previous = signature.slice();
     record(t);
+    reached = t;
   }
+  return reached;
 }
 
 function sameFrame(a, b) {
@@ -612,6 +676,7 @@ async function renderFrames(file, sourceFrames, sequence, decoded, metrics, dete
 
   showBandNote(state.payload.calibration, decoded);
   showMetrics(metrics, decoded, detectionRate, sequence);
+  renderStory(metrics);
   show("results", true);
   el("results").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -668,6 +733,88 @@ function tempoRange(calibration, tempo) {
     `${(tempo - spread).toFixed(2)} &ndash; ${(tempo + spread).toFixed(2)}</div>`;
 }
 
+/* The swing in order: a timeline to scale, then each part in words.
+ *
+ * Every sentence is assembled from a number already on the page and says how
+ * that number was obtained. Nothing is inferred beyond it - no "you should", no
+ * diagnosis - because the measurements do not support one, and a story that
+ * reads well while claiming more than was measured is the fault this project
+ * exists to avoid.
+ */
+function renderStory(m) {
+  const t = m.eventTimes;
+  const start = t[0], span = Math.max(t[7] - t[0], 1e-6);
+  const W = 720, H = 132, left = 14, right = 14, y = 64;
+  const x = (time) => left + ((time - start) / span) * (W - left - right);
+  const seg = (a, b, color) =>
+    `<rect x="${x(a).toFixed(1)}" y="${y - 7}" width="${Math.max(1, x(b) - x(a)).toFixed(1)}" ` +
+    `height="14" rx="3" fill="${color}"></rect>`;
+  const ticks = EVENT_NAMES.map((name, e) => {
+    const above = e % 2 === 0;
+    const key = e === 0 || e === 3 || e === 5 || e === 7;
+    const tx = x(t[e]);
+    const anchor = e === 0 ? "start" : e === 7 ? "end" : "middle";
+    return `<line x1="${tx.toFixed(1)}" x2="${tx.toFixed(1)}" y1="${above ? y - 20 : y + 8}" ` +
+      `y2="${above ? y - 8 : y + 20}" stroke="var(--ink-faint)" stroke-width="1"></line>` +
+      `<text x="${tx.toFixed(1)}" y="${above ? y - 26 : y + 34}" text-anchor="${anchor}" ` +
+      `class="${key ? "t-strong" : ""}">${name}</text>` +
+      `<text x="${tx.toFixed(1)}" y="${above ? y - 40 : y + 48}" text-anchor="${anchor}" ` +
+      `class="t-time">${(t[e] - start).toFixed(2)}s</text>`;
+  }).join("");
+  const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Timeline of the swing from ` +
+    `address to finish">${seg(t[0], t[3], "var(--back)")}${seg(t[3], t[5], "var(--down)")}` +
+    `${seg(t[5], t[7], "var(--follow)")}${ticks}</svg>`;
+
+  const s = (ms) => (ms / 1000).toFixed(2);
+  const follow = m.wholeMs - m.backswingMs - m.downswingMs;
+  const ratio = m.tempoRatio;
+  const tempoNote = ratio === null ? "" :
+    ratio >= 2.7 && ratio <= 3.3 ? "which sits in the band tour players are usually quoted at, near 3 to 1" :
+    ratio > 3.3 ? "a longer backswing relative to the downswing than the 3 to 1 tour players are usually quoted at" :
+    "a quicker backswing relative to the downswing than the 3 to 1 tour players are usually quoted at";
+  const beats = [];
+  beats.push(["Address to the top",
+    `The backswing took <b>${s(m.backswingMs)} s</b>, from the last still frame at address ` +
+    `to the instant the hands changed direction.`, "measured"]);
+  beats.push(["The top to impact",
+    `The downswing took <b>${s(m.downswingMs)} s</b>. Backswing over downswing gives a tempo of ` +
+    `<b>${ratio === null ? "no reading" : ratio.toFixed(2) + " : 1"}</b>` +
+    `${tempoNote ? ", " + tempoNote : ""}.`, "derived"]);
+  const peak = Math.round(m.peakHandSpeedMs);
+  beats.push(["Speed through the ball",
+    peak === 0
+      ? `The hands were moving fastest in the impact frame itself.`
+      : `The hands were moving fastest <b>${Math.abs(peak)} ms ${peak < 0 ? "before" : "after"}</b> ` +
+        `impact. At 30 frames a second one frame is 33 ms, so read this to the nearest frame.`,
+    "measured"]);
+  if (m.shoulderTurnDeg !== null && m.hipTurnDeg !== null) {
+    beats.push(["The turn at the top",
+      `Shoulders turned <b>${m.shoulderTurnDeg.toFixed(0)}&deg;</b> and hips ` +
+      `<b>${m.hipTurnDeg.toFixed(0)}&deg;</b> away from square to the camera, a separation of ` +
+      `<b>${(m.shoulderTurnDeg - m.hipTurnDeg).toFixed(0)}&deg;</b>. These come from how much ` +
+      `each line foreshortens, read low against reality, and compare best with other clips ` +
+      `filmed from the same spot.`, "projected"]);
+  }
+  if (m.feetInShot) {
+    beats.push(["Staying centred",
+      `From address to impact the head moved <b>${m.headMovement.toFixed(3)}</b> body lengths ` +
+      `and the pelvis swayed <b>${m.pelvisSway.toFixed(3)}</b>, measured against the feet.`,
+      "projected"]);
+  }
+  beats.push(["Impact to the finish",
+    `The follow-through took <b>${s(follow)} s</b>, and the whole motion ` +
+    `<b>${s(m.wholeMs)} s</b> from address to a held finish.`, "measured"]);
+
+  el("story").innerHTML =
+    `<div class="phase-key"><span><i style="background:var(--back)"></i>Backswing</span>` +
+    `<span><i style="background:var(--down)"></i>Downswing</span>` +
+    `<span><i style="background:var(--follow)"></i>Follow-through</span></div>` +
+    `<div class="timeline">${svg}</div>` +
+    `<ol class="beats">${beats.map(([h, body, prov]) =>
+      `<li><div><h3>${h}<span class="prov prov-${prov}">${prov}</span></h3><p>${body}</p></div></li>`
+    ).join("")}</ol>`;
+}
+
 function showMetrics(m, decoded, detectionRate, sequence) {
   el("summary").textContent =
     `${sequence.width}×${sequence.height}, ${sequence.n} frames, ` +
@@ -701,9 +848,24 @@ function showMetrics(m, decoded, detectionRate, sequence) {
        the ground. Stand further back and the whole body will fit.</p>`;
 
   state.last = { metrics: m, decoded };
+  const text = JSON.stringify({ metrics: m, events: decoded }, null, 2);
+  if (LOCAL && LOCAL.copyInsteadOfDownload) {
+    // Downloads are refused where this build is served, so the numbers go to the
+    // clipboard instead - and say so, rather than looking like nothing happened.
+    el("download").textContent = "Copy the numbers as JSON";
+    el("download").onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        el("download").textContent = "Copied";
+      } catch {
+        el("download").textContent = "Copy refused by this browser";
+      }
+      setTimeout(() => { el("download").textContent = "Copy the numbers as JSON"; }, 2000);
+    };
+    return;
+  }
   el("download").onclick = () => {
-    const blob = new Blob([JSON.stringify({ metrics: m, events: decoded }, null, 2)],
-                          { type: "application/json" });
+    const blob = new Blob([text], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "swing.json";
@@ -787,6 +949,28 @@ export function boot(payload) {
   zone.addEventListener("drop", (e) => {
     if (e.dataTransfer.files[0]) analyse(e.dataTransfer.files[0]);
   });
+
+  if (LOCAL && LOCAL.sample) {
+    el("sample").hidden = false;
+    el("sample").onclick = async (event) => {
+      event.stopPropagation();
+      try {
+        // The same clip in two encodings, taking whichever this browser decodes:
+        // H.264 is everywhere Apple and Google ship a browser, WebM everywhere else.
+        const probe = document.createElement("video");
+        const pick = LOCAL.sample.find((s) => probe.canPlayType(s.type)) || LOCAL.sample[0];
+        const response = await fetch(here(pick.src));
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const blob = await response.blob();
+        analyse(new File([blob], pick.src.split("/").pop(), { type: pick.type }));
+      } catch (error) {
+        failed(new Error(`Could not load the sample swing.\n\n(${error.message})`));
+      }
+    };
+    el("footer-note").textContent =
+      "Runs entirely in your browser. The clip never leaves this device, and the pose " +
+      "estimator is loaded from this page rather than from anyone else's servers.";
+  }
 
   for (const id of ["again", "again-bottom"]) {
     el(id).onclick = () => {

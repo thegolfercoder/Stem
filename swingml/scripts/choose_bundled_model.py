@@ -57,11 +57,24 @@ from swingml.skeleton import Handedness
 
 FIXTURES = Path(__file__).resolve().parent.parent / "tests" / "fixtures"
 MARGIN_POINTS = 0.02
-"""Within-one-frame difference this holdout cannot resolve, as a fraction.
+"""Within-one-frame difference one holdout cannot resolve, as a fraction.
 
 Two points. Measured, not chosen: a paired bootstrap over these 160 clips puts the
 95 percent interval on a difference between two members at roughly plus or minus
 two points, so anything inside that is a tie however confidently it is printed.
+"""
+
+RANKED_MARGIN_POINTS = MARGIN_POINTS / 2**0.5
+"""The same thing for the mean of two holdouts, which resolves finer.
+
+Averaging two rates measured on disjoint sets of clips averages two independent
+errors, so the mean's interval is narrower than either by the square root of
+two. Reusing the single-holdout margin treats differences as ties that the pair
+can in fact separate, and that is not hypothetical: two members 1.9 points apart
+on the mean came out +2.11 points [+0.23, +3.98] on the generated holdout and
++1.72 [-1.03, +4.36] on the real one, 1.92 plus or minus 1.64 combined, which
+excludes zero. Called a tie at two points, the better member lost on a single
+clip's tempo.
 """
 
 EVENT_OF = {
@@ -150,8 +163,8 @@ def main() -> None:
     parser.add_argument(
         "--holdout",
         type=Path,
-        nargs="+",
-        required=True,
+        nargs="*",
+        default=[],
         help="generated clips no candidate was trained on",
     )
     parser.add_argument(
@@ -180,8 +193,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    samples = load_samples(args.holdout)
-    if not samples:
+    samples = load_samples(args.holdout) if args.holdout else []
+    if not samples and not args.real_holdout:
         raise SystemExit("no holdout clips")
     real_samples = load_samples(args.real_holdout) if args.real_holdout else []
     real_events = tuple(name for name in args.real_events.split(",") if name)
@@ -198,13 +211,17 @@ def main() -> None:
     scored: list[tuple[Score, float, float, Path]] = []
     for path in args.members:
         model = load_model(path)
-        score = evaluate(model, samples)
         real = evaluate(model, real_samples) if real_samples else None
-        ranked = (
-            score.within[1]
-            if real is None
-            else 0.5 * (score.within[1] + within_on(real, real_events))
-        )
+        # Real footage alone when no generated holdout exists, reported in the
+        # generated columns so the table keeps its shape.
+        score = evaluate(model, samples) if samples else real
+        assert score is not None
+        if real is None:
+            ranked = score.within[1]
+        elif not samples:
+            ranked = within_on(real, real_events)
+        else:
+            ranked = 0.5 * (score.within[1] + within_on(real, real_events))
         allowed, tempo_error, detail = gate(model, sequence, truth)
         line = (
             f"  {path.name:<14} {100 * score.within[1]:5.1f}%  {100 * score.within[2]:5.1f}%  "
@@ -245,12 +262,13 @@ def main() -> None:
     # is the number the interface leads with and the thing no generated clip can
     # speak to. Both rules were changed after seeing what they picked, which is
     # worth stating; neither justification depends on that.
-    close = [row for row in scored if row[1] >= best_score - MARGIN_POINTS]
+    margin = RANKED_MARGIN_POINTS if (real_samples and samples) else MARGIN_POINTS
+    close = [row for row in scored if row[1] >= best_score - margin]
     best, _, tempo_error, winner = min(close, key=lambda row: row[2])
     if len(close) > 1:
         print(
-            f"\n{len(close)} of {len(scored)} are within {100 * MARGIN_POINTS:.0f} "
-            "points within one frame, which this holdout cannot separate. "
+            f"\n{len(close)} of {len(scored)} are within {100 * margin:.1f} "
+            "points of the best, which the holdouts cannot separate. "
             "Broken on the real clip's tempo."
         )
     print(f"\n{winner} wins: {best.summary()}")

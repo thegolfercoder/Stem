@@ -305,17 +305,21 @@ def train(
             )
             continue
         judged = averaged.apply_to(model) if averaged is not None else model
-        result = evaluate(judged, validation)
         real = evaluate(judged, real_validation) if real_validation else None
+        # With no generated clips on disk the real ones are all there is to judge
+        # on, and they are reported in the generated slot so the log still reads.
+        result = evaluate(judged, validation) if validation else real
+        assert result is not None, "nothing to validate on"
 
         # The mean of the two domains' headlines, not a pool of their clips. A
         # pool lets whichever domain brought more clips decide, which for 174
         # generated against a few dozen real is the generated-only choice again.
-        ranked = (
-            result.headline
-            if real is None
-            else 0.5 * (result.headline + within_on(real, setup.selection_events))
-        )
+        if real is None:
+            ranked = result.headline
+        elif not validation:
+            ranked = within_on(real, setup.selection_events)
+        else:
+            ranked = 0.5 * (result.headline + within_on(real, setup.selection_events))
         history.append(
             {
                 "epoch": epoch,
@@ -350,7 +354,7 @@ def train(
 
     model.load_state_dict(best_state)
     model.eval()
-    final = evaluate(model, validation)
+    final = evaluate(model, validation if validation else (real_validation or []))
     final_real = evaluate(model, real_validation) if real_validation else None
     meta = {
         "minutes": (time.time() - started) / 60.0,
@@ -549,7 +553,16 @@ def main() -> None:
         extra_only=args.extra_only,
     )
 
-    corpus = build_corpus(args.data)
+    try:
+        corpus = build_corpus(args.data)
+    except ValueError:
+        # A second pass on real footage alone does not train on the generated
+        # clips, and can be judged on real ones - which is what it is for. Without
+        # that, a missing generated corpus is a real error and stays one.
+        if not (args.extra_only and args.extra_validation):
+            raise
+        print("no generated clips on disk; selecting on the real validation clips alone")
+        corpus = Corpus(train=[], validation=[], test=[], files=(), test_indices=())
     if args.limit_train:
         corpus = corpus.model_copy(update={"train": corpus.train[: args.limit_train]})
         setup.notes = f"{setup.notes} [first {args.limit_train} training clips]".strip()
@@ -581,7 +594,7 @@ def main() -> None:
         print(f"\n{setup.name} real validation: {real_final.summary()}")
         print(real_final.report())
         scores["real_validation"] = real_final
-    if args.test:
+    if args.test and corpus.test:
         test = evaluate(model, corpus.test)
         print(f"\n{setup.name} TEST: {test.summary()}")
         print(test.report())
