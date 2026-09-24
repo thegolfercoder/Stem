@@ -50,6 +50,183 @@ function connectReports() {
   reports.db = claude.use("db").catch(() => null);
 }
 
+/* A coach's read from Claude, where the page is viewed inside Claude and the
+ * viewer allows it. It costs the viewer's own usage, so it runs only when they
+ * press the button, and it is labelled everywhere as Claude's opinion from the
+ * pictures - never mixed in with the measurements. */
+const coach = { sample: null, images: false, ctl: null };
+
+function connectCoach() {
+  const claude = window.claude;
+  if (!claude || typeof claude.use !== "function") return;
+  claude.use("sample").then(async (sample) => {
+    if (!sample) return;
+    const caps = await sample.limits().catch(() => null);
+    coach.images = Boolean(caps && caps.images && caps.images.maxCount >= 1 &&
+                           caps.images.mediaTypes.includes("image/jpeg"));
+    coach.sample = sample;
+    if (state.analysis) resetCoach();
+  }).catch(() => {});
+}
+
+function hideCoach() {
+  coach.sample = null;
+  show("coach-section", false);
+}
+
+/* Back to the button, for a new clip or a moved position: a read of other
+ * numbers would be a read of a different swing. */
+function resetCoach() {
+  if (coach.ctl) coach.ctl.abort();
+  coach.ctl = null;
+  if (!coach.sample) return;
+  show("coach-section", true);
+  el("coach-ask").hidden = false;
+  el("coach-ask").disabled = false;
+  el("coach-stop").hidden = true;
+  el("coach-text").textContent = "";
+  el("coach-status").textContent = coach.images
+    ? "Claude looks at the eight frames above and the measurements on this page."
+    : "Pictures cannot be sent from here, so Claude reads the measurements only.";
+}
+
+/* The eight frames on one sheet, four across, labelled - one image instead of
+ * eight, well inside what a call can carry. */
+async function contactSheet() {
+  const frames = state.frames || [];
+  if (frames.length !== 8) return null;
+  // As large as the platform keeps (it downsizes to about 1.2 megapixels), and no
+  // larger than the frames were stored.
+  const aspect = frames[0].canvas.width / frames[0].canvas.height;
+  const cellH = Math.round(Math.min(frames[0].canvas.height, Math.sqrt(1.15e6 / (8 * aspect))));
+  const cellW = Math.round(cellH * aspect);
+  const sheet = document.createElement("canvas");
+  sheet.width = cellW * 4;
+  sheet.height = cellH * 2;
+  const g = sheet.getContext("2d");
+  g.fillStyle = "#000";
+  g.fillRect(0, 0, sheet.width, sheet.height);
+  frames.forEach((f, i) => {
+    const x = (i % 4) * cellW, y = Math.floor(i / 4) * cellH;
+    g.drawImage(f.canvas, x, y, cellW, cellH);
+    const label = `${i + 1} ${f.label}`;
+    let size = Math.max(12, Math.round(cellH / 20));
+    g.font = `600 ${size}px system-ui, sans-serif`;
+    // Shrunk to fit a narrow portrait cell rather than cut off.
+    const room = cellW - 8 - size;
+    const natural = g.measureText(label).width;
+    if (natural > room) {
+      size = Math.max(9, Math.floor(size * room / natural));
+      g.font = `600 ${size}px system-ui, sans-serif`;
+    }
+    const w = g.measureText(label).width + size;
+    g.fillStyle = "rgba(0,0,0,.7)";
+    g.fillRect(x + 4, y + 4, w, size * 1.5);
+    g.fillStyle = "#fff";
+    g.fillText(label, x + 4 + size / 2, y + 4 + size * 1.1);
+  });
+  return new Promise((resolve) => sheet.toBlob(resolve, "image/jpeg", 0.85));
+}
+
+function coachPrompt(withImage) {
+  const a = state.analysis;
+  const m = a.metrics;
+  const band = state.payload.calibration && state.payload.calibration.tempo;
+  const lines = [];
+  lines.push(`Golfer: ${a.handedness}-handed (${state.handednessFrom === "detected" ? "detected from the pose" : state.handednessFrom === "assumed" ? "assumed" : "set by the user"}).`);
+  lines.push(`Tempo, backswing time divided by downswing time: ${m.tempoRatio.toFixed(2)}` +
+    (band ? ` (measured 80% error range about +/-${Math.round(100 * band.half_width_fraction)}%)` : "") + ".");
+  lines.push(`Backswing ${Math.round(m.backswingMs)} ms, downswing ${Math.round(m.downswingMs)} ms, address to finish ${Math.round(m.wholeMs)} ms.`);
+  lines.push(`Hands fastest ${Math.round(m.peakHandSpeedMs)} ms relative to impact (negative is before).`);
+  if (m.shoulderTurnDeg !== null) lines.push(`Shoulder turn at the top, from 2D foreshortening only: about ${m.shoulderTurnDeg.toFixed(0)} degrees.`);
+  if (m.hipTurnDeg !== null) lines.push(`Hip turn at the top, same method: about ${m.hipTurnDeg.toFixed(0)} degrees.`);
+  if (m.feetInShot) {
+    lines.push(`Address to impact, in body lengths: head moved ${m.headMovement.toFixed(3)}, pelvis swayed ${m.pelvisSway.toFixed(3)} side to side and moved ${m.pelvisLift.toFixed(3)} up or down.`);
+  }
+  if (a.userSet.size) {
+    lines.push(`Positions the golfer placed by hand rather than the model: ${[...a.userSet].sort().map((e) => EVENT_NAMES[e]).join(", ")}.`);
+  }
+  const picture = withImage
+    ? "The image is a contact sheet of eight frames from the video, numbered in order: " +
+      "1 Address, 2 Toe Up, 3 Mid Backswing, 4 Top, 5 Mid Downswing, 6 Impact, " +
+      "7 Mid Follow Through, 8 Finish. The coloured lines are the body tracker's " +
+      "skeleton, not the club. Positions 2 and 7 are placed from the body's motion, " +
+      "because the tracker does not see the club.\n\n"
+    : "No pictures are available; work from the measurements only.\n\n";
+  return "A golfer filmed one swing on a phone and an app measured it from a single camera.\n\n" +
+    picture +
+    "What the app measured:\n- " + lines.join("\n- ") + "\n\n" +
+    "Write a short coaching read, speaking to the golfer as \"you\":\n" +
+    "1. What stands out: two or three observations, each naming the frame or measurement it comes from.\n" +
+    "2. The one thing to work on first, and one simple drill for it.\n" +
+    "3. In one sentence, what this footage cannot tell you.\n\n" +
+    "Rules: plain text with the three numbered parts, no tables, under 230 words. Do not " +
+    "state or estimate club face angle, club path, attack angle, swing plane, spin, ball " +
+    "flight, speed or distance: none of them can be seen or measured here. If a frame " +
+    "does not show the position its label says, say so instead of coaching from it. If " +
+    "the image is not a golf swing, say that and stop.";
+}
+
+const COACH_ERRORS = {
+  rate_limited: "Claude is busy or your usage limit was reached. Try again in a little while.",
+  session_expired: "Your Claude session has expired. Sign in again, then try again.",
+  image_rejected: "The frames could not be sent. Try again after analysing the clip again.",
+  refused: "Claude would not give a read of this. Try another clip.",
+  empty_completion: "Claude returned nothing. Try again.",
+  prompt_too_large: "Too much to send at once.",
+};
+
+async function askCoach() {
+  if (!coach.sample || !state.analysis) return;
+  const ctl = new AbortController();
+  coach.ctl = ctl;
+  el("coach-ask").disabled = true;
+  el("coach-stop").hidden = false;
+  el("coach-text").textContent = "";
+  el("coach-status").textContent = "Thinking\u2026";
+  const options = {
+    signal: ctl.signal,
+    onText: ({ text }) => {
+      el("coach-status").textContent = "";
+      el("coach-text").textContent = text;
+    },
+  };
+  let withImage = false;
+  if (coach.images) {
+    const sheet = await contactSheet();
+    if (sheet) { options.images = [sheet]; withImage = true; }
+  }
+  try {
+    const { text, truncated } = await coach.sample(coachPrompt(withImage), options);
+    el("coach-text").textContent = text;
+    el("coach-status").textContent = truncated ? "The read was cut short." : "";
+    el("coach-ask").hidden = true;
+  } catch (error) {
+    const code = error && error.code;
+    if (code === "cancelled") {
+      el("coach-status").textContent = "";
+      el("coach-text").textContent = (error && error.text) || "";
+    } else if (["not_granted", "sampling_disabled", "not_declared", "capability_disabled",
+                "capability_removed"].includes(code)) {
+      hideCoach();
+      return;
+    } else if (code === "images_unavailable") {
+      coach.images = false;
+      resetCoach();
+      el("coach-status").textContent = "Pictures cannot be sent from here. Ask again for a read of the measurements.";
+      return;
+    } else {
+      if (code !== "refused") el("coach-text").textContent = (error && error.text) || "";
+      el("coach-status").textContent = COACH_ERRORS[code] ||
+        "The read was interrupted. Try again.";
+    }
+    el("coach-ask").disabled = false;
+  } finally {
+    if (coach.ctl === ctl) coach.ctl = null;
+    el("coach-stop").hidden = true;
+  }
+}
+
 function environment() {
   const probe = document.createElement("video");
   const can = (type) => probe.canPlayType(type) || "no";
@@ -1093,6 +1270,8 @@ async function analyse(file) {
 /* Let go of the previous clip's video. It is kept while its results are on screen,
  * because correcting a position means showing frames from it again. */
 function releaseClip() {
+  if (coach.ctl) coach.ctl.abort();
+  show("coach-section", false);
   if (state.clip && state.clip.url) URL.revokeObjectURL(state.clip.url);
   state.clip = null;
   state.analysis = null;
@@ -1283,6 +1462,7 @@ async function renderFrames(sequence, decoded, metrics, detectionRate, quiet = f
   showBandNote(state.payload.calibration, decoded);
   showMetrics(metrics, decoded, detectionRate, sequence);
   renderStory(metrics);
+  resetCoach();
   show("results", true);
   if (!quiet) el("results").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -1651,6 +1831,9 @@ function wireLightbox() {
 export function boot(payload) {
   state.payload = payload;
   connectReports();
+  connectCoach();
+  el("coach-ask").onclick = () => askCoach();
+  el("coach-stop").onclick = () => { if (coach.ctl) coach.ctl.abort(); };
   state.net = new SwingEventNet(payload);
   state.handedness = "auto";
   wireLightbox();
