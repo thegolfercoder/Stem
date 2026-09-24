@@ -56,6 +56,18 @@ const PLATE: FaceSpec[] = [{ end: "rear", cx: 0, cy: -0.02, a: 0.19, b: 0.08, n:
 export function Lights({ shape, face }: { shape: BodyShape; face: FaceFamily }) {
   const design = faceDesign(face);
   const heads = useFacePatches(shape, design.headlights);
+  // A black bezel just proud of each lamp's edge, so its outline reads on any paint.
+  const bezelSpecs = useMemo(
+    () =>
+      design.headlights.map((h) => ({
+        ...h,
+        a: h.a + 0.022,
+        b: h.b + 0.03,
+        lift: (h.lift ?? 0.003) - 0.001,
+      })),
+    [design],
+  );
+  const bezels = useFacePatches(shape, bezelSpecs);
   const drl = useFacePatches(shape, design.drl);
   const projectors = useFacePatches(shape, design.projectors);
   const surround = useFacePatches(shape, design.surround);
@@ -68,26 +80,35 @@ export function Lights({ shape, face }: { shape: BodyShape; face: FaceFamily }) 
 
   return (
     <group>
+      {bezels.map((g, i) => (
+        <mesh key={`b${i}`} geometry={g}>
+          <meshPhysicalMaterial color="#050608" roughness={0.3} clearcoat={1} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
       {heads.map((g, i) => (
         <mesh key={`h${i}`} geometry={g}>
+          {/* The chrome reflector bowl seen through clear glass: what makes a
+              lamp read as a lamp rather than a hole. */}
           <meshPhysicalMaterial
-            color="#0d1116"
-            metalness={0.6}
-            roughness={0.08}
+            color="#b9c2cc"
+            metalness={0.85}
+            roughness={0.16}
             clearcoat={1}
-            envMapIntensity={2}
+            clearcoatRoughness={0.02}
+            emissive="#26303c"
+            emissiveIntensity={0.6}
+            envMapIntensity={1.6}
             side={THREE.DoubleSide}
           />
         </mesh>
       ))}
       {projectors.map((g, i) => (
         <mesh key={`p${i}`} geometry={g}>
-          <meshPhysicalMaterial
-            color="#c9d3dc"
-            metalness={1}
-            roughness={0.15}
-            emissive="#bcd6ff"
-            emissiveIntensity={0.35}
+          <meshStandardMaterial
+            color="#ffffff"
+            emissive="#dfeaff"
+            emissiveIntensity={1.6}
+            toneMapped={false}
             side={THREE.DoubleSide}
           />
         </mesh>

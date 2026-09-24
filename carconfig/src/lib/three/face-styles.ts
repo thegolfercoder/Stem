@@ -86,12 +86,20 @@ const R = (cx: number, cy: number, a: number, b: number, n: number, extra: Parti
 // --- shared pieces ------------------------------------------------------------
 
 /** The modern default: a slim lamp high on the corner, tilted up at its outer end. */
-const slimHead = (cy = 0.4, a = 0.24, b = 0.085, rot = 0.1) => ({
+const slimHead = (cy = 0.4, a = 0.24, bIn = 0.085, rot = 0.1) => {
+  // The nose face is much wider than it is tall, so a lamp needs more of its
+  // height than its width to read as a lamp rather than a slot.
+  const b = bIn * 1.8;
+  return slimLamp(cy, a, b, rot);
+};
+
+const slimLamp = (cy: number, a: number, b: number, rot: number) => ({
   headlights: pair(F(0.66, cy, a, b, 4.5, { rot })),
   drl: pair(F(0.66, cy - b * 0.55, a * 0.86, 0.014, 8, { rot, lift: 0.005 })),
   projectors: [
-    ...pair(F(0.6, cy + 0.01, 0.035, 0.035, 2, { lift: 0.005 })),
-    ...pair(F(0.72, cy + 0.02, 0.035, 0.035, 2, { lift: 0.005 })),
+    // Taller than wide in face units, so they come out round on the car.
+    ...pair(F(0.6, cy + 0.02, 0.034, 0.075, 2, { lift: 0.005 })),
+    ...pair(F(0.72, cy + 0.03, 0.034, 0.075, 2, { lift: 0.005 })),
   ],
 });
 
@@ -125,8 +133,8 @@ const FACES: Record<FaceFamily, FaceDesign> = {
   // Two tall rounded kidneys between the lamps.
   kidney: {
     ...slimHead(0.38, 0.23, 0.07, 0.12),
-    surround: pair(F(0.13, 0.1, 0.105, 0.3, 3.6, { lift: 0.003 })),
-    grille: pair(F(0.13, 0.1, 0.088, 0.28, 3.6, { lift: 0.005 })),
+    surround: pair(F(0.13, 0.04, 0.105, 0.38, 3.6, { lift: 0.003 })),
+    grille: pair(F(0.13, 0.04, 0.088, 0.36, 3.6, { lift: 0.005 })),
     intakes: lowerIntakes(-0.4, 0.46, 0.12),
     ...splitTails(0.44, 0.24, 0.07, -0.1),
   },
