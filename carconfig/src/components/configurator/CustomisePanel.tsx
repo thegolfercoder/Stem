@@ -33,6 +33,10 @@ const WHEEL_STYLES: readonly { value: SpokeStyle; label: string }[] = [
   { value: "twin_five_spoke", label: "Twin five" },
   { value: "split_spoke", label: "Split spoke" },
   { value: "mesh", label: "Mesh" },
+  { value: "ten_spoke", label: "Ten-spoke" },
+  { value: "y_spoke", label: "Y-spoke" },
+  { value: "multi_spoke", label: "Multi-spoke" },
+  { value: "deep_dish", label: "Deep dish" },
 ];
 
 const AERO: readonly { value: Attachment; label: string }[] = [

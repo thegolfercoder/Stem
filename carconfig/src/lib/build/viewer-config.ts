@@ -38,7 +38,17 @@ export interface AxleConfig {
   readonly caliperPistons: number;
 }
 
-export type SpokeStyle = "mesh" | "split_spoke" | "five_spoke" | "twin_five_spoke";
+export const SPOKE_STYLES = [
+  "five_spoke",
+  "twin_five_spoke",
+  "split_spoke",
+  "mesh",
+  "ten_spoke",
+  "y_spoke",
+  "multi_spoke",
+  "deep_dish",
+] as const;
+export type SpokeStyle = (typeof SPOKE_STYLES)[number];
 export type Attachment = "spoiler" | "wing" | "splitter" | "diffuser" | "side_skirts";
 
 export interface ViewerConfig {

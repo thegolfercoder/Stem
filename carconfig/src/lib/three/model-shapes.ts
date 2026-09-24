@@ -1,3 +1,4 @@
+import type { SpokeStyle } from "@/lib/build/viewer-config";
 import type { StylePreset } from "./body-styles";
 import type { FaceFamily } from "./face-styles";
 
@@ -35,7 +36,7 @@ export interface ModelShape {
   /** Stock caliper colour, when no brake kit is fitted. */
   readonly stockCaliperHex?: string;
   /** Stock wheel look, drawn when no wheel part is fitted. */
-  readonly stockWheel?: { readonly style: "mesh" | "split_spoke" | "five_spoke" | "twin_five_spoke"; readonly finishHex: string };
+  readonly stockWheel?: { readonly style: SpokeStyle; readonly finishHex: string };
 }
 
 export const MODEL_SHAPES: Readonly<Record<string, ModelShape>> = {

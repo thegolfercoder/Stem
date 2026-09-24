@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Attachment, SpokeStyle, ViewerConfig } from "./viewer-config";
+import { SPOKE_STYLES, type Attachment, type SpokeStyle, type ViewerConfig } from "./viewer-config";
 
 /**
  * How the car looks, chosen directly.
@@ -41,7 +41,7 @@ export const appearanceSchema = z
   .object({
     paintHex: HEX,
     paintFinish: z.enum(["gloss", "metallic", "pearl", "satin", "matte", "chrome"]),
-    wheelStyle: z.enum(["mesh", "split_spoke", "five_spoke", "twin_five_spoke"]),
+    wheelStyle: z.enum(SPOKE_STYLES),
     wheelFinishHex: HEX,
     caliperHex: HEX,
     rideHeightMm: z.number().int().min(RIDE_HEIGHT_RANGE[0]).max(RIDE_HEIGHT_RANGE[1]),

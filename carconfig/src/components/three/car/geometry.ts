@@ -260,7 +260,8 @@ export function buildLipGeometry(d: WheelDims): THREE.BufferGeometry {
   return g;
 }
 
-export type SpokeStyle = "mesh" | "split_spoke" | "five_spoke" | "twin_five_spoke";
+export type { SpokeStyle } from "@/lib/build/viewer-config";
+import type { SpokeStyle } from "@/lib/build/viewer-config";
 
 /** One spoke from the hub at angle a0 to the rim at angle a1, as a 2D outline. */
 function spokeShape(
@@ -328,6 +329,40 @@ export function buildSpokeGeometry(style: SpokeStyle, d: WheelDims): THREE.Buffe
         }
       }
       break;
+    case "ten_spoke":
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * TAU;
+        shapes.push(spokeShape(a, a, rHub, rRim, 0.034 * k, 0.03 * k));
+      }
+      break;
+    case "y_spoke": {
+      // Five arms that fork two-thirds of the way out.
+      const rFork = rHub + (rRim - rHub) * 0.55;
+      for (let i = 0; i < 5; i++) {
+        const a = i * step;
+        shapes.push(spokeShape(a, a, rHub, rFork + 0.02, 0.07 * k, 0.056 * k));
+        for (const e of [-1, 1]) {
+          // Each fork starts inside the arm, so the two read as one casting.
+          shapes.push(spokeShape(a + e * 0.02, a + e * 0.24, rFork - 0.02, rRim, 0.04 * k, 0.03 * k));
+        }
+      }
+      break;
+    }
+    case "multi_spoke":
+      for (let i = 0; i < 20; i++) {
+        const a = (i / 20) * TAU;
+        shapes.push(spokeShape(a, a + 0.05, rHub, rRim, 0.014 * k, 0.018 * k));
+      }
+      break;
+    case "deep_dish":
+      // A broad flat dish round the outside, short spokes in the middle,
+      // the whole face set back behind the lip.
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * TAU;
+        shapes.push(spokeShape(a, a, rHub, rRim * 0.72, 0.055 * k, 0.06 * k));
+      }
+      shapes.push(ringShape(rRim * 0.68, rRim));
+      break;
     case "mesh":
     default:
       for (let i = 0; i < 10; i++) {
@@ -347,7 +382,8 @@ export function buildSpokeGeometry(style: SpokeStyle, d: WheelDims): THREE.Buffe
       bevelThickness: 0.004,
       bevelSize: 0.0035,
       bevelSegments: 2,
-      curveSegments: 1,
+      // Straight spoke edges ignore this; the dish ring needs it to stay round.
+      curveSegments: 64,
     }),
   );
 
@@ -368,10 +404,57 @@ export function buildSpokeGeometry(style: SpokeStyle, d: WheelDims): THREE.Buffe
 
   // Shape plane (x,y) becomes the wheel face; extrusion (z) becomes outboard.
   merged.rotateY(Math.PI / 2);
-  // Sit the spoke face just inside the lip, with a little dish.
-  merged.translate(d.rimWidth / 2 - depth - 0.028, 0, 0);
+
+  // Concave: real spokes sweep inward from the rim to a hub set back behind
+  // it. Pushing each point inboard by how far it is from the rim bends the
+  // flat extrusion into that dish, which is most of what makes a wheel read
+  // as a wheel rather than a cut-out.
+  const { concave, setBack } = DISH[style] ?? DISH.five_spoke!;
+  const pos = merged.getAttribute("position") as THREE.BufferAttribute;
+  for (let i = 0; i < pos.count; i++) {
+    const radial = Math.hypot(pos.getY(i), pos.getZ(i));
+    const t = 1 - Math.min(radial / rRim, 1);
+    pos.setX(i, pos.getX(i) - concave * k * t ** 1.4);
+  }
+  pos.needsUpdate = true;
+
+  merged.translate(d.rimWidth / 2 - depth - 0.028 - setBack, 0, 0);
   merged.computeVertexNormals();
+
+  if (setBack > 0) {
+    // The dish wall: a polished band from the lip down to the set-back face.
+    const wall = new THREE.CylinderGeometry(rRim, rRim * 0.99, setBack + 0.012, 72, 1, true);
+    wall.rotateZ(-Math.PI / 2);
+    wall.translate(d.rimWidth / 2 - 0.028 - setBack / 2, 0, 0);
+    const withWall = mergeGeometries([merged.toNonIndexed(), wall.toNonIndexed()], false);
+    merged.dispose();
+    wall.dispose();
+    withWall.computeVertexNormals();
+    return withWall;
+  }
   return merged;
+}
+
+/** How deep each design is dished, and how far a deep-dish face is set back. Metres at 19in. */
+const DISH: Partial<Record<SpokeStyle, { concave: number; setBack: number }>> = {
+  five_spoke: { concave: 0.034, setBack: 0 },
+  twin_five_spoke: { concave: 0.03, setBack: 0 },
+  split_spoke: { concave: 0.03, setBack: 0 },
+  mesh: { concave: 0.018, setBack: 0 },
+  ten_spoke: { concave: 0.03, setBack: 0 },
+  y_spoke: { concave: 0.036, setBack: 0 },
+  multi_spoke: { concave: 0.026, setBack: 0 },
+  deep_dish: { concave: 0.006, setBack: 0.04 },
+};
+
+/** A flat ring, for the face of a dish. */
+function ringShape(r0: number, r1: number): THREE.Shape {
+  const s = new THREE.Shape();
+  s.absarc(0, 0, r1, 0, TAU, false);
+  const hole = new THREE.Path();
+  hole.absarc(0, 0, r0, 0, TAU, true);
+  s.holes.push(hole);
+  return s;
 }
 
 /**
