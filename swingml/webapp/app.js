@@ -104,6 +104,8 @@ function beginRun(file) {
     saveRun(run);
   };
   state.run = run;
+  // The latest report, where a test driving the page can read it.
+  globalThis.__swingRun = run.body;
   saveRun(run);
   return run;
 }
@@ -301,10 +303,23 @@ function waitFor(target, event, { timeout, what }) {
 
 const UNREADABLE =
   "Your browser could not open that video.\n\n" +
-  "iPhones record in HEVC (H.265) by default, and most browsers on Windows and " +
-  "Linux cannot decode it. Safari can, and Chrome on a Mac usually can.\n\n" +
+  "If it came from an iPhone, it is probably HEVC (H.265), which most browsers on " +
+  "Windows and Linux cannot decode. Safari can, and Chrome on a Mac usually can.\n\n" +
   "Two ways round it: set the phone to Settings \u203a Camera \u203a Formats \u203a " +
   "Most Compatible before recording, or open this page in Safari.";
+
+const CODEC_NAMES = { h264: "H.264", vp8: "VP8", vp9: "VP9", av1: "AV1" };
+
+/* What to say when a file cannot be decoded, from what is actually in it. */
+function unreadableFor(codec) {
+  if (codec === "hevc") return HEVC_UNREADABLE;
+  const name = CODEC_NAMES[codec];
+  if (!name) return UNREADABLE;
+  return `This video is ${name}, and this browser could not decode it.\n\n` +
+    "That is unusual for a phone recording. The file may be damaged or only partly " +
+    "copied - try sending it again - or this browser may be missing the decoder; " +
+    "a current Chrome, Edge or Safari has it.";
+}
 
 /* How the clip is read, and why these numbers.
  *
@@ -352,8 +367,19 @@ const HEVC_UNREADABLE =
  * because an HEVC file can still list "avc1" among the brands it is compatible
  * with. */
 async function sniffCodec(file) {
+  // A four-letter code counts only where it opens a sample description - six
+  // reserved zero bytes follow it - because four letters turn up by chance in
+  // compressed video, and a VP9 file was once taken for HEVC that way.
   const codes = [["hvc1", "hevc"], ["hev1", "hevc"], ["av01", "av1"], ["vp09", "vp9"],
-                 ["V_VP9", "vp9"], ["V_AV1", "av1"], ["V_VP8", "vp8"], ["avc1", "h264"]];
+                 ["vp08", "vp8"], ["avc1", "h264"], ["avc3", "h264"],
+                 ["V_VP9", "vp9"], ["V_AV1", "av1"], ["V_VP8", "vp8"], ["V_MPEG4/ISO/AVC", "h264"]];
+  const entry = (text, code) => {
+    if (code.startsWith("V_")) return text.includes(code);
+    for (let at = text.indexOf(code); at >= 0; at = text.indexOf(code, at + 1)) {
+      if (text.slice(at + 4, at + 10) === "\0\0\0\0\0\0") return true;
+    }
+    return false;
+  };
   const span = 4 << 20;
   const slices = [file.slice(0, span)];
   if (file.size > span) slices.push(file.slice(file.size - span));
@@ -361,7 +387,7 @@ async function sniffCodec(file) {
   try {
     for (const slice of slices) {
       const text = decoder.decode(new Uint8Array(await slice.arrayBuffer()));
-      for (const [code, name] of codes) if (text.includes(code)) return name;
+      for (const [code, name] of codes) if (entry(text, code)) return name;
     }
   } catch { /* unreadable header: let the video element have its say */ }
   return "unknown";
@@ -385,7 +411,7 @@ async function openVideo(file, codec) {
   const url = URL.createObjectURL(file);
   video.src = url;
   video.load();
-  const unreadable = codec === "hevc" ? HEVC_UNREADABLE : UNREADABLE;
+  const unreadable = unreadableFor(codec);
   try {
     await waitFor(video, "loadedmetadata", { timeout: 20000, what: unreadable });
     // A container can be read by a browser that cannot decode what is inside it,
@@ -438,30 +464,36 @@ async function seekTo(video, time) {
 async function parseMp4(file) {
   if (typeof VideoDecoder !== "function" || typeof EncodedVideoChunk !== "function" ||
       typeof MP4Box === "undefined") return null;
+  // Only the index is read here - where every frame is, when it is shown, which are
+  // key frames - never the frames themselves: those are read from the file as they
+  // are decoded, so a two-gigabyte clip costs what a small one does. Phones often
+  // write the index after the frames; the parser says where it wants to read next
+  // and this follows it, which skips the frames rather than reading through them.
   const mp4 = MP4Box.createFile();
   let info = null;
   let failure = null;
-  const samples = [];
   mp4.onError = (error) => { failure = error; };
-  mp4.onReady = (ready) => {
-    info = ready;
-    const track = ready.videoTracks && ready.videoTracks[0];
-    if (!track) return;
-    mp4.onSamples = (_id, _user, list) => { for (const s of list) samples.push(s); };
-    mp4.setExtractionOptions(track.id, null, { nbSamples: 1e9 });
-    mp4.start();
-  };
-  const chunk = 8 << 20;
-  let offset = 0;
-  while (offset < file.size && !failure) {
-    const buffer = await file.slice(offset, offset + chunk).arrayBuffer();
-    buffer.fileStart = offset;
+  mp4.onReady = (ready) => { info = ready; };
+  const chunk = 4 << 20;
+  let at = 0;
+  let lastStart = -1;
+  let lastEnd = 0;
+  for (let reads = 0; !info && !failure && at < file.size && reads < 400; reads++) {
+    const buffer = await file.slice(at, at + chunk).arrayBuffer();
+    buffer.fileStart = at;
+    lastStart = at;
+    lastEnd = at + buffer.byteLength;
     const next = mp4.appendBuffer(buffer);
-    offset = typeof next === "number" && next > offset ? next : offset + buffer.byteLength;
-    status("Reading the clip", `${Math.min(100, Math.round((100 * offset) / file.size))}%`);
+    status("Reading the clip", "");
+    if (info || typeof next !== "number") break;
+    // Asked again for somewhere inside what it already has: it wants more of the
+    // same box, so carry on from the end of it.
+    at = next >= lastStart && next < lastEnd ? lastEnd : next;
   }
-  mp4.flush();
-  if (failure || !info || !info.videoTracks || !info.videoTracks.length || !samples.length) {
+  if (failure || !info || !info.videoTracks || !info.videoTracks.length) return null;
+  const trak = mp4.getTrackById(info.videoTracks[0].id);
+  const samples = (trak && trak.samples) || [];
+  if (samples.length < 2 || !samples.every((x) => x.size > 0 && x.offset + x.size <= file.size)) {
     return null;
   }
 
@@ -488,13 +520,19 @@ async function parseMp4(file) {
   const m = track.matrix || [65536, 0, 0, 0, 65536, 0, 0, 0, 1073741824];
   const rotation = ((Math.round(Math.atan2(m[1], m[0]) * 180 / Math.PI / 90) * 90) + 360) % 360;
   let first = Infinity;
-  for (const s of samples) first = Math.min(first, s.cts / s.timescale);
+  let last = -Infinity;
+  for (const s of samples) {
+    first = Math.min(first, s.cts / s.timescale);
+    last = Math.max(last, (s.cts + s.duration) / s.timescale);
+  }
   const w = track.video.width, h = track.video.height;
   return {
+    file,
     samples,
     config,
     rotation,
     first,
+    duration: last - first,
     width: rotation % 180 ? h : w,
     height: rotation % 180 ? w : h,
     codec: track.codec,
@@ -503,8 +541,19 @@ async function parseMp4(file) {
 
 /* Decode [start, end] of a parsed file, handing over frames at least minGap apart. */
 async function decodeRange(media, { start = 0, end = Infinity, minGap = 0, onFrame, label }) {
-  const { samples, config, rotation, first } = media;
+  const { file, samples, config, rotation, first } = media;
   const time = (s) => s.cts / s.timescale - first;
+  // Frames are read from the file a few megabytes at a time: one read per frame is
+  // slow, and frames sit next to each other on disk in the order they are decoded.
+  let block = null;
+  let blockStart = 0;
+  const bytes = async (s) => {
+    if (!block || s.offset < blockStart || s.offset + s.size > blockStart + block.byteLength) {
+      blockStart = s.offset;
+      block = new Uint8Array(await file.slice(s.offset, s.offset + Math.max(s.size, 4 << 20)).arrayBuffer());
+    }
+    return block.subarray(s.offset - blockStart, s.offset - blockStart + s.size);
+  };
   // Decoding has to begin on a key frame, so start from the last one before the
   // window and throw away what comes out ahead of it.
   let begin = 0;
@@ -542,7 +591,7 @@ async function decodeRange(media, { start = 0, end = Infinity, minGap = 0, onFra
       type: s.is_sync ? "key" : "delta",
       timestamp: Math.round(t * 1e6),
       duration: Math.round((1e6 * s.duration) / s.timescale),
-      data: s.data,
+      data: await bytes(s),
     }));
     while (decoder.decodeQueueSize > 8 && !failure) {
       await new Promise((resolve) => setTimeout(resolve, 4));
@@ -589,6 +638,9 @@ function makeTracker(width, height) {
   const detect = (time, baseMs, source, rotation, store) => {
     drawOriented(keepContext, source, rotation, keep.width, keep.height);
     context.drawImage(keep, 0, 0, canvas.width, canvas.height);
+    // The clip time of the frame being tracked, for tests that stand in for the
+    // estimator and need to know which frame they are being shown.
+    globalThis.__swingFrameTime = time;
     // The estimator's clock, not the clip's: in video mode it refuses any timestamp
     // not after the last one it saw, over its whole life rather than per clip.
     let stamp = baseMs + Math.round(time * 1000);
@@ -885,17 +937,10 @@ async function analyse(file) {
     stage(1);
     status("Reading the clip", file.name);
 
-    const { video, url } = await openVideo(file, codec);
-    state.clip = { url, video };
-    run.note({
-      width: video.videoWidth,
-      height: video.videoHeight,
-      duration: Number(video.duration.toFixed(2)),
-    });
-    run.stage("opened");
-
     // WebCodecs for every MP4 and MOV it can decode, which is every phone clip on a
-    // current browser; the video element for anything else.
+    // current browser; the video element for anything else. The element is not
+    // asked first: it is the one that refuses files it could not play back smoothly,
+    // and a file this decodes needs nothing from it.
     let media = null;
     if (await isIsoMedia(file)) {
       try { media = await parseMp4(file); } catch (error) { media = null; run.note({ parseError: String(error).slice(0, 200) }); }
@@ -904,21 +949,55 @@ async function analyse(file) {
         media = null;
       }
     }
-    const frames = media ? mp4Frames(media) : elementFrames(video);
-    state.how = media ? "decoded" : null;
-    const tracker = makeTracker(media ? media.width : video.videoWidth,
-                                media ? media.height : video.videoHeight);
-    if (media) run.note({ rotation: media.rotation, streamCodec: media.codec });
-
-    let start = 0;
-    let end = video.duration;
-    if (video.duration > SCAN_ABOVE_S) {
-      const found = await scanForSwing(video.duration, tracker, frames);
-      if (found) ({ start, end } = found);
-      run.note({ window: found ? [Number(start.toFixed(2)), Number(end.toFixed(2))] : "none" });
-      run.stage("scanned");
+    let video = null;
+    let duration;
+    if (media) {
+      state.clip = { media };
+      duration = media.duration;
+      run.note({ width: media.width, height: media.height, duration: Number(duration.toFixed(2)),
+                 rotation: media.rotation, streamCodec: media.codec });
+    } else {
+      const opened = await openVideo(file, codec);
+      video = opened.video;
+      state.clip = { url: opened.url, video };
+      duration = video.duration;
+      run.note({ width: video.videoWidth, height: video.videoHeight,
+                 duration: Number(duration.toFixed(2)) });
     }
-    const { sequence, images } = await trackRange(tracker, frames, start, end);
+    run.stage("opened");
+
+    // Find the swing in a long clip, then track it frame by frame.
+    const read = async (frames, width, height) => {
+      const tracker = makeTracker(width, height);
+      let from = 0;
+      let to = duration;
+      if (duration > SCAN_ABOVE_S) {
+        const found = await scanForSwing(duration, tracker, frames);
+        if (found) ({ start: from, end: to } = found);
+        run.note({ window: found ? [Number(from.toFixed(2)), Number(to.toFixed(2))] : "none" });
+        run.stage("scanned");
+      }
+      return { ...(await trackRange(tracker, frames, from, to)), start: from, end: to };
+    };
+    let tracked;
+    if (media) {
+      state.how = "decoded";
+      try {
+        tracked = await read(mp4Frames(media), media.width, media.height);
+      } catch (error) {
+        // A decoder that said yes and then failed - it happens with hardware
+        // decoders on some phones. The video element may still manage it.
+        run.note({ decodeError: String(error && error.message || error).slice(0, 200) });
+        const opened = await openVideo(file, codec);
+        video = opened.video;
+        state.clip = { url: opened.url, video };
+        state.how = null;
+        tracked = await read(elementFrames(video), video.videoWidth, video.videoHeight);
+      }
+    } else {
+      tracked = await read(elementFrames(video), video.videoWidth, video.videoHeight);
+    }
+    const { sequence, images, start, end } = tracked;
     state.images = images;
     const how = state.how || "decoded";
     run.note({
@@ -1083,13 +1162,27 @@ async function frameCanvas(sequence, index) {
     canvas.getContext("2d").drawImage(bitmap, 0, 0);
     bitmap.close();
   } else {
-    // Nothing stored (a browser that would not encode it): find it again by seeking.
-    const video = state.clip.video;
-    await seekTo(video, sequence.times[index]);
-    const scale = Math.min(1, KEEP_LONG_SIDE / Math.max(video.videoWidth, video.videoHeight));
-    canvas.width = Math.round(video.videoWidth * scale);
-    canvas.height = Math.round(video.videoHeight * scale);
-    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Nothing stored (a browser that would not encode it): find it again.
+    const time = sequence.times[index];
+    const scaled = (w, h) => {
+      const scale = Math.min(1, KEEP_LONG_SIDE / Math.max(w, h));
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+    };
+    if (state.clip.media) {
+      const media = state.clip.media;
+      scaled(media.width, media.height);
+      const context = canvas.getContext("2d");
+      await decodeRange(media, {
+        start: time - 0.004, end: time + 0.004,
+        onFrame: (_t, frame, rotation) => drawOriented(context, frame, rotation, canvas.width, canvas.height),
+      });
+    } else {
+      const video = state.clip.video;
+      await seekTo(video, time);
+      scaled(video.videoWidth, video.videoHeight);
+      canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+    }
   }
   drawPose(canvas, sequence.xy[index], sequence.visibility[index]);
   return canvas;
