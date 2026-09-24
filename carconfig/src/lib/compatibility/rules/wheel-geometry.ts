@@ -61,8 +61,12 @@ export const boltPatternRule: CompatibilityRule = {
     if (!spec || !profile) return [];
 
     const hub = vehicleWheel(profile, "front");
-    const wheelPattern = `${spec.boltCount}x${spec.boltCircleMm}`;
+    const wheelPattern = boltPatternLabel(spec);
     const carPattern = boltPatternLabel(hub);
+
+    if (profile.traits.includes("center_lock_hubs")) {
+      return [centerLockFinding(this.key, spec.boltCount === 1, wheelPattern, hub.provenance)];
+    }
 
     const matches =
       spec.boltCount === hub.boltCount &&
@@ -97,6 +101,45 @@ export const boltPatternRule: CompatibilityRule = {
   },
 };
 
+/**
+ * A centre-lock hub is its own interface. A lug wheel does not bolt to it
+ * without changing the hubs, which people do — so that is a modification, not
+ * a no. A centre-lock wheel may or may not match: the drive pins and nut
+ * thread differ between makers, and nothing in the spec says which one a
+ * wheel was made for.
+ */
+function centerLockFinding(
+  ruleKey: string,
+  wheelIsCenterLock: boolean,
+  wheelPattern: string,
+  provenance: Finding["provenance"],
+): Finding {
+  const evidence = { wheel: wheelPattern, vehicle: "centre lock" };
+  if (wheelIsCenterLock) {
+    return {
+      ruleKey,
+      status: "unknown",
+      title: "Centre-lock interface unconfirmed",
+      detail:
+        "Both are centre-lock, but drive-pin layout and nut thread differ " +
+        "between makers. Confirm the wheel is made for this car's hub.",
+      evidence,
+      provenance,
+    };
+  }
+  return {
+    ruleKey,
+    status: "requires_modification",
+    title: "Needs a hub conversion",
+    detail:
+      `This car has centre-lock hubs and the wheel is ${wheelPattern}. It ` +
+      `will only mount after converting the hubs to studs, which changes the ` +
+      `hub face — check the offset against the conversion's own figure.`,
+    evidence,
+    provenance,
+  };
+}
+
 export const centerBoreRule: CompatibilityRule = {
   key: "wheel.center_bore",
   description:
@@ -106,6 +149,9 @@ export const centerBoreRule: CompatibilityRule = {
     const spec = wheelSpec(context.part);
     const profile = profileOf(context);
     if (!spec || !profile) return [];
+
+    // A centre-lock hub has no bore to compare; the bolt rule covers it.
+    if (profile.traits.includes("center_lock_hubs")) return [];
 
     const hub = vehicleWheel(profile, "front");
     const evidence = {

@@ -62,6 +62,17 @@ const findingFor = (findings: readonly Finding[], ruleKey: string) =>
   findings.filter((f) => f.ruleKey === ruleKey);
 
 describe("bolt pattern", () => {
+  it("treats a lug wheel on centre-lock hubs as a hub conversion, not a no", () => {
+    const result = evaluateCompatibility(
+      context("porsche-911-gt3-rs-992-2023", "bbs-ch-r-19x95-et35-5x112"),
+    );
+    const [bolts] = findingFor(result.findings, "wheel.bolt_pattern");
+    expect(bolts?.status).toBe("requires_modification");
+    expect(bolts?.detail).toContain("centre-lock");
+    // A centre bore means nothing on a centre-lock hub, so it is not judged.
+    expect(findingFor(result.findings, "wheel.center_bore")).toHaveLength(0);
+  });
+
   it("is compatible when the pattern matches", () => {
     const result = evaluateCompatibility(
       context("bmw-m3-g80-competition-xdrive-2023", "bbs-ch-r-19x95-et35-5x112"),

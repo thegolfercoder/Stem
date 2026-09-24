@@ -43,7 +43,8 @@ export type FaceFamily =
   | "round_eye"
   | "seven_slot"
   | "pantheon"
-  | "big_rect";
+  | "big_rect"
+  | "porsche_911";
 
 export interface FaceDesign {
   readonly headlights: readonly FaceSpec[];
@@ -200,6 +201,20 @@ const FACES: Record<FaceFamily, FaceDesign> = {
     grille: [F(0, 0.14, 0.2, 0.33, 9, { lift: 0.005 })],
     intakes: pair(F(0.72, -0.44, 0.16, 0.08, 6)),
     ...splitTails(0.42, 0.14, 0.16, 0),
+  },
+  // Upright oval lamps on the wings with a four-point DRL in each, no grille,
+  // and three big mouths low in the bumper. The tail is one light bar.
+  porsche_911: {
+    headlights: pair(F(0.7, 0.36, 0.15, 0.42, 2.1)),
+    drl: [0.07, -0.07].flatMap((dx) =>
+      [0.17, -0.17].flatMap((dy) => pair(F(0.7 + dx, 0.36 + dy, 0.018, 0.05, 6, { lift: 0.005 }))),
+    ),
+    projectors: pair(F(0.7, 0.36, 0.055, 0.14, 2, { lift: 0.005 })),
+    surround: [],
+    grille: [],
+    intakes: [F(0, -0.3, 0.32, 0.3, 4), ...pair(F(0.66, -0.36, 0.2, 0.26, 3.2))],
+    taillights: pair(R(0.78, 0.5, 0.14, 0.07, 8)),
+    lightBar: [R(0, 0.5, 0.66, 0.02, 12, { lift: 0.004 })],
   },
   // Trucks: a big rectangular grille filling the space between the lamps.
   big_rect: {

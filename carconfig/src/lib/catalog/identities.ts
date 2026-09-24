@@ -1,4 +1,5 @@
 import raw from "@/data/vehicles/generated/identities.json";
+import { CURATED_MODEL_LINES } from "@/data/vehicles/curated-lines";
 import { PROFILE_MATCHES } from "@/data/vehicles/profile-matches";
 import { VEHICLES_BY_SLUG } from "@/data/vehicles";
 import type {
@@ -55,14 +56,18 @@ export const IDENTITY_SOURCE = {
   note: payload.note,
 };
 
-export const MODEL_LINES: readonly ModelLine[] = payload.vehicles.map((v) => ({
-  makeSlug: v.makeSlug,
-  make: v.make,
-  modelSlug: v.modelSlug,
-  model: v.model,
-  years: v.years,
-  types: v.types as BodyType[],
-}));
+export const MODEL_LINES: readonly ModelLine[] = [
+  ...payload.vehicles.map((v) => ({
+    makeSlug: v.makeSlug,
+    make: v.make,
+    modelSlug: v.modelSlug,
+    model: v.model,
+    years: v.years,
+    types: v.types as BodyType[],
+  })),
+  // Variants vPIC folds into their parent model. See curated-lines.ts.
+  ...CURATED_MODEL_LINES,
+];
 
 const byMake = new Map<string, ModelLine[]>();
 for (const line of MODEL_LINES) {

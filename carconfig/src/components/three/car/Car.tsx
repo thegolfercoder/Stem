@@ -2,10 +2,12 @@
 
 import { useMemo } from "react";
 import { createBodyShape } from "@/lib/three/body-shape";
+import type { FactoryFeature } from "@/lib/three/model-shapes";
 import { rollingRadiusM, type ViewerConfig } from "@/lib/build/viewer-config";
 import { Aero } from "./Aero";
 import { Body } from "./Body";
 import { Doors, Exhaust, Lights, Mirrors } from "./Details";
+import { Vents } from "./Vents";
 import { Wheel } from "./Wheel";
 
 /**
@@ -27,6 +29,8 @@ import { Wheel } from "./Wheel";
 
 /** Stock tires sit this far inside the widest point of the body. */
 const TIRE_INSET = 0.018;
+const NONE: readonly FactoryFeature[] = [];
+
 /** A little steering lock on the front wheels, which flatters every car. */
 const STEER = 0.12;
 
@@ -44,8 +48,21 @@ export function Car({ config }: { config: ViewerConfig }) {
         wheelbase: config.wheelbase,
         frontTireRadius: stockF,
         rearTireRadius: stockR,
+        overrides: config.model?.overrides,
       }),
-    [config.style, config.length, config.width, config.height, config.wheelbase, stockF, stockR],
+    [config.style, config.length, config.width, config.height, config.wheelbase, stockF, stockR, config.model],
+  );
+
+  // Factory splitter and diffuser draw like the aftermarket ones.
+  const factory = config.model?.factory ?? NONE;
+  const attachments = useMemo(
+    () => [
+      ...new Set([
+        ...config.attachments,
+        ...factory.filter((f): f is "splitter" | "diffuser" => f === "splitter" || f === "diffuser"),
+      ]),
+    ],
+    [config.attachments, factory],
   );
 
   const fittedF = rollingRadiusM(config.front.fitted);
@@ -94,8 +111,14 @@ export function Car({ config }: { config: ViewerConfig }) {
         <Lights shape={shape} face={config.face} />
         <Doors shape={shape} />
         <Mirrors shape={shape} paintHex={config.paintHex} finish={config.paintFinish} />
-        <Exhaust shape={shape} tips={config.exhaustTips} finish={config.tipFinish} />
-        <Aero shape={shape} attachments={config.attachments} />
+        <Exhaust
+          shape={shape}
+          tips={config.exhaustTips}
+          finish={config.tipFinish}
+          centre={config.exhaustCentre}
+        />
+        <Aero shape={shape} attachments={attachments} factoryWing={factory.includes("swan_neck_wing")} />
+        {factory.length > 0 ? <Vents shape={shape} features={factory} /> : null}
       </group>
 
       {([1, -1] as const).map((side) => (

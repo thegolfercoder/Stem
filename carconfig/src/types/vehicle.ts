@@ -114,7 +114,12 @@ export type VehicleTrait =
   | "staggered_stock_fitment"
   | "carbon_ceramic_available"
   | "hatch_body"
-  | "mid_engine";
+  | "mid_engine"
+  /**
+   * One central nut per wheel instead of lug bolts, as on Porsche GT cars.
+   * Recorded as a bolt count of 1 and a bolt circle of 0.
+   */
+  | "center_lock_hubs";
 
 /** Which placeholder body the 3D viewer draws. Swappable for real assets. */
 /** Which body the 3D viewer draws. Each is a parametric shape, not a model. */
@@ -186,7 +191,8 @@ export function vehicleShortName(vehicle: VehicleProfile): string {
 }
 
 /** "5x112" */
-export function boltPatternLabel(spec: WheelSpec): string {
+export function boltPatternLabel(spec: Pick<WheelSpec, "boltCount" | "boltCircleMm">): string {
+  if (spec.boltCount === 1) return "centre lock";
   return `${spec.boltCount}x${spec.boltCircleMm}`;
 }
 

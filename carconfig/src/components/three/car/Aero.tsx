@@ -37,6 +37,56 @@ function aerofoil(chord: number, thickness: number): THREE.Shape {
   return s;
 }
 
+/**
+ * A wing element spanning the car: leading edge at z = 0, chord running
+ * rearward to z = −chord, centred across x.
+ */
+function wingPlane(chord: number, thickness: number, span: number): THREE.BufferGeometry {
+  const g = new THREE.ExtrudeGeometry(aerofoil(chord, thickness), {
+    depth: span,
+    bevelEnabled: true,
+    bevelThickness: 0.004,
+    bevelSize: 0.003,
+    bevelSegments: 2,
+  });
+  g.rotateY(-Math.PI / 2);
+  g.translate(span / 2, 0, 0);
+  g.rotateY(Math.PI);
+  return g;
+}
+
+/**
+ * A flat band of constant width following a curve in the car's side plane
+ * (z along the car, y up), extruded across the car by `thickness`.
+ */
+function bandGeometry(points: readonly [number, number][], width: number, thickness: number): THREE.BufferGeometry {
+  const curve = new THREE.CatmullRomCurve3(points.map(([z, y]) => new THREE.Vector3(z, y, 0)));
+  const n = 40;
+  const left: THREE.Vector2[] = [];
+  const right: THREE.Vector2[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const p = curve.getPoint(t);
+    const d = curve.getTangent(t);
+    const nx = -d.y;
+    const ny = d.x;
+    left.push(new THREE.Vector2(p.x + (nx * width) / 2, p.y + (ny * width) / 2));
+    right.push(new THREE.Vector2(p.x - (nx * width) / 2, p.y - (ny * width) / 2));
+  }
+  const shape = new THREE.Shape([...left, ...right.reverse()]);
+  const g = new THREE.ExtrudeGeometry(shape, {
+    depth: thickness,
+    bevelEnabled: true,
+    bevelThickness: 0.003,
+    bevelSize: 0.003,
+    bevelSegments: 1,
+  });
+  // Shape x is the car's z; the extrusion becomes the car's x.
+  g.rotateY(-Math.PI / 2);
+  g.translate(thickness / 2, 0, 0);
+  return g;
+}
+
 function useCarbon() {
   const m = useMemo(() => carbonMaterial(), []);
   useEffect(() => () => m.dispose(), [m]);
@@ -51,20 +101,7 @@ function Wing({ shape }: { shape: BodyShape }) {
   const span = shape.tubSection(z).hw * 2 * 0.98;
   const height = 0.3;
 
-  const plane = useMemo(() => {
-    const g = new THREE.ExtrudeGeometry(aerofoil(0.3, 0.12), {
-      depth: span,
-      bevelEnabled: true,
-      bevelThickness: 0.004,
-      bevelSize: 0.003,
-      bevelSegments: 2,
-    });
-    // Chord runs fore-aft, span across the car, leading edge forward.
-    g.rotateY(-Math.PI / 2);
-    g.translate(span / 2, 0, 0);
-    g.rotateY(Math.PI);
-    return g;
-  }, [span]);
+  const plane = useMemo(() => wingPlane(0.3, 0.12, span), [span]);
   useEffect(() => () => plane.dispose(), [plane]);
 
   return (
@@ -80,6 +117,65 @@ function Wing({ shape }: { shape: BodyShape }) {
             <boxGeometry args={[0.018, height, 0.1]} />
           </mesh>
         </group>
+      ))}
+    </group>
+  );
+}
+
+/**
+ * A swan-neck wing, as on Porsche's GT cars: two elements hung from their
+ * top surface on curved mounts rising out of the engine lid, which keeps the
+ * underside — the side doing most of the work — clean. Its top sits level
+ * with the roof.
+ */
+function SwanNeckWing({ shape }: { shape: BodyShape }) {
+  const carbon = useCarbon();
+  // Over the engine lid: the mounts rise just behind the rear glass, and the
+  // flap's trailing edge ends about level with the tail.
+  const zBase = shape.zBacklight - 0.08;
+  const zLE = zBase - 0.2;
+  const span = shape.tubSection(zLE - 0.15).hw * 2 * 0.9;
+  const wingY = shape.input.height - 0.1;
+
+  const main = useMemo(() => wingPlane(0.32, 0.13, span), [span]);
+  const flap = useMemo(() => wingPlane(0.19, 0.1, span - 0.02), [span]);
+  useEffect(() => () => [main, flap].forEach((g) => g.dispose()), [main, flap]);
+
+  // Each mount rises ahead of the wing, arcs over its leading edge, and
+  // comes down onto its top surface.
+  const deckY = shape.topAt(zBase);
+  const zAttach = zLE - 0.13;
+  const neck = useMemo(
+    () =>
+      bandGeometry(
+        [
+          [zBase, deckY - 0.06],
+          [zBase + 0.005, (deckY + wingY) / 2],
+          [zBase - 0.03, wingY + 0.12],
+          [(zBase + zAttach) / 2, wingY + 0.165],
+          [zAttach, wingY + 0.1],
+          [zAttach - 0.005, wingY + 0.03],
+        ],
+        0.05,
+        0.018,
+      ),
+    [zBase, deckY, zAttach, wingY],
+  );
+  useEffect(() => () => neck.dispose(), [neck]);
+
+  return (
+    <group>
+      <group position={[0, wingY, zLE]}>
+        <mesh geometry={main} material={carbon} rotation={[0.1, 0, 0]} castShadow />
+        <mesh geometry={flap} material={carbon} position={[0, 0.065, -0.27]} rotation={[0.42, 0, 0]} castShadow />
+        {[1, -1].map((side) => (
+          <mesh key={side} material={carbon} position={[(side * span) / 2, 0.03, -0.24]} castShadow>
+            <boxGeometry args={[0.012, 0.17, 0.5]} />
+          </mesh>
+        ))}
+      </group>
+      {[1, -1].map((side) => (
+        <mesh key={side} geometry={neck} material={carbon} position={[side * span * 0.25, 0, 0]} castShadow />
       ))}
     </group>
   );
@@ -123,15 +219,18 @@ function Splitter({ shape }: { shape: BodyShape }) {
   const hw = sec.hw * 0.94;
   const depth = shape.zFront + 0.04 - z;
 
+  // In plan it follows the nose: full width at the back, narrowing to the
+  // width of the face at the front, so no corner sticks out past the bumper.
+  const hwFront = Math.min(hw, shape.tubSection(shape.zBodyFront).hw * shape.style.noseRatio * 0.92);
   const plate = useMemo(() => {
     const s = new THREE.Shape();
-    const r = 0.12;
+    const r = Math.min(0.14, depth * 0.4);
     s.moveTo(-hw, 0);
     s.lineTo(hw, 0);
-    s.lineTo(hw, depth - r);
-    s.quadraticCurveTo(hw, depth, hw - r, depth);
-    s.lineTo(-hw + r, depth);
-    s.quadraticCurveTo(-hw, depth, -hw, depth - r);
+    s.lineTo(hw, depth * 0.35);
+    s.bezierCurveTo(hw, depth * 0.75, hwFront, depth - r * 0.4, hwFront - r, depth);
+    s.lineTo(-hwFront + r, depth);
+    s.bezierCurveTo(-hwFront, depth - r * 0.4, -hw, depth * 0.75, -hw, depth * 0.35);
     s.closePath();
     const g = new THREE.ExtrudeGeometry(s, {
       depth: 0.012,
@@ -142,7 +241,7 @@ function Splitter({ shape }: { shape: BodyShape }) {
     });
     g.rotateX(Math.PI / 2);
     return g;
-  }, [hw, depth]);
+  }, [hw, hwFront, depth]);
   useEffect(() => () => plate.dispose(), [plate]);
 
   return <mesh geometry={plate} material={carbon} position={[0, sec.yBottom + 0.01, z]} castShadow />;
@@ -196,9 +295,20 @@ function SideSkirts({ shape }: { shape: BodyShape }) {
   );
 }
 
-export function Aero({ shape, attachments }: { shape: BodyShape; attachments: readonly Attachment[] }) {
+export function Aero({
+  shape,
+  attachments,
+  factoryWing = false,
+}: {
+  shape: BodyShape;
+  attachments: readonly Attachment[];
+  /** The car's own swan-neck wing; an aftermarket wing or spoiler replaces it. */
+  factoryWing?: boolean;
+}) {
+  const aftermarketRear = attachments.includes("wing") || attachments.includes("spoiler");
   return (
     <>
+      {factoryWing && !aftermarketRear ? <SwanNeckWing shape={shape} /> : null}
       {attachments.includes("wing") ? <Wing shape={shape} /> : null}
       {attachments.includes("spoiler") ? <Ducktail shape={shape} /> : null}
       {attachments.includes("splitter") ? <Splitter shape={shape} /> : null}

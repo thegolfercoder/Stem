@@ -40,6 +40,11 @@ export const PROFILE_MATCHES: Readonly<Record<string, ProfileMatch>> = {
   "porsche-718-cayman-gts-40-2022": {
     makeSlug: "porsche", modelSlug: "718-cayman", years: [2017, 2025],
   },
+  // A curated model line: vPIC files every 911 under one name. See
+  // ./curated-lines.ts.
+  "porsche-911-gt3-rs-992-2023": {
+    makeSlug: "porsche", modelSlug: "911-gt3-rs", years: [2023, null],
+  },
   "volkswagen-golf-r-mk8-2022": {
     makeSlug: "volkswagen", modelSlug: "golf-r", years: [2021, 2024],
   },

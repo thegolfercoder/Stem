@@ -2,9 +2,9 @@ import type { VehicleProfile } from "@/types/vehicle";
 import { defineVehicle } from "./define";
 
 /**
- * The seeded vehicle catalogue: fifteen enthusiast cars.
+ * The seeded vehicle catalogue: sixteen enthusiast cars.
  *
- * Fifteen, not fifteen thousand. Supporting every car badly is worth less than
+ * Sixteen, not sixteen thousand. Supporting every car badly is worth less than
  * supporting a handful properly, and every one of these was chosen because
  * people actually modify it — which is what makes the fitment questions real.
  *
@@ -353,6 +353,58 @@ export const VEHICLES: readonly VehicleProfile[] = [
     bodyProfile: "coupe",
     dims: [4405, 1801, 1276, 2475],
     paintHex: "#6e7377",
+  }),
+
+  // The halo car. Centre-lock hubs, a staggered 20/21in fitment and brakes
+  // big enough that nothing smaller than stock will cover them. Porsche does
+  // not publish wheel offsets, so the two below are placeholders the viewer
+  // needs to place the wheel; no clearance envelope is recorded, and the
+  // engine answers "unknown" to anything that would lean on one.
+  defineVehicle({
+    slug: "porsche-911-gt3-rs-992-2023",
+    manufacturer: "Porsche",
+    model: "911 GT3 RS",
+    generationCode: "992",
+    generationName: "992 (2023–)",
+    years: [2023, null],
+    year: 2023,
+    trim: "GT3 RS",
+    engine: {
+      code: "4.0 GT flat-six",
+      displayName: "4.0L naturally aspirated flat-six",
+      displacementCc: 3996,
+      cylinders: 6,
+      aspiration: "naturally_aspirated",
+      fuel: "petrol",
+    },
+    drivetrain: "rwd",
+    powerHp: 518,
+    torqueNm: 465,
+    weightKg: 1450,
+    boltCount: 1,
+    boltCircleMm: 0,
+    centerBoreMm: 0,
+    front: {
+      wheel: [20, 10, 50],
+      tire: [275, 35],
+      brake: [408, 6, "Six-piston fixed front caliper"],
+    },
+    rear: {
+      wheel: [21, 13, 47],
+      tire: [335, 30],
+      brake: [380, 4, "Four-piston fixed rear caliper"],
+    },
+    traits: [
+      "double_wishbone_front",
+      "multilink_rear",
+      "electronic_dampers",
+      "carbon_ceramic_available",
+      "staggered_stock_fitment",
+      "center_lock_hubs",
+    ],
+    bodyProfile: "coupe",
+    dims: [4572, 1900, 1322, 2457],
+    paintHex: "#6fae3c",
   }),
 
   defineVehicle({

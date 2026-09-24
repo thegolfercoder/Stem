@@ -50,6 +50,11 @@ export interface StylePreset {
 
   /** Extra half-width over the rear wheels, metres — the haunches. */
   readonly hips: number;
+  /**
+   * Extra half-width over the front wheels, metres. Defaults to most of the
+   * hips, so every body swells over its wheels and pinches in at the doors.
+   */
+  readonly flareFront?: number;
 
   /** Plan-view rounding at each end: half-width ratio at the cap, and taper length (m). */
   readonly noseRatio: number;
@@ -66,6 +71,14 @@ export interface StylePreset {
    */
   readonly leanFront: number;
   readonly leanRear: number;
+
+  /**
+   * How far the middle of the bonnet (front) and engine lid or boot (rear)
+   * sits below the tops of the wings, metres. Zero is a flat-topped body; a
+   * 911 has its lamps on raised wings with the bonnet low between them.
+   */
+  readonly fenderPeakFront?: number;
+  readonly fenderPeakRear?: number;
 
   readonly roofMaterial: "paint" | "fabric";
   /** Doors per side, for where the shut lines go. */

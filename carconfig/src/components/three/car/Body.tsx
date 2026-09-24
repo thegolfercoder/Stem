@@ -46,7 +46,8 @@ export function Body({
   useEffect(() => () => paint.dispose(), [paint]);
 
   const tubMaterials = useMemo(() => [paint, under], [paint, under]);
-  const cabinMaterials = useMemo(() => [glass, roof], [glass, roof]);
+  // Glass, roof (paint or a fabric hood), and the A-pillars, always paint.
+  const cabinMaterials = useMemo(() => [glass, roof, paint], [glass, roof, paint]);
 
   return (
     <group>

@@ -80,7 +80,7 @@ const CAP_RINGS = [0.985, 0.95, 0.9, 0.82, 0.72, 0.6, 0.46, 0.31, 0.16, 0.0];
 /** Material slots on the tub. */
 export const TUB = { paint: 0, underbody: 1 } as const;
 /** Material slots on the greenhouse. */
-export const CABIN = { glass: 0, roof: 1 } as const;
+export const CABIN = { glass: 0, roof: 1, pillar: 2 } as const;
 
 /**
  * The lower body: bonnet, flanks, arches, deck, bumpers, and the domed nose
@@ -142,17 +142,27 @@ export function buildCabinGeometry(shape: BodyShape, m = 64): THREE.BufferGeomet
   const rings = zs.map((z) => ts.map((t) => shape.cabinPoint(z, t)));
 
   const S = shape.style;
-  const vOf = ts.map((t) => shape.unitSection(t + Math.PI / m, S.cabinRound, 10).v);
+  const unit = ts.map((t) => shape.unitSection(t + Math.PI / m, S.cabinRound, 10));
   const roofFrom = shape.zRoofRear + 0.05;
   const roofTo = shape.zRoofFront - 0.06;
 
+  // Pillars are what stop a greenhouse reading as a glass bubble. The A-pillar
+  // runs up the corner between windshield and side glass; the C-pillar is the
+  // broad sail panel beside the rear window. Both come from where a face sits
+  // around the section (|u|: 0 on the centreline, 1 on the side) and which
+  // stretch of the greenhouse it is in.
   return loft(
     rings,
     (r, j) => {
       const z = (zs[r]! + zs[r + 1]!) / 2;
-      return vOf[j]! > 0.58 && z > roofFrom && z < roofTo ? CABIN.roof : CABIN.glass;
+      const { u, v } = unit[j]!;
+      const side = Math.abs(u);
+      if (v > 0.58 && z > roofFrom && z < roofTo) return CABIN.roof;
+      if (z > shape.zRoofFront - 0.02 && side > 0.8 && side < 0.91 && v > -0.6) return CABIN.pillar;
+      if (z < shape.zRoofRear + 0.02 && side > 0.45 && v > -0.7) return CABIN.roof;
+      return CABIN.glass;
     },
-    2,
+    3,
   );
 }
 
@@ -373,8 +383,21 @@ export function buildLugGeometry(
   boltCount: number,
   boltCircleMm: number,
 ): THREE.BufferGeometry {
-  const pcd = boltCircleMm / 2000;
   const parts: THREE.BufferGeometry[] = [];
+  if (boltCount === 1) {
+    // Centre lock: one big twelve-sided nut over a raised boss.
+    const boss = new THREE.CylinderGeometry(0.056, 0.06, 0.016, 48);
+    boss.rotateZ(-Math.PI / 2);
+    boss.translate(d.rimWidth / 2 - 0.02, 0, 0);
+    const nut = new THREE.CylinderGeometry(0.044, 0.048, 0.034, 12);
+    nut.rotateZ(-Math.PI / 2);
+    nut.translate(d.rimWidth / 2 - 0.004, 0, 0);
+    const merged = mergeGeometries([boss, nut], false);
+    boss.dispose();
+    nut.dispose();
+    return merged;
+  }
+  const pcd = boltCircleMm / 2000;
   for (let i = 0; i < boltCount; i++) {
     const a = (i / boltCount) * TAU + Math.PI / 2;
     const g = new THREE.CylinderGeometry(0.0095, 0.0105, 0.022, 6);

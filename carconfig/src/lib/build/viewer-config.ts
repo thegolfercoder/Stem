@@ -1,5 +1,6 @@
 import type { BrakePartSpec, Part, TirePartSpec, WheelPartSpec } from "@/types/part";
 import { bodyStyleFor } from "@/data/vehicles/model-styles";
+import { modelShapeFor, type ModelShape } from "@/lib/three/model-shapes";
 import { faceFamilyFor, type FaceFamily } from "@/lib/three/face-styles";
 import type { BodyProfile, CatalogVehicle } from "@/types/vehicle";
 import { STYLE_DEFAULTS } from "@/lib/three/body-styles";
@@ -52,6 +53,8 @@ export interface ViewerConfig {
   readonly dimensionSource: "published" | "typical";
   /** The make's face: grille, lamps and intakes. */
   readonly face: FaceFamily;
+  /** A per-model shape and factory kit, for the few cars that have one. */
+  readonly model: ModelShape | null;
 
   readonly paintHex: string;
   readonly paintFinish: "gloss" | "satin" | "matte" | "metallic";
@@ -69,6 +72,8 @@ export interface ViewerConfig {
   readonly attachments: readonly Attachment[];
   readonly exhaustTips: number;
   readonly tipFinish: "polished" | "titanium" | "black";
+  /** Tips grouped in the middle of the tail rather than at its corners. */
+  readonly exhaustCentre: boolean;
   readonly caliperHex: string;
   /** True when a big brake kit is in the build. */
   readonly brakeKit: boolean;
@@ -164,6 +169,7 @@ export function deriveViewerConfig(
   };
 
   const dims = profile?.dimensions;
+  const model = modelShapeFor(profile?.slug);
   const paintPart = parts.find((p) => p.category === "paint");
   const exhaustPart = parts.find(
     (p) => p.category === "exhaust" && p.visual?.exhaustTips !== undefined,
@@ -179,7 +185,8 @@ export function deriveViewerConfig(
     height: (dims?.heightMm ?? defaults.heightMm) / 1000,
     wheelbase: (dims?.wheelbaseMm ?? defaults.wheelbaseMm) / 1000,
     dimensionSource: dims ? "published" : "typical",
-    face: faceFamilyFor(vehicle.makeSlug, style),
+    face: model?.face ?? faceFamilyFor(vehicle.makeSlug, style),
+    model,
 
     paintHex:
       paintOverrideHex ??
@@ -188,8 +195,9 @@ export function deriveViewerConfig(
       "#6e7377",
     paintFinish: paintPart?.visual?.paintFinish ?? "gloss",
 
-    wheelStyle: wheelPart?.visual?.wheelStyle ?? "five_spoke",
-    wheelFinishHex: wheelPart?.visual?.wheelFinishHex ?? "#9aa1a8",
+    wheelStyle: wheelPart?.visual?.wheelStyle ?? model?.stockWheel?.style ?? "five_spoke",
+    wheelFinishHex:
+      wheelPart?.visual?.wheelFinishHex ?? model?.stockWheel?.finishHex ?? "#9aa1a8",
     boltCount: profile?.wheels.front.boltCount ?? defaults.boltCount,
     boltCircleMm: profile?.wheels.front.boltCircleMm ?? defaults.boltCircleMm,
 
@@ -200,9 +208,11 @@ export function deriveViewerConfig(
     // arithmetic should not break if they somehow did.
     rideHeightDeltaMm: parts.reduce((sum, p) => sum + (p.visual?.rideHeightDeltaMm ?? 0), 0),
     attachments: [...new Set(attachments)],
-    exhaustTips: exhaustPart?.visual?.exhaustTips ?? 2,
+    exhaustTips: exhaustPart?.visual?.exhaustTips ?? model?.stockExhaust?.tips ?? 2,
     tipFinish: exhaustPart?.visual?.tipFinish ?? "polished",
-    caliperHex: kitPart?.visual?.caliperHex ?? STOCK_CALIPER,
+    // Where the pipes leave the body is the car's, whoever made the silencer.
+    exhaustCentre: model?.stockExhaust?.centre ?? false,
+    caliperHex: kitPart?.visual?.caliperHex ?? model?.stockCaliperHex ?? STOCK_CALIPER,
     brakeKit: kitPart !== undefined,
   };
 }

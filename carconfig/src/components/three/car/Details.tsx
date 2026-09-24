@@ -274,17 +274,25 @@ export function Exhaust({
   shape,
   tips,
   finish,
+  centre = false,
 }: {
   shape: BodyShape;
   tips: number;
   finish: ViewerConfig["tipFinish"];
+  /** Tips grouped in the middle of the tail, as on a 911. */
+  centre?: boolean;
 }) {
   const surface = useMemo(() => endSurface(shape, "rear"), [shape]);
 
   const placements = useMemo(() => {
     // Angles on the rear face, below centre, spread for the tip count.
-    const angles =
-      tips >= 4
+    const angles = centre
+      ? tips >= 4
+        ? [258, 265, 275, 282]
+        : tips === 2
+          ? [263, 277]
+          : [270]
+      : tips >= 4
         ? [236, 250, 290, 304]
         : tips === 2
           ? [242, 298]
@@ -297,7 +305,7 @@ export function Exhaust({
       // Face backward regardless of the surface's local tilt.
       return { p, n, t };
     });
-  }, [surface, tips]);
+  }, [surface, tips, centre]);
 
   const { color, rough } = TIP_COLOURS[finish];
 

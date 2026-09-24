@@ -32,6 +32,8 @@ export interface BodyShapeInput {
   /** Stock rolling radius at each axle, metres. The arches are cut around these. */
   readonly frontTireRadius: number;
   readonly rearTireRadius: number;
+  /** Per-model adjustments to the style's proportions. */
+  readonly overrides?: Partial<StylePreset>;
 }
 
 export interface Section {
@@ -201,7 +203,7 @@ function capReach(depth: number, lean: number): number {
 }
 
 export function createBodyShape(input: BodyShapeInput): BodyShape {
-  const S = BODY_STYLES[input.style];
+  const S: StylePreset = { ...BODY_STYLES[input.style], ...input.overrides };
   const L = input.length;
   const W = input.width;
   const H = input.height;
@@ -260,6 +262,14 @@ export function createBodyShape(input: BodyShapeInput): BodyShape {
   const [tx, ty] = monotone(topPoints);
   const topCurve = pchip(tx, ty);
 
+  // How far the centreline sits below the wing tops at z. Nothing under the
+  // greenhouse; it fades in ahead of the windshield and behind the backlight.
+  const peakFront = S.fenderPeakFront ?? 0;
+  const peakRear = S.fenderPeakRear ?? 0;
+  const dipAt = (z: number) =>
+    peakFront * smoothstep(zCowl, zCowl + 0.3, z) +
+    peakRear * smoothstep(zBacklight, zBacklight - 0.3, z);
+
   // --- floor, lifting toward the ends ----------------------------------------
   const floorAt = (z: number) => {
     const frontLift = S.liftFront * smoothstep(arches[0].z + arches[0].r, zFront, z);
@@ -281,8 +291,10 @@ export function createBodyShape(input: BodyShapeInput): BodyShape {
   const halfWidthAt = (z: number) => {
     // W is the car's widest point, which is the haunch with the shoulder
     // crease on top of it; the base width is what is left once both are added.
-    let hw = W / 2 / (1 + CREASE) - S.hips;
+    const flare = S.flareFront ?? S.hips * 0.8;
+    let hw = W / 2 / (1 + CREASE) - Math.max(S.hips, flare);
     hw += S.hips * Math.exp(-(((z - zRearAxle) / 0.6) ** 2));
+    hw += flare * Math.exp(-(((z - zFrontAxle) / 0.55) ** 2));
 
     const frontStart = zBodyFront - S.taperFront;
     if (z > frontStart) {
@@ -321,7 +333,10 @@ export function createBodyShape(input: BodyShapeInput): BodyShape {
     // the studio's side strip as a single bright line. It is most of what
     // makes a smooth loft read as pressed metal.
     const crease = 1 + CREASE * Math.exp(-(((v - 0.4) / 0.06) ** 2));
-    return [sec.hw * u * roll * crease, yc + b * v, z];
+    // Raised wings: the top of the section sags toward the middle, leaving
+    // the outer edges as peaks. Zero at the sides, full depth on the centreline.
+    const sag = v > 0 ? dipAt(z) * (1 - u * u) ** 2 * v * v : 0;
+    return [sec.hw * u * roll * crease, yc + b * v - sag, z];
   };
 
   /**
@@ -476,7 +491,7 @@ export function createBodyShape(input: BodyShapeInput): BodyShape {
 
   const topAt = (z: number) => {
     if (z >= zBacklight && z <= zCowl) return cabinTopCurve(z);
-    return topCurve(z);
+    return topCurve(z) - dipAt(z);
   };
 
   const roofAt = (z: number) =>
