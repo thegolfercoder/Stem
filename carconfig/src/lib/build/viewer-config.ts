@@ -1,72 +1,113 @@
-import type { Part, TirePartSpec, WheelPartSpec } from "@/types/part";
+import type { BrakePartSpec, Part, TirePartSpec, WheelPartSpec } from "@/types/part";
 import type { BodyProfile, CatalogVehicle } from "@/types/vehicle";
+import { STYLE_DEFAULTS, STYLE_FOR_BODY_TYPE } from "@/lib/three/body-styles";
 
 /**
- * What the 3D viewer needs to draw, derived from the vehicle and the build.
+ * What the 3D viewer draws, derived from the vehicle and the build.
  *
- * Kept out of the viewer deliberately. The viewer's job is to turn this
- * structure into geometry; working out that a set of coilovers means the body
- * sits 30mm lower is a question about parts, not about rendering, and doing it
- * here means it can be tested without a canvas.
+ * Kept out of the viewer on purpose. Working out that a set of coilovers means
+ * the body sits 30mm lower, or that ET15 on a car built for ET29 pushes the
+ * wheel 14mm further out, is a question about parts and cars, not about
+ * rendering — and doing it here means it can be tested without a canvas.
  *
- * It is also the seam where real assets arrive: a GLTF-based viewer consumes
- * exactly this and nothing else changes.
+ * Every number the viewer uses to place a wheel comes through here, and most
+ * of them are the same numbers the compatibility engine checks. That is the
+ * point: when the engine says a wheel pokes past the arch, the car should look
+ * like it does.
  */
 
-export interface ViewerWheel {
+export interface WheelFit {
   readonly diameterIn: number;
   readonly widthIn: number;
+  readonly offsetMm: number;
   readonly tireWidthMm: number;
   readonly tireAspect: number;
 }
 
+export interface AxleConfig {
+  /** What the car came with — the arches are cut around this. */
+  readonly stock: WheelFit;
+  /** What is fitted in this build. */
+  readonly fitted: WheelFit;
+  readonly rotorMm: number;
+  readonly caliperPistons: number;
+}
+
+export type SpokeStyle = "mesh" | "split_spoke" | "five_spoke" | "twin_five_spoke";
+export type Attachment = "spoiler" | "wing" | "splitter" | "diffuser" | "side_skirts";
+
 export interface ViewerConfig {
-  readonly bodyProfile: BodyProfile;
+  readonly style: BodyProfile;
+  /** Metres. */
+  readonly length: number;
+  readonly width: number;
+  readonly height: number;
+  readonly wheelbase: number;
+  /**
+   * "published" when these are the car's own dimensions, "typical" when they
+   * are a stand-in for the body style. The viewer says which.
+   */
+  readonly dimensionSource: "published" | "typical";
+
   readonly paintHex: string;
   readonly paintFinish: "gloss" | "satin" | "matte" | "metallic";
-  readonly wheelStyle: "mesh" | "split_spoke" | "five_spoke" | "twin_five_spoke";
+
+  readonly wheelStyle: SpokeStyle;
   readonly wheelFinishHex: string;
-  readonly front: ViewerWheel;
-  readonly rear: ViewerWheel;
+  readonly boltCount: number;
+  readonly boltCircleMm: number;
+
+  readonly front: AxleConfig;
+  readonly rear: AxleConfig;
+
   /** Negative lowers the body. Millimetres. */
   readonly rideHeightDeltaMm: number;
-  readonly attachments: readonly ("spoiler" | "wing" | "splitter" | "diffuser" | "side_skirts")[];
+  readonly attachments: readonly Attachment[];
   readonly exhaustTips: number;
+  readonly tipFinish: "polished" | "titanium" | "black";
+  readonly caliperHex: string;
+  /** True when a big brake kit is in the build. */
+  readonly brakeKit: boolean;
+}
+
+/** Rolling radius in metres: half the rim, plus one sidewall. */
+export function rollingRadiusM(w: Pick<WheelFit, "diameterIn" | "tireWidthMm" | "tireAspect">): number {
+  const rim = (w.diameterIn * 25.4) / 2000;
+  const sidewall = (w.tireWidthMm * w.tireAspect) / 100 / 1000;
+  return rim + sidewall;
+}
+
+export function rimRadiusM(w: Pick<WheelFit, "diameterIn">): number {
+  return (w.diameterIn * 25.4) / 2000;
 }
 
 /**
- * Rolling radius in metres, from the wheel and tire.
+ * How much further out (positive) the fitted wheel's outer face sits than the
+ * stock one did, in metres.
  *
- * This is why a 20 inch wheel looks like a 20 inch wheel in the viewer and a
- * 17 doesn't: the geometry comes from the actual numbers rather than from a
- * fixed model. Sidewall height is section width times the aspect ratio, the
- * definition of the aspect ratio.
+ * Lower offset moves the whole wheel outward by the difference; a wider wheel
+ * adds half its extra width to the outside. This is the poke you see when a
+ * fitment is too aggressive, and it is the same arithmetic the offset and
+ * width rules reason about.
  */
-export function rollingRadiusM(wheel: ViewerWheel): number {
-  const rimM = (wheel.diameterIn * 25.4) / 1000;
-  const sidewallM = ((wheel.tireWidthMm * wheel.tireAspect) / 100) / 1000;
-  return rimM / 2 + sidewallM;
+export function pokeM(axle: Pick<AxleConfig, "stock" | "fitted">): number {
+  const offsetShift = (axle.stock.offsetMm - axle.fitted.offsetMm) / 1000;
+  const widthShift = ((axle.fitted.widthIn - axle.stock.widthIn) * 25.4) / 2000;
+  return offsetShift + widthShift;
 }
 
-export function tireWidthM(wheel: ViewerWheel): number {
-  // The tread is a little narrower than the section width, which is measured
-  // at the widest point of the sidewall.
-  return (wheel.tireWidthMm * 0.92) / 1000;
-}
+const STOCK_CALIPER = "#2b2e33";
 
 /**
- * What to draw for a car nobody has measured.
- *
- * A generic silhouette on generic 18s. The viewer already tells the user its
- * geometry is a placeholder; for an unprofiled car the wheel sizes are
- * placeholders too, and the configurator says so rather than implying these
- * are the car's real dimensions.
+ * A body style for a car nobody has measured, from its vPIC classes. A model
+ * line listed as both car and MPV (a few crossovers are) draws as a car.
  */
-const UNPROFILED_FALLBACK = {
-  bodyProfile: "coupe" as BodyProfile,
-  paintHex: "#6e7377",
-  wheel: { diameterIn: 18, widthIn: 8, tireWidthMm: 235, tireAspect: 40 },
-};
+function styleForTypes(types: CatalogVehicle["types"]): BodyProfile {
+  if (types.includes("truck")) return STYLE_FOR_BODY_TYPE.truck;
+  if (types.includes("car")) return STYLE_FOR_BODY_TYPE.car;
+  if (types.includes("mpv")) return STYLE_FOR_BODY_TYPE.mpv;
+  return STYLE_FOR_BODY_TYPE.car;
+}
 
 export function deriveViewerConfig(
   vehicle: CatalogVehicle,
@@ -74,62 +115,100 @@ export function deriveViewerConfig(
   paintOverrideHex?: string,
 ): ViewerConfig {
   const profile = vehicle.profile;
+
+  const style: BodyProfile = profile?.bodyProfile ?? styleForTypes(vehicle.types);
+  const defaults = STYLE_DEFAULTS[style];
+
+  const stockFor = (axle: "front" | "rear"): WheelFit => {
+    const w = profile?.wheels[axle];
+    if (!w) return defaults.wheel;
+    return {
+      diameterIn: w.diameterIn,
+      widthIn: w.widthIn,
+      offsetMm: w.offsetMm,
+      tireWidthMm: w.tire.widthMm,
+      tireAspect: w.tire.aspect,
+    };
+  };
+
   const wheelPart = parts.find((p) => p.category === "wheels");
   const wheelSpec = wheelPart?.spec as WheelPartSpec | undefined;
   const tirePart = parts.find((p) => p.category === "tires");
   const tireSpec = tirePart?.spec as TirePartSpec | undefined;
-
-  const stockFront = profile?.wheels.front;
-  const stockRear = profile?.wheels.rear;
-  const fb = UNPROFILED_FALLBACK.wheel;
-
-  const front: ViewerWheel = {
-    diameterIn: wheelSpec?.front.diameterIn ?? stockFront?.diameterIn ?? fb.diameterIn,
-    widthIn: wheelSpec?.front.widthIn ?? stockFront?.widthIn ?? fb.widthIn,
-    tireWidthMm: tireSpec?.front.widthMm ?? stockFront?.tire.widthMm ?? fb.tireWidthMm,
-    tireAspect: tireSpec?.front.aspect ?? stockFront?.tire.aspect ?? fb.tireAspect,
-  };
-
-  const rear: ViewerWheel = {
-    diameterIn: wheelSpec?.rear.diameterIn ?? stockRear?.diameterIn ?? fb.diameterIn,
-    widthIn: wheelSpec?.rear.widthIn ?? stockRear?.widthIn ?? fb.widthIn,
-    tireWidthMm: tireSpec?.rear.widthMm ?? stockRear?.tire.widthMm ?? fb.tireWidthMm,
-    tireAspect: tireSpec?.rear.aspect ?? stockRear?.tire.aspect ?? fb.tireAspect,
-  };
-
-  // Ride height stacks: springs and coilovers both lower the car, and fitting
-  // both is not a thing anybody does, but the arithmetic should not break if
-  // they somehow did.
-  const rideHeightDeltaMm = parts.reduce(
-    (sum, p) => sum + (p.visual?.rideHeightDeltaMm ?? 0),
-    0,
+  const kitPart = parts.find(
+    (p) => p.category === "brakes" && (p.spec as BrakePartSpec).type === "big_brake_kit",
   );
+  const kitSpec = kitPart?.spec as BrakePartSpec | undefined;
 
+  const fittedFor = (axle: "front" | "rear", stock: WheelFit): WheelFit => {
+    const w = wheelSpec?.kind === "wheels" ? wheelSpec[axle] : undefined;
+    const t = tireSpec?.kind === "tires" ? tireSpec[axle] : undefined;
+
+    // A new wheel without a matching tire keeps the stock sidewall height, so
+    // the rolling radius grows with the rim — which is what happens if you
+    // stretch the old tire size onto a bigger wheel, and is visibly wrong in
+    // the arch, which is the honest thing to show until a tire is chosen.
+    return {
+      diameterIn: w?.diameterIn ?? stock.diameterIn,
+      widthIn: w?.widthIn ?? stock.widthIn,
+      offsetMm: w?.offsetMm ?? stock.offsetMm,
+      tireWidthMm: t?.widthMm ?? stock.tireWidthMm,
+      tireAspect: t?.aspect ?? stock.tireAspect,
+    };
+  };
+
+  const axle = (which: "front" | "rear"): AxleConfig => {
+    const stock = stockFor(which);
+    const stockRotor = profile?.brakes[which].rotorDiameterMm ?? defaults.rotorMm;
+    const stockPistons = profile?.brakes[which].caliperPistons ?? 1;
+    const kitHere = kitSpec && (kitSpec.axle === which || kitSpec.axle === "both");
+    return {
+      stock,
+      fitted: fittedFor(which, stock),
+      rotorMm: kitHere && kitSpec.rotorDiameterMm ? kitSpec.rotorDiameterMm : stockRotor,
+      caliperPistons: kitHere && kitSpec.caliperPistons ? kitSpec.caliperPistons : stockPistons,
+    };
+  };
+
+  const dims = profile?.dimensions;
   const paintPart = parts.find((p) => p.category === "paint");
-
-  const attachments = parts
-    .map((p) => p.visual?.attachment)
-    .filter((a): a is NonNullable<typeof a> => a !== undefined);
-
   const exhaustPart = parts.find(
     (p) => p.category === "exhaust" && p.visual?.exhaustTips !== undefined,
   );
+  const attachments = parts
+    .map((p) => p.visual?.attachment)
+    .filter((a): a is Attachment => a !== undefined);
 
   return {
-    bodyProfile: profile?.bodyProfile ?? UNPROFILED_FALLBACK.bodyProfile,
+    style,
+    length: (dims?.lengthMm ?? defaults.lengthMm) / 1000,
+    width: (dims?.widthMm ?? defaults.widthMm) / 1000,
+    height: (dims?.heightMm ?? defaults.heightMm) / 1000,
+    wheelbase: (dims?.wheelbaseMm ?? defaults.wheelbaseMm) / 1000,
+    dimensionSource: dims ? "published" : "typical",
+
     paintHex:
       paintOverrideHex ??
       paintPart?.visual?.paintHex ??
       profile?.defaultPaintHex ??
-      UNPROFILED_FALLBACK.paintHex,
+      "#6e7377",
     paintFinish: paintPart?.visual?.paintFinish ?? "gloss",
+
     wheelStyle: wheelPart?.visual?.wheelStyle ?? "five_spoke",
-    wheelFinishHex: wheelPart?.visual?.wheelFinishHex ?? "#6e767d",
-    front,
-    rear,
-    rideHeightDeltaMm,
-    // Deduplicated: two parts that both add a splitter should not draw two.
+    wheelFinishHex: wheelPart?.visual?.wheelFinishHex ?? "#9aa1a8",
+    boltCount: profile?.wheels.front.boltCount ?? defaults.boltCount,
+    boltCircleMm: profile?.wheels.front.boltCircleMm ?? defaults.boltCircleMm,
+
+    front: axle("front"),
+    rear: axle("rear"),
+
+    // Springs and coilovers both lower the car; nobody fits both, but the
+    // arithmetic should not break if they somehow did.
+    rideHeightDeltaMm: parts.reduce((sum, p) => sum + (p.visual?.rideHeightDeltaMm ?? 0), 0),
     attachments: [...new Set(attachments)],
     exhaustTips: exhaustPart?.visual?.exhaustTips ?? 2,
+    tipFinish: exhaustPart?.visual?.tipFinish ?? "polished",
+    caliperHex: kitPart?.visual?.caliperHex ?? STOCK_CALIPER,
+    brakeKit: kitPart !== undefined,
   };
 }

@@ -1,6 +1,7 @@
 import type {
   Axle,
   BodyProfile,
+  VehicleDimensions,
   BrakeSpec,
   Drivetrain,
   Engine,
@@ -56,6 +57,8 @@ export interface VehicleInput {
   readonly rear?: CornerInput;
   readonly traits?: readonly VehicleTrait[];
   readonly bodyProfile: BodyProfile;
+  /** [length, width, height, wheelbase] in mm, as published. */
+  readonly dims: readonly [number, number, number, number];
   readonly paintHex: string;
 }
 
@@ -138,6 +141,12 @@ export function defineVehicle(input: VehicleInput): VehicleProfile {
     brakes,
     traits,
     bodyProfile: input.bodyProfile,
+    dimensions: {
+      lengthMm: input.dims[0],
+      widthMm: input.dims[1],
+      heightMm: input.dims[2],
+      wheelbaseMm: input.dims[3],
+    } satisfies VehicleDimensions,
     defaultPaintHex: input.paintHex,
     provenance: OEM_PUBLISHED,
   };

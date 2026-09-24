@@ -117,7 +117,30 @@ export type VehicleTrait =
   | "mid_engine";
 
 /** Which placeholder body the 3D viewer draws. Swappable for real assets. */
-export type BodyProfile = "coupe" | "sedan" | "hatch" | "wagon" | "suv" | "roadster";
+/** Which body the 3D viewer draws. Each is a parametric shape, not a model. */
+export type BodyProfile =
+  | "coupe"
+  | "sedan"
+  | "hatch"
+  | "wagon"
+  | "suv"
+  | "roadster"
+  | "truck";
+
+/**
+ * Exterior dimensions in millimetres, as the manufacturer publishes them.
+ *
+ * These drive the 3D body's proportions, which is why an M3 renders visibly
+ * longer than a GR86. They are the least consequential numbers in the profile
+ * — nothing in the compatibility engine reads them — but they are still a
+ * claim, so they sit under the profile's provenance like everything else.
+ */
+export interface VehicleDimensions {
+  readonly lengthMm: number;
+  readonly widthMm: number;
+  readonly heightMm: number;
+  readonly wheelbaseMm: number;
+}
 
 export interface VehicleProfile {
   readonly id: string;
@@ -145,6 +168,7 @@ export interface VehicleProfile {
   readonly traits: readonly VehicleTrait[];
 
   readonly bodyProfile: BodyProfile;
+  readonly dimensions: VehicleDimensions;
   /** Hex colour the viewer uses before the user picks a paint. */
   readonly defaultPaintHex: string;
 

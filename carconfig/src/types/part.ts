@@ -279,6 +279,14 @@ export interface PartVisual {
   readonly paintFinish?: "gloss" | "satin" | "matte" | "metallic";
   /** Draws visible exhaust tips at the rear. */
   readonly exhaustTips?: number;
+  /** Finish of those tips. Titanium gets the heat-blued tint it is known for. */
+  readonly tipFinish?: "polished" | "titanium" | "black";
+  /**
+   * Caliper colour for a brake kit. A cosmetic choice — most kits are sold
+   * in several — so this is how the viewer draws it, not a claim about the
+   * part number.
+   */
+  readonly caliperHex?: string;
 }
 
 // ---------------------------------------------------------------------------

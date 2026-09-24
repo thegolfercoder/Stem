@@ -120,15 +120,42 @@ saved.
 
 ## The 3D viewer
 
-Placeholder geometry built from primitives — no downloaded assets, no licensing
-questions, and it renders with no network. The proportions are generic and the
-app says so on the canvas. What is real is the wheels: their size comes from the
-actual rolling radius of the selected wheel and tire, so a 17 fits inside a 19,
-and lowering the car visibly closes the gap.
+Every car is generated, not downloaded: there are no model files, nothing to
+licence, and it renders with no network. That is what lets it cover every car
+in the catalogue rather than the handful someone modelled by hand.
 
-`deriveViewerConfig()` turns a vehicle and a set of parts into a `ViewerConfig`,
-and the viewer renders only that. Swapping in real GLTF models means consuming
-the same structure.
+**The body** (`src/lib/three/body-shape.ts`) is pure math with no three.js in
+it. It is a loft of superellipse cross-sections whose width, floor and roof
+come from monotone (Fritsch–Carlson) curves along the car, so nothing
+overshoots into a dent. The floor rides up over each wheel, which cuts the
+arches; domed, leaned end caps close the nose and tail on the same surface, so
+normals stay smooth end to end. A separate greenhouse sits on top. Seven body
+styles (`body-styles.ts`) set the proportions: cowl, windshield rake, roof
+length, backlight, tumblehome, door count, and so on.
+
+**Sizes come from the car.** Profiled vehicles carry their published length,
+width, height and wheelbase, and the body is built to exactly those. The tests
+check the surface never exceeds the published width or length and that the
+arches clear the stock tires. Cars with no measurements get a typical body for
+their type, and the canvas says so.
+
+**The build changes the car:**
+
+- Wheels and tires are drawn from their actual rolling radius, width and offset.
+  A low-offset wheel pokes, and a staggered set is staggered.
+- Brake kits draw rotors and calipers at their real size and colour.
+- Suspension lowers and pitches the body.
+- Exhausts add tips in their finish.
+- Aero parts add a wing, ducktail, splitter, diffuser or skirts.
+- Paint uses a clearcoated physical material.
+
+**The studio** is built from light-formers rendered into the environment map,
+not from an HDR file. It has a blurred reflective floor, contact shadows, and a
+post-processing pass: ambient occlusion, bloom on the lights, AgX tone mapping
+and a vignette. If the frame rate drops, quality steps down on its own.
+
+`deriveViewerConfig()` turns a vehicle and a set of parts into a
+`ViewerConfig`, and the viewer renders only that.
 
 ## What is deliberately not here
 

@@ -61,6 +61,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["double_wishbone_front", "multilink_rear", "electronic_dampers", "carbon_ceramic_available"],
     bodyProfile: "sedan",
+    dims: [4794, 1903, 1433, 2857],
     paintHex: "#1c1f23",
   }),
 
@@ -106,6 +107,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["double_wishbone_front", "multilink_rear", "electronic_dampers"],
     bodyProfile: "coupe",
+    dims: [4580, 1887, 1403, 2747],
     paintHex: "#b8babd",
   }),
 
@@ -143,6 +145,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["strut_front", "multilink_rear"],
     bodyProfile: "coupe",
+    dims: [4265, 1775, 1310, 2575],
     paintHex: "#c4352f",
   }),
 
@@ -180,6 +183,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["strut_front", "multilink_rear"],
     bodyProfile: "sedan",
+    dims: [4669, 1826, 1466, 2670],
     paintHex: "#2b4c9b",
   }),
 
@@ -217,6 +221,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["strut_front", "multilink_rear", "electronic_dampers", "hatch_body"],
     bodyProfile: "hatch",
+    dims: [4595, 1890, 1405, 2735],
     paintHex: "#e8e9eb",
   }),
 
@@ -254,6 +259,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["strut_front", "multilink_rear"],
     bodyProfile: "sedan",
+    dims: [4674, 1802, 1407, 2735],
     paintHex: "#31353b",
   }),
 
@@ -299,6 +305,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["strut_front", "multilink_rear"],
     bodyProfile: "coupe",
+    dims: [4784, 1916, 1381, 2720],
     paintHex: "#1b4a8c",
   }),
 
@@ -344,6 +351,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["strut_front", "electronic_dampers", "carbon_ceramic_available", "mid_engine"],
     bodyProfile: "coupe",
+    dims: [4405, 1801, 1276, 2475],
     paintHex: "#6e7377",
   }),
 
@@ -381,6 +389,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["strut_front", "multilink_rear", "electronic_dampers", "hatch_body"],
     bodyProfile: "hatch",
+    dims: [4290, 1789, 1458, 2628],
     paintHex: "#2f6ebd",
   }),
 
@@ -418,6 +427,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["strut_front", "multilink_rear", "electronic_dampers"],
     bodyProfile: "sedan",
+    dims: [4542, 1851, 1412, 2631],
     paintHex: "#3f7d52",
   }),
 
@@ -463,6 +473,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["double_wishbone_front", "multilink_rear", "electronic_dampers"],
     bodyProfile: "coupe",
+    dims: [4379, 1854, 1292, 2470],
     paintHex: "#d8442c",
   }),
 
@@ -508,6 +519,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["double_wishbone_front", "multilink_rear"],
     bodyProfile: "coupe",
+    dims: [4380, 1845, 1315, 2550],
     paintHex: "#e0b13a",
   }),
 
@@ -545,6 +557,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["double_wishbone_front", "multilink_rear"],
     bodyProfile: "roadster",
+    dims: [3915, 1735, 1235, 2310],
     paintHex: "#bb2e2a",
   }),
 
@@ -586,6 +599,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["strut_front", "multilink_rear", "electronic_dampers"],
     bodyProfile: "coupe",
+    dims: [4784, 1897, 1348, 2811],
     paintHex: "#d9dc26",
   }),
 
@@ -623,6 +637,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     },
     traits: ["strut_front", "multilink_rear"],
     bodyProfile: "sedan",
+    dims: [4505, 1810, 1480, 2650],
     paintHex: "#d8dade",
   }),
 ];
