@@ -2,7 +2,7 @@
 /**
  * Find free, downloadable 3D models for every car in the catalogue.
  *
- *   node scripts/find-models.mjs [--only bmw] [--limit 50] [--fresh]
+ *   node scripts/find-models.mjs [--only bmw] [--limit 50] [--fresh] [--out file.json]
  *
  * Searches Sketchfab (no account needed to search) for each make and model
  * line, keeps the downloadable ones under a licence the site can use, ranks
@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const IDENTITIES = join(ROOT, "src", "data", "vehicles", "generated", "identities.json");
 const CURATED = join(ROOT, "src", "data", "vehicles", "curated-lines.ts");
-const OUT = join(ROOT, "src", "data", "vehicles", "model-candidates.json");
+const DEFAULT_OUT = join(ROOT, "src", "data", "vehicles", "model-candidates.json");
 
 const USABLE = new Set(["cc0", "by", "by-sa"]);
 const NONCOMMERCIAL = new Set(["by-nc", "by-nc-sa"]);
@@ -132,6 +132,8 @@ async function search(q) {
 
 async function main() {
   const opts = args();
+  // --out lets a long run write somewhere other than the repository until it is done.
+  const OUT = opts.out ? resolve(opts.out) : DEFAULT_OUT;
   const existing = !opts.fresh && existsSync(OUT) ? JSON.parse(readFileSync(OUT, "utf8")) : {};
   const all = modelLines()
     .filter((l) => !opts.only || l.makeSlug === opts.only)
