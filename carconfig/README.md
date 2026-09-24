@@ -166,6 +166,25 @@ not from an HDR file. It has a blurred reflective floor, contact shadows, and a
 post-processing pass: ambient occlusion, bloom on the lights, AgX tone mapping
 and a vignette. If the frame rate drops, quality steps down on its own.
 
+**Real models, where we have them.** Generated bodies cover every car. Real
+3D models make the popular ones look like themselves:
+
+1. `npm run find-models` searches Sketchfab (no account needed) for every
+   model line and writes the best free, downloadable matches to
+   `src/data/vehicles/model-candidates.json`.
+2. `SKETCHFAB_TOKEN=… npm run fetch-all-models` downloads the top candidate
+   per car, checking the licence first. CC0, CC BY and CC BY-SA are
+   accepted; non-commercial licences need `--allow-noncommercial`; no-derivatives
+   and store licences are refused. Each model is optimised to a few MB, and
+   its credit is recorded in `model-assets.json`.
+3. The viewer loads the model, scales it to the car, repaints it, and swaps
+   in the build's wheels when it can find all four. The licence's required
+   credit is shown under the viewer.
+
+A CC licence on Sketchfab is the uploader's claim. Some uploads are
+extracted from games, and the uploader had no right to license them. Check
+a model's page before relying on it for anything public.
+
 `deriveViewerConfig()` turns a vehicle and a set of parts into a
 `ViewerConfig`, and the viewer renders only that.
 

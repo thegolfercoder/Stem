@@ -79,7 +79,8 @@ export function ViewerPanel({ config }: { config: ViewerConfig }) {
             <a href={credit.licenseUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--color-ink)]">
               {credit.licenseLabel}
             </a>
-            . Scaled to the car&apos;s published length.
+            
+            {config.dimensionSource === "published" ? ". Scaled to the car's published length." : ". Representative of the model line."}
           </p>
         ) : (
           <p className="max-w-[62%] text-[10.5px] leading-snug text-[var(--color-ink-faint)]">{caption}</p>

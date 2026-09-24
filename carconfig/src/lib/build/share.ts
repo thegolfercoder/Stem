@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { EncodedBuild } from "@/types/build";
+import { appearanceSchema, isEmptyAppearance, type Appearance } from "./appearance";
 
 /**
  * Share links.
@@ -44,6 +45,7 @@ const encodedBuildSchema = z.object({
     .string()
     .regex(/^[0-9a-fA-F]{6}$/)
     .optional(),
+  a: appearanceSchema.optional(),
 });
 
 export interface ShareableBuild {
@@ -51,6 +53,7 @@ export interface ShareableBuild {
   readonly name: string;
   readonly parts: readonly { slug: string; quantity: number }[];
   readonly paintHex?: string;
+  readonly appearance?: Appearance;
 }
 
 function toBase64Url(input: string): string {
@@ -76,6 +79,7 @@ export function encodeShareCode(build: ShareableBuild): string {
       p.quantity === 1 ? p.slug : ([p.slug, p.quantity] as const),
     ),
     h: build.paintHex?.replace(/^#/, ""),
+    a: isEmptyAppearance(build.appearance) ? undefined : build.appearance,
   };
 
   return toBase64Url(JSON.stringify(payload));
@@ -107,6 +111,7 @@ export function decodeShareCode(code: string): ShareableBuild | null {
           : { slug: entry[0], quantity: entry[1] },
       ),
       paintHex: data.h ? `#${data.h}` : undefined,
+      appearance: data.a,
     };
   } catch {
     return null;

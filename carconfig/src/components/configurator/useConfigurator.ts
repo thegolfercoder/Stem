@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { applyAppearance, type Appearance } from "@/lib/build/appearance";
 import { deriveViewerConfig } from "@/lib/build/viewer-config";
 import { evaluateCompatibility } from "@/lib/compatibility/engine";
 import { estimatePerformance } from "@/lib/performance";
@@ -15,7 +16,7 @@ import type { CatalogVehicle } from "@/types/vehicle";
  * The configurator's state, and everything derived from it.
  *
  * The state itself is three values: which parts are selected, what the build
- * is called, and an optional paint override. Cost, compatibility, performance
+ * is called, and how it looks (paint, wheels, stance — see appearance.ts). Cost, compatibility, performance
  * and the 3D configuration are all recomputed from those — nothing derived is
  * ever stored, so nothing derived can drift out of sync with the build.
  *
@@ -26,7 +27,9 @@ import type { CatalogVehicle } from "@/types/vehicle";
 export interface ConfiguratorInit {
   readonly partIds?: readonly string[];
   readonly name?: string;
+  /** Older links carry only a paint colour. */
   readonly paintHex?: string;
+  readonly appearance?: Appearance;
 }
 
 export function useConfigurator(
@@ -39,9 +42,14 @@ export function useConfigurator(
     init?.partIds ?? [],
   );
   const [name, setName] = useState(init?.name ?? `${vehicle.model} build`);
-  const [paintOverride, setPaintOverride] = useState<string | undefined>(
-    init?.paintHex,
+  const [appearance, setAppearanceState] = useState<Appearance>(
+    init?.appearance ?? (init?.paintHex ? { paintHex: init.paintHex } : {}),
   );
+  /** Merge a change into the appearance; `undefined` clears a field back to the build's own. */
+  const setAppearance = useCallback((patch: Partial<Appearance>) => {
+    setAppearanceState((current) => ({ ...current, ...patch }));
+  }, []);
+  const resetAppearance = useCallback(() => setAppearanceState({}), []);
 
   const partsById = useMemo(
     () => new Map(catalogue.map((p) => [p.id, p])),
@@ -115,8 +123,8 @@ export function useConfigurator(
   );
 
   const viewerConfig = useMemo(
-    () => deriveViewerConfig(vehicle, selectedParts, paintOverride),
-    [vehicle, selectedParts, paintOverride],
+    () => applyAppearance(deriveViewerConfig(vehicle, selectedParts), appearance),
+    [vehicle, selectedParts, appearance],
   );
 
   const toggle = useCallback(
@@ -136,10 +144,10 @@ export function useConfigurator(
         return [...withoutCategory, part.id];
       });
 
-      // Picking a paint clears any manual colour override, so the part wins.
-      if (part.category === "paint") setPaintOverride(undefined);
+      // Picking a paint part clears a hand-picked colour, so the part wins.
+      if (part.category === "paint") setAppearance({ paintHex: undefined, paintFinish: undefined });
     },
-    [partsById],
+    [partsById, setAppearance],
   );
 
   const remove = useCallback((partId: string) => {
@@ -148,7 +156,6 @@ export function useConfigurator(
 
   const clear = useCallback(() => {
     setSelectedIds([]);
-    setPaintOverride(undefined);
   }, []);
 
   return {
@@ -163,8 +170,9 @@ export function useConfigurator(
     cost,
     performance,
     viewerConfig,
-    paintOverride,
-    setPaintOverride,
+    appearance,
+    setAppearance,
+    resetAppearance,
     evaluate,
     toggle,
     remove,

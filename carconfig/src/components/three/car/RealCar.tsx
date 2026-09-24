@@ -70,7 +70,12 @@ function luminance(m: THREE.Material): number {
   return c ? 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b : 0;
 }
 
-function prepare(scene: THREE.Object3D, length: number, tuning: ModelTuning): Prepared {
+/**
+ * `length` is the car's published length, or null when it has none — then the
+ * model keeps its own size if that is a believable car's, since most models
+ * are built to scale, and is scaled to a typical length for its type if not.
+ */
+function prepare(scene: THREE.Object3D, length: number | null, fallbackLength: number, tuning: ModelTuning): Prepared {
   const model = scene.clone(true);
   // Materials are shared with the loader's cache; repainting this car must
   // not repaint every other instance of it.
@@ -95,7 +100,9 @@ function prepare(scene: THREE.Object3D, length: number, tuning: ModelTuning): Pr
   // Published length, centred, on the floor.
   box = new THREE.Box3().setFromObject(root);
   size = box.getSize(new THREE.Vector3());
-  orient.scale.multiplyScalar(length / size.z);
+  const native = size.z;
+  const target = length ?? (native > 3 && native < 6.5 ? native : fallbackLength);
+  orient.scale.multiplyScalar(target / native);
   root.updateMatrixWorld(true);
   box = new THREE.Box3().setFromObject(root);
   const centre = box.getCenter(new THREE.Vector3());
@@ -133,7 +140,7 @@ function prepare(scene: THREE.Object3D, length: number, tuning: ModelTuning): Pr
       // One mesh spanning both sides, or both axles, is all four wheels
       // merged together; nothing sensible can be swapped out of that.
       if (b.min.x < 0 && b.max.x > 0 && b.getSize(new THREE.Vector3()).x > 0.6) merged = true;
-      if (b.min.z < 0 && b.max.z > 0 && b.getSize(new THREE.Vector3()).z > length * 0.4) merged = true;
+      if (b.min.z < 0 && b.max.z > 0 && b.getSize(new THREE.Vector3()).z > target * 0.4) merged = true;
       const c = b.getCenter(new THREE.Vector3());
       if (Math.abs(c.x) < 0.15) return;
       const key = `${c.z > 0 ? "f" : "r"}${c.x > 0 ? "r" : "l"}`;
@@ -176,8 +183,14 @@ function applyPaint(slots: Prepared["paintSlots"], paint: THREE.Material) {
 export function RealCar({ config, asset }: { config: ViewerConfig; asset: ModelAsset }) {
   const gltf = useGLTF(asset.file, false);
   const prepared = useMemo(
-    () => prepare(gltf.scene, config.length, asset.tuning),
-    [gltf.scene, config.length, asset.tuning],
+    () =>
+      prepare(
+        gltf.scene,
+        config.dimensionSource === "published" ? config.length : null,
+        config.length,
+        asset.tuning,
+      ),
+    [gltf.scene, config.dimensionSource, config.length, asset.tuning],
   );
 
   // Repaint when the colour or finish changes.

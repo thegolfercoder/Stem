@@ -55,9 +55,14 @@ interface ManifestEntry {
 
 const ENTRIES = manifest as Readonly<Record<string, ManifestEntry>>;
 
-export function modelAssetFor(profileSlug: string | undefined): ModelAsset | null {
-  if (!profileSlug) return null;
-  const e = ENTRIES[profileSlug];
+/**
+ * The model for a model line ("porsche/911"), shared by every year of it. A
+ * line spans generations, so the model is representative rather than exact;
+ * the credit names the model, year and all, so nobody mistakes which one it is.
+ */
+export function modelAssetFor(makeSlug: string, modelSlug: string): ModelAsset | null {
+  const key = `${makeSlug}/${modelSlug}`;
+  const e = ENTRIES[key];
   if (!e) return null;
   return {
     file: e.file,
@@ -69,6 +74,6 @@ export function modelAssetFor(profileSlug: string | undefined): ModelAsset | nul
       licenseUrl: e.licenseUrl,
       sourceUrl: e.sourceUrl,
     },
-    tuning: TUNING[profileSlug] ?? {},
+    tuning: TUNING[key] ?? {},
   };
 }

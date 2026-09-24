@@ -2,12 +2,12 @@
 /**
  * Fetch a 3D car model, make it web-sized, and record who made it.
  *
- *   SKETCHFAB_TOKEN=… node scripts/fetch-model.mjs --sketchfab <uid> --for <profile-slug>
- *   node scripts/fetch-model.mjs --url <glb-url> --for <profile-slug> \
+ *   SKETCHFAB_TOKEN=… node scripts/fetch-model.mjs --sketchfab <uid> --for <make/model>
+ *   node scripts/fetch-model.mjs --url <glb-url> --for <make/model> \
  *        --name "…" --author "…" --author-url "…" --license by --source-url "…"
  *
  * Output:
- *   public/models/<profile-slug>.glb              the optimised model
+ *   public/models/<make>__<model>.glb             the optimised model
  *   src/data/vehicles/model-assets.json           name, author, licence, source
  *
  * Licences are checked before anything is downloaded. The site republishes
@@ -174,7 +174,7 @@ async function fromUrl(opts, allowNc, work) {
 async function main() {
   const opts = args();
   const target = opts.for;
-  if (!target || !/^[a-z0-9-]+$/.test(target)) fail("--for <profile-slug> is required, e.g. porsche-911-gt3-rs-992-2023");
+  if (!target || !/^[a-z0-9-]+\/[a-z0-9-]+$/.test(target)) fail("--for <make/model> is required, e.g. porsche/911-gt3-rs");
   if (!existsSync(GLTF_TRANSFORM)) fail("Run npm install first (needs @gltf-transform/cli).");
 
   const work = join(tmpdir(), `fetch-model-${Date.now()}`);
@@ -188,7 +188,8 @@ async function main() {
         : fail("Pass --sketchfab <uid> or --url <glb-url>.");
 
     mkdirSync(OUT_DIR, { recursive: true });
-    const out = join(OUT_DIR, `${target}.glb`);
+    const fileName = `${target.replace("/", "__")}.glb`;
+    const out = join(OUT_DIR, fileName);
     console.log(`Optimising ${credit.name}…`);
     execFileSync(
       GLTF_TRANSFORM,
@@ -210,7 +211,7 @@ async function main() {
 
     const manifest = existsSync(MANIFEST) ? JSON.parse(readFileSync(MANIFEST, "utf8")) : {};
     manifest[target] = {
-      file: `/models/${target}.glb`,
+      file: `/models/${fileName}`,
       bytes: statSync(out).size,
       ...credit,
       licenseLabel: LICENSE_LABELS[credit.license],

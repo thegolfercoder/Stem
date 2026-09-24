@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "fetch-model": "node scripts/fetch-model.mjs"
+    "fetch-model": "node scripts/fetch-model.mjs",
+    "find-models": "node scripts/find-models.mjs",
+    "fetch-all-models": "node scripts/fetch-all-models.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

@@ -82,6 +82,7 @@ export default async function SharedBuildPage({
           partIds,
           name: shared.name,
           paintHex: shared.paintHex,
+          appearance: shared.appearance,
         }}
       />
     </main>

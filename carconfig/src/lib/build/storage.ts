@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Build } from "@/types/build";
+import { appearanceSchema } from "./appearance";
 import { generateId } from "./share";
 
 /**
@@ -33,6 +34,7 @@ const buildSchema = z.object({
   vehicleId: z.string().min(1).max(200),
   parts: z.array(buildPartSchema).max(60),
   paintHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  appearance: appearanceSchema.optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
   ownerId: z.string().nullable().optional(),

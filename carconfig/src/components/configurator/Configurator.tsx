@@ -19,6 +19,7 @@ import {
   wheelSizeLabel,
 } from "@/types/vehicle";
 import { CATALOG_STATS } from "@/lib/catalog/identities";
+import { CustomisePanel } from "./CustomisePanel";
 import { useConfigurator, type ConfiguratorInit } from "./useConfigurator";
 
 /**
@@ -54,16 +55,14 @@ export function Configurator({
       <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(330px,380px)_1fr_minmax(300px,340px)] lg:items-start">
         {/* Parts — first in the DOM on mobile would bury the car, so it is
             ordered last there and first on desktop. */}
-        <section className="order-3 h-[560px] overflow-hidden rounded border border-[var(--color-line)] bg-[var(--color-surface)] lg:order-1 lg:h-[calc(100vh-190px)] lg:min-h-[560px]">
-          <PartBrowser state={state} />
+        <section className="order-3 flex h-[560px] flex-col overflow-hidden rounded border border-[var(--color-line)] bg-[var(--color-surface)] lg:order-1 lg:h-[calc(100vh-190px)] lg:min-h-[560px]">
+          <LeftTabs state={state} />
         </section>
 
         <section className="order-1 space-y-3 lg:order-2">
           <div className="h-[340px] sm:h-[420px] lg:h-[calc(100vh-430px)] lg:min-h-[340px]">
             <ViewerPanel config={state.viewerConfig} />
           </div>
-
-          <PaintPicker state={state} />
 
           <div className="grid gap-3 sm:grid-cols-2">
             <PerformancePanel state={state} />
@@ -120,59 +119,41 @@ function VehicleHeader({ vehicle }: { vehicle: CatalogVehicle }) {
   );
 }
 
-const SWATCHES: readonly string[] = [
-  "#1c1f23",
-  "#d8dade",
-  "#8d9196",
-  "#1f5fa8",
-  "#c3261f",
-  "#3f8f4a",
-  "#d9a326",
-  "#6b3fa0",
-];
-
-function PaintPicker({ state }: { state: ReturnType<typeof useConfigurator> }) {
-  const current = state.viewerConfig.paintHex.toLowerCase();
-
+/**
+ * Customise first: how the car looks is what most people come to change.
+ * The parts catalogue — fitment, prices, verdicts — is a tab away.
+ */
+function LeftTabs({ state }: { state: ReturnType<typeof useConfigurator> }) {
+  const [tab, setTab] = useState<"look" | "parts">("look");
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2.5">
-      <span className="text-[11px] uppercase tracking-[0.1em] text-[var(--color-ink-faint)]">
-        Colour
-      </span>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        {SWATCHES.map((hex) => (
+    <>
+      <div role="tablist" aria-label="Build panels" className="flex shrink-0 border-b border-[var(--color-line)]">
+        {(
+          [
+            ["look", "Customise"],
+            ["parts", `Parts${state.selectedParts.length ? ` · ${state.selectedParts.length}` : ""}`],
+          ] as const
+        ).map(([key, label]) => (
           <button
-            key={hex}
+            key={key}
+            role="tab"
             type="button"
-            onClick={() => state.setPaintOverride(hex)}
-            aria-label={`Set colour ${hex}`}
-            aria-pressed={current === hex.toLowerCase()}
-            className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${
-              current === hex.toLowerCase()
-                ? "border-[var(--color-accent)]"
-                : "border-[var(--color-line-bright)]"
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
+            className={`flex-1 px-3 py-2.5 text-[12px] font-medium transition-colors ${
+              tab === key
+                ? "border-b-2 border-[var(--color-accent)] text-[var(--color-ink)]"
+                : "text-[var(--color-ink-dim)] hover:text-[var(--color-ink)]"
             }`}
-            style={{ background: hex }}
-          />
+          >
+            {label}
+          </button>
         ))}
       </div>
-
-      <label className="flex items-center gap-2 text-[11px] text-[var(--color-ink-faint)]">
-        Custom
-        <input
-          type="color"
-          value={state.viewerConfig.paintHex}
-          onChange={(e) => state.setPaintOverride(e.target.value)}
-          aria-label="Custom paint colour"
-          className="h-6 w-8 cursor-pointer rounded border border-[var(--color-line-bright)] bg-transparent"
-        />
-      </label>
-
-      <p className="ml-auto text-[10px] text-[var(--color-ink-faint)]">
-        Preview only — choosing a wrap or respray in Paint adds its cost.
-      </p>
-    </div>
+      <div className="min-h-0 flex-1">
+        {tab === "look" ? <CustomisePanel state={state} /> : <PartBrowser state={state} />}
+      </div>
+    </>
   );
 }
 
@@ -274,6 +255,7 @@ function SaveShareBar({ state }: { state: ReturnType<typeof useConfigurator> }) 
       name: state.name,
       parts: state.selectedParts.map((p) => ({ slug: p.slug, quantity: 1 })),
       paintHex: state.viewerConfig.paintHex,
+      appearance: state.appearance,
     });
 
   const onSave = () => {
@@ -292,6 +274,7 @@ function SaveShareBar({ state }: { state: ReturnType<typeof useConfigurator> }) 
         installCostCentsAtSave: p.installCost?.cents,
       })),
       paintHex: state.viewerConfig.paintHex,
+      appearance: state.appearance,
       createdAt: now,
       updatedAt: now,
       ownerId: null,

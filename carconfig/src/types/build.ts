@@ -1,3 +1,5 @@
+import type { Appearance } from "@/lib/build/appearance";
+
 /**
  * A build: a vehicle plus the parts chosen for it.
  *
@@ -28,6 +30,8 @@ export interface Build {
   readonly parts: readonly BuildPart[];
   /** Overrides the vehicle's default paint. Set by a paint part or directly. */
   readonly paintHex?: string;
+  /** Visual choices made directly: paint, wheels, stance, stripes, body pieces. */
+  readonly appearance?: Appearance;
   /** ISO timestamps. */
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -53,4 +57,6 @@ export interface EncodedBuild {
   readonly p: readonly (string | readonly [string, number])[];
   /** Paint hex without the leading #. */
   readonly h?: string;
+  /** Appearance choices; absent when there are none. */
+  readonly a?: Appearance;
 }

@@ -196,7 +196,7 @@ export function deriveViewerConfig(
     dimensionSource: dims ? "published" : "typical",
     face: model?.face ?? faceFamilyFor(vehicle.makeSlug, style),
     model,
-    asset: modelAssetFor(profile?.slug),
+    asset: modelAssetFor(vehicle.makeSlug, vehicle.modelSlug),
 
     paintHex:
       paintOverrideHex ??
