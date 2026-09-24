@@ -80,7 +80,7 @@ export const BODY_STYLES: Readonly<Record<BodyProfile, StylePreset>> = {
     backlightRun: 0.9, belt: 0.64, nose: 0.47, deck: 0.66, tail: 0.64,
     clearance: 0.12, liftFront: 0.07, liftRear: 0.08,
     roundTop: 4.4, roundBottom: 6.0, cabinRound: 4.0, shoulderRoll: 0.08,
-    shoulder: 0.085, tumblehome: 0.26, hips: 0.035,
+    shoulder: 0.085, tumblehome: 0.2, hips: 0.035,
     noseRatio: 0.88, tailRatio: 0.9, taperFront: 0.32, taperRear: 0.26,
     capFront: 0.085, capRear: 0.07, leanFront: 0.09, leanRear: 0.07,
     doors: 1, roofMaterial: "paint", bed: false,
@@ -90,7 +90,7 @@ export const BODY_STYLES: Readonly<Record<BodyProfile, StylePreset>> = {
     backlightRun: 0.6, belt: 0.66, nose: 0.48, deck: 0.69, tail: 0.66,
     clearance: 0.13, liftFront: 0.07, liftRear: 0.07,
     roundTop: 5.0, roundBottom: 6.5, cabinRound: 4.5, shoulderRoll: 0.07,
-    shoulder: 0.075, tumblehome: 0.24, hips: 0.02,
+    shoulder: 0.075, tumblehome: 0.17, hips: 0.02,
     noseRatio: 0.88, tailRatio: 0.9, taperFront: 0.32, taperRear: 0.26,
     capFront: 0.085, capRear: 0.07, leanFront: 0.08, leanRear: 0.06,
     doors: 2, roofMaterial: "paint", bed: false,
@@ -100,7 +100,7 @@ export const BODY_STYLES: Readonly<Record<BodyProfile, StylePreset>> = {
     backlightRun: 0.16, belt: 0.64, nose: 0.5, deck: 0.72, tail: 0.7,
     clearance: 0.13, liftFront: 0.07, liftRear: 0.06,
     roundTop: 5.0, roundBottom: 6.5, cabinRound: 4.6, shoulderRoll: 0.07,
-    shoulder: 0.07, tumblehome: 0.22, hips: 0.02,
+    shoulder: 0.07, tumblehome: 0.16, hips: 0.02,
     noseRatio: 0.88, tailRatio: 0.9, taperFront: 0.32, taperRear: 0.26,
     capFront: 0.085, capRear: 0.07, leanFront: 0.07, leanRear: 0.03,
     doors: 2, roofMaterial: "paint", bed: false,
@@ -110,7 +110,7 @@ export const BODY_STYLES: Readonly<Record<BodyProfile, StylePreset>> = {
     backlightRun: 0.14, belt: 0.64, nose: 0.49, deck: 0.7, tail: 0.68,
     clearance: 0.14, liftFront: 0.07, liftRear: 0.06,
     roundTop: 5.0, roundBottom: 6.5, cabinRound: 4.8, shoulderRoll: 0.06,
-    shoulder: 0.07, tumblehome: 0.2, hips: 0.02,
+    shoulder: 0.07, tumblehome: 0.15, hips: 0.02,
     noseRatio: 0.88, tailRatio: 0.9, taperFront: 0.32, taperRear: 0.26,
     capFront: 0.085, capRear: 0.07, leanFront: 0.07, leanRear: 0.03,
     doors: 2, roofMaterial: "paint", bed: false,
@@ -120,7 +120,7 @@ export const BODY_STYLES: Readonly<Record<BodyProfile, StylePreset>> = {
     backlightRun: 0.2, belt: 0.62, nose: 0.53, deck: 0.66, tail: 0.66,
     clearance: 0.2, liftFront: 0.1, liftRear: 0.09,
     roundTop: 5.6, roundBottom: 7.0, cabinRound: 5.2, shoulderRoll: 0.06,
-    shoulder: 0.065, tumblehome: 0.16, hips: 0.02,
+    shoulder: 0.065, tumblehome: 0.12, hips: 0.02,
     noseRatio: 0.88, tailRatio: 0.9, taperFront: 0.32, taperRear: 0.26,
     capFront: 0.085, capRear: 0.07, leanFront: 0.05, leanRear: 0.03,
     doors: 2, roofMaterial: "paint", bed: false,
@@ -130,7 +130,7 @@ export const BODY_STYLES: Readonly<Record<BodyProfile, StylePreset>> = {
     backlightRun: 0.42, belt: 0.66, nose: 0.46, deck: 0.66, tail: 0.64,
     clearance: 0.11, liftFront: 0.07, liftRear: 0.07,
     roundTop: 4.2, roundBottom: 6.0, cabinRound: 3.6, shoulderRoll: 0.08,
-    shoulder: 0.11, tumblehome: 0.26, hips: 0.04,
+    shoulder: 0.11, tumblehome: 0.2, hips: 0.04,
     noseRatio: 0.88, tailRatio: 0.9, taperFront: 0.32, taperRear: 0.26,
     capFront: 0.085, capRear: 0.07, leanFront: 0.09, leanRear: 0.07,
     doors: 1, roofMaterial: "fabric", bed: false,
@@ -208,9 +208,3 @@ export const STYLE_DEFAULTS: Readonly<Record<BodyProfile, StyleDefaults>> = {
   },
 };
 
-/** vPIC body classes onto the viewer's styles, for cars with no profile. */
-export const STYLE_FOR_BODY_TYPE = {
-  car: "sedan",
-  mpv: "suv",
-  truck: "truck",
-} as const satisfies Record<string, BodyProfile>;

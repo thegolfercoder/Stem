@@ -93,24 +93,40 @@ export const CABIN = { glass: 0, roof: 1 } as const;
 export function buildTubGeometry(shape: BodyShape, m = 72): THREE.BufferGeometry {
   const ts = thetas(m);
   const rings: Vec3[][] = [];
+  // How far each ring is from the centre of its end face: 1 along the body,
+  // shrinking toward the tip of each cap.
+  const fOf: number[] = [];
 
   for (let k = CAP_RINGS.length - 1; k >= 1; k--) {
     const f = CAP_RINGS[k]!;
     rings.push(ts.map((t) => shape.capPoint("rear", f, t)));
+    fOf.push(f);
   }
   for (const z of shape.tubStations()) {
     rings.push(ts.map((t) => shape.tubPoint(z, t)));
+    fOf.push(1);
   }
   for (let k = 1; k < CAP_RINGS.length; k++) {
     const f = CAP_RINGS[k]!;
     rings.push(ts.map((t) => shape.capPoint("front", f, t)));
+    fOf.push(f);
   }
 
   const S = shape.style;
   const vOf = ts.map(
     (t) => shape.unitSection(t + Math.PI / m, S.roundTop, S.roundBottom).v,
   );
-  return loft(rings, (_r, j) => (vOf[j]! < -0.72 ? TUB.underbody : TUB.paint), 2);
+  // The dark band is the underside. On the caps a point's real height on the
+  // face is v·f, so the band ends in a clean lip along the bottom of each
+  // bumper instead of converging on the middle of the face.
+  return loft(
+    rings,
+    (r, j) => {
+      const f = Math.max(fOf[r]!, fOf[r + 1]!);
+      return vOf[j]! * f < -0.72 ? TUB.underbody : TUB.paint;
+    },
+    2,
+  );
 }
 
 /**

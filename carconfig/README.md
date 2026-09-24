@@ -133,6 +133,18 @@ normals stay smooth end to end. A separate greenhouse sits on top. Seven body
 styles (`body-styles.ts`) set the proportions: cowl, windshield rake, roof
 length, backlight, tumblehome, door count, and so on.
 
+**Faces say whose car it is.** Each make maps to a face family
+(`face-styles.ts`): kidney grilles, a single-frame octagon, seven slots and
+round lamps, a grille-less nose for rear-engined and electric cars, and so on.
+Each family sets the headlight shape and angle, DRLs, intakes and tail lamps.
+They are stylised signatures with no logos, and makes without one get a
+modern default.
+
+**Body style comes from the model when vPIC can't tell.** vPIC calls a 911 a
+"car" and a Wrangler a "truck", so `model-styles.ts` names the body style for
+well-known model lines. A body style is a categorical fact about a model, not a
+measurement.
+
 **Sizes come from the car.** Profiled vehicles carry their published length,
 width, height and wheelbase, and the body is built to exactly those. The tests
 check the surface never exceeds the published width or length and that the

@@ -1,6 +1,8 @@
 import type { BrakePartSpec, Part, TirePartSpec, WheelPartSpec } from "@/types/part";
+import { bodyStyleFor } from "@/data/vehicles/model-styles";
+import { faceFamilyFor, type FaceFamily } from "@/lib/three/face-styles";
 import type { BodyProfile, CatalogVehicle } from "@/types/vehicle";
-import { STYLE_DEFAULTS, STYLE_FOR_BODY_TYPE } from "@/lib/three/body-styles";
+import { STYLE_DEFAULTS } from "@/lib/three/body-styles";
 
 /**
  * What the 3D viewer draws, derived from the vehicle and the build.
@@ -48,6 +50,8 @@ export interface ViewerConfig {
    * are a stand-in for the body style. The viewer says which.
    */
   readonly dimensionSource: "published" | "typical";
+  /** The make's face: grille, lamps and intakes. */
+  readonly face: FaceFamily;
 
   readonly paintHex: string;
   readonly paintFinish: "gloss" | "satin" | "matte" | "metallic";
@@ -98,17 +102,6 @@ export function pokeM(axle: Pick<AxleConfig, "stock" | "fitted">): number {
 
 const STOCK_CALIPER = "#2b2e33";
 
-/**
- * A body style for a car nobody has measured, from its vPIC classes. A model
- * line listed as both car and MPV (a few crossovers are) draws as a car.
- */
-function styleForTypes(types: CatalogVehicle["types"]): BodyProfile {
-  if (types.includes("truck")) return STYLE_FOR_BODY_TYPE.truck;
-  if (types.includes("car")) return STYLE_FOR_BODY_TYPE.car;
-  if (types.includes("mpv")) return STYLE_FOR_BODY_TYPE.mpv;
-  return STYLE_FOR_BODY_TYPE.car;
-}
-
 export function deriveViewerConfig(
   vehicle: CatalogVehicle,
   parts: readonly Part[],
@@ -116,7 +109,7 @@ export function deriveViewerConfig(
 ): ViewerConfig {
   const profile = vehicle.profile;
 
-  const style: BodyProfile = profile?.bodyProfile ?? styleForTypes(vehicle.types);
+  const style: BodyProfile = profile?.bodyProfile ?? bodyStyleFor(vehicle);
   const defaults = STYLE_DEFAULTS[style];
 
   const stockFor = (axle: "front" | "rear"): WheelFit => {
@@ -186,6 +179,7 @@ export function deriveViewerConfig(
     height: (dims?.heightMm ?? defaults.heightMm) / 1000,
     wheelbase: (dims?.wheelbaseMm ?? defaults.wheelbaseMm) / 1000,
     dimensionSource: dims ? "published" : "typical",
+    face: faceFamilyFor(vehicle.makeSlug, style),
 
     paintHex:
       paintOverrideHex ??

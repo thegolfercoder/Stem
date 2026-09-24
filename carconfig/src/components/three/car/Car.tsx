@@ -91,7 +91,7 @@ export function Car({ config }: { config: ViewerConfig }) {
           finish={config.paintFinish}
           archInners={{ front: front.inner, rear: rear.inner }}
         />
-        <Lights shape={shape} />
+        <Lights shape={shape} face={config.face} />
         <Doors shape={shape} />
         <Mirrors shape={shape} paintHex={config.paintHex} finish={config.paintFinish} />
         <Exhaust shape={shape} tips={config.exhaustTips} finish={config.tipFinish} />

@@ -1,5 +1,6 @@
 "use client";
 
+import { RoundedBox } from "@react-three/drei";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import type { BodyShape } from "@/lib/three/body-shape";
@@ -7,6 +8,7 @@ import { surfaceNormal } from "@/lib/three/body-shape";
 import type { ViewerConfig } from "@/lib/build/viewer-config";
 import { buildSurfacePatch, endSurface } from "./geometry";
 import { paintMaterial, trimMaterial } from "./materials";
+import { faceDesign, type FaceFamily, type FaceSpec } from "@/lib/three/face-styles";
 
 /**
  * Lights, grille, mirrors and exhaust.
@@ -19,70 +21,48 @@ import { paintMaterial, trimMaterial } from "./materials";
 
 const DEG = Math.PI / 180;
 
-/**
- * A rounded-rectangle skin on an end face, described in normalised face
- * coordinates so it scales with every car: (cx, cy) is its centre and (a, b)
- * its half-size, with −1..1 spanning the face. `n` is how square the corners
- * are — 2 is an ellipse, 6 is nearly a rectangle.
- */
-interface FaceSpec {
-  readonly end: "front" | "rear";
-  readonly cx: number;
-  readonly cy: number;
-  readonly a: number;
-  readonly b: number;
-  readonly n: number;
-}
-
 function useFacePatches(shape: BodyShape, specs: readonly FaceSpec[]) {
   const geometries = useMemo(
     () =>
-      specs.map(({ end, cx, cy, a, b, n }) =>
-        buildSurfacePatch(
+      specs.map(({ end, cx, cy, a, b, n, rot = 0, lift = 0.003 }) => {
+        const cr = Math.cos(rot);
+        const sr = Math.sin(rot);
+        return buildSurfacePatch(
           (r, phi) => {
             const c = Math.cos(phi);
             const sn = Math.sin(phi);
-            const u = Math.sign(c) * Math.abs(c) ** (2 / n);
-            const v = Math.sign(sn) * Math.abs(sn) ** (2 / n);
-            return shape.facePoint(end, cx + a * r * u, cy + b * r * v);
+            const u = a * r * Math.sign(c) * Math.abs(c) ** (2 / n);
+            const v = b * r * Math.sign(sn) * Math.abs(sn) ** (2 / n);
+            // Tilt in face coordinates; the face is wider than tall, so this
+            // is a gentle shear rather than a true rotation, which is what
+            // a lamp swept up the wing looks like head-on.
+            return shape.facePoint(end, cx + u * cr - v * sr, cy + u * sr + v * cr);
           },
           [0.0001, 1],
           [0, Math.PI * 2],
           [10, 48],
-          0.003,
-        ),
-      ),
-    // specs are static per call site
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [shape],
+          lift,
+        );
+      }),
+    [shape, specs],
   );
   useEffect(() => () => geometries.forEach((g) => g.dispose()), [geometries]);
   return geometries;
 }
 
-const both = (spec: Omit<FaceSpec, "cx"> & { cx: number }): FaceSpec[] => [
-  spec,
-  { ...spec, cx: -spec.cx },
-];
-
-const HEADLIGHTS = both({ end: "front", cx: 0.64, cy: 0.4, a: 0.25, b: 0.11, n: 4 });
-const DRL = both({ end: "front", cx: 0.62, cy: 0.27, a: 0.21, b: 0.022, n: 6 });
-const GRILLE: FaceSpec[] = [{ end: "front", cx: 0, cy: 0.28, a: 0.3, b: 0.14, n: 3.5 }];
-const INTAKE: FaceSpec[] = [
-  { end: "front", cx: 0, cy: -0.36, a: 0.56, b: 0.2, n: 4.5 },
-  ...both({ end: "front", cx: 0.8, cy: -0.28, a: 0.1, b: 0.17, n: 3 }),
-];
-const TAILLIGHTS = both({ end: "rear", cx: 0.66, cy: 0.44, a: 0.25, b: 0.1, n: 4.5 });
-const LIGHT_BAR: FaceSpec[] = [{ end: "rear", cx: 0, cy: 0.46, a: 0.44, b: 0.018, n: 8 }];
 const VALANCE: FaceSpec[] = [{ end: "rear", cx: 0, cy: -0.58, a: 0.78, b: 0.26, n: 4 }];
-const PLATE: FaceSpec[] = [{ end: "rear", cx: 0, cy: -0.02, a: 0.19, b: 0.08, n: 6 }];
+const PLATE: FaceSpec[] = [{ end: "rear", cx: 0, cy: -0.02, a: 0.19, b: 0.08, n: 6, lift: 0.005 }];
 
-export function Lights({ shape }: { shape: BodyShape }) {
-  const heads = useFacePatches(shape, HEADLIGHTS);
-  const drl = useFacePatches(shape, DRL);
-  const grille = useFacePatches(shape, GRILLE);
-  const intake = useFacePatches(shape, INTAKE);
-  const tails = useFacePatches(shape, [...TAILLIGHTS, ...LIGHT_BAR]);
+export function Lights({ shape, face }: { shape: BodyShape; face: FaceFamily }) {
+  const design = faceDesign(face);
+  const heads = useFacePatches(shape, design.headlights);
+  const drl = useFacePatches(shape, design.drl);
+  const projectors = useFacePatches(shape, design.projectors);
+  const surround = useFacePatches(shape, design.surround);
+  const grille = useFacePatches(shape, design.grille);
+  const intakes = useFacePatches(shape, design.intakes);
+  const tails = useFacePatches(shape, design.taillights);
+  const bar = useFacePatches(shape, design.lightBar);
   const valance = useFacePatches(shape, VALANCE);
   const plate = useFacePatches(shape, PLATE);
 
@@ -100,6 +80,18 @@ export function Lights({ shape }: { shape: BodyShape }) {
           />
         </mesh>
       ))}
+      {projectors.map((g, i) => (
+        <mesh key={`p${i}`} geometry={g}>
+          <meshPhysicalMaterial
+            color="#c9d3dc"
+            metalness={1}
+            roughness={0.15}
+            emissive="#bcd6ff"
+            emissiveIntensity={0.35}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
       {drl.map((g, i) => (
         <mesh key={`d${i}`} geometry={g}>
           <meshStandardMaterial
@@ -111,7 +103,7 @@ export function Lights({ shape }: { shape: BodyShape }) {
           />
         </mesh>
       ))}
-      {tails.map((g, i) => (
+      {[...tails, ...bar].map((g, i) => (
         <mesh key={`t${i}`} geometry={g}>
           <meshPhysicalMaterial
             color="#2a0305"
@@ -124,7 +116,12 @@ export function Lights({ shape }: { shape: BodyShape }) {
           />
         </mesh>
       ))}
-      {[...grille, ...intake].map((g, i) => (
+      {surround.map((g, i) => (
+        <mesh key={`s${i}`} geometry={g}>
+          <meshPhysicalMaterial color="#d9dde2" metalness={1} roughness={0.12} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+      {[...grille, ...intakes].map((g, i) => (
         <mesh key={`g${i}`} geometry={g}>
           <meshPhysicalMaterial
             color="#050607"
@@ -141,7 +138,7 @@ export function Lights({ shape }: { shape: BodyShape }) {
         </mesh>
       ))}
       {plate.map((g, i) => (
-        <mesh key={`p${i}`} geometry={g}>
+        <mesh key={`l${i}`} geometry={g}>
           <meshStandardMaterial color="#d8dcdf" roughness={0.4} side={THREE.DoubleSide} />
         </mesh>
       ))}
@@ -173,22 +170,29 @@ export function Mirrors({
   const belt = shape.tubSection(z).yTop;
   const y = belt + 0.055;
 
+  // A housing is about 22cm across, 12cm tall and 8cm deep, long across the
+  // car, standing out from the door on a short arm.
+  const W = 0.2;
   return (
     <>
       {[1, -1].map((side) => (
-        <group key={side} position={[side * (hw + 0.055), y, z]} rotation={[0, side * 0.12, 0]}>
-          {/* Housing: a flattened teardrop, blunt face forward. */}
-          <mesh material={cap} scale={[0.07, 0.058, 0.1]} castShadow>
-            <sphereGeometry args={[1, 32, 20]} />
+        <group key={side} position={[side * (hw + 0.035), y, z]} rotation={[0, side * 0.1, 0]}>
+          <RoundedBox
+            args={[W, 0.11, 0.075]}
+            radius={0.032}
+            smoothness={4}
+            material={cap}
+            position={[side * (W / 2), 0.02, 0]}
+            castShadow
+          />
+          {/* The glass, on the rearward face. */}
+          <mesh position={[side * (W / 2), 0.02, -0.0385]} rotation={[0, Math.PI, 0]}>
+            <planeGeometry args={[W - 0.03, 0.08]} />
+            <meshPhysicalMaterial color="#0a0e12" metalness={0.95} roughness={0.04} />
           </mesh>
-          {/* The glass, facing rearward. */}
-          <mesh position={[0, 0, -0.07]} rotation={[0, Math.PI, 0]} scale={[0.058, 0.046, 1]}>
-            <circleGeometry args={[1, 32]} />
-            <meshPhysicalMaterial color="#0a0e12" metalness={0.9} roughness={0.05} />
-          </mesh>
-          {/* Stalk back to the door. */}
-          <mesh material={trim} position={[-side * 0.045, -0.04, 0.01]}>
-            <boxGeometry args={[0.07, 0.02, 0.05]} />
+          {/* Arm back to the door. */}
+          <mesh material={trim} position={[side * 0.005, -0.025, 0.01]}>
+            <boxGeometry args={[0.05, 0.03, 0.06]} />
           </mesh>
         </group>
       ))}
