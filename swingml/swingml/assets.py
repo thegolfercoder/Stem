@@ -27,6 +27,8 @@ POSE_MODEL_URL = (
 )
 POSE_MODEL_NAME = "pose_landmarker_heavy.task"
 EVENT_MODEL_NAME = "swing_event_net.pt"
+EVENT_MODEL_NUMPY_NAME = "swing_event_net.npz"
+"""The same weights for the NumPy network, which the packaged application runs."""
 EVENT_CALIBRATION_NAME = "event_calibration.json"
 
 HOME_ENV_VAR = "SWINGML_HOME"
@@ -50,6 +52,12 @@ def models_dir() -> Path:
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
+
+
+def package_data() -> Path:
+    """The data shipped inside the package, wherever the package itself is: the
+    repository, a pip install, or a packaged desktop application's bundle."""
+    return Path(__file__).resolve().parent / "data"
 
 
 def _search_paths(name: str, env_var: str, extra: list[Path]) -> list[Path]:
@@ -85,20 +93,31 @@ def find_event_model() -> Path | None:
     synthetic landmarks, because it is measurably better on real video.
     """
     root = _repo_root() / "swingml"
-    for path in _search_paths(
-        EVENT_MODEL_NAME,
-        EVENT_MODEL_ENV_VAR,
-        [
-            root / "swingml" / "data" / EVENT_MODEL_NAME,
-            root / "out" / "finetuned" / EVENT_MODEL_NAME,
-            root / "out" / "events" / EVENT_MODEL_NAME,
-            Path("out") / "finetuned" / EVENT_MODEL_NAME,
-            Path("out") / "events" / EVENT_MODEL_NAME,
-        ],
-    ):
-        if path.is_file():
-            return path
+    # PyTorch trains the model and the development install has it; the packaged
+    # application does not, and runs the NumPy copy of the same weights.
+    names = [EVENT_MODEL_NAME, EVENT_MODEL_NUMPY_NAME] if have_torch() else [EVENT_MODEL_NUMPY_NAME]
+    for name in names:
+        for path in _search_paths(
+            name,
+            EVENT_MODEL_ENV_VAR,
+            [
+                package_data() / name,
+                root / "out" / "finetuned" / name,
+                root / "out" / "events" / name,
+                Path("out") / "finetuned" / name,
+                Path("out") / "events" / name,
+            ],
+        ):
+            if path.is_file() and (path.suffix == ".npz" or have_torch()):
+                return path
     return None
+
+
+def have_torch() -> bool:
+    """Whether PyTorch can be imported here, without importing it."""
+    import importlib.util
+
+    return importlib.util.find_spec("torch") is not None
 
 
 def find_event_calibrations() -> list[Path]:
@@ -123,7 +142,7 @@ def find_event_calibrations() -> list[Path]:
         [
             root / "out" / "calibration" / EVENT_CALIBRATION_NAME,
             Path("out") / "calibration" / EVENT_CALIBRATION_NAME,
-            root / "swingml" / "data" / EVENT_CALIBRATION_NAME,
+            package_data() / EVENT_CALIBRATION_NAME,
         ],
     ):
         if path.is_file() and path not in found:
@@ -161,7 +180,7 @@ def find_event_ensemble() -> list[Path]:
     for root in roots:
         if not root.is_dir():
             continue
-        members = sorted(root.glob("member_*.pt"))
+        members = sorted(root.glob("member_*.pt" if have_torch() else "member_*.npz"))
         if members:
             return members
     return []

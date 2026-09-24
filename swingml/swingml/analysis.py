@@ -22,9 +22,9 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import torch
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -44,11 +44,14 @@ from swingml.model.ensemble import (
     EnsembleConfig,
     SwingEventEnsemble,
 )
-from swingml.model.tcn import DEFAULT_DILATIONS, PaddingMode, SwingEventNet
+from swingml.model.numpy_net import NumpyEventNet
 from swingml.pose.base import PoseEstimator, PoseSequence
 from swingml.quantity import NoReading
 from swingml.skeleton import Handedness
 from swingml.video.reader import VideoInfo, VideoReader
+
+if TYPE_CHECKING:
+    from swingml.model.tcn import PaddingMode, SwingEventNet
 
 
 class AnalysisConfig(BaseModel):
@@ -249,6 +252,8 @@ def save_model(model: SwingEventNet, path: Path | str) -> None:
     offers a kernel size and a padding mode, and a run that changed either wrote a
     checkpoint that quietly came back as a different network.
     """
+    import torch
+
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
@@ -264,12 +269,21 @@ def save_model(model: SwingEventNet, path: Path | str) -> None:
     )
 
 
-def load_model(checkpoint_path: Path | str) -> SwingEventNet:
+def load_model(checkpoint_path: Path | str) -> SwingEventNet | NumpyEventNet:
     """Rebuild the trained model from a checkpoint.
 
     Tolerant of a checkpoint that predates a field, because a model that took an
     hour to train should not become unloadable over a missing dictionary key.
+
+    An .npz is the same weights for the NumPy network the packaged application
+    runs, which needs no PyTorch; a .pt is the PyTorch checkpoint training writes.
     """
+    if Path(checkpoint_path).suffix == ".npz":
+        return NumpyEventNet.load(checkpoint_path)
+    import torch
+
+    from swingml.model.tcn import DEFAULT_DILATIONS, SwingEventNet
+
     checkpoint = torch.load(str(checkpoint_path), map_location="cpu", weights_only=False)
     state = checkpoint["state_dict"]
 
@@ -325,7 +339,7 @@ def _implausible_timing(
     return None
 
 
-def model_fingerprint(model: SwingEventNet | SwingEventEnsemble) -> str:
+def model_fingerprint(model: SwingEventNet | NumpyEventNet | SwingEventEnsemble) -> str:
     """The digest a calibration is checked against.
 
     An ensemble folds in every member and the settings that change its answers,
@@ -336,8 +350,8 @@ def model_fingerprint(model: SwingEventNet | SwingEventEnsemble) -> str:
     if isinstance(model, SwingEventEnsemble):
         parts: list[tuple[str, NDArray[np.float32]]] = []
         for index, member in enumerate(model.members):
-            for name, tensor in member.state_dict().items():
-                parts.append((f"{index}.{name}", tensor.detach().numpy()))
+            for name, values in _weights(member):
+                parts.append((f"{index}.{name}", values))
         warps = ",".join(f"{w:.6f}" for w in model.config.time_warps)
         return fingerprint_state(
             [
@@ -348,9 +362,14 @@ def model_fingerprint(model: SwingEventNet | SwingEventEnsemble) -> str:
                 ),
             ]
         )
-    return fingerprint_state(
-        (name, tensor.detach().numpy()) for name, tensor in model.state_dict().items()
-    )
+    return fingerprint_state(_weights(model))
+
+
+def _weights(model: SwingEventNet | NumpyEventNet) -> list[tuple[str, NDArray[np.float32]]]:
+    """Every named weight array, whichever implementation holds them."""
+    if isinstance(model, NumpyEventNet):
+        return list(model.arrays.items())
+    return [(name, tensor.detach().numpy()) for name, tensor in model.state_dict().items()]
 
 
 class ResolvedModel(BaseModel):
@@ -367,7 +386,10 @@ class ResolvedModel(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid", arbitrary_types_allowed=True)
 
-    model: SwingEventNet | SwingEventEnsemble
+    # Any, because naming the PyTorch network here would import PyTorch, which
+    # the packaged application runs without: SwingEventNet, NumpyEventNet or an
+    # ensemble of either.
+    model: Any
     paths: tuple[Path, ...]
     calibration: ModelCalibration | None
 
@@ -397,7 +419,7 @@ def resolve_model(
     paths: tuple[Path, ...]
     if explicit is not None:
         paths = (Path(explicit),)
-        model: SwingEventNet | SwingEventEnsemble = load_model(explicit)
+        model: SwingEventNet | NumpyEventNet | SwingEventEnsemble = load_model(explicit)
     else:
         members = find_event_ensemble()
         if members:
@@ -430,7 +452,7 @@ def resolve_model(
 
 def analyse_pose_sequence(
     sequence: PoseSequence,
-    model: SwingEventNet | SwingEventEnsemble,
+    model: SwingEventNet | NumpyEventNet | SwingEventEnsemble,
     config: AnalysisConfig | None = None,
     video: VideoInfo | None = None,
 ) -> SwingAnalysis:
@@ -447,9 +469,11 @@ def analyse_pose_sequence(
     detection_rate = float(np.mean(resampled.detected)) if resampled.detected is not None else 1.0
 
     features = extract_features(resampled, config.handedness, config.features)
-    if isinstance(model, SwingEventEnsemble):
+    if isinstance(model, SwingEventEnsemble | NumpyEventNet):
         logits = model.logits(features)
     else:
+        import torch
+
         # Asked for explicitly rather than assumed. `load_model` does it, so the
         # shipped path was fine, but a model handed straight over from training is
         # still in training mode and its dropout is still on - which does not fail,
@@ -571,7 +595,7 @@ def analyse_pose_sequence(
 
 def analyse_video(
     path: Path | str,
-    model: SwingEventNet | SwingEventEnsemble,
+    model: SwingEventNet | NumpyEventNet | SwingEventEnsemble,
     estimator: PoseEstimator,
     config: AnalysisConfig | None = None,
     on_progress: Callable[[int, int], None] | None = None,

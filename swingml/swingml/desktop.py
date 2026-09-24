@@ -19,6 +19,7 @@ import threading
 import time
 import urllib.request
 import webbrowser
+from collections.abc import Callable
 from pathlib import Path
 
 from werkzeug.serving import make_server
@@ -76,10 +77,10 @@ class LocalServer:
         self._server.shutdown()
 
 
-def _quietly(function: object) -> object:
+def _quietly(function: Callable[[], object]) -> Callable[[], None]:
     def run() -> None:
         try:
-            function()  # type: ignore[operator]
+            function()
         except Exception as error:  # a missing model is reported by the page itself
             print(f"warm-up skipped: {error}")
 
@@ -89,7 +90,7 @@ def _quietly(function: object) -> object:
 def open_window(url: str) -> bool:
     """Show the application in a native window; False if one cannot be opened."""
     try:
-        import webview  # pywebview
+        import webview  # type: ignore[import-not-found]  # pywebview
     except ImportError:
         return False
     try:

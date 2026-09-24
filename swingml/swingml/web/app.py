@@ -429,11 +429,7 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
 
         chosen = request.form.get("handedness", "auto")
         handedness: Handedness | None = (
-            Handedness.LEFT
-            if chosen == "left"
-            else Handedness.RIGHT
-            if chosen == "right"
-            else None
+            Handedness.LEFT if chosen == "left" else Handedness.RIGHT if chosen == "right" else None
         )
         club = (request.form.get("club") or "").strip() or None
         label = (request.form.get("label") or "").strip() or None

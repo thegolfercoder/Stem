@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import IO
+from typing import IO, TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import NDArray
@@ -49,7 +49,7 @@ from swingml.model.calibration import ModelCalibration
 from swingml.model.ensemble import (
     SwingEventEnsemble,
 )
-from swingml.model.tcn import SwingEventNet
+from swingml.model.numpy_net import NumpyEventNet
 from swingml.pose.base import PoseSequence
 from swingml.pose.mediapipe_pose import MediaPipePoseEstimator
 from swingml.quantity import NoReading
@@ -57,6 +57,9 @@ from swingml.skeleton import Handedness, infer_handedness
 from swingml.store import SwingStore
 from swingml.video.reader import VideoInfo, VideoReader
 from swingml.web.frames import extract_event_frames, extract_sequence_frames
+
+if TYPE_CHECKING:
+    from swingml.model.tcn import SwingEventNet
 
 POSE_MAX_SIDE = 640
 """Frames are shrunk to this before the pose estimator sees them.
@@ -176,7 +179,9 @@ class AnalysisService:
         """Build the model and estimator now rather than on the first upload."""
         self._ensure_loaded()
 
-    def _ensure_loaded(self) -> tuple[SwingEventNet | SwingEventEnsemble, MediaPipePoseEstimator]:
+    def _ensure_loaded(
+        self,
+    ) -> tuple[SwingEventNet | NumpyEventNet | SwingEventEnsemble, MediaPipePoseEstimator]:
         with self._model_lock:
             ok, why = self.ready()
             if not ok:
@@ -231,7 +236,6 @@ class AnalysisService:
                 job.state = JobState.READING
                 job.message = "loading the model"
                 model, _ = self._ensure_loaded()
-                assert isinstance(model, SwingEventNet | SwingEventEnsemble)
 
                 job.message = "finding the body in each frame"
                 sequence, video_info = self._extract_pose(upload_path, job)
@@ -266,7 +270,7 @@ class AnalysisService:
     def analyse(
         self,
         sequence: PoseSequence,
-        model: SwingEventNet | SwingEventEnsemble,
+        model: SwingEventNet | NumpyEventNet | SwingEventEnsemble,
         handedness: Handedness | None,
         video: VideoInfo | None = None,
     ) -> SwingAnalysis:

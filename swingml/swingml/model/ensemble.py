@@ -21,15 +21,18 @@ without being any more right.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
-import torch
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field
 
 from swingml.features import feature_layout
 from swingml.model.augment import time_warp
-from swingml.model.tcn import SwingEventNet
+from swingml.model.numpy_net import NumpyEventNet
+
+if TYPE_CHECKING:
+    from swingml.model.tcn import SwingEventNet
 
 SERVING_TIME_WARPS: tuple[float, ...] = (0.92, 1.0, 1.09)
 """The speeds an ensemble is shown each clip at when it answers for real.
@@ -61,7 +64,9 @@ class SwingEventEnsemble:
     rest of the pipeline does not need to know which it has.
     """
 
-    def __init__(self, members: list[SwingEventNet], config: EnsembleConfig | None = None) -> None:
+    def __init__(
+        self, members: list[SwingEventNet | NumpyEventNet], config: EnsembleConfig | None = None
+    ) -> None:
         if not members:
             raise ValueError("an ensemble needs at least one model")
         self.members = members
@@ -100,12 +105,9 @@ class SwingEventEnsemble:
                 view = features
             else:
                 view, _ = time_warp(features, events, factor, self.layout)
-            tensor = torch.from_numpy(np.ascontiguousarray(view))[None, ...]
 
             for member in self.members:
-                with torch.no_grad():
-                    logits = member(tensor)[0]
-                probabilities = torch.softmax(logits, dim=-1).numpy().astype(np.float64)
+                probabilities = _softmax(_member_logits(member, view))
                 if probabilities.shape[0] != n_frames:
                     probabilities = _resample_rows(probabilities, n_frames)
                 accumulated = probabilities if accumulated is None else accumulated + probabilities
@@ -117,6 +119,25 @@ class SwingEventEnsemble:
     def logits(self, features: NDArray[np.float32]) -> NDArray[np.float32]:
         """Log of the averaged probabilities, for a decoder that wants scores."""
         return np.log(np.maximum(self.probabilities(features), 1e-12)).astype(np.float32)
+
+
+def _member_logits(
+    member: SwingEventNet | NumpyEventNet, features: NDArray[np.float32]
+) -> NDArray[np.float64]:
+    """One member's scores, in NumPy or through PyTorch, whichever it is."""
+    if isinstance(member, NumpyEventNet):
+        return member.logits(features).astype(np.float64)
+    import torch
+
+    with torch.no_grad():
+        tensor = torch.from_numpy(np.ascontiguousarray(features))[None, ...]
+        return np.asarray(member(tensor)[0].numpy(), dtype=np.float64)
+
+
+def _softmax(logits: NDArray[np.float64]) -> NDArray[np.float64]:
+    shifted = logits - logits.max(axis=-1, keepdims=True)
+    exp = np.exp(shifted)
+    return np.asarray(exp / exp.sum(axis=-1, keepdims=True), dtype=np.float64)
 
 
 def _resample_rows(values: NDArray[np.float64], target: int) -> NDArray[np.float64]:
