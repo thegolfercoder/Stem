@@ -51,13 +51,19 @@ export function paintMaterial(
 export const underbodyMaterial = () =>
   new THREE.MeshStandardMaterial({ color: "#07080a", roughness: 0.85, metalness: 0.1 });
 
-/** Tinted glass. Opaque on purpose: there is no interior to see through to. */
+/**
+ * Tinted glass. See-through enough to make out the seats, dark enough that
+ * the cabin's simplicity does not show.
+ */
 export const glassMaterial = () =>
   new THREE.MeshPhysicalMaterial({
     color: "#0a0f14",
     metalness: 0.1,
     roughness: 0.06,
     envMapIntensity: 0.85,
+    transparent: true,
+    opacity: 0.62,
+    depthWrite: false,
   });
 
 export const fabricRoofMaterial = () =>

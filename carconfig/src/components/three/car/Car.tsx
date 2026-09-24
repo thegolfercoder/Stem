@@ -8,6 +8,7 @@ import { Aero } from "./Aero";
 import { Body } from "./Body";
 import { Doors, Exhaust, Lights, Mirrors } from "./Details";
 import { Stripes } from "./Stripes";
+import { Interior } from "./Interior";
 import { Trim } from "./Trim";
 import { Vents } from "./Vents";
 import { Wheel } from "./Wheel";
@@ -112,6 +113,7 @@ export function Car({ config }: { config: ViewerConfig }) {
         />
         <Lights shape={shape} face={config.face} />
         <Stripes shape={shape} style={config.stripe} hex={config.stripeHex} />
+        <Interior shape={shape} />
         <Trim shape={shape} />
         <Doors shape={shape} />
         <Mirrors shape={shape} paintHex={config.paintHex} finish={config.paintFinish} />

@@ -96,34 +96,44 @@ export function buildTubGeometry(shape: BodyShape, m = 72): THREE.BufferGeometry
   // How far each ring is from the centre of its end face: 1 along the body,
   // shrinking toward the tip of each cap.
   const fOf: number[] = [];
+  const zOf: number[] = [];
 
   for (let k = CAP_RINGS.length - 1; k >= 1; k--) {
     const f = CAP_RINGS[k]!;
     rings.push(ts.map((t) => shape.capPoint("rear", f, t)));
     fOf.push(f);
+    zOf.push(shape.zRear);
   }
   for (const z of shape.tubStations()) {
     rings.push(ts.map((t) => shape.tubPoint(z, t)));
     fOf.push(1);
+    zOf.push(z);
   }
   for (let k = 1; k < CAP_RINGS.length; k++) {
     const f = CAP_RINGS[k]!;
     rings.push(ts.map((t) => shape.capPoint("front", f, t)));
     fOf.push(f);
+    zOf.push(shape.zFront);
   }
 
   const S = shape.style;
-  const vOf = ts.map(
-    (t) => shape.unitSection(t + Math.PI / m, S.roundTop, S.roundBottom).v,
-  );
+  const unit = ts.map((t) => shape.unitSection(t + Math.PI / m, S.roundTop, S.roundBottom));
+  const vOf = unit.map((p) => p.v);
   // The dark band is the underside. On the caps a point's real height on the
   // face is v·f, so the band ends in a clean lip along the bottom of each
   // bumper instead of converging on the middle of the face.
+  //
+  // The top of the tub under the greenhouse is the cabin floor as seen
+  // through the glass, so it is dark trim too rather than painted metal.
   return loft(
     rings,
     (r, j) => {
       const f = Math.max(fOf[r]!, fOf[r + 1]!);
-      return vOf[j]! * f < -0.72 ? TUB.underbody : TUB.paint;
+      if (vOf[j]! * f < -0.72) return TUB.underbody;
+      const z = (zOf[r]! + zOf[r + 1]!) / 2;
+      const underGlass = z > shape.zBacklight + 0.02 && z < shape.zCowl - 0.02;
+      if (underGlass && vOf[j]! > 0.9 && Math.abs(unit[j]!.u) < 0.8) return TUB.underbody;
+      return TUB.paint;
     },
     2,
   );
