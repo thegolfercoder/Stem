@@ -37,16 +37,18 @@ export function materialWords(name: string): string {
 
 // Ordered: the first match wins, so "headlight glass" is a lens, not glass,
 // and "gloss black trim" is piano black, not plastic.
+const LAMP_WORDS =
+  "head ?lights?|tail ?lights?|lamps?|lights?|indicators?|blinkers?|phares?|feux|faros?|fanali|luce|luz|scheinwerfer|leuchten?";
 const RULES: readonly (readonly [MaterialKind, RegExp])[] = [
-  ["lens", /\b(head ?lights?|tail ?lights?|lamps?|lights?|indicators?|blinkers?) ?(glass|lens|cover)|\blens(es)?\b/],
-  ["glass", /\b(glass|windows?|windscreen|windshield|backlight)\b/],
-  ["tyre", /\b(tyres?|tires?|rubber|tread|sidewall)\b/],
-  ["carbon", /\b(carbon|cfrp|carbon ?fib(re|er))\b/],
+  ["lens", new RegExp(`\\b(${LAMP_WORDS}) ?(glass|lens|cover|vitre|verre|vetro|vidrio|glas)|\\blens(es)?\\b`)],
+  ["glass", /\b(glass|windows?|windscreen|windshield|backlight|vitres?|verre|vetro|vetri\w*|vidrios?|cristal(es)?|glas|scheiben?|ventanas?|finestrini)\b/],
+  ["tyre", /\b(tyres?|tires?|rubber|tread|sidewall|pneus?|pneumatici|gomma|gomme|goma|neumaticos?|reifen)\b/],
+  ["carbon", /\b(carbon|cfrp|carbon ?fib(re|er)|carbone|carbono)\b/],
   ["piano_black", /\b(piano ?black|gloss ?black|black ?gloss)\b/],
-  ["chrome", /\b(chrome|chromed|mirror ?finish|polished)\b/],
-  ["aluminium", /\b(alumin(i)?um|brushed ?metal|alloy)\b/],
-  ["leather", /\b(leather|alcantara|suede|upholstery)\b/],
-  ["plastic", /\b(plastic|trim ?black|black ?trim|textured|matte ?black|grille|grill)\b/],
+  ["chrome", /\b(chrome|chromed|mirror ?finish|polished|chromo|cromo|cromato|chrom)\b/],
+  ["aluminium", /\b(alumin(i)?um|brushed ?metal|alloy|alu)\b/],
+  ["leather", /\b(leather|alcantara|suede|upholstery|cuir|pelle|cuero|leder)\b/],
+  ["plastic", /\b(plastic|trim ?black|black ?trim|textured|matte ?black|grille|grill|plastique|plastica|plastico|kunststoff)\b/],
 ];
 
 export function classifyMaterial(name: string): MaterialKind | null {

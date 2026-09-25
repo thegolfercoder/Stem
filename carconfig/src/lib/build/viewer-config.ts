@@ -1,6 +1,6 @@
 import type { BrakePartSpec, Part, TirePartSpec, WheelPartSpec } from "@/types/part";
 import { bodyStyleFor } from "@/data/vehicles/model-styles";
-import type { PaintFinish, StripeStyle } from "./appearance";
+import type { GlassTint, PaintFinish, StripeStyle } from "./appearance";
 import { modelAssetFor, type ModelAsset } from "@/lib/three/model-assets";
 import { modelShapeFor, type ModelShape } from "@/lib/three/model-shapes";
 import { faceFamilyFor, type FaceFamily } from "@/lib/three/face-styles";
@@ -86,6 +86,10 @@ export interface ViewerConfig {
   /** Stripes over the body, and their colour. */
   readonly stripe: StripeStyle;
   readonly stripeHex: string;
+  /** Window tint, or null for the car's own glass. */
+  readonly tint: GlassTint | null;
+  /** Lamps lit (true), dark (false), or as the car is drawn (null). */
+  readonly lights: boolean | null;
 
   readonly wheelStyle: SpokeStyle;
   readonly wheelFinishHex: string;
@@ -232,6 +236,8 @@ export function deriveViewerConfig(
     caliperChosen: kitPart !== undefined,
     stripe: "none",
     stripeHex: "#f1f2f3",
+    tint: null,
+    lights: null,
 
     wheelStyle: wheelPart?.visual?.wheelStyle ?? model?.stockWheel?.style ?? "five_spoke",
     wheelFinishHex:

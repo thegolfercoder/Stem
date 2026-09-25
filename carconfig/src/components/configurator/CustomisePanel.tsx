@@ -6,6 +6,7 @@ import {
   PAINT_PRESETS,
   RIDE_HEIGHT_RANGE,
   WHEEL_FINISHES,
+  type GlassTint,
   type PaintFinish,
   type StripeStyle,
 } from "@/lib/build/appearance";
@@ -46,6 +47,13 @@ const AERO: readonly { value: Attachment; label: string }[] = [
   { value: "splitter", label: "Splitter" },
   { value: "diffuser", label: "Diffuser" },
   { value: "side_skirts", label: "Side skirts" },
+];
+
+const TINTS: readonly { value: GlassTint; label: string }[] = [
+  { value: "clear", label: "Clear" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "limo", label: "Limo" },
 ];
 
 const STRIPES: readonly { value: StripeStyle; label: string }[] = [
@@ -183,6 +191,54 @@ export function CustomisePanel({ state, modelInfo }: { state: ConfiguratorState;
           onChange={(hex) => setAppearance({ caliperHex: hex })}
           label="Caliper colour"
         />
+      </Section>
+
+      <Section title="Glass & lights">
+        <div className="flex items-center gap-2">
+          <span className="w-12 shrink-0 text-[11px] text-[var(--color-ink-dim)]">Tint</span>
+          <div className="flex flex-wrap gap-1">
+            <button
+              type="button"
+              aria-pressed={!cfg.tint}
+              onClick={() => setAppearance({ tint: undefined })}
+              className={chipClass(!cfg.tint)}
+            >
+              Stock
+            </button>
+            {TINTS.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                aria-pressed={cfg.tint === o.value}
+                onClick={() => setAppearance({ tint: o.value })}
+                className={chipClass(cfg.tint === o.value)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <span className="w-12 shrink-0 text-[11px] text-[var(--color-ink-dim)]">Lights</span>
+          <div className="flex flex-wrap gap-1">
+            {(
+              [
+                [false, "Off"],
+                [true, "On"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={label}
+                type="button"
+                aria-pressed={cfg.lights === value}
+                onClick={() => setAppearance({ lights: cfg.lights === value ? undefined : value })}
+                className={chipClass(cfg.lights === value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </Section>
 
       <Section title="Stance">

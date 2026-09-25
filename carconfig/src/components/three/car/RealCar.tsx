@@ -8,8 +8,8 @@ import { rollingRadiusM, type ViewerConfig } from "@/lib/build/viewer-config";
 import type { ModelAsset, ModelTuning } from "@/lib/three/model-assets";
 import { createBodyShape } from "@/lib/three/body-shape";
 import { Aero } from "./Aero";
-import { paintMaterial } from "./materials";
-import { materialWords, normaliseMaterial } from "./model-materials";
+import { paintMaterial, TINTS } from "./materials";
+import { classifyMaterial, materialWords, normaliseMaterial } from "./model-materials";
 import { frontDirection, type NamedPart } from "@/lib/three/model-orientation";
 import { choosePaint, type PaintChoice } from "@/lib/three/model-paint";
 import { dropFloor, materialStats, materialsOf, wheelsByName, wheelsByShape, type WheelGroup } from "./model-analysis";
@@ -63,8 +63,15 @@ export interface ModelInfo {
   readonly calipers: boolean;
 }
 
+/** A lamp's material slot, and whether it is at the front (white) or back (red). */
+interface LampSlot extends Slot {
+  readonly front: boolean;
+}
+
 interface Prepared {
   readonly root: THREE.Group;
+  readonly glassSlots: readonly Slot[];
+  readonly lampSlots: readonly LampSlot[];
   /** The model's own wheels, lifted out of the body so the body can move over them. */
   readonly wheels: THREE.Group;
   readonly paintHow: PaintChoice["how"];
@@ -79,6 +86,8 @@ function chainName(o: THREE.Object3D): string {
   return names.join(" ");
 }
 
+const LAMP_RE =
+  /\b(head ?lights?|head ?lamps?|headlamps?|tail ?lights?|tail ?lamps?|brake ?lights?|drl|leds?|lights?|lamps?|phares?|faros?|feux|scheinwerfer|licht)\b/;
 const CALIPER_RE = /\b(calipers?|callipers?|bremssattel|pinza|etrier|pinzas?)\b/;
 
 function slotsWhere(root: THREE.Object3D, test: (m: THREE.Material, mesh: THREE.Mesh) => boolean): Slot[] {
@@ -195,7 +204,18 @@ function prepare(scene: THREE.Object3D, length: number | null, fallbackLength: n
 
   const caliperSlots = slotsWhere(wheels, (m) => CALIPER_RE.test(materialWords(m.name)));
 
-  return { root, wheels, paintHow, paintSlots, caliperSlots, corners };
+  // Glass to tint, and lamps to light: never the paint.
+  const painted = new Set(paintSlots.map((p) => p.original));
+  const glassSlots = slotsWhere(root, (m) => !painted.has(m) && classifyMaterial(m.name) === "glass");
+  const lampSlots: LampSlot[] = slotsWhere(
+    root,
+    (m, mesh) => !painted.has(m) && (LAMP_RE.test(materialWords(m.name)) || LAMP_RE.test(chainName(mesh))),
+  ).map((slot) => ({
+    ...slot,
+    front: new THREE.Box3().setFromObject(slot.mesh).getCenter(new THREE.Vector3()).z >= 0,
+  }));
+
+  return { root, wheels, paintHow, paintSlots, caliperSlots, glassSlots, lampSlots, corners };
 }
 
 /** Height of the model's top surface on the centreline at z, or null if nothing is there. */
@@ -279,6 +299,48 @@ export function RealCar({
     applyMaterial(prepared.caliperSlots, caliper);
     return () => caliper?.dispose();
   }, [prepared, caliper]);
+
+  // Window tint: the model's own glass, darkened or cleared.
+  useEffect(() => {
+    if (!config.tint) {
+      applyMaterial(prepared.glassSlots, null);
+      return;
+    }
+    const { opacity, color } = TINTS[config.tint];
+    const made: THREE.Material[] = [];
+    for (const slot of prepared.glassSlots) {
+      const m = (slot.original as THREE.MeshPhysicalMaterial).clone();
+      m.transparent = true;
+      m.opacity = opacity;
+      m.color?.set(color);
+      m.depthWrite = false;
+      made.push(m);
+      applyMaterial([slot], m);
+    }
+    return () => made.forEach((m) => m.dispose());
+  }, [prepared, config.tint]);
+
+  // Lights on: the lamps glow, white at the front and red at the back.
+  useEffect(() => {
+    if (config.lights !== true) {
+      applyMaterial(prepared.lampSlots, null);
+      return;
+    }
+    const cache = new Map<string, THREE.Material>();
+    for (const slot of prepared.lampSlots) {
+      const key = `${slot.original.uuid}:${slot.front}`;
+      let m = cache.get(key);
+      if (!m) {
+        const lit = (slot.original as THREE.MeshStandardMaterial).clone();
+        lit.emissive = new THREE.Color(slot.front ? "#f2f6ff" : "#ff1a12");
+        lit.emissiveIntensity = slot.front ? 2.6 : 2.2;
+        m = lit;
+        cache.set(key, m);
+      }
+      applyMaterial([slot], m);
+    }
+    return () => cache.forEach((m) => m.dispose());
+  }, [prepared, config.lights]);
 
   // Aero is placed from a generated shape of the same size. Only the boot
   // lid's height tends to differ enough to matter, so it is measured on the

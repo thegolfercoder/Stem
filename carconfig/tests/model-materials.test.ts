@@ -33,4 +33,13 @@ describe("material names from downloaded models", () => {
     const m = new THREE.MeshStandardMaterial({ name: "Material.004" });
     expect(normaliseMaterial(m)).toBe(m);
   });
+  it("reads names in the languages model authors use", () => {
+    expect(classifyMaterial("Vitre")).toBe("glass");
+    expect(classifyMaterial("Phare_glass")).toBe("lens");
+    expect(classifyMaterial("Pneu")).toBe("tyre");
+    expect(classifyMaterial("Gomma")).toBe("tyre");
+    expect(classifyMaterial("Cromato")).toBe("chrome");
+    expect(classifyMaterial("Body_carbone")).toBe("carbon");
+    expect(classifyMaterial("Carrozzeria")).toBeNull();
+  });
 });

@@ -7,7 +7,7 @@ import type { ViewerConfig } from "@/lib/build/viewer-config";
 import { buildCabinGeometry, buildTubGeometry } from "./geometry";
 import {
   fabricRoofMaterial,
-  glassMaterial,
+  tintedGlass,
   paintMaterial,
   underbodyMaterial,
 } from "./materials";
@@ -24,10 +24,12 @@ export function Body({
   paintHex,
   finish,
   archInners,
+  tint = null,
 }: {
   shape: BodyShape;
   paintHex: string;
   finish: ViewerConfig["paintFinish"];
+  tint?: ViewerConfig["tint"];
   /** Where to hang the black inner arch liners: x of each tire's inner face. */
   archInners: { front: number; rear: number };
 }) {
@@ -38,7 +40,8 @@ export function Body({
 
   const paint = useMemo(() => paintMaterial(paintHex, finish), [paintHex, finish]);
   const under = useMemo(() => underbodyMaterial(), []);
-  const glass = useMemo(() => glassMaterial(), []);
+  const glass = useMemo(() => tintedGlass(tint), [tint]);
+  useEffect(() => () => glass.dispose(), [glass]);
   const roof = useMemo(
     () => (shape.style.roofMaterial === "fabric" ? fabricRoofMaterial() : paint),
     [shape.style.roofMaterial, paint],

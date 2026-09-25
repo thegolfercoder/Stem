@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { GlassTint } from "@/lib/build/appearance";
 import type { ViewerConfig } from "@/lib/build/viewer-config";
 
 /**
@@ -65,6 +66,24 @@ export const glassMaterial = () =>
     opacity: 0.62,
     depthWrite: false,
   });
+
+/** How see-through each tint leaves the glass, and its colour. */
+export const TINTS: Readonly<Record<GlassTint, { opacity: number; color: string }>> = {
+  clear: { opacity: 0.22, color: "#1c2528" },
+  light: { opacity: 0.45, color: "#141b20" },
+  dark: { opacity: 0.72, color: "#0a0e12" },
+  limo: { opacity: 0.93, color: "#040506" },
+};
+
+/** Tinted glass for the chosen tint, or the default when none is chosen. */
+export function tintedGlass(tint: GlassTint | null): THREE.MeshPhysicalMaterial {
+  const m = glassMaterial();
+  if (tint) {
+    m.opacity = TINTS[tint].opacity;
+    m.color.set(TINTS[tint].color);
+  }
+  return m;
+}
 
 export const fabricRoofMaterial = () =>
   new THREE.MeshStandardMaterial({ color: "#121315", roughness: 0.95, metalness: 0 });

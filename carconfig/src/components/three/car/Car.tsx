@@ -114,8 +114,9 @@ export function Car({ config }: { config: ViewerConfig }) {
           paintHex={config.paintHex}
           finish={config.paintFinish}
           archInners={{ front: front.inner, rear: rear.inner }}
+          tint={config.tint}
         />
-        <Lights shape={shape} face={config.face} />
+        <Lights shape={shape} face={config.face} lit={config.lights} />
         <Stripes shape={shape} style={config.stripe} hex={config.stripeHex} />
         <Interior shape={shape} />
         <Trim shape={shape} />

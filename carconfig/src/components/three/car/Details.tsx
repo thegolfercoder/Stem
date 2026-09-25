@@ -53,7 +53,14 @@ function useFacePatches(shape: BodyShape, specs: readonly FaceSpec[]) {
 const VALANCE: FaceSpec[] = [{ end: "rear", cx: 0, cy: -0.58, a: 0.78, b: 0.26, n: 4 }];
 const PLATE: FaceSpec[] = [{ end: "rear", cx: 0, cy: -0.02, a: 0.19, b: 0.08, n: 6, lift: 0.005 }];
 
-export function Lights({ shape, face }: { shape: BodyShape; face: FaceFamily }) {
+/**
+ * `lit`: headlamps on (true), everything dark (false), or running lights only
+ * (null, as the car is normally drawn).
+ */
+export function Lights({ shape, face, lit = null }: { shape: BodyShape; face: FaceFamily; lit?: boolean | null }) {
+  // Emission scales: dark, running lights, headlamps on.
+  const glow = lit === false ? 0 : 1;
+  const beam = lit === true ? 3 : 1;
   const design = faceDesign(face);
   const heads = useFacePatches(shape, design.headlights);
   // A black bezel just proud of each lamp's edge, so its outline reads on any paint.
@@ -95,8 +102,8 @@ export function Lights({ shape, face }: { shape: BodyShape; face: FaceFamily }) 
             roughness={0.16}
             clearcoat={1}
             clearcoatRoughness={0.02}
-            emissive="#26303c"
-            emissiveIntensity={0.6}
+            emissive={lit ? "#eef4ff" : "#26303c"}
+            emissiveIntensity={lit ? 2.4 : 0.6 * glow}
             envMapIntensity={1.6}
             side={THREE.DoubleSide}
           />
@@ -107,7 +114,7 @@ export function Lights({ shape, face }: { shape: BodyShape; face: FaceFamily }) 
           <meshStandardMaterial
             color="#ffffff"
             emissive="#dfeaff"
-            emissiveIntensity={1.6}
+            emissiveIntensity={1.6 * glow * beam}
             toneMapped={false}
             side={THREE.DoubleSide}
           />
@@ -118,7 +125,7 @@ export function Lights({ shape, face }: { shape: BodyShape; face: FaceFamily }) 
           <meshStandardMaterial
             color="#ffffff"
             emissive="#e6f2ff"
-            emissiveIntensity={3.2}
+            emissiveIntensity={3.2 * glow}
             toneMapped={false}
             side={THREE.DoubleSide}
           />
@@ -129,7 +136,7 @@ export function Lights({ shape, face }: { shape: BodyShape; face: FaceFamily }) 
           <meshPhysicalMaterial
             color="#2a0305"
             emissive="#ff1414"
-            emissiveIntensity={2}
+            emissiveIntensity={2 * glow * (lit ? 1.4 : 1)}
             roughness={0.12}
             clearcoat={1}
             toneMapped={false}

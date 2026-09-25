@@ -30,6 +30,26 @@ describe("appearance", () => {
     expect(out.rearCaliperHex).toBe("#d4a019");
   });
 
+  it("marks what was chosen, so a real model keeps its own until then", () => {
+    const base = deriveViewerConfig(m3, []);
+    expect([base.paintChosen, base.wheelsChosen, base.caliperChosen]).toEqual([false, false, false]);
+    const painted = applyAppearance(base, { paintFinish: "matte" });
+    expect(painted.paintChosen).toBe(true);
+    expect(painted.wheelsChosen).toBe(false);
+    const wheels = applyAppearance(base, { wheelStyle: "mesh", caliperHex: "#d4a019" });
+    expect([wheels.paintChosen, wheels.wheelsChosen, wheels.caliperChosen]).toEqual([false, true, true]);
+  });
+
+  it("carries tint and lights, and leaves them alone when unset", () => {
+    const base = deriveViewerConfig(m3, []);
+    expect([base.tint, base.lights]).toEqual([null, null]);
+    const out = applyAppearance(base, { tint: "limo", lights: true });
+    expect([out.tint, out.lights]).toEqual(["limo", true]);
+    expect(appearanceSchema.safeParse({ tint: "mirror" }).success).toBe(false);
+    const code = encodeShareCode({ vehicleKey: m3.key, name: "Night", parts: [], appearance: { tint: "dark", lights: false } });
+    expect(decodeShareCode(code)?.appearance).toEqual({ tint: "dark", lights: false });
+  });
+
   it("round-trips through a share link", () => {
     const appearance = { paintHex: "#6fae3c", stripe: "twin" as const, stripeHex: "#f1f2f3", wheelStyle: "mesh" as const };
     const code = encodeShareCode({ vehicleKey: m3.key, name: "Look", parts: [], appearance });

@@ -18,6 +18,7 @@ import { SPOKE_STYLES, type Attachment, type SpokeStyle, type ViewerConfig } fro
 
 export type PaintFinish = "gloss" | "metallic" | "pearl" | "satin" | "matte" | "chrome";
 export type StripeStyle = "none" | "twin" | "single" | "side";
+export type GlassTint = "clear" | "light" | "dark" | "limo";
 
 export interface Appearance {
   readonly paintHex?: string;
@@ -31,6 +32,10 @@ export interface Appearance {
   readonly aero?: readonly Attachment[];
   readonly stripe?: StripeStyle;
   readonly stripeHex?: string;
+  /** Window tint; unset keeps the car's own glass. */
+  readonly tint?: GlassTint;
+  /** Lamps lit or dark; unset leaves them as the car is drawn. */
+  readonly lights?: boolean;
 }
 
 export const RIDE_HEIGHT_RANGE = [-80, 50] as const;
@@ -48,6 +53,8 @@ export const appearanceSchema = z
     aero: z.array(z.enum(["spoiler", "wing", "splitter", "diffuser", "side_skirts"])).max(5),
     stripe: z.enum(["none", "twin", "single", "side"]),
     stripeHex: HEX,
+    tint: z.enum(["clear", "light", "dark", "limo"]),
+    lights: z.boolean(),
   })
   .partial()
   .strict();
@@ -70,6 +77,8 @@ export function applyAppearance(config: ViewerConfig, a: Appearance | undefined)
     attachments: [...new Set([...config.attachments, ...(a.aero ?? [])])],
     stripe: a.stripe ?? config.stripe,
     stripeHex: a.stripeHex ?? config.stripeHex,
+    tint: a.tint ?? config.tint,
+    lights: a.lights ?? config.lights,
   };
 }
 
