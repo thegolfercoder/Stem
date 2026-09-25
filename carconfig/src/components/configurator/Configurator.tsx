@@ -6,9 +6,11 @@ import { BuildSummary } from "@/components/build/BuildSummary";
 import { PerformancePanel } from "@/components/build/PerformancePanel";
 import { PartBrowser } from "@/components/parts/PartBrowser";
 import { ViewerPanel } from "@/components/three/ViewerPanel";
+import type { ModelInfo } from "@/components/three/car/RealCar";
 import { VerificationBadge } from "@/components/ui/badges";
 import { encodeShareCode, generateId } from "@/lib/build/share";
 import { saveBuild } from "@/lib/build/storage";
+import { formatCents } from "@/lib/pricing";
 import type { Build } from "@/types/build";
 import type { FitmentRecord, Part } from "@/types/part";
 import type { CatalogVehicle } from "@/types/vehicle";
@@ -25,14 +27,13 @@ import { useConfigurator, type ConfiguratorInit } from "./useConfigurator";
 /**
  * The configurator screen.
  *
- * Three columns on a wide display: parts on the left, the car in the middle,
- * the build on the right. The car stays visible while parts are chosen and the
- * running total stays visible while the car is turned — the loop this product
- * exists to prove is select, check, see, cost, and all four should be on screen
- * at once.
+ * The car is the page: the viewer takes most of the width at nearly the full
+ * height, the way a manufacturer's configurator does, and every control sits
+ * in one panel beside it (customise, parts, build), so nothing that changes
+ * the car ever pushes the car off screen. Saving and sharing stay pinned at
+ * the panel's foot. The spec and performance cards sit under the car.
  *
- * Below a large screen it stacks: car, build, parts. The car first, because
- * that is what tells you which screen you are on.
+ * Below a large screen it stacks: car, then the panel.
  */
 
 export function Configurator({
@@ -47,36 +48,28 @@ export function Configurator({
   init?: ConfiguratorInit;
 }) {
   const state = useConfigurator(vehicle, catalogue, fitmentRecords, init);
+  // What the loaded 3D model turned out to allow (repaint, wheels), so the
+  // panel can say when a choice will not show on this particular model.
+  const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
 
   return (
-    <div className="mx-auto max-w-[1800px] px-3 py-4 sm:px-4">
+    <div className="mx-auto max-w-[1920px] px-3 py-3 sm:px-4">
       <VehicleHeader vehicle={vehicle} />
 
-      <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(330px,380px)_1fr_minmax(300px,340px)] lg:items-start">
-        {/* Parts — first in the DOM on mobile would bury the car, so it is
-            ordered last there and first on desktop. */}
-        <section className="order-3 flex h-[560px] flex-col overflow-hidden rounded border border-[var(--color-line)] bg-[var(--color-surface)] lg:order-1 lg:h-[calc(100vh-190px)] lg:min-h-[560px]">
-          <LeftTabs state={state} />
-        </section>
-
-        <section className="order-1 space-y-3 lg:order-2">
-          <div className="h-[340px] sm:h-[420px] lg:h-[calc(100vh-430px)] lg:min-h-[340px]">
-            <ViewerPanel config={state.viewerConfig} />
+      <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(360px,410px)] lg:items-start">
+        <section className="space-y-3">
+          <div className="h-[380px] sm:h-[500px] lg:h-[calc(100vh-132px)] lg:min-h-[520px]">
+            <ViewerPanel config={state.viewerConfig} onModelInfo={setModelInfo} />
           </div>
-
           <div className="grid gap-3 sm:grid-cols-2">
             <PerformancePanel state={state} />
             <StockSpecPanel vehicle={vehicle} />
           </div>
         </section>
 
-        <section className="order-2 h-[560px] overflow-hidden rounded border border-[var(--color-line)] bg-[var(--color-surface)] lg:order-3 lg:h-[calc(100vh-190px)] lg:min-h-[560px]">
-          <div className="flex h-full min-h-0 flex-col">
-            <div className="min-h-0 flex-1">
-              <BuildSummary state={state} />
-            </div>
-            <SaveShareBar state={state} />
-          </div>
+        <section className="flex h-[680px] flex-col overflow-hidden rounded border border-[var(--color-line)] bg-[var(--color-surface)] lg:sticky lg:top-3 lg:h-[calc(100vh-132px)] lg:min-h-[520px]">
+          <SideTabs state={state} modelInfo={modelInfo} />
+          <SaveShareBar state={state} />
         </section>
       </div>
     </div>
@@ -121,17 +114,20 @@ function VehicleHeader({ vehicle }: { vehicle: CatalogVehicle }) {
 
 /**
  * Customise first: how the car looks is what most people come to change.
- * The parts catalogue — fitment, prices, verdicts — is a tab away.
+ * The parts catalogue (fitment, prices, verdicts) and the build itself are a
+ * tab away.
  */
-function LeftTabs({ state }: { state: ReturnType<typeof useConfigurator> }) {
-  const [tab, setTab] = useState<"look" | "parts">("look");
+function SideTabs({ state, modelInfo }: { state: ReturnType<typeof useConfigurator>; modelInfo: ModelInfo | null }) {
+  const [tab, setTab] = useState<"look" | "parts" | "build">("look");
+  const count = state.selectedParts.length;
   return (
     <>
       <div role="tablist" aria-label="Build panels" className="flex shrink-0 border-b border-[var(--color-line)]">
         {(
           [
             ["look", "Customise"],
-            ["parts", `Parts${state.selectedParts.length ? ` · ${state.selectedParts.length}` : ""}`],
+            ["parts", "Parts"],
+            ["build", `Build${count ? ` · ${count}` : ""}`],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -151,7 +147,13 @@ function LeftTabs({ state }: { state: ReturnType<typeof useConfigurator> }) {
         ))}
       </div>
       <div className="min-h-0 flex-1">
-        {tab === "look" ? <CustomisePanel state={state} /> : <PartBrowser state={state} />}
+        {tab === "look" ? (
+          <CustomisePanel state={state} modelInfo={modelInfo} />
+        ) : tab === "parts" ? (
+          <PartBrowser state={state} />
+        ) : (
+          <BuildSummary state={state} />
+        )}
       </div>
     </>
   );
@@ -254,7 +256,9 @@ function SaveShareBar({ state }: { state: ReturnType<typeof useConfigurator> }) 
       vehicleKey: state.vehicle.key,
       name: state.name,
       parts: state.selectedParts.map((p) => ({ slug: p.slug, quantity: 1 })),
-      paintHex: state.viewerConfig.paintHex,
+      // Only a chosen colour: an unchosen one would repaint a model that
+      // should keep its own paint when the link is opened.
+      paintHex: state.viewerConfig.paintChosen ? state.viewerConfig.paintHex : undefined,
       appearance: state.appearance,
     });
 
@@ -273,7 +277,7 @@ function SaveShareBar({ state }: { state: ReturnType<typeof useConfigurator> }) 
         priceCentsAtSave: p.price?.cents,
         installCostCentsAtSave: p.installCost?.cents,
       })),
-      paintHex: state.viewerConfig.paintHex,
+      paintHex: state.viewerConfig.paintChosen ? state.viewerConfig.paintHex : undefined,
       appearance: state.appearance,
       createdAt: now,
       updatedAt: now,
@@ -301,6 +305,14 @@ function SaveShareBar({ state }: { state: ReturnType<typeof useConfigurator> }) 
 
   return (
     <div className="border-t border-[var(--color-line)] px-4 py-3">
+      <div className="mb-2 flex items-baseline justify-between text-[12px]">
+        <span className="text-[var(--color-ink-dim)]">
+          {state.selectedParts.length
+            ? `${state.selectedParts.length} part${state.selectedParts.length === 1 ? "" : "s"}`
+            : "No parts yet"}
+        </span>
+        <span className="numeric text-[15px] font-semibold text-[var(--color-ink)]">{formatCents(state.cost.totalCents)}</span>
+      </div>
       <div className="flex gap-2">
         <button
           type="button"

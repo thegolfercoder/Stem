@@ -11,13 +11,14 @@ import {
   Vignette,
 } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useMemo, useState, useSyncExternalStore } from "react";
 import * as THREE from "three";
 import type { ViewerConfig } from "@/lib/build/viewer-config";
 import { BODY_STYLES } from "@/lib/three/body-styles";
 import { CameraRig, type ViewName } from "./CameraRig";
 import { Car } from "./car/Car";
-import { ModelBoundary, RealCar } from "./car/RealCar";
+import { ModelBoundary, RealCar, type ModelInfo } from "./car/RealCar";
+import { modelProgress } from "./car/model-progress";
 import type { SceneName } from "./scenes";
 import { Studio } from "./Studio";
 
@@ -35,11 +36,13 @@ export default function VehicleViewer({
   view,
   viewNonce,
   scene,
+  onModelInfo,
 }: {
   config: ViewerConfig;
   view: ViewName;
   viewNonce: number;
   scene: SceneName;
+  onModelInfo?: (info: ModelInfo) => void;
 }) {
   const [quality, setQuality] = useState<"high" | "low">("high");
 
@@ -57,6 +60,7 @@ export default function VehicleViewer({
   }, [config.style, config.length, config.width, config.height, config.wheelbase]);
 
   return (
+    <div className="relative h-full w-full">
     <Canvas
       shadows
       dpr={quality === "high" ? [1, 1.75] : [1, 1.25]}
@@ -78,7 +82,7 @@ export default function VehicleViewer({
           // good if it fails to load.
           <ModelBoundary fallback={<Car config={config} />}>
             <Suspense fallback={<Car config={config} />}>
-              <RealCar config={config} asset={config.asset} />
+              <RealCar config={config} asset={config.asset} onModelInfo={onModelInfo} />
             </Suspense>
           </ModelBoundary>
         ) : (
@@ -102,5 +106,39 @@ export default function VehicleViewer({
         {quality === "low" ? <SMAA /> : <></>}
       </EffectComposer>
     </Canvas>
+    {config.asset ? <LoadingBadge url={config.asset.file} /> : null}
+    </div>
+  );
+}
+
+/** How far a big model's download has got, over the stand-in car. */
+function LoadingBadge({ url }: { url: string }) {
+  const p = useSyncExternalStore(modelProgress.subscribe, modelProgress.get, modelProgress.get);
+  if (p.url !== url) return null;
+  if (p.failed) {
+    return (
+      <div className="pointer-events-none absolute inset-x-0 top-14 flex justify-center">
+        <span className="rounded bg-black/55 px-3 py-1.5 text-[11px] text-[var(--color-ink-dim)] backdrop-blur">
+          The 3D model could not be loaded; showing a stand-in.
+        </span>
+      </div>
+    );
+  }
+  if (p.done) return null;
+  const share = p.total > 0 ? Math.min(1, p.loaded / p.total) : 0;
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-14 flex justify-center">
+      <div className="w-64 rounded bg-black/55 px-3 py-2 text-[11px] text-[var(--color-ink-dim)] backdrop-blur">
+        <div className="flex justify-between">
+          <span>Loading 3D model…</span>
+          <span className="tabular-nums">
+            {Math.round(share * 100)}%{p.total > 0 ? ` of ${(p.total / 1e6).toFixed(0)} MB` : ""}
+          </span>
+        </div>
+        <div className="mt-1.5 h-1 overflow-hidden rounded bg-white/10">
+          <div className="h-full bg-[var(--color-accent)] transition-[width]" style={{ width: `${share * 100}%` }} />
+        </div>
+      </div>
+    </div>
   );
 }

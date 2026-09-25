@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import type { ViewerConfig } from "@/lib/build/viewer-config";
+import type { ModelInfo } from "./car/RealCar";
 import { VIEWS, type ViewName } from "./CameraRig";
 import { SCENES, type SceneName } from "./scenes";
 
@@ -24,7 +25,13 @@ const VehicleViewer = dynamic(() => import("./VehicleViewer"), {
   ),
 });
 
-export function ViewerPanel({ config }: { config: ViewerConfig }) {
+export function ViewerPanel({
+  config,
+  onModelInfo,
+}: {
+  config: ViewerConfig;
+  onModelInfo?: (info: ModelInfo) => void;
+}) {
   const [view, setView] = useState<ViewName>("hero");
   const [nonce, setNonce] = useState(0);
   const [scene, setScene] = useState<SceneName>("studio");
@@ -38,7 +45,7 @@ export function ViewerPanel({ config }: { config: ViewerConfig }) {
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded border border-[var(--color-line)] bg-[#0b0e11]">
-      <VehicleViewer config={config} view={view} viewNonce={nonce} scene={scene} />
+      <VehicleViewer config={config} view={view} viewNonce={nonce} scene={scene} onModelInfo={onModelInfo} />
 
       <label className="absolute right-3 top-3 flex items-center gap-1.5 text-[11px] text-[var(--color-ink-dim)]">
         <span className="sr-only sm:not-sr-only">Scene</span>

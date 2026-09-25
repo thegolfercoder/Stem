@@ -10,6 +10,7 @@ import {
   type StripeStyle,
 } from "@/lib/build/appearance";
 import type { Attachment, SpokeStyle } from "@/lib/build/viewer-config";
+import type { ModelInfo } from "@/components/three/car/RealCar";
 import type { ConfiguratorState } from "./useConfigurator";
 
 /**
@@ -54,18 +55,45 @@ const STRIPES: readonly { value: StripeStyle; label: string }[] = [
   { value: "side", label: "Side" },
 ];
 
-export function CustomisePanel({ state }: { state: ConfiguratorState }) {
+export function CustomisePanel({ state, modelInfo }: { state: ConfiguratorState; modelInfo?: ModelInfo | null }) {
   const { appearance: a, setAppearance, viewerConfig: cfg } = state;
-  // Stripes need a known surface to lie on, which only the generated body
-  // has; body pieces are hung on real models too.
+  // A real 3D model keeps its own paint and wheels until something else is
+  // chosen, so it offers "Factory" and "Stock" as the first choices. Stripes
+  // need a known surface to lie on, which only the generated body has.
   const realModel = cfg.asset !== null;
+  const info = realModel ? (modelInfo ?? null) : null;
+  const paintOn = !realModel || cfg.paintChosen;
+  const wheelsOn = !realModel || cfg.wheelsChosen;
+  const calipersOn = !realModel || cfg.caliperChosen;
 
   return (
     <div className="h-full overflow-y-auto px-4 py-3">
-      <Section title="Paint">
+      <Section
+        title="Paint"
+        note={
+          info?.paint === "none"
+            ? "This model is drawn with one material for everything, so its paint can't be separated from the glass and tyres to change it."
+            : undefined
+        }
+      >
         <div className="grid grid-cols-6 gap-1.5">
+          {realModel ? (
+            <button
+              type="button"
+              title="The model's own paint"
+              aria-label="Factory paint"
+              aria-pressed={!cfg.paintChosen}
+              onClick={() => setAppearance({ paintHex: undefined, paintFinish: undefined })}
+              className={`flex aspect-square items-center justify-center rounded-full border-2 text-[9px] font-semibold uppercase tracking-wide text-[var(--color-ink-dim)] transition-transform hover:scale-110 ${
+                !cfg.paintChosen ? "border-[var(--color-accent)]" : "border-[var(--color-line-bright)]"
+              }`}
+              style={{ background: "conic-gradient(from 200deg, #3a3f46, #9aa1a8, #3a3f46, #1c1f24, #3a3f46)" }}
+            >
+              <span className="rounded bg-black/55 px-1">Fac</span>
+            </button>
+          ) : null}
           {PAINT_PRESETS.map((p) => {
-            const on = cfg.paintHex.toLowerCase() === p.hex && cfg.paintFinish === p.finish;
+            const on = paintOn && cfg.paintHex.toLowerCase() === p.hex && cfg.paintFinish === p.finish;
             return (
               <button
                 key={p.name}
@@ -73,8 +101,9 @@ export function CustomisePanel({ state }: { state: ConfiguratorState }) {
                 title={`${p.name} · ${p.finish}`}
                 aria-label={`${p.name}, ${p.finish}`}
                 aria-pressed={on}
+                disabled={info?.paint === "none"}
                 onClick={() => setAppearance({ paintHex: p.hex, paintFinish: p.finish })}
-                className={`aspect-square rounded-full border-2 transition-transform hover:scale-110 ${
+                className={`aspect-square rounded-full border-2 transition-transform hover:scale-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 ${
                   on ? "border-[var(--color-accent)]" : "border-[var(--color-line-bright)]"
                 }`}
                 style={{ background: swatchBackground(p.hex, p.finish) }}
@@ -90,26 +119,67 @@ export function CustomisePanel({ state }: { state: ConfiguratorState }) {
           />
           <Chips
             options={FINISHES}
-            value={cfg.paintFinish}
-            onChange={(v) => setAppearance({ paintFinish: v })}
+            value={paintOn ? cfg.paintFinish : null}
+            onChange={(v) => setAppearance({ paintFinish: v, paintHex: cfg.paintHex })}
           />
         </div>
       </Section>
 
-      <Section title="Wheels">
-        <Chips options={WHEEL_STYLES} value={cfg.wheelStyle} onChange={(v) => setAppearance({ wheelStyle: v })} />
+      <Section
+        title="Wheels"
+        note={
+          info && !info.wheels
+            ? "This model's wheels are part of its body, so wheel designs, calipers and ride height can't be shown on it."
+            : undefined
+        }
+      >
+        <div className="flex flex-wrap gap-1">
+          {realModel ? (
+            <button
+              type="button"
+              aria-pressed={!cfg.wheelsChosen}
+              onClick={() => setAppearance({ wheelStyle: undefined, wheelFinishHex: undefined })}
+              className={chipClass(!cfg.wheelsChosen)}
+            >
+              Stock
+            </button>
+          ) : null}
+          {WHEEL_STYLES.map((o) => {
+            const on = wheelsOn && cfg.wheelStyle === o.value;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setAppearance({ wheelStyle: o.value })}
+                className={chipClass(on)}
+              >
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
         <Swatches
           colours={WHEEL_FINISHES}
           value={cfg.wheelFinishHex}
-          onChange={(hex) => setAppearance({ wheelFinishHex: hex })}
+          selected={wheelsOn}
+          onChange={(hex) => setAppearance({ wheelFinishHex: hex, wheelStyle: cfg.wheelStyle })}
           label="Wheel finish"
         />
       </Section>
 
-      <Section title="Calipers">
+      <Section
+        title="Calipers"
+        note={
+          info?.wheels && !info.calipers && !cfg.wheelsChosen
+            ? "This model's own calipers can't be recoloured, so choosing a colour fits the build's wheels."
+            : undefined
+        }
+      >
         <Swatches
           colours={CALIPER_COLOURS}
           value={cfg.caliperHex}
+          selected={calipersOn}
           onChange={(hex) => setAppearance({ caliperHex: hex })}
           label="Caliper colour"
         />
@@ -206,7 +276,7 @@ function Chips<T extends string>({
   onChange,
 }: {
   options: readonly { value: T; label: string }[];
-  value: T;
+  value: T | null;
   onChange: (v: T) => void;
 }) {
   return (
@@ -223,18 +293,21 @@ function Chips<T extends string>({
 function Swatches({
   colours,
   value,
+  selected = true,
   onChange,
   label,
 }: {
   colours: readonly { name: string; hex: string }[];
   value: string;
+  /** False while nothing has been chosen, so no swatch shows as picked. */
+  selected?: boolean;
   onChange: (hex: string) => void;
   label: string;
 }) {
   return (
     <div className="mt-2 flex flex-wrap items-center gap-1.5">
       {colours.map((c) => {
-        const on = value.toLowerCase() === c.hex;
+        const on = selected && value.toLowerCase() === c.hex;
         return (
           <button
             key={c.hex}

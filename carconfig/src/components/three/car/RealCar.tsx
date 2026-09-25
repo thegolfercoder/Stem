@@ -1,7 +1,8 @@
 "use client";
 
-import { useGLTF } from "@react-three/drei";
-import { Component, useEffect, useMemo, type ReactNode } from "react";
+import { useLoader } from "@react-three/fiber";
+import { Component, useEffect, useMemo, type ErrorInfo, type ReactNode } from "react";
+import { GLTFLoader, MeshoptDecoder } from "three-stdlib";
 import * as THREE from "three";
 import { rollingRadiusM, type ViewerConfig } from "@/lib/build/viewer-config";
 import type { ModelAsset, ModelTuning } from "@/lib/three/model-assets";
@@ -10,6 +11,9 @@ import { Aero } from "./Aero";
 import { paintMaterial } from "./materials";
 import { materialWords, normaliseMaterial } from "./model-materials";
 import { frontDirection, type NamedPart } from "@/lib/three/model-orientation";
+import { choosePaint, type PaintChoice } from "@/lib/three/model-paint";
+import { dropFloor, materialStats, materialsOf, wheelsByName, wheelsByShape, type WheelGroup } from "./model-analysis";
+import { modelProgress } from "./model-progress";
 import { Wheel } from "./Wheel";
 
 /**
@@ -18,26 +22,22 @@ import { Wheel } from "./Wheel";
  * Models come from many authors and no two are built alike, so the handling
  * is defensive and every guess has a fallback:
  *
- *   - Orientation and size: turned so its length runs along z, scaled to the
+ *   - Orientation and size: whatever the car stands on is removed; it is
+ *     turned so its length runs along z and its front faces +z, scaled to the
  *     car's published length, centred, and sat on the floor.
- *   - Paint: materials named like paint ("Paint", "Body", "CarPaint") are
- *     repainted with the chosen colour and finish; near-black ones are left
- *     alone, since those are trim, not paint. A model whose paint is named
- *     "Material.004" gets it listed in its tuning.
- *   - Wheels: parts named like wheels are grouped by corner. If exactly four
- *     sensible, round groups turn up, they are hidden and the build's own
- *     wheels are drawn in their place — so wheel swaps, calipers, poke and
- *     ride height still work on the real car. If the groups are ambiguous,
- *     the model keeps its own wheels rather than half-replacing them.
+ *   - Paint: the model keeps its own paint until a colour is chosen. The
+ *     paint is found by name where the name says so, and otherwise as the
+ *     largest opaque surface running the car's length at body height (see
+ *     model-paint.ts). A model drawn with one material for everything cannot
+ *     be repainted, and the panel says so.
+ *   - Wheels: found by name, or failing that by shape, and one group per
+ *     corner. They stay the model's own until a wheel design (or a wheel or
+ *     brake part) is chosen; then they are hidden and the build's wheels
+ *     drawn in their place. Either way they are separated from the body, so
+ *     ride height works: the body moves, the wheels stay on the ground.
  */
 
 const DEG = Math.PI / 180;
-// Words starting this way: "Tireside" and "Rim 1" match, "Trim" does not.
-const WHEEL_RE = /\b(wheel|rim|tyre|tire|brake|caliper|disc|rotor|lug|hub|spoke)/i;
-
-const PAINT_RE = /paint|body|exterior|shell|coat/i;
-const NOT_PAINT_RE =
-  /glass|window|windshield|light|lamp|tire|tyre|rubber|chrome|interior|seat|dash|rim|wheel|brake|caliper|disc|logo|badge|emblem|plate|licen[cs]e|mirror|grill|trim|carbon|plastic|under|engine|exhaust|gasket|black|matte|metal/i;
 
 interface Corner {
   readonly x: number;
@@ -45,9 +45,30 @@ interface Corner {
   readonly radius: number;
 }
 
+/** A material slot on a mesh, and what was there before it was changed. */
+interface Slot {
+  readonly mesh: THREE.Mesh;
+  readonly index: number | null;
+  readonly original: THREE.Material;
+}
+
+/** What a model turned out to allow, for the panel to explain. */
+export interface ModelInfo {
+  /** How its paint was found, or "none" if it cannot be repainted. */
+  readonly paint: PaintChoice["how"];
+  /** Whether its four wheels were found (so wheel designs and ride height work). */
+  readonly wheels: boolean;
+  /** Whether its own brake calipers can be recoloured. */
+  readonly calipers: boolean;
+}
+
 interface Prepared {
   readonly root: THREE.Group;
-  readonly paintSlots: readonly { mesh: THREE.Mesh; index: number | null }[];
+  /** The model's own wheels, lifted out of the body so the body can move over them. */
+  readonly wheels: THREE.Group;
+  readonly paintHow: PaintChoice["how"];
+  readonly paintSlots: readonly Slot[];
+  readonly caliperSlots: readonly Slot[];
   readonly corners: { readonly fl: Corner; readonly fr: Corner; readonly rl: Corner; readonly rr: Corner } | null;
 }
 
@@ -57,33 +78,17 @@ function chainName(o: THREE.Object3D): string {
   return names.join(" ");
 }
 
-function materialsOf(mesh: THREE.Mesh): THREE.Material[] {
-  return Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-}
+const CALIPER_RE = /\b(calipers?|callipers?|bremssattel|pinza|etrier|pinzas?)\b/;
 
-function luminance(m: THREE.Material): number {
-  const c = (m as THREE.MeshStandardMaterial).color;
-  return c ? 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b : 0;
-}
-
-/**
- * Remove any floor, shadow catcher or backdrop the author stood the car on: a
- * mesh that is flat and as big as the scene. It would otherwise count as part
- * of the car when the model is measured and scaled.
- */
-function dropFloor(model: THREE.Object3D) {
-  model.updateMatrixWorld(true);
-  const span = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
-  const largest = Math.max(span.x, span.y, span.z);
-  const flat: THREE.Object3D[] = [];
-  model.traverse((o) => {
+function slotsWhere(root: THREE.Object3D, test: (m: THREE.Material, mesh: THREE.Mesh) => boolean): Slot[] {
+  const slots: Slot[] = [];
+  root.traverse((o) => {
     if (!(o instanceof THREE.Mesh)) return;
-    const s = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
-    const thinnest = Math.min(s.x, s.y, s.z);
-    const widest = Math.max(s.x, s.y, s.z);
-    if (thinnest < widest * 0.01 && widest > largest * 0.5) flat.push(o);
+    materialsOf(o).forEach((m, i) => {
+      if (test(m, o)) slots.push({ mesh: o, index: Array.isArray(o.material) ? i : null, original: m });
+    });
   });
-  for (const o of flat) o.removeFromParent();
+  return slots;
 }
 
 /**
@@ -94,11 +99,20 @@ function dropFloor(model: THREE.Object3D) {
 function prepare(scene: THREE.Object3D, length: number | null, fallbackLength: number, tuning: ModelTuning): Prepared {
   const model = scene.clone(true);
   // Materials are shared with the loader's cache; repainting this car must
-  // not repaint every other instance of it.
+  // not repaint every other instance of it. One copy per material, so a
+  // material used on forty meshes is still one material to find and paint.
   // Recognised materials are also given physically correct properties.
+  const copies = new Map<THREE.Material, THREE.Material>();
+  const own = (m: THREE.Material) => {
+    let c = copies.get(m);
+    if (!c) {
+      c = normaliseMaterial(m.clone());
+      copies.set(m, c);
+    }
+    return c;
+  };
   model.traverse((o) => {
     if (!(o instanceof THREE.Mesh)) return;
-    const own = (m: THREE.Material) => normaliseMaterial(m.clone());
     o.material = Array.isArray(o.material) ? o.material.map(own) : own(o.material);
     o.castShadow = true;
     o.receiveShadow = true;
@@ -147,67 +161,40 @@ function prepare(scene: THREE.Object3D, length: number | null, fallbackLength: n
   orient.position.set(-centre.x, -box.min.y, -centre.z);
   root.updateMatrixWorld(true);
 
-  // Paint.
-  const explicit = tuning.paintMaterials;
-  const paintSlots: { mesh: THREE.Mesh; index: number | null }[] = [];
-  root.traverse((o) => {
-    if (!(o instanceof THREE.Mesh)) return;
-    const mats = materialsOf(o);
-    mats.forEach((m, i) => {
-      const isPaint = explicit
-        ? explicit.includes(m.name)
-        : PAINT_RE.test(m.name) && !NOT_PAINT_RE.test(m.name) && luminance(m) > 0.04 && !WHEEL_RE.test(chainName(o));
-      if (isPaint) paintSlots.push({ mesh: o, index: Array.isArray(o.material) ? i : null });
-    });
-  });
-
-  // Wheels, grouped by corner.
+  // Wheels, by name or by shape, lifted out of the body.
+  const wheels = new THREE.Group();
   let corners: Prepared["corners"] = null;
   if (tuning.wheels !== "model") {
-    const groups = new Map<string, { box: THREE.Box3; meshes: THREE.Mesh[] }>();
-    let merged = false;
-    root.traverse((o) => {
-      if (!(o instanceof THREE.Mesh)) return;
-      const label = `${chainName(o)} ${materialsOf(o).map((m) => materialWords(m.name)).join(" ")}`;
-      if (!WHEEL_RE.test(label) || /steering|spare|light|lamp|arch|well/i.test(label)) return;
-      const b = new THREE.Box3().setFromObject(o);
-      // A wheel part sits low and outboard, and is no taller than a big wheel.
-      const bs = b.getSize(new THREE.Vector3());
-      const bc = b.getCenter(new THREE.Vector3());
-      if (bs.y > 0.95 || bc.y > 0.6) return;
-      // One mesh spanning both sides, or both axles, is all four wheels
-      // merged together; nothing sensible can be swapped out of that.
-      if (b.min.x < 0 && b.max.x > 0 && b.getSize(new THREE.Vector3()).x > 0.6) merged = true;
-      if (b.min.z < 0 && b.max.z > 0 && b.getSize(new THREE.Vector3()).z > target * 0.4) merged = true;
-      const c = b.getCenter(new THREE.Vector3());
-      if (Math.abs(c.x) < 0.15) return;
-      const key = `${c.z > 0 ? "f" : "r"}${c.x > 0 ? "r" : "l"}`;
-      const g = groups.get(key);
-      if (g) {
-        g.box.union(b);
-        g.meshes.push(o);
-      } else groups.set(key, { box: b, meshes: [o] });
-    });
-
-    const found = ["fl", "fr", "rl", "rr"].map((k) => groups.get(k));
-    const sane = found.every((g) => {
-      if (!g) return false;
-      const s = g.box.getSize(new THREE.Vector3());
-      const r = s.y / 2;
-      return r > 0.2 && r < 0.52 && Math.abs(s.z - s.y) / s.y < 0.3;
-    });
-    if (!merged && sane) {
-      const corner = (g: { box: THREE.Box3 }): Corner => {
+    const label = (o: THREE.Mesh) => `${chainName(o)} ${materialsOf(o).map((m) => materialWords(m.name)).join(" ")}`;
+    const found = wheelsByName(root, target, label) ?? wheelsByShape(root);
+    if (found) {
+      const corner = (g: WheelGroup): Corner => {
         const c = g.box.getCenter(new THREE.Vector3());
         return { x: c.x, z: c.z, radius: g.box.getSize(new THREE.Vector3()).y / 2 };
       };
-      const [fl, fr, rl, rr] = found.map((g) => corner(g!));
-      corners = { fl: fl!, fr: fr!, rl: rl!, rr: rr! };
-      for (const g of found) for (const m of g!.meshes) m.visible = false;
+      corners = { fl: corner(found.fl), fr: corner(found.fr), rl: corner(found.rl), rr: corner(found.rr) };
+      for (const g of [found.fl, found.fr, found.rl, found.rr]) for (const m of g.meshes) wheels.attach(m);
     }
   }
 
-  return { root, paintSlots, corners };
+  // Paint: named in the tuning, or found (never on the wheels).
+  let paintHow: PaintChoice["how"] = "none";
+  let paintSlots: Slot[] = [];
+  if (tuning.paintMaterials) {
+    const names = tuning.paintMaterials;
+    paintSlots = slotsWhere(root, (m) => names.includes(m.name));
+    paintHow = paintSlots.length ? "named" : "none";
+  } else {
+    const { materials, stats } = materialStats(root);
+    const choice = choosePaint(stats);
+    const chosen = new Set(choice.ids.map((i) => materials[i]));
+    paintSlots = slotsWhere(root, (m) => chosen.has(m));
+    paintHow = paintSlots.length ? choice.how : "none";
+  }
+
+  const caliperSlots = slotsWhere(wheels, (m) => CALIPER_RE.test(materialWords(m.name)));
+
+  return { root, wheels, paintHow, paintSlots, caliperSlots, corners };
 }
 
 /** Height of the model's top surface on the centreline at z, or null if nothing is there. */
@@ -218,15 +205,34 @@ function deckHeight(root: THREE.Object3D, z: number): number | null {
 }
 
 /** The model is a scene-graph object owned by this component; painting it is a side effect. */
-function applyPaint(slots: Prepared["paintSlots"], paint: THREE.Material) {
-  for (const { mesh, index } of slots) {
-    if (index === null) mesh.material = paint;
-    else (mesh.material as THREE.Material[])[index] = paint;
+function applyMaterial(slots: readonly Slot[], material: THREE.Material | null) {
+  for (const { mesh, index, original } of slots) {
+    const m = material ?? original;
+    if (index === null) mesh.material = m;
+    else (mesh.material as THREE.Material[])[index] = m;
   }
 }
 
-export function RealCar({ config, asset }: { config: ViewerConfig; asset: ModelAsset }) {
-  const gltf = useGLTF(asset.file, false);
+export function RealCar({
+  config,
+  asset,
+  onModelInfo,
+}: {
+  config: ViewerConfig;
+  asset: ModelAsset;
+  onModelInfo?: (info: ModelInfo) => void;
+}) {
+  const gltf = useLoader(
+    GLTFLoader,
+    asset.file,
+    (loader) => {
+      loader.setMeshoptDecoder(MeshoptDecoder());
+    },
+    (e) => modelProgress.set({ url: asset.file, loaded: e.loaded, total: e.total, done: false, failed: false }),
+  );
+  useEffect(() => {
+    modelProgress.set({ url: asset.file, done: true, failed: false });
+  }, [gltf, asset.file]);
   const prepared = useMemo(
     () =>
       prepare(
@@ -238,12 +244,39 @@ export function RealCar({ config, asset }: { config: ViewerConfig; asset: ModelA
     [gltf.scene, config.dimensionSource, config.length, asset.tuning],
   );
 
-  // Repaint when the colour or finish changes.
-  const paint = useMemo(() => paintMaterial(config.paintHex, config.paintFinish), [config.paintHex, config.paintFinish]);
   useEffect(() => {
-    applyPaint(prepared.paintSlots, paint);
-    return () => paint.dispose();
+    onModelInfo?.({
+      paint: prepared.paintHow,
+      wheels: prepared.corners !== null,
+      calipers: prepared.caliperSlots.length > 0,
+    });
+  }, [prepared, onModelInfo]);
+
+  // The model's own paint until a colour is chosen.
+  const paint = useMemo(
+    () => (config.paintChosen ? paintMaterial(config.paintHex, config.paintFinish) : null),
+    [config.paintChosen, config.paintHex, config.paintFinish],
+  );
+  useEffect(() => {
+    applyMaterial(prepared.paintSlots, paint);
+    return () => paint?.dispose();
   }, [prepared, paint]);
+
+  // The model's own wheels until a design is chosen, or a caliper colour the
+  // model's calipers cannot take.
+  const { corners } = prepared;
+  const swap =
+    corners !== null && (config.wheelsChosen || (config.caliperChosen && prepared.caliperSlots.length === 0));
+
+  // Calipers on the model's own wheels are recoloured in place.
+  const caliper = useMemo(() => {
+    if (swap || !config.caliperChosen) return null;
+    return new THREE.MeshPhysicalMaterial({ color: config.caliperHex, roughness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.1 });
+  }, [swap, config.caliperChosen, config.caliperHex]);
+  useEffect(() => {
+    applyMaterial(prepared.caliperSlots, caliper);
+    return () => caliper?.dispose();
+  }, [prepared, caliper]);
 
   // Aero is placed from a generated shape of the same size. Only the boot
   // lid's height tends to differ enough to matter, so it is measured on the
@@ -273,13 +306,25 @@ export function RealCar({ config, asset }: { config: ViewerConfig; asset: ModelA
       <Aero shape={proxy} attachments={config.attachments} deckOffset={deckOffset} />
     ) : null;
 
-  const { corners } = prepared;
   if (!corners) {
-    // The model keeps its own wheels, so the stance cannot change either.
+    // No wheels to stand on, so the stance cannot change either.
     return (
       <group>
         <primitive object={prepared.root} />
         {aero}
+      </group>
+    );
+  }
+
+  if (!swap) {
+    // The model's own wheels stay put; the body rides over them.
+    return (
+      <group>
+        <group position={[0, config.rideHeightDeltaMm / 1000, 0]}>
+          <primitive object={prepared.root} />
+          {aero}
+        </group>
+        <primitive object={prepared.wheels} />
       </group>
     );
   }
@@ -315,7 +360,7 @@ export function RealCar({ config, asset }: { config: ViewerConfig; asset: ModelA
         <primitive object={prepared.root} />
         {aero}
       </group>
-      {placed.map(({ c, side, axle, radius, caliper, steer }) => (
+      {placed.map(({ c, side, axle, radius, caliper: caliperHex, steer }) => (
         <group
           key={`${c.x}${c.z}`}
           position={[c.x + (side * (axle.stock.offsetMm - axle.fitted.offsetMm)) / 1000, radius, c.z]}
@@ -327,7 +372,7 @@ export function RealCar({ config, asset }: { config: ViewerConfig; asset: ModelA
             fit={axle.fitted}
             rotorMm={axle.rotorMm}
             pistons={axle.caliperPistons}
-            caliperHex={caliper}
+            caliperHex={caliperHex}
           />
         </group>
       ))}
@@ -343,6 +388,10 @@ export class ModelBoundary extends Component<{ fallback: ReactNode; children: Re
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    modelProgress.set({ done: true, failed: true });
+    console.warn("3D model failed to load; showing the generated car.", error.message, info.componentStack?.slice(0, 200));
   }
   render() {
     return this.state.failed ? this.props.fallback : this.props.children;

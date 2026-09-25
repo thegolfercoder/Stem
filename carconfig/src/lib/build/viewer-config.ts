@@ -75,6 +75,14 @@ export interface ViewerConfig {
 
   readonly paintHex: string;
   readonly paintFinish: PaintFinish;
+  /**
+   * Whether the paint, wheels and calipers were chosen (by a part in the
+   * build or in the customiser). A real 3D model keeps its own until they
+   * are; the generated car always draws them from here.
+   */
+  readonly paintChosen: boolean;
+  readonly wheelsChosen: boolean;
+  readonly caliperChosen: boolean;
   /** Stripes over the body, and their colour. */
   readonly stripe: StripeStyle;
   readonly stripeHex: string;
@@ -219,6 +227,9 @@ export function deriveViewerConfig(
       profile?.defaultPaintHex ??
       "#6e7377",
     paintFinish: paintPart?.visual?.paintFinish ?? "gloss",
+    paintChosen: paintOverrideHex !== undefined || paintPart !== undefined,
+    wheelsChosen: wheelPart !== undefined || kitPart !== undefined,
+    caliperChosen: kitPart !== undefined,
     stripe: "none",
     stripeHex: "#f1f2f3",
 

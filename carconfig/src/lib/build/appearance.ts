@@ -57,6 +57,9 @@ export function applyAppearance(config: ViewerConfig, a: Appearance | undefined)
   if (!a) return config;
   return {
     ...config,
+    paintChosen: config.paintChosen || a.paintHex !== undefined || a.paintFinish !== undefined,
+    wheelsChosen: config.wheelsChosen || a.wheelStyle !== undefined || a.wheelFinishHex !== undefined,
+    caliperChosen: config.caliperChosen || a.caliperHex !== undefined,
     paintHex: a.paintHex ?? config.paintHex,
     paintFinish: a.paintFinish ?? config.paintFinish,
     wheelStyle: a.wheelStyle ?? config.wheelStyle,
