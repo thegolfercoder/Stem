@@ -3,6 +3,7 @@
  * Fetch a 3D car model, make it web-sized, and record who made it.
  *
  *   SKETCHFAB_TOKEN=… node scripts/fetch-model.mjs --sketchfab <uid> --for <make/model>
+ *   node scripts/fetch-model.mjs --objaverse <uid> --for <make/model> [--link]
  *   node scripts/fetch-model.mjs --url <glb-url> --for <make/model> \
  *        --name "…" --author "…" --author-url "…" --license by --source-url "…"
  *
@@ -17,8 +18,16 @@
  * for anything. No-derivatives licences are refused — shrinking a model for
  * the web changes it — and so are Sketchfab's store licences.
  *
+ * --objaverse fetches a Sketchfab model from the Objaverse mirror on Hugging
+ * Face (see scripts/lib/objaverse.mjs), so no token is needed; the credit
+ * still points at the model's Sketchfab page. With --link nothing is
+ * downloaded: the viewer loads the file from the mirror itself (Hugging Face
+ * serves it to any site), unoptimised but costing the repository nothing.
+ *
  * Optimisation: duplicate data merged, unused data dropped, textures capped
- * at 2048px and re-encoded as WebP, geometry meshopt-compressed. Meshes and
+ * at 2048px and re-encoded as WebP, geometry meshopt-compressed. Models over
+ * half a million triangles are simplified toward that, keeping their shape
+ * within half a millimetre. Meshes and
  * materials are deliberately not merged, so their names survive. A 60MB
  * download typically comes out at 5–15MB.
  */
@@ -30,12 +39,17 @@ import { dirname, join, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
+import { fileUrl, vehicles } from "./lib/objaverse.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = join(ROOT, "public", "models");
 const MANIFEST = join(ROOT, "src", "data", "vehicles", "model-assets.json");
 const GLTF_TRANSFORM = join(ROOT, "node_modules", ".bin", "gltf-transform");
 
+/** Above this, a model is simplified: more is invisible at viewer sizes and slow on a phone. */
+const MAX_FACES = 500_000;
+/** Exit status for a model taken down from Sketchfab, so a batch can stop asking for it. */
+const WITHDRAWN = 3;
 const ALLOWED = new Set(["cc0", "by", "by-sa"]);
 const NONCOMMERCIAL = new Set(["by-nc", "by-nc-sa"]);
 const LICENSE_URLS = {
@@ -152,6 +166,50 @@ async function fromSketchfab(uid, allowNc, work) {
   };
 }
 
+/**
+ * The model as Sketchfab has it now. A model its author or Sketchfab has
+ * since taken down is not used: a takedown is often a copyright claim, and
+ * then the licence was never the uploader's to give. The licence checked is
+ * the one on the page today, not the one the mirror recorded.
+ */
+async function liveOnSketchfab(uid) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch(`https://api.sketchfab.com/v3/models/${uid}`, { signal: AbortSignal.timeout(30000) });
+    if (res.status === 429) {
+      await new Promise((r) => setTimeout(r, 15000 * (attempt + 1)));
+      continue;
+    }
+    if (res.status === 404 || res.status === 401 || res.status === 403) {
+      console.error(`\n✖ Model ${uid} is no longer published on Sketchfab; not used.\n`);
+      process.exit(WITHDRAWN);
+    }
+    if (!res.ok) fail(`Could not check model ${uid} on Sketchfab (${res.status}).`);
+    return res.json();
+  }
+  fail("Sketchfab is rate limiting; try again later.");
+}
+
+async function fromObjaverse(uid, allowNc, work) {
+  const v = vehicles()[uid];
+  if (!v) fail(`${uid} is not a vehicle in the Objaverse index.`);
+  const live = await liveOnSketchfab(uid);
+  v.license = live.license?.slug ?? v.license;
+  checkLicense(v.license, allowNc);
+  const source = join(work, "model.glb");
+  await download(fileUrl(v.path), source);
+  return {
+    source,
+    faces: v.faceCount,
+    credit: {
+      name: v.name,
+      author: v.author,
+      authorUrl: v.authorUrl,
+      license: v.license,
+      sourceUrl: v.url,
+    },
+  };
+}
+
 async function fromUrl(opts, allowNc, work) {
   for (const k of ["name", "author", "license", "source-url"]) {
     if (!opts[k]) fail(`--url needs --${k} as well, so the model can be credited.`);
@@ -177,15 +235,43 @@ async function main() {
   if (!target || !/^[a-z0-9-]+\/[a-z0-9-]+$/.test(target)) fail("--for <make/model> is required, e.g. porsche/911-gt3-rs");
   if (!existsSync(GLTF_TRANSFORM)) fail("Run npm install first (needs @gltf-transform/cli).");
 
+  if (opts.link) {
+    if (!opts.objaverse) fail("--link works with --objaverse only.");
+    const v = vehicles()[opts.objaverse];
+    if (!v) fail(`${opts.objaverse} is not a vehicle in the Objaverse index.`);
+    const live = await liveOnSketchfab(opts.objaverse);
+    v.license = live.license?.slug ?? v.license;
+    checkLicense(v.license, opts["allow-noncommercial"] === true);
+    const manifest = existsSync(MANIFEST) ? JSON.parse(readFileSync(MANIFEST, "utf8")) : {};
+    manifest[target] = {
+      file: fileUrl(v.path),
+      bytes: v.bytes,
+      remote: true,
+      name: v.name,
+      author: v.author,
+      authorUrl: v.authorUrl,
+      license: v.license,
+      sourceUrl: v.url,
+      licenseLabel: LICENSE_LABELS[v.license],
+      licenseUrl: LICENSE_URLS[v.license],
+      fetchedOn: new Date().toISOString().slice(0, 10),
+    };
+    writeFileSync(MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`);
+    console.log(`✔ ${target} → ${v.name} by ${v.author} (${LICENSE_LABELS[v.license]}), loaded from the mirror.`);
+    return;
+  }
+
   const work = join(tmpdir(), `fetch-model-${Date.now()}`);
   mkdirSync(work, { recursive: true });
   try {
     const allowNc = opts["allow-noncommercial"] === true;
-    const { source, credit } = opts.sketchfab
+    const { source, credit, faces } = opts.sketchfab
       ? await fromSketchfab(opts.sketchfab, allowNc, work)
-      : opts.url
-        ? await fromUrl(opts, allowNc, work)
-        : fail("Pass --sketchfab <uid> or --url <glb-url>.");
+      : opts.objaverse
+        ? await fromObjaverse(opts.objaverse, allowNc, work)
+        : opts.url
+          ? await fromUrl(opts, allowNc, work)
+          : fail("Pass --sketchfab <uid>, --objaverse <uid> or --url <glb-url>.");
 
     mkdirSync(OUT_DIR, { recursive: true });
     const fileName = `${target.replace("/", "__")}.glb`;
@@ -198,7 +284,9 @@ async function main() {
         "--compress", "meshopt",
         "--texture-compress", "webp",
         "--texture-size", "2048",
-        "--simplify", "false",
+        ...(faces > MAX_FACES
+          ? ["--simplify", "true", "--simplify-ratio", String(MAX_FACES / faces), "--simplify-error", "0.0005"]
+          : ["--simplify", "false"]),
         // Keep parts separate and named: the viewer finds the paint and the
         // four wheels by name and position, and merging would lose both.
         "--join", "false",

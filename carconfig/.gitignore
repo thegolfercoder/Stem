@@ -9,3 +9,4 @@ next-env.d.ts
 # The repository ignores models/ folders (downloaded ML weights); the site's car
 # models are part of the site and are committed.
 !public/models/
+.cache/

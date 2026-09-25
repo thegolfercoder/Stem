@@ -19,17 +19,10 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { modelLines, score } from "./lib/model-match.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const IDENTITIES = join(ROOT, "src", "data", "vehicles", "generated", "identities.json");
-const CURATED = join(ROOT, "src", "data", "vehicles", "curated-lines.ts");
 const DEFAULT_OUT = join(ROOT, "src", "data", "vehicles", "model-candidates.json");
-
-const USABLE = new Set(["cc0", "by", "by-sa"]);
-const NONCOMMERCIAL = new Set(["by-nc", "by-nc-sa"]);
-/** Things that come up for a car's name but are not the car. */
-const NOT_A_CAR =
-  /\b(lego|toy|hot ?wheels|rc|diecast|keychain|wheels?|rims?|tires?|tyres?|engine|interior|seat|steering|badge|logo|emblem|headlights?|taillights?|exhaust|brake|caliper|chassis only|wreck(ed)?|destroyed|burnt|crashed|scale model kit|papercraft|low ?poly|lowpoly|toon|cartoon|chibi|voxel|minecraft|roblox)\b/i;
 
 /** Search results name the licence rather than giving its slug. */
 const LICENSE_BY_LABEL = {
@@ -42,9 +35,6 @@ const LICENSE_BY_LABEL = {
   "CC Attribution-NonCommercial-NoDerivs": "by-nc-nd",
 };
 const licenseOf = (r) => r.license?.slug ?? LICENSE_BY_LABEL[r.license?.label] ?? r.license?.label ?? "unknown";
-
-/** Words in titles that say nothing about which car it is. */
-const FILLER = new Set(["free", "download", "model", "3d", "car", "the", "with", "and", "by", "sketchfab", "fbx", "obj", "blend", "gltf", "rigged", "realistic", "hq", "hd", "high", "poly", "game", "ready"]);
 
 const DELAY_MS = 900;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -59,59 +49,6 @@ function args() {
     else out[a[i].slice(2)] = a[++i];
   }
   return out;
-}
-
-function modelLines() {
-  const raw = JSON.parse(readFileSync(IDENTITIES, "utf8")).vehicles;
-  const lines = raw.map((v) => ({ makeSlug: v.makeSlug, make: v.make, modelSlug: v.modelSlug, model: v.model, years: v.years }));
-  // Curated lines (e.g. 911 GT3 RS) live in TypeScript; pull the few fields out.
-  const src = readFileSync(CURATED, "utf8");
-  for (const m of src.matchAll(/makeSlug: "([^"]+)",\s*make: "([^"]+)",\s*modelSlug: "([^"]+)",\s*model: "([^"]+)",\s*years: \[([^\]]*)\]/g)) {
-    lines.push({ makeSlug: m[1], make: m[2], modelSlug: m[3], model: m[4], years: m[5].split(",").map((y) => Number(y.trim())) });
-  }
-  return lines;
-}
-
-const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-const tokens = (s) => norm(s).split(" ").filter(Boolean);
-
-/** How well a result's name matches the car, or null if it is not this car. */
-function score(result, line) {
-  const name = norm(result.name);
-  if (NOT_A_CAR.test(result.name)) return null;
-
-  // Every token of the model name must appear ("mx 5", "911 gt3 rs"), joined
-  // or spaced ("mx5" matches "mx 5").
-  const squashed = name.replace(/ /g, "");
-  for (const t of tokens(line.model)) {
-    if (!name.split(" ").includes(t) && !squashed.includes(t)) return null;
-  }
-  // A result naming a longer variant ("911 GT3 RS" when looking for "911")
-  // is a different car's measurements but the same shape; allow it, ranked lower.
-  let s = 0;
-  if (tokens(line.make).every((t) => name.includes(t))) s += 30;
-  const extra = tokens(name).filter(
-    (t) => !FILLER.has(t) && !tokens(line.make).includes(t) && !tokens(line.model).includes(t) && !/^(19|20)\d\d$/.test(t),
-  );
-  s -= Math.min(extra.length, 8) * 2;
-
-  const year = name.match(/\b(19[5-9]\d|20[0-4]\d)\b/);
-  if (year && line.years.includes(Number(year[1]))) s += 12;
-  if (year && !line.years.includes(Number(year[1]))) s -= 6;
-
-  const lic = licenseOf(result);
-  if (USABLE.has(lic)) s += 25;
-  else if (NONCOMMERCIAL.has(lic)) s += 5;
-  else return null;
-
-  const faces = result.faceCount ?? 0;
-  if (faces < 8000) return null; // too crude to be worth drawing
-  if (faces > 2_500_000) s -= 25; // too heavy for a browser
-  else if (faces > 1_200_000) s -= 10;
-  else if (faces >= 60_000) s += 10;
-
-  s += Math.min(Math.log10((result.likeCount ?? 0) + 1) * 6, 18);
-  return s;
 }
 
 async function search(q) {
@@ -151,7 +88,7 @@ async function main() {
     try {
       const results = await search(`${line.make} ${line.model}`);
       const ranked = results
-        .map((r) => ({ r, s: score(r, line) }))
+        .map((r) => ({ r, s: score(r, line, licenseOf(r)) }))
         .filter((x) => x.s !== null)
         .sort((a, b) => b.s - a.s)
         .slice(0, 3)

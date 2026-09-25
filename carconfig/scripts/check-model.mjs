@@ -76,7 +76,21 @@ async function main() {
   });
   const doc = await io.read(file);
   const scene = doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0];
-  const { min, max } = getBounds(scene);
+  // Many uploads stand the car on a floor or shadow plane; it is not the car.
+  const whole = getBounds(scene);
+  const span = Math.max(...[0, 1, 2].map((i) => whole.max[i] - whole.min[i]));
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  for (const node of doc.getRoot().listNodes()) {
+    if (!node.getMesh()) continue;
+    const b = getBounds(node);
+    const ext = [0, 1, 2].map((i) => b.max[i] - b.min[i]).sort((a, c) => a - c);
+    if (ext[0] < ext[2] * 0.01 && ext[2] > span * 0.5) continue;
+    for (let i = 0; i < 3; i++) {
+      min[i] = Math.min(min[i], b.min[i]);
+      max[i] = Math.max(max[i], b.max[i]);
+    }
+  }
   const size = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
 
   // Length runs along whichever horizontal axis is longer; y is up in glTF.

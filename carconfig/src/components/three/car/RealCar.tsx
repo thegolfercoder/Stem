@@ -9,6 +9,7 @@ import { createBodyShape } from "@/lib/three/body-shape";
 import { Aero } from "./Aero";
 import { paintMaterial } from "./materials";
 import { materialWords, normaliseMaterial } from "./model-materials";
+import { frontDirection, type NamedPart } from "@/lib/three/model-orientation";
 import { Wheel } from "./Wheel";
 
 /**
@@ -66,6 +67,26 @@ function luminance(m: THREE.Material): number {
 }
 
 /**
+ * Remove any floor, shadow catcher or backdrop the author stood the car on: a
+ * mesh that is flat and as big as the scene. It would otherwise count as part
+ * of the car when the model is measured and scaled.
+ */
+function dropFloor(model: THREE.Object3D) {
+  model.updateMatrixWorld(true);
+  const span = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
+  const largest = Math.max(span.x, span.y, span.z);
+  const flat: THREE.Object3D[] = [];
+  model.traverse((o) => {
+    if (!(o instanceof THREE.Mesh)) return;
+    const s = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
+    const thinnest = Math.min(s.x, s.y, s.z);
+    const widest = Math.max(s.x, s.y, s.z);
+    if (thinnest < widest * 0.01 && widest > largest * 0.5) flat.push(o);
+  });
+  for (const o of flat) o.removeFromParent();
+}
+
+/**
  * `length` is the car's published length, or null when it has none — then the
  * model keeps its own size if that is a believable car's, since most models
  * are built to scale, and is scaled to a typical length for its type if not.
@@ -83,6 +104,7 @@ function prepare(scene: THREE.Object3D, length: number | null, fallbackLength: n
     o.receiveShadow = true;
   });
 
+  dropFloor(model);
   const orient = new THREE.Group();
   orient.add(model);
   const root = new THREE.Group();
@@ -93,6 +115,25 @@ function prepare(scene: THREE.Object3D, length: number | null, fallbackLength: n
   let size = box.getSize(new THREE.Vector3());
   orient.rotation.y = (size.x > size.z ? Math.PI / 2 : 0) + (tuning.yawDeg ?? 0) * DEG;
   root.updateMatrixWorld(true);
+
+  // Front toward +z, judged from what the parts are called, unless the
+  // model's tuning already says which way it faces.
+  if (tuning.yawDeg === undefined) {
+    box = new THREE.Box3().setFromObject(root);
+    const mid = box.getCenter(new THREE.Vector3()).z;
+    const len = box.getSize(new THREE.Vector3()).z;
+    const parts: NamedPart[] = [];
+    root.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const c = new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3());
+      const label = materialWords(`${chainName(o)} ${materialsOf(o).map((m) => m.name).join(" ")}`);
+      parts.push({ label, along: (c.z - mid) / len });
+    });
+    if (frontDirection(parts) === -1) {
+      orient.rotation.y += Math.PI;
+      root.updateMatrixWorld(true);
+    }
+  }
 
   // Published length, centred, on the floor.
   box = new THREE.Box3().setFromObject(root);
