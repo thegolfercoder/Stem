@@ -109,8 +109,8 @@ export const BODY_STYLES: Readonly<Record<BodyProfile, StylePreset>> = {
     doors: 2, roofMaterial: "paint", bed: false,
   },
   hatch: {
-    frontOverhangShare: 0.55, cowl: 0.17, windshieldRun: 0.8, roof: 0.55,
-    backlightRun: 0.16, belt: 0.64, nose: 0.5, deck: 0.72, tail: 0.7,
+    frontOverhangShare: 0.55, cowl: 0.17, windshieldRun: 0.8, roof: 0.62,
+    backlightRun: 0.3, belt: 0.64, nose: 0.5, deck: 0.72, tail: 0.7,
     clearance: 0.13, liftFront: 0.07, liftRear: 0.06,
     roundTop: 5.0, roundBottom: 6.5, cabinRound: 4.6, shoulderRoll: 0.07,
     shoulder: 0.07, tumblehome: 0.16, hips: 0.02,
@@ -129,8 +129,8 @@ export const BODY_STYLES: Readonly<Record<BodyProfile, StylePreset>> = {
     doors: 2, roofMaterial: "paint", bed: false,
   },
   suv: {
-    frontOverhangShare: 0.5, cowl: 0.18, windshieldRun: 0.78, roof: 0.62,
-    backlightRun: 0.2, belt: 0.62, nose: 0.53, deck: 0.66, tail: 0.66,
+    frontOverhangShare: 0.5, cowl: 0.18, windshieldRun: 0.78, roof: 0.7,
+    backlightRun: 0.3, belt: 0.62, nose: 0.53, deck: 0.66, tail: 0.66,
     clearance: 0.2, liftFront: 0.1, liftRear: 0.09,
     roundTop: 5.6, roundBottom: 7.0, cabinRound: 5.2, shoulderRoll: 0.06,
     shoulder: 0.065, tumblehome: 0.12, hips: 0.02,

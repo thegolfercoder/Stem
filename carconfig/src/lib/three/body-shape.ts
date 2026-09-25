@@ -448,10 +448,18 @@ export function createBodyShape(input: BodyShapeInput): BodyShape {
     return pchip(xs, ys);
   })();
 
+  // An upright tailgate's pillars rise nearly flush from the body sides; a
+  // raked rear window sits inside a broad shoulder all the way back. So the
+  // greenhouse's inset from the body fades toward the rear by how upright the
+  // rear glass is.
+  const rake = clamp((S.backlightRun - 0.15) / 0.6, 0, 1);
+  const shoulderAt = (z: number) =>
+    S.shoulder * (1 - (1 - rake) * 0.6 * smoothstep(zRoofFront, zBacklight, z));
+
   const cabinSection = (z: number) => {
     const yBottom = topCurve(z) - 0.03;
     const yTop = Math.max(cabinTopCurve(z), yBottom);
-    const hwBottom = Math.max(halfWidthAt(z) - S.shoulder, 0.2);
+    const hwBottom = Math.max(halfWidthAt(z) - shoulderAt(z), 0.2);
     return { yBottom, yTop, hwBottom, hwTop: hwBottom * (1 - S.tumblehome) };
   };
 

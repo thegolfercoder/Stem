@@ -165,6 +165,12 @@ export function buildCabinGeometry(shape: BodyShape, m = 64): THREE.BufferGeomet
     mids.reduce((best, a, j) => (Math.abs(a - target) < Math.abs(mids[best]! - target) ? j : best), 0);
   const aPillars = new Set([nearest(Math.PI / 4), nearest((3 * Math.PI) / 4)]);
 
+  // A raked rear window (fastback, saloon) is narrow between broad sail
+  // panels; an upright tailgate (hatch, wagon, SUV) is glass nearly edge to
+  // edge. Where the C-pillar starts, as |u|, follows the rake.
+  const rake = Math.min(Math.max((S.backlightRun - 0.15) / 0.6, 0), 1);
+  const cEdge = 0.82 - 0.37 * rake;
+
   // Pillars are what stop a greenhouse reading as a glass bubble. The A-pillar
   // runs up the corner between windshield and side glass; the C-pillar is the
   // broad sail panel beside the rear window. Both come from where a face sits
@@ -178,7 +184,7 @@ export function buildCabinGeometry(shape: BodyShape, m = 64): THREE.BufferGeomet
       const side = Math.abs(u);
       if (v > 0.58 && z > roofFrom && z < roofTo) return CABIN.roof;
       if (z > shape.zRoofFront - 0.02 && aPillars.has(j)) return CABIN.pillar;
-      if (z < shape.zRoofRear + 0.02 && side > 0.45 && v > -0.7) return CABIN.roof;
+      if (z < shape.zRoofRear + 0.02 && side > cEdge && v > -0.7) return CABIN.roof;
       return CABIN.glass;
     },
     3,
