@@ -21,7 +21,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from make_golfdb_dataset import Annotation
-from split_golfdb import choose_holdout, group_of_clip, order_key
+from split_golfdb import choose_holdout, frozen_spans, group_of_clip, order_key
 
 
 def annotation(clip_id: int, player: str, youtube_id: str) -> Annotation:
@@ -103,3 +103,24 @@ def test_the_hash_order_is_not_alphabetical() -> None:
     """A holdout taken in name order would be all the players early in the alphabet."""
     names = [f"player:P{i:03d}" for i in range(50)]
     assert sorted(names, key=order_key) != names
+
+
+def test_a_frozen_split_keeps_every_measured_group_where_it_was() -> None:
+    """More clips must not move the holdout a shipped model was measured on."""
+    assignment = {
+        "holdout_groups": ["player:A", "player:B"],
+        "validation_groups": ["player:C"],
+        "calibration_groups": ["player:D"],
+    }
+    sizes = {"player:A": 3, "player:B": 1, "player:C": 2, "player:D": 2, "player:NEW": 4}
+    held, validated, calibrated = frozen_spans(sizes, assignment)
+    assert held == {"player:A", "player:B"}
+    assert validated == {"player:C"}
+    assert calibrated == {"player:D"}
+    assert "player:NEW" not in held | validated | calibrated
+
+
+def test_a_frozen_split_ignores_groups_with_no_clips_now() -> None:
+    assignment = {"holdout_groups": ["player:GONE"], "validation_groups": []}
+    held, validated, calibrated = frozen_spans({"player:A": 1}, assignment)
+    assert held == validated == calibrated == set()

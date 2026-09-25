@@ -174,6 +174,26 @@ def choose_spans(group_sizes: dict[str, int], fractions: Sequence[float]) -> lis
     return spans
 
 
+def frozen_spans(
+    group_sizes: dict[str, int], assignment: dict[str, list[str]]
+) -> tuple[set[str], set[str], set[str]]:
+    """Holdout, validation and calibration groups exactly as an earlier split left them.
+
+    For growing the corpus without moving the measuring sticks. Re-running the
+    hashed split on more clips moves its boundaries - the targets are shares of
+    a larger total - so a model trained on the grown set would be scored on a
+    different holdout from the model it is meant to replace, and the paired
+    comparison that decides whether it ships would not be paired. Frozen, every
+    group keeps its part; a group the earlier split never saw goes to training,
+    and a new clip from a held-out group joins that group on the held-out side,
+    because a clip is leakage by group, not by when it was extracted.
+    """
+    held = {g for g in assignment["holdout_groups"] if g in group_sizes}
+    validated = {g for g in assignment["validation_groups"] if g in group_sizes}
+    calibrated = {g for g in assignment.get("calibration_groups", []) if g in group_sizes}
+    return held, validated, calibrated
+
+
 def load_archives(paths: Sequence[Path]) -> dict[str, NDArray[np.float64]]:
     """Concatenate the worker archives back into one corpus."""
     lengths: list[NDArray[np.int64]] = []
@@ -257,6 +277,15 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--freeze",
+        type=Path,
+        default=None,
+        help=(
+            "an earlier assignment.json: keep its holdout, validation and calibration "
+            "groups where they were and send groups it never saw to training"
+        ),
+    )
+    parser.add_argument(
         "--player-out",
         type=Path,
         default=None,
@@ -279,12 +308,16 @@ def main() -> None:
     if named and not forced:
         raise SystemExit(f"no extracted clips of {args.hold_out_player}")
 
-    wanted = [HOLDOUT_FRACTION, VALIDATION_FRACTION]
-    if args.calibration_out is not None:
-        wanted.append(CALIBRATION_FRACTION)
-    spans = choose_spans({g: n for g, n in sizes.items() if g not in forced}, wanted)
-    held, validated = spans[0] | forced, spans[1]
-    calibrated = spans[2] if len(spans) > 2 else set()
+    if args.freeze is not None:
+        held, validated, calibrated = frozen_spans(sizes, json.loads(args.freeze.read_text()))
+        held |= forced
+    else:
+        wanted = [HOLDOUT_FRACTION, VALIDATION_FRACTION]
+        if args.calibration_out is not None:
+            wanted.append(CALIBRATION_FRACTION)
+        spans = choose_spans({g: n for g, n in sizes.items() if g not in forced}, wanted)
+        held, validated = spans[0] | forced, spans[1]
+        calibrated = spans[2] if len(spans) > 2 else set()
     spoken_for = held | validated | calibrated
 
     rows = {
