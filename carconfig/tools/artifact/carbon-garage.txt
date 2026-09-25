@@ -1,0 +1,807 @@
+<title>Carbon Garage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* A dark workshop around a lit studio: the UI stays graphite so the car's
+     paint is the only colour that matters. Deliberately single-theme. */
+  :root {
+    color-scheme: dark;
+    --ground: #0d0f12;
+    --panel: #14171b;
+    --panel-2: #1a1e23;
+    --line: #262b31;
+    --line-bright: #353b43;
+    --ink: #e8eaed;
+    --ink-dim: #a3a9b1;
+    --ink-faint: #6c737c;
+    --accent: #e4572e;
+    --accent-soft: rgba(228, 87, 46, 0.16);
+    --ok: #5fbf8a;
+    --display: "Saira Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font: 14px/1.45 var(--body);
+    padding-inline: 16px;
+    padding-block: 0;
+    box-sizing: border-box;
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .app { height: 100%; display: grid; grid-template-rows: auto 1fr; gap: 12px; padding-block: 12px; }
+  header.bar { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .brand { font: 700 20px/1 var(--display); letter-spacing: 0.02em; }
+  .brand small { font: 500 11px/1 var(--display); letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-faint); margin-left: 8px; }
+  .car-title { font: 600 18px/1.1 var(--display); letter-spacing: 0.01em; text-wrap: balance; }
+  .car-sub { color: var(--ink-dim); font-size: 12px; }
+  .bar .spacer { flex: 1; }
+
+  .main { min-height: 0; display: grid; gap: 12px; grid-template-columns: 220px minmax(0, 1fr) 340px; }
+  .garage, .panel { min-height: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: auto; }
+  .garage h2, .panel h2 { font: 500 11px/1 var(--display); letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-faint); margin: 0; }
+  .garage { padding: 12px 8px; display: flex; flex-direction: column; gap: 8px; }
+  .garage h2 { padding: 0 6px 4px; }
+  .garage ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .garage button {
+    width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 4px;
+    padding: 7px 8px; display: grid; gap: 1px;
+  }
+  .garage button:hover { background: var(--panel-2); }
+  .garage button[aria-current="true"] { background: var(--accent-soft); border-color: rgba(228, 87, 46, 0.45); }
+  .garage .n { font: 600 14px/1.15 var(--display); letter-spacing: 0.01em; }
+  .garage .m { font-size: 11px; color: var(--ink-faint); }
+
+  .stage { position: relative; min-height: 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); background: #c9ccd0; }
+  .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .overlay { position: absolute; left: 10px; right: 10px; display: flex; gap: 8px; align-items: center; pointer-events: none; }
+  .overlay > * { pointer-events: auto; }
+  .overlay.top { top: 10px; justify-content: space-between; flex-wrap: wrap; }
+  .overlay.bottom { bottom: 10px; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; }
+  .views { display: flex; gap: 4px; flex-wrap: wrap; }
+  .glassy { background: rgba(12, 14, 17, 0.62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; }
+  .views button { padding: 4px 9px; font-size: 12px; color: var(--ink-dim); }
+  .views button[aria-pressed="true"] { color: var(--ink); border-color: rgba(228, 87, 46, 0.7); background: rgba(228, 87, 46, 0.28); }
+  .scene-pick { display: flex; gap: 4px; }
+  .scene-pick button { padding: 4px 9px; font-size: 12px; color: var(--ink-dim); }
+  .scene-pick button[aria-pressed="true"] { color: var(--ink); border-color: rgba(255, 255, 255, 0.35); }
+  .credit { font-size: 11px; color: var(--ink-dim); padding: 5px 8px; max-width: 70%; }
+  .credit a { color: var(--ink); }
+  .hint { font-size: 11px; color: var(--ink-dim); padding: 5px 8px; }
+  .loading { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+  .loading .box { width: min(280px, 80%); padding: 12px 14px; }
+  .loading .row { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+  .loading .track { margin-top: 8px; height: 3px; background: rgba(255, 255, 255, 0.12); border-radius: 2px; overflow: hidden; }
+  .loading .fill { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+
+  .panel { padding: 14px; display: flex; flex-direction: column; gap: 16px; }
+  .panel section { display: flex; flex-direction: column; gap: 9px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+  .panel section:last-of-type { border-bottom: 0; padding-bottom: 0; }
+  .swatches { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .swatch { aspect-ratio: 1; max-width: 100%; border-radius: 50%; border: 2px solid var(--line-bright); padding: 0; transition: transform 0.12s; }
+  .swatch:hover { transform: scale(1.08); }
+  .swatch[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--ground), 0 0 0 3px var(--accent); }
+  .swatch[disabled] { opacity: 0.35; cursor: not-allowed; transform: none; }
+  .swatch.factory { display: grid; place-items: center; font: 600 9px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); background: conic-gradient(from 200deg, #3a3f46, #9aa1a8, #3a3f46, #1c1f24, #3a3f46); }
+  .swatch.factory span { background: rgba(0, 0, 0, 0.6); padding: 2px 3px; border-radius: 2px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { border: 1px solid var(--line-bright); background: none; border-radius: 4px; padding: 4px 9px; font-size: 12px; color: var(--ink-dim); }
+  .chip:hover { color: var(--ink); }
+  .chip[aria-pressed="true"] { color: var(--ink); border-color: rgba(228, 87, 46, 0.6); background: var(--accent-soft); }
+  .chip[disabled] { opacity: 0.4; cursor: not-allowed; }
+  .row-label { display: flex; align-items: center; gap: 10px; }
+  .row-label > span { width: 48px; flex: none; font-size: 12px; color: var(--ink-dim); }
+  .custom { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-dim); }
+  .custom input[type="color"] { width: 34px; height: 24px; border: 1px solid var(--line-bright); border-radius: 4px; background: none; padding: 0; }
+  .note { font-size: 11px; color: var(--ink-faint); margin: 0; }
+  .note.warn { color: #d9a441; }
+  .ride { display: grid; gap: 4px; }
+  .ride .val { font: 500 12px/1 var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .reset { align-self: flex-start; background: none; border: 0; color: var(--ink-faint); font-size: 12px; padding: 0; }
+  .reset:hover { color: var(--ink); }
+  .paint-name { font: 500 12px/1 var(--mono); color: var(--ink-dim); min-height: 1em; }
+
+  @media (max-width: 1100px) {
+    .main { grid-template-columns: minmax(0, 1fr) 320px; grid-template-rows: auto minmax(0, 1fr); }
+    .garage { grid-column: 1 / -1; flex-direction: row; align-items: center; overflow-x: auto; padding: 8px; }
+    .garage h2 { display: none; }
+    .garage ul { flex-direction: row; }
+    .garage button { width: max-content; }
+  }
+  @media (max-width: 720px) {
+    .app { height: auto; }
+    .main { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
+    .stage { height: 58vh; min-height: 320px; }
+    .panel { overflow: visible; }
+    .credit { max-width: 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) { .swatch { transition: none; } }
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="brand">Carbon<small>Garage</small></div>
+    <div>
+      <div class="car-title" id="car-title">Loading…</div>
+      <div class="car-sub" id="car-sub"></div>
+    </div>
+    <div class="spacer"></div>
+  </header>
+
+  <div class="main">
+    <nav class="garage" aria-label="Cars">
+      <h2 id="garage-count">Garage</h2>
+      <ul id="garage"></ul>
+    </nav>
+
+    <div class="stage" id="stage">
+      <canvas id="view" aria-label="3D view of the car. Drag to orbit, scroll or pinch to zoom."></canvas>
+      <div class="overlay top">
+        <div class="views" role="group" aria-label="Camera views" id="views"></div>
+        <div class="scene-pick" role="group" aria-label="Studio lighting" id="scenes"></div>
+      </div>
+      <div class="overlay bottom">
+        <div class="credit glassy" id="credit"></div>
+        <div class="hint glassy">Drag to orbit · scroll to zoom</div>
+      </div>
+      <div class="loading" id="loading" hidden>
+        <div class="box glassy">
+          <div class="row"><span>Loading 3D model…</span><span id="load-pct">0%</span></div>
+          <div class="track"><div class="fill" id="load-fill"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="panel" aria-label="Customise">
+      <section>
+        <h2>Paint</h2>
+        <div class="swatches" id="swatches"></div>
+        <div class="paint-name" id="paint-name"></div>
+        <div class="custom">
+          <label for="custom-paint">Custom</label>
+          <input type="color" id="custom-paint" value="#1aa4d9">
+          <div class="chips" id="finishes" role="group" aria-label="Paint finish"></div>
+        </div>
+        <p class="note warn" id="paint-note" hidden>This model is drawn with one material for everything, so its paint can't be separated from the glass and tyres to change it.</p>
+      </section>
+      <section>
+        <h2>Glass &amp; lights</h2>
+        <div class="row-label"><span>Tint</span><div class="chips" id="tints" role="group" aria-label="Window tint"></div></div>
+        <div class="row-label"><span>Lights</span><div class="chips" id="lights" role="group" aria-label="Lights"></div></div>
+      </section>
+      <section>
+        <h2>Stance</h2>
+        <div class="ride">
+          <label for="ride">Ride height <span class="val" id="ride-val">0 mm</span></label>
+          <input type="range" id="ride" min="-80" max="50" step="5" value="0">
+        </div>
+        <p class="note warn" id="ride-note" hidden>This model's wheels are part of its body, so its ride height can't be changed.</p>
+      </section>
+      <button type="button" class="reset" id="reset">Reset to factory</button>
+    </aside>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+
+const GARAGE = [{"key": "ford/mustang", "file": "models/ford__mustang.json", "name": "Ford Mustang Shelby 2012", "author": "David_Holiday", "authorUrl": "https://sketchfab.com/David_Holiday", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/b60b3a520c024fd69416d56a71900626", "own": false, "label": "Ford Mustang Shelby GT500", "detail": "2012 · muscle coupe"}, {"key": "fiat/500", "file": "models/fiat__500.json", "name": "Fiat 500", "author": "Francesco Coldesina", "authorUrl": "https://sketchfab.com/topfrank2013", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/4606659ff31142e3b8080f995514452f", "own": false, "label": "Fiat 500", "detail": "Classic · city car"}, {"key": "chevrolet/camaro", "file": "models/chevrolet__camaro.json", "name": "Chevrolet camaro 2010", "author": "KiW", "authorUrl": "https://sketchfab.com/kiwkoner", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/9fa6d9b0c4ef40ef865410334c99b5ac", "own": false, "label": "Chevrolet Camaro", "detail": "2010 · coupe"}, {"key": "dodge/charger", "file": "models/dodge__charger.json", "name": "Dodge Charger 2011", "author": "David_Holiday", "authorUrl": "https://sketchfab.com/David_Holiday", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/289a663646e44b92b10e1e19f47617ef", "own": false, "label": "Dodge Charger", "detail": "2011 · sedan"}, {"key": "porsche/911-gt3-rs", "file": "models/porsche__911-gt3-rs.json", "name": "Porsche 911 GT3 RS (992)", "author": "Stem", "authorUrl": null, "license": "built for this site", "licenseUrl": "https://github.com/thegolfercoder/Stem/blob/main/carconfig/tools/blender/gt3rs.py", "source": "https://github.com/thegolfercoder/Stem/blob/main/carconfig/tools/blender/gt3rs.py", "own": true, "label": "Porsche 911 GT3 RS", "detail": "2026 · 992 · built in code", "length": 4.572}, {"key": "chevrolet/corvette", "file": "models/chevrolet__corvette.json", "name": "2019 Chevrolet Corvette C8 Stingray", "author": "Hari", "authorUrl": "https://sketchfab.com/Hari31", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/790c40ccff6843eab0b7b4bd18421ff8", "own": false, "label": "Chevrolet Corvette Stingray", "detail": "2019 · C8 · mid-engine"}, {"key": "bmw/m4", "file": "models/bmw__m4.json", "name": "2015 BMW M4", "author": "David_Holiday", "authorUrl": "https://sketchfab.com/David_Holiday", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/18476c3a7697462f884d8dc8f124d7a0", "own": false, "label": "BMW M4", "detail": "2015 · F82 coupe"}, {"key": "audi/rs-5", "file": "models/audi__rs-5.json", "name": "Audi RS5", "author": "WillisChiejina", "authorUrl": "https://sketchfab.com/WillisChiejina", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/75d636ab26b1423ca61ffd0fd758fd0a", "own": false, "label": "Audi RS5", "detail": "Coupe"}, {"key": "aston-martin/db11", "file": "models/aston-martin__db11.json", "name": "2017 Aston Martin DB11 [5.2L Twin-Turbo V12]", "author": "Hari", "authorUrl": "https://sketchfab.com/Hari31", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/936854ba7dde46f09a47d355d433808c", "own": false, "label": "Aston Martin DB11", "detail": "2017 · V12 GT"}, {"key": "bentley/continental", "file": "models/bentley__continental.json", "name": "Bentley Continental GT Hi", "author": "Panghu007", "authorUrl": "https://sketchfab.com/Panghu007", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/be0eef815fe5423f8b2ebd2906701e07", "own": false, "label": "Bentley Continental GT", "detail": "Grand tourer"}, {"key": "porsche/718-cayman", "file": "models/porsche__718-cayman.json", "name": "Porsche 718 Cayman GT4 (blender)", "author": "fewdd", "authorUrl": "https://sketchfab.com/zh.200.c", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/ed3df4f78ebf49f0a1dd3cf850beba4e", "own": false, "label": "Porsche 718 Cayman GT4", "detail": "Mid-engine coupe"}, {"key": "dodge/challenger", "file": "models/dodge__challenger.json", "name": "Dodge Challenger Demon 2018", "author": "David_Holiday", "authorUrl": "https://sketchfab.com/David_Holiday", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/74886d8702bb4e88a42aa7376c849722", "own": false, "label": "Dodge Challenger SRT Demon", "detail": "2018 · muscle coupe"}, {"key": "ford/f-150", "file": "models/ford__f-150.json", "name": "2017 Ford F-150", "author": "CMFDesign", "authorUrl": "https://sketchfab.com/CMFDesign", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/0394d802935641b8891478e08d771774", "own": false, "label": "Ford F-150", "detail": "2017 · pickup"}, {"key": "bmw/i8", "file": "models/bmw__i8.json", "name": "2015 BMW i8", "author": "David_Holiday", "authorUrl": "https://sketchfab.com/David_Holiday", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/37d7468d2c314205b048df4bfd66eb32", "own": false, "label": "BMW i8", "detail": "2015 · hybrid"}, {"key": "acura/nsx", "file": "models/acura__nsx.json", "name": "Acura NSX Roadster", "author": "lazercar", "authorUrl": "https://sketchfab.com/lazercar", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/b7e30d408f7a44d19c4a53411b642e1a", "own": false, "label": "Acura NSX Roadster", "detail": "Roadster"}, {"key": "toyota/supra", "file": "models/toyota__supra.json", "name": "Toyota Supra", "author": "Willy Decarpentrie", "authorUrl": "https://sketchfab.com/skudgee", "license": "CC BY 4.0", "licenseUrl": "https://creativecommons.org/licenses/by/4.0/", "source": "https://sketchfab.com/3d-models/d316c7fee53d42208c391ea5693ae252", "own": false, "label": "Toyota Supra", "detail": "Coupe"}];
+
+const PAINTS = [
+  ["Obsidian", "#15171a", "gloss"], ["Chalk", "#d9d6cc", "gloss"], ["Arctic silver", "#c8ccd0", "metallic"],
+  ["Nardo grey", "#7d8184", "gloss"], ["Gunmetal", "#3d4247", "metallic"], ["Guards red", "#c1121c", "gloss"],
+  ["Rosso", "#b3111f", "pearl"], ["Lava orange", "#e2531b", "gloss"], ["Racing yellow", "#f2c418", "gloss"],
+  ["Python green", "#6fae3c", "gloss"], ["British racing green", "#1d3b2a", "metallic"], ["Miami blue", "#1aa4d9", "gloss"],
+  ["Shark blue", "#1f5fb4", "gloss"], ["Midnight blue", "#15223f", "metallic"], ["Ultraviolet", "#4b2a8a", "pearl"],
+  ["Frozen white", "#eceeef", "matte"], ["Frozen black", "#1d1f22", "matte"], ["Liquid silver", "#dfe3e8", "chrome"],
+];
+const FINISHES = ["gloss", "metallic", "pearl", "satin", "matte", "chrome"];
+const TINTS = { clear: [0.22, "#1c2528"], light: [0.45, "#141b20"], dark: [0.72, "#0a0e12"], limo: [0.93, "#040506"] };
+const VIEWS = [["hero", "¾ front"], ["side", "Side"], ["rear", "¾ rear"], ["front", "Front"], ["top", "Top"]];
+
+// ---------------------------------------------------------------------------
+// Reading a downloaded model: names, materials, paint, wheels, floor, facing.
+// The same rules the full configurator uses.
+// ---------------------------------------------------------------------------
+const nameWords = (s) =>
+  String(s || "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([A-Za-z])(\d)/g, "$1 $2")
+    .replace(/(\d)([A-Za-z])/g, "$1 $2").replace(/[_.\-:]+/g, " ").toLowerCase();
+
+const LAMP_WORDS = "head ?lights?|tail ?lights?|lamps?|lights?|indicators?|blinkers?|phares?|feux|faros?|fanali|luce|luz|scheinwerfer|leuchten?";
+const KINDS = [
+  ["lens", new RegExp(`\\b(${LAMP_WORDS}) ?(glass|lens|cover|vitre|verre|vetro|vidrio|glas)|\\blens(es)?\\b`)],
+  ["glass", /\b(glass|windows?|windscreen|windshield|backlight|vitres?|verre|vetro|vetri\w*|vidrios?|cristal(es)?|glas|scheiben?|ventanas?|finestrini)\b/],
+  ["tyre", /\b(tyres?|tires?|rubber|tread|sidewall|pneus?|pneumatici|gomma|gomme|goma|neumaticos?|reifen)\b/],
+  ["carbon", /\b(carbon|cfrp|carbone|carbono)\b/],
+  ["chrome", /\b(chrome|chromed|polished|chromo|cromo|cromato|chrom)\b/],
+  ["plastic", /\b(plastic|trim ?black|black ?trim|textured|matte ?black|grille|grill|plastique|plastica|plastico|kunststoff)\b/],
+];
+const kindOf = (name) => { const w = nameWords(name); for (const [k, re] of KINDS) if (re.test(w)) return k; return null; };
+
+function normalise(m) {
+  const kind = kindOf(m.name);
+  if (!kind || !m.isMeshStandardMaterial) return m;
+  const p = m.clone();
+  if (kind === "glass") Object.assign(p, { metalness: 0, roughness: 0.02, transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide }), p.color.set("#1c2528");
+  if (kind === "lens") Object.assign(p, { metalness: 0, roughness: 0.03, transparent: true, opacity: 0.22, depthWrite: false }), p.color.set("#ffffff");
+  if (kind === "tyre") { p.metalness = 0; p.roughness = 0.9; p.color.lerp(new THREE.Color("#141414"), 0.6); }
+  if (kind === "chrome") { p.metalness = 1; p.roughness = 0.05; p.color.set("#e4e7ea"); }
+  if (kind === "carbon") { p.metalness = 0.1; p.roughness = 0.35; }
+  if (kind === "plastic") { p.metalness = 0; p.roughness = Math.max(p.roughness, 0.6); }
+  return p;
+}
+
+const PAINT_WORDS = /\b(paint\w*|car ?paint|body ?colou?r|body|bodywork|exterior|shell|coat|clear ?coat|livery|carrozzeria|carroceria|carrocera|carrosserie|karosserie|lack|vernice|pintura|peinture|livrea|verniz)\b/;
+const OTHER_WORDS = new RegExp("\\b(" + [
+  "glass\\w*", "windows?", "windshield", "windscreen", "lights?", "lamps?", "lens", "vetro", "vidrio", "verre", "glas", "vitre", "phares?", "feux", "faro", "luce", "luz", "licht", "scheinwerfer",
+  "tires?", "tyres?", "rubber", "rims?", "wheels?", "brakes?", "calipers?", "discs?", "rotors?", "gomma", "goma", "pneu\\w*", "reifen", "cerchi\\w*", "llantas?", "jantes?", "felgen?", "ruota", "rueda", "roues?", "rad",
+  "interior", "interni", "interieur", "innen\\w*", "inside", "inner", "inter", "int", "seats?", "chair", "sedile", "asiento", "siege", "sitz", "dash\\w*", "screen", "steering", "volante", "lenkrad", "leather", "fabric", "cloth", "carpet", "headliner", "cockpit", "cabin", "console",
+  "chrome", "chromo", "cromo", "cromato", "chrom", "mirrors?", "logo", "badges?", "emblem", "plates?", "licen[cs]e", "targa", "placa", "plaque", "kennzeichen", "grill", "grille", "carbon", "plastic", "plastica", "plastique", "kunststoff", "wipers?", "engine", "motor", "exhaust",
+  "under\\w*", "chassis", "floor", "bottom", "dessous", "suelo", "boden", "ground", "shadow", "backdrop", "stage", "platform",
+].join("|") + ")\\b");
+const paintNameSays = (name) => { const w = nameWords(name); if (OTHER_WORDS.test(w)) return "other"; if (PAINT_WORDS.test(w)) return "paint"; return null; };
+
+function choosePaint(stats) {
+  const total = stats.reduce((s, m) => s + m.area, 0);
+  if (total <= 0) return { how: "none", ids: [] };
+  const share = (m) => m.area / total;
+  const lum = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const named = stats.filter((m) => m.kind === null && paintNameSays(m.name) === "paint" && share(m) > 0.02 && (lum(m.rgb) > 0.04 || share(m) > 0.08));
+  if (named.length) return { how: "named", ids: named.map((m) => m.id) };
+  const surfaces = stats.filter((m) => m.kind === null && paintNameSays(m.name) !== "other" && m.opacity >= 0.95 && m.height >= 0.25 && m.height <= 0.8);
+  const panels = surfaces.filter((m) => m.span >= 0.55);
+  if (!panels.length) return { how: "none", ids: [] };
+  const best = panels.reduce((a, b) => (b.area > a.area ? b : a));
+  if (share(best) < 0.12 || share(best) > 0.85) return { how: "none", ids: [] };
+  if (best.hasMap && /\b(atlas|baked?)\b/.test(nameWords(best.name))) return { how: "none", ids: [] };
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const isDefault = (c) => [1, 0.8].some((v) => c.every((x) => Math.abs(x - v) < 1e-3));
+  const siblings = best.hasMap || isDefault(best.rgb) ? [] : surfaces.filter((m) => m !== best && !m.hasMap && m.span >= 0.15 && dist(m.rgb, best.rgb) < 0.03);
+  return { how: "largest", ids: [best.id, ...siblings.map((m) => m.id)] };
+}
+
+const materialsOf = (mesh) => (Array.isArray(mesh.material) ? mesh.material : [mesh.material]);
+
+function dropFloor(model) {
+  model.updateMatrixWorld(true);
+  const meshes = [];
+  model.traverse((o) => { if (o.isMesh) meshes.push({ o, box: new THREE.Box3().setFromObject(o) }); });
+  const floors = new Set();
+  for (const { o, box } of meshes) {
+    const rest = new THREE.Box3();
+    for (const m of meshes) if (m.o !== o && !floors.has(m.o)) rest.union(m.box);
+    if (rest.isEmpty()) continue;
+    const r = rest.getSize(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+    if (s.x > r.x * 1.05 && s.z > r.z * 1.05 && box.max.y < rest.min.y + r.y * 0.2) floors.add(o);
+  }
+  for (const o of floors) o.removeFromParent();
+}
+
+function materialStats(root) {
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3());
+  const acc = new Map();
+  let triangles = 0;
+  root.traverse((o) => { if (o.isMesh) triangles += (o.geometry.index?.count ?? o.geometry.attributes.position?.count ?? 0) / 3; });
+  const step = Math.max(1, Math.floor(triangles / 150000));
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), ab = new THREE.Vector3(), ac = new THREE.Vector3();
+  root.traverse((o) => {
+    if (!o.isMesh || !o.visible) return;
+    const g = o.geometry, pos = g.attributes.position; if (!pos) return;
+    const index = g.index, count = index ? index.count : pos.count, mats = materialsOf(o);
+    const groups = Array.isArray(o.material) && g.groups.length ? g.groups : [{ start: 0, count, materialIndex: 0 }];
+    for (const grp of groups) {
+      const m = mats[grp.materialIndex ?? 0]; if (!m) continue;
+      let e = acc.get(m); if (!e) acc.set(m, (e = { area: 0, h: 0, lo: Infinity, hi: -Infinity }));
+      const end = Math.min(grp.start + grp.count, count);
+      for (let i = grp.start; i + 2 < end; i += 3 * step) {
+        a.fromBufferAttribute(pos, index ? index.getX(i) : i).applyMatrix4(o.matrixWorld);
+        b.fromBufferAttribute(pos, index ? index.getX(i + 1) : i + 1).applyMatrix4(o.matrixWorld);
+        c.fromBufferAttribute(pos, index ? index.getX(i + 2) : i + 2).applyMatrix4(o.matrixWorld);
+        const area = 0.5 * ab.subVectors(b, a).cross(ac.subVectors(c, a)).length() * step;
+        e.area += area; e.h += (area * ((a.y + b.y + c.y) / 3 - box.min.y)) / (size.y || 1);
+        e.lo = Math.min(e.lo, a.z, b.z, c.z); e.hi = Math.max(e.hi, a.z, b.z, c.z);
+      }
+    }
+  });
+  const materials = [...acc.keys()];
+  const stats = materials.map((m, id) => {
+    const e = acc.get(m);
+    return { id, name: m.name, kind: kindOf(m.name), rgb: m.color ? [m.color.r, m.color.g, m.color.b] : [1, 1, 1], opacity: m.transparent ? m.opacity : 1,
+      hasMap: Boolean(m.map), area: e.area, span: e.area > 0 ? (e.hi - e.lo) / (size.z || 1) : 0, height: e.area > 0 ? e.h / e.area : 0 };
+  });
+  return { materials, stats };
+}
+
+const cornerKey = (c) => `${c.z > 0 ? "f" : "r"}${c.x > 0 ? "r" : "l"}`;
+function sane(groups) {
+  const found = ["fl", "fr", "rl", "rr"].map((k) => groups.get(k));
+  const ok = found.every((g) => { if (!g) return false; const s = g.box.getSize(new THREE.Vector3()); const r = s.y / 2; return r > 0.2 && r < 0.52 && Math.abs(s.z - s.y) / s.y < 0.3; });
+  return ok ? found : null;
+}
+const WHEEL_RE = /\b(wheel|rim|tyre|tire|brake|caliper|disc|rotor|lug|hub|spoke|rueda|roue|ruota|llanta|jante|felge|reifen|gomma|pneu)/i;
+
+function splitAcrossCorners(mesh) {
+  if (Array.isArray(mesh.material) || !mesh.parent) return;
+  const g = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry;
+  const pos = g.attributes.position; if (!pos) return;
+  const tris = Math.floor(pos.count / 3), corner = new Uint8Array(tris), counts = [0, 0, 0, 0];
+  const v = new THREE.Vector3(), c = new THREE.Vector3();
+  mesh.updateMatrixWorld(true);
+  for (let t = 0; t < tris; t++) {
+    c.set(0, 0, 0);
+    for (let k = 0; k < 3; k++) c.add(v.fromBufferAttribute(pos, t * 3 + k).applyMatrix4(mesh.matrixWorld));
+    const key = (c.x > 0 ? 1 : 0) | (c.z > 0 ? 2 : 0);
+    corner[t] = key; counts[key]++;
+  }
+  if (counts.some((n) => n === 0)) return;
+  for (let key = 0; key < 4; key++) {
+    const geo = new THREE.BufferGeometry();
+    for (const [name, attr] of Object.entries(g.attributes)) {
+      const inter = attr.isInterleavedBufferAttribute, src = inter ? attr.data.array : attr.array;
+      const stride = inter ? attr.data.stride : attr.itemSize, offset = inter ? attr.offset : 0, size = attr.itemSize;
+      const out = new src.constructor(counts[key] * 3 * size);
+      let w = 0;
+      for (let t = 0; t < tris; t++) {
+        if (corner[t] !== key) continue;
+        for (let k = 0; k < 3; k++) { const base = (t * 3 + k) * stride + offset; for (let i = 0; i < size; i++) out[w++] = src[base + i]; }
+      }
+      geo.setAttribute(name, new THREE.BufferAttribute(out, size, attr.normalized));
+    }
+    geo.computeBoundingBox(); geo.computeBoundingSphere();
+    const piece = new THREE.Mesh(geo, mesh.material);
+    piece.name = `${mesh.name} ${key}`;
+    piece.position.copy(mesh.position); piece.quaternion.copy(mesh.quaternion); piece.scale.copy(mesh.scale);
+    piece.castShadow = piece.receiveShadow = true;
+    mesh.parent.add(piece);
+  }
+  mesh.removeFromParent();
+}
+
+function label(o) {
+  const names = [];
+  for (let p = o; p; p = p.parent) if (p.name) names.push(nameWords(p.name));
+  return `${names.join(" ")} ${materialsOf(o).map((m) => nameWords(m.name)).join(" ")}`;
+}
+
+function wheelsByName(root, carLength) {
+  const merged = [];
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const l = label(o);
+    if (!WHEEL_RE.test(l) || /steering|spare|light|lamp|arch|well/i.test(l)) return;
+    const b = new THREE.Box3().setFromObject(o), bs = b.getSize(new THREE.Vector3()), bc = b.getCenter(new THREE.Vector3());
+    if (bs.y <= 0.95 && bc.y <= 0.6 && bs.x > 0.6 && bs.z > carLength * 0.4) merged.push(o);
+  });
+  merged.forEach(splitAcrossCorners);
+  root.updateMatrixWorld(true);
+  const groups = new Map();
+  let tangled = false;
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const l = label(o);
+    if (!WHEEL_RE.test(l) || /steering|spare|light|lamp|arch|well/i.test(l)) return;
+    const b = new THREE.Box3().setFromObject(o), bs = b.getSize(new THREE.Vector3()), bc = b.getCenter(new THREE.Vector3());
+    if (bs.y > 0.95 || bc.y > 0.6) return;
+    if ((b.min.x < 0 && b.max.x > 0 && bs.x > 0.6) || (b.min.z < 0 && b.max.z > 0 && bs.z > carLength * 0.4)) tangled = true;
+    if (Math.abs(bc.x) < 0.15) return;
+    const key = cornerKey(bc), g = groups.get(key);
+    if (g) { g.box.union(b); g.meshes.push(o); } else groups.set(key, { box: b, meshes: [o] });
+  });
+  return tangled ? null : sane(groups);
+}
+
+function wheelsByShape(root) {
+  root.updateMatrixWorld(true);
+  const whole = new THREE.Box3().setFromObject(root), width = whole.getSize(new THREE.Vector3()).x;
+  const meshes = [];
+  root.traverse((o) => { if (o.isMesh) meshes.push({ o, box: new THREE.Box3().setFromObject(o) }); });
+  const tyres = new Map();
+  for (const m of meshes) {
+    const s = m.box.getSize(new THREE.Vector3()), c = m.box.getCenter(new THREE.Vector3());
+    if (!(Math.abs(s.z - s.y) / s.y < 0.2 && s.y > 0.45 && s.y < 1 && s.x < s.y * 0.6 && m.box.min.y - whole.min.y < 0.06 && Math.abs(c.x) > width * 0.2)) continue;
+    const key = cornerKey(c), prev = tyres.get(key);
+    if (!prev || s.y > prev.box.getSize(new THREE.Vector3()).y) tyres.set(key, m);
+  }
+  if (tyres.size !== 4) return null;
+  const groups = new Map();
+  for (const [key, tyre] of tyres) {
+    const zone = tyre.box.clone(); zone.min.x -= 0.12; zone.max.x += 0.12; zone.expandByScalar(0.01);
+    const parts = meshes.filter((m) => m === tyre || zone.containsBox(m.box)).map((m) => m.o);
+    const box = new THREE.Box3(); parts.forEach((p) => box.expandByObject(p));
+    groups.set(key, { box, meshes: parts });
+  }
+  return sane(groups);
+}
+
+const FRONT = [[/\b(head ?lights?|head ?lamps?|headlamps?)\b/, 3], [/\bsteering\b/, 3], [/\b(grille?|grill|radiator)\b/, 2], [/\b(windshield|windscreen|wipers?|dashboard|dash)\b/, 2], [/\b(bonnet|hood|splitter)\b/, 1], [/\bfront\b/, 1]];
+const REAR = [[/\b(tail ?lights?|tail ?lamps?|taillamps?|brake ?lights?|reverse ?lights?)\b/, 3], [/\b(exhausts?|muffler|tailpipes?)\b/, 2], [/\b(trunk|boot|diffuser)\b/, 2], [/\b(rear|back)\b/, 1]];
+const LAMP_RE = /\b(head ?lights?|head ?lamps?|headlamps?|tail ?lights?|tail ?lamps?|brake ?lights?|drl|leds?|lights?|lamps?|phares?|faros?|feux|fanali|scheinwerfer|licht|leuchten?)\b/;
+
+function prepare(gltf, entry) {
+  const model = gltf.scene;
+  const copies = new Map();
+  const own = (m) => { let c = copies.get(m); if (!c) copies.set(m, (c = normalise(m))); return c; };
+  model.traverse((o) => { if (!o.isMesh) return; o.material = Array.isArray(o.material) ? o.material.map(own) : own(o.material); o.castShadow = o.receiveShadow = true; });
+  dropFloor(model);
+
+  const orient = new THREE.Group(); orient.add(model);
+  const root = new THREE.Group(); root.add(orient);
+  let box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3());
+  orient.rotation.y = size.x > size.z ? Math.PI / 2 : 0;
+  root.updateMatrixWorld(true);
+
+  // Front toward +z, from what the parts are called.
+  box = new THREE.Box3().setFromObject(root);
+  const mid = box.getCenter(new THREE.Vector3()).z, len = box.getSize(new THREE.Vector3()).z;
+  let vote = 0;
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const along = (new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()).z - mid) / len;
+    if (Math.abs(along) < 0.08) return;
+    const l = label(o), side = Math.sign(along);
+    for (const [re, w] of FRONT) if (re.test(l)) vote += w * side;
+    for (const [re, w] of REAR) if (re.test(l)) vote -= w * side;
+  });
+  if (vote < 0) { orient.rotation.y += Math.PI; root.updateMatrixWorld(true); }
+
+  box = new THREE.Box3().setFromObject(root); size = box.getSize(new THREE.Vector3());
+  const target = entry.length ?? (size.z > 3 && size.z < 6.5 ? size.z : 4.6);
+  orient.scale.multiplyScalar(target / size.z);
+  root.updateMatrixWorld(true);
+  box = new THREE.Box3().setFromObject(root);
+  const centre = box.getCenter(new THREE.Vector3());
+  orient.position.set(-centre.x, -box.min.y, -centre.z);
+  root.updateMatrixWorld(true);
+
+  const wheels = new THREE.Group();
+  const found = wheelsByName(root, target) ?? wheelsByShape(root);
+  if (found) for (const g of found) for (const m of g.meshes) wheels.attach(m);
+
+  const slotsWhere = (test) => {
+    const slots = [];
+    root.traverse((o) => { if (o.isMesh) materialsOf(o).forEach((m, i) => { if (test(m, o)) slots.push({ mesh: o, index: Array.isArray(o.material) ? i : null, original: m }); }); });
+    return slots;
+  };
+  const { materials, stats } = materialStats(root);
+  const choice = choosePaint(stats);
+  const chosen = new Set(choice.ids.map((i) => materials[i]));
+  const paintSlots = slotsWhere((m) => chosen.has(m));
+  const glassSlots = slotsWhere((m) => !chosen.has(m) && kindOf(m.name) === "glass");
+  const lampSlots = slotsWhere((m, mesh) => !chosen.has(m) && (LAMP_RE.test(nameWords(m.name)) || LAMP_RE.test(label(mesh))))
+    .map((s) => ({ ...s, front: new THREE.Box3().setFromObject(s.mesh).getCenter(new THREE.Vector3()).z >= 0 }));
+
+  const body = new THREE.Group(); body.add(root);
+  const car = new THREE.Group(); car.add(body, wheels);
+  const finalBox = new THREE.Box3().setFromObject(car);
+  return { car, body, hasWheels: Boolean(found), paintSlots: paintSlots.length ? paintSlots : [], paintable: paintSlots.length > 0, glassSlots, lampSlots, size: finalBox.getSize(new THREE.Vector3()) };
+}
+
+function setSlots(slots, material) {
+  for (const s of slots) {
+    const m = material ?? s.original;
+    if (s.index === null) s.mesh.material = m; else s.mesh.material[s.index] = m;
+  }
+}
+
+function paintMaterial(hex, finish) {
+  const base = { color: new THREE.Color(hex), envMapIntensity: 1.25 };
+  const P = (o) => new THREE.MeshPhysicalMaterial({ ...base, ...o });
+  switch (finish) {
+    case "matte": return P({ metalness: 0.08, roughness: 0.72, envMapIntensity: 0.7 });
+    case "satin": return P({ metalness: 0.28, roughness: 0.46, clearcoat: 0.4, clearcoatRoughness: 0.32 });
+    case "metallic": return P({ metalness: 0.78, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.04 });
+    case "pearl": return P({ metalness: 0.45, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.03, iridescence: 0.55, iridescenceIOR: 1.6, iridescenceThicknessRange: [180, 520] });
+    case "chrome": return P({ metalness: 1, roughness: 0.06, clearcoat: 0.6, clearcoatRoughness: 0.02, envMapIntensity: 1.6 });
+    default: return P({ metalness: 0.32, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.03 });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The studio.
+// ---------------------------------------------------------------------------
+const stage = document.getElementById("stage");
+const canvas = document.getElementById("view");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.AgXToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(25, 1, 0.05, 80);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.minDistance = 2.5;
+controls.maxDistance = 18;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.target.set(0, 0.55, 0);
+
+const key = new THREE.DirectionalLight(0xffffff, 1.6);
+key.position.set(3, 8, 4);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4, near: 1, far: 20 });
+key.shadow.radius = 6;
+key.shadow.bias = -0.0004;
+scene.add(key);
+
+const floor = new THREE.Mesh(new THREE.CircleGeometry(40, 64), new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0.05 }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// A soft contact shadow under the car, sized to it.
+const blob = (() => {
+  const c = document.createElement("canvas"); c.width = c.height = 256;
+  const g = c.getContext("2d"), grad = g.createRadialGradient(128, 128, 20, 128, 128, 128);
+  grad.addColorStop(0, "rgba(0,0,0,0.75)"); grad.addColorStop(0.55, "rgba(0,0,0,0.35)"); grad.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = grad; g.fillRect(0, 0, 256, 256);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2; m.position.y = 0.002; m.renderOrder = 1;
+  return m;
+})();
+scene.add(blob);
+
+const SCENES = {
+  studio: { bg: "#c9ccd0", floor: "#b9bcc0", env: 1, key: 1.6, fog: [14, 34] },
+  dark: { bg: "#0b0e11", floor: "#0f1215", env: 0.45, key: 1.1, fog: [11, 26] },
+};
+function setScene(name) {
+  const s = SCENES[name];
+  scene.background = new THREE.Color(s.bg);
+  scene.fog = new THREE.Fog(s.bg, s.fog[0], s.fog[1]);
+  floor.material.color.set(s.floor);
+  scene.environmentIntensity = s.env;
+  key.intensity = s.key;
+  stage.style.background = s.bg;
+}
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+
+// Camera views: az (from the front, toward the car's right), elevation, and
+// distance in car lengths.
+const VIEW_POSE = { hero: [0.72, 0.12, 2.35], side: [Math.PI / 2, 0.06, 2.25], rear: [Math.PI - 0.72, 0.14, 2.35], front: [0, 0.07, 2.0], top: [0.4, 1.35, 2.5] };
+let flight = null;
+function flyTo(view, instant = false) {
+  const [az, el, k] = VIEW_POSE[view];
+  // Further back on a narrow screen, so the whole car stays in frame.
+  const d = (current?.size.z ?? 4.5) * k * Math.max(1, 1.45 / camera.aspect);
+  const to = new THREE.Vector3(Math.sin(az) * Math.cos(el) * d, 0.55 + Math.sin(el) * d, Math.cos(az) * Math.cos(el) * d);
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (instant || reduce) { camera.position.copy(to); controls.update(); return; }
+  flight = { from: camera.position.clone(), to, t0: performance.now(), ms: 750 };
+}
+
+renderer.setAnimationLoop((t) => {
+  if (flight) {
+    const f = Math.min(1, (t - flight.t0) / flight.ms), e = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2;
+    camera.position.lerpVectors(flight.from, flight.to, e);
+    if (f >= 1) flight = null;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+// ---------------------------------------------------------------------------
+// The garage and the look.
+// ---------------------------------------------------------------------------
+const loader = new GLTFLoader();
+loader.setMeshoptDecoder(MeshoptDecoder);
+const cache = new Map();
+const looks = new Map();
+let current = null;
+let currentKey = null;
+let view = "hero";
+let sceneName = "studio";
+
+const $ = (id) => document.getElementById(id);
+const factoryLook = () => ({ paint: null, tint: null, lights: false, ride: 0 });
+const look = () => looks.get(currentKey) ?? factoryLook();
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } } };
+
+function buildGarage() {
+  $("garage-count").textContent = `Garage · ${GARAGE.length}`;
+  const ul = $("garage");
+  for (const e of GARAGE) {
+    const li = document.createElement("li");
+    const b = document.createElement("button");
+    b.type = "button"; b.dataset.key = e.key;
+    b.innerHTML = `<span class="n"></span><span class="m"></span>`;
+    b.querySelector(".n").textContent = e.label;
+    b.querySelector(".m").textContent = e.detail;
+    b.addEventListener("click", () => selectCar(e.key));
+    li.append(b); ul.append(li);
+  }
+}
+
+function load(entry) {
+  if (cache.has(entry.key)) return Promise.resolve(cache.get(entry.key));
+  $("loading").hidden = false;
+  return new Promise((resolve, reject) => {
+    loader.load(entry.file, (gltf) => { const p = prepare(gltf, entry); cache.set(entry.key, p); resolve(p); }, (ev) => {
+      const share = ev.total ? ev.loaded / ev.total : 0;
+      $("load-pct").textContent = `${Math.round(share * 100)}%${ev.total ? ` of ${(ev.total / 1e6).toFixed(1)} MB` : ""}`;
+      $("load-fill").style.width = `${share * 100}%`;
+    }, reject);
+  }).finally(() => { $("loading").hidden = true; });
+}
+
+let requested = null;
+async function selectCar(k) {
+  requested = k;
+  const entry = GARAGE.find((e) => e.key === k) ?? GARAGE[0];
+  document.querySelectorAll("#garage button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.key === entry.key)));
+  $("car-title").textContent = entry.label;
+  $("car-sub").textContent = entry.detail;
+  let prepared;
+  try { prepared = await load(entry); } catch (err) {
+    $("car-sub").textContent = "This model could not be loaded. Pick it again to retry.";
+    console.warn(err); return;
+  }
+  if (requested !== k) return;
+  if (current) scene.remove(current.car);
+  current = prepared; currentKey = entry.key;
+  scene.add(current.car);
+  blob.scale.set(current.size.x * 1.25, current.size.z * 1.12, 1);
+  store.set("carbon-garage-car", entry.key);
+  credit(entry);
+  applyLook();
+  renderPanel();
+  flyTo(view, !flight && !camera.position.lengthSq());
+}
+
+function credit(e) {
+  const el = $("credit");
+  el.textContent = "";
+  const a = (href, text) => { const x = document.createElement("a"); x.href = href; x.target = "_blank"; x.rel = "noopener"; x.textContent = text; return x; };
+  if (e.own) {
+    el.append("3D model built in code from Porsche's published dimensions and studio photographs (", a(e.source, "build script"), ").");
+    return;
+  }
+  el.append("3D model: ", a(e.source, e.name), " by ", e.authorUrl ? a(e.authorUrl, e.author) : e.author, ", ", a(e.licenseUrl, e.license), ".");
+}
+
+let paintMat = null, tintMats = [], lampMats = [];
+function applyLook() {
+  const L = look();
+  paintMat?.dispose(); paintMat = null;
+  if (L.paint && current.paintable) { paintMat = paintMaterial(L.paint.hex, L.paint.finish); setSlots(current.paintSlots, paintMat); }
+  else setSlots(current.paintSlots, null);
+
+  tintMats.forEach((m) => m.dispose()); tintMats = [];
+  if (L.tint) {
+    const [opacity, color] = TINTS[L.tint];
+    for (const s of current.glassSlots) {
+      const m = s.original.clone(); Object.assign(m, { transparent: true, opacity, depthWrite: false }); m.color?.set(color);
+      tintMats.push(m); setSlots([s], m);
+    }
+  } else setSlots(current.glassSlots, null);
+
+  lampMats.forEach((m) => m.dispose()); lampMats = [];
+  if (L.lights) {
+    const made = new Map();
+    for (const s of current.lampSlots) {
+      const k = `${s.original.uuid}:${s.front}`;
+      let m = made.get(k);
+      if (!m) { m = s.original.clone(); m.emissive = new THREE.Color(s.front ? "#f2f6ff" : "#ff1a12"); m.emissiveIntensity = s.front ? 2.6 : 2.2; made.set(k, m); lampMats.push(m); }
+      setSlots([s], m);
+    }
+  } else setSlots(current.lampSlots, null);
+
+  current.body.position.y = current.hasWheels ? L.ride / 1000 : 0;
+}
+
+function setLook(patch) {
+  looks.set(currentKey, { ...look(), ...patch });
+  applyLook();
+  renderPanel();
+}
+
+function chip(label, pressed, onClick, disabled = false) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip"; b.textContent = label;
+  b.setAttribute("aria-pressed", String(pressed)); b.disabled = disabled;
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+function renderPanel() {
+  const L = look();
+  const sw = $("swatches"); sw.textContent = "";
+  const factory = document.createElement("button");
+  factory.type = "button"; factory.className = "swatch factory"; factory.title = "The model's own paint";
+  factory.setAttribute("aria-label", "Factory paint"); factory.setAttribute("aria-pressed", String(!L.paint));
+  factory.innerHTML = "<span>Fac</span>";
+  factory.addEventListener("click", () => setLook({ paint: null }));
+  sw.append(factory);
+  for (const [name, hex, finish] of PAINTS) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "swatch"; b.title = `${name} · ${finish}`;
+    b.setAttribute("aria-label", `${name}, ${finish}`);
+    b.setAttribute("aria-pressed", String(Boolean(L.paint && L.paint.hex === hex && L.paint.finish === finish)));
+    b.disabled = !current.paintable;
+    const shine = ["metallic", "pearl", "chrome"].includes(finish) ? `radial-gradient(circle at 30% 30%, #ffffff66, ${hex} 45%, ${hex})` : finish === "matte" ? hex : `radial-gradient(circle at 30% 30%, #ffffff33, ${hex} 40%)`;
+    b.style.background = shine;
+    b.addEventListener("click", () => setLook({ paint: { hex, finish, name } }));
+    sw.append(b);
+  }
+  $("paint-name").textContent = L.paint ? `${L.paint.name ?? "Custom"} · ${L.paint.finish}` : "Factory paint";
+  $("paint-note").hidden = current.paintable;
+  $("custom-paint").disabled = !current.paintable;
+  if (L.paint) $("custom-paint").value = L.paint.hex;
+
+  const fin = $("finishes"); fin.textContent = "";
+  for (const f of FINISHES) fin.append(chip(f[0].toUpperCase() + f.slice(1), Boolean(L.paint && L.paint.finish === f), () => setLook({ paint: { hex: L.paint?.hex ?? $("custom-paint").value, finish: f, name: L.paint?.name ?? "Custom" } }), !current.paintable));
+
+  const tints = $("tints"); tints.textContent = "";
+  tints.append(chip("Stock", !L.tint, () => setLook({ tint: null })));
+  for (const t of Object.keys(TINTS)) tints.append(chip(t[0].toUpperCase() + t.slice(1), L.tint === t, () => setLook({ tint: t }), current.glassSlots.length === 0));
+
+  const lights = $("lights"); lights.textContent = "";
+  lights.append(chip("Off", !L.lights, () => setLook({ lights: false })), chip("On", L.lights, () => setLook({ lights: true }), current.lampSlots.length === 0));
+
+  $("ride").value = String(L.ride); $("ride").disabled = !current.hasWheels;
+  $("ride-val").textContent = `${L.ride > 0 ? "+" : ""}${L.ride} mm`;
+  $("ride-note").hidden = current.hasWheels;
+}
+
+$("custom-paint").addEventListener("input", (e) => setLook({ paint: { hex: e.target.value, finish: look().paint?.finish ?? "gloss", name: "Custom" } }));
+$("ride").addEventListener("input", (e) => setLook({ ride: Number(e.target.value) }));
+$("reset").addEventListener("click", () => setLook(factoryLook()));
+
+function buildViews() {
+  const v = $("views");
+  for (const [k, text] of VIEWS) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "glassy"; b.textContent = text; b.dataset.view = k;
+    b.setAttribute("aria-pressed", String(k === view));
+    b.addEventListener("click", () => { view = k; v.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.view === k))); flyTo(k); });
+    v.append(b);
+  }
+  const s = $("scenes");
+  for (const [k, text] of [["studio", "Studio"], ["dark", "Dark"]]) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "glassy"; b.textContent = text; b.dataset.scene = k;
+    b.setAttribute("aria-pressed", String(k === sceneName));
+    b.addEventListener("click", () => { sceneName = k; setScene(k); s.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.scene === k))); });
+    s.append(b);
+  }
+}
+
+buildGarage();
+buildViews();
+setScene(sceneName);
+resize();
+camera.position.set(6, 1.4, 8);
+const saved = store.get("carbon-garage-car");
+selectCar(GARAGE.some((e) => e.key === saved) ? saved : "ford/mustang");
+</script>
