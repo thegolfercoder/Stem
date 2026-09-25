@@ -80,7 +80,13 @@ for (const key of queue) {
   for (const c of options) {
     console.log(`\n→ ${key}: ${c.name} by ${c.author} (${c.license})`);
     try {
-      const flags = ["--sketchfab", c.uid, "--for", key, ...(NONCOMMERCIAL.has(c.license) ? ["--allow-noncommercial"] : [])];
+      const flags = [
+        "--sketchfab", c.uid, "--for", key,
+        ...(NONCOMMERCIAL.has(c.license) ? ["--allow-noncommercial"] : []),
+        // Measured cars must match their published proportions; a candidate
+        // that does not is skipped for the next one.
+        ...(profiled.has(key) ? ["--strict"] : []),
+      ];
       execFileSync(process.execPath, [join(ROOT, "scripts", "fetch-model.mjs"), ...flags], { stdio: "inherit" });
       fetched++;
       break;

@@ -17,7 +17,7 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
  * have left it alone for a while.
  */
 
-export type ViewName = "hero" | "side" | "rear" | "front" | "top" | "wheel";
+export type ViewName = "hero" | "side" | "rear" | "front" | "top" | "wheel" | "interior";
 
 export const VIEWS: readonly { name: ViewName; label: string }[] = [
   { name: "hero", label: "¾ front" },
@@ -26,6 +26,7 @@ export const VIEWS: readonly { name: ViewName; label: string }[] = [
   { name: "front", label: "Front" },
   { name: "top", label: "Top" },
   { name: "wheel", label: "Wheel" },
+  { name: "interior", label: "Interior" },
 ];
 
 interface Framing {
@@ -35,29 +36,41 @@ interface Framing {
 
 function framing(
   view: ViewName,
-  size: { length: number; width: number; height: number; frontAxleZ: number; trackHalf: number },
+  size: { length: number; width: number; height: number; frontAxleZ: number; trackHalf: number; wheelbase: number },
 ): Framing {
   const L = Math.max(size.length, 3.6);
   const h = size.height;
   const t = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+  // Distances are for a ~55mm-equivalent lens (25° vertical field of view).
+  // The three-quarter views sit at hood-to-driver-eye height, where a
+  // photographer stands, not above the roof.
+  const eye = Math.min(Math.max(h * 0.85, 1.05), 1.3);
 
   switch (view) {
     case "side":
-      return { position: t(L * 1.52, h * 0.62, 0), target: t(0, h * 0.42, 0) };
+      return { position: t(L * 1.85, eye * 0.8, 0), target: t(0, h * 0.42, 0) };
     case "rear":
-      return { position: t(-L * 0.92, h * 1.02, -L * 1.08), target: t(0, h * 0.42, -0.1) };
+      return { position: t(-L * 1.1, eye, -L * 1.3), target: t(0, h * 0.4, -0.1) };
     case "front":
-      return { position: t(0, h * 0.72, L * 1.42), target: t(0, h * 0.42, 0) };
+      return { position: t(0, eye * 0.85, L * 1.75), target: t(0, h * 0.42, 0) };
     case "top":
-      return { position: t(0.01, L * 1.85, 0.01), target: t(0, 0, 0) };
+      return { position: t(0.01, L * 2.2, 0.01), target: t(0, 0, 0) };
     case "wheel":
       return {
-        position: t(size.trackHalf + 1.25, 0.46, size.frontAxleZ + 0.95),
+        position: t(size.trackHalf + 1.45, 0.46, size.frontAxleZ + 1.1),
         target: t(size.trackHalf, 0.34, size.frontAxleZ),
       };
+    case "interior": {
+      // The driver's eye: left seat, about 60% of the wheelbase back from the
+      // front axle, a hand below the roof, looking out over the dashboard.
+      const z = size.frontAxleZ - size.wheelbase * 0.6;
+      const x = size.width * 0.2;
+      const y = h - 0.2;
+      return { position: t(x, y, z), target: t(x * 0.6, y - 0.28, z + 2.2) };
+    }
     case "hero":
     default:
-      return { position: t(L * 0.98, h * 0.92, L * 1.1), target: t(0, h * 0.38, 0.05) };
+      return { position: t(L * 1.15, eye, L * 1.32), target: t(0, h * 0.4, 0.05) };
   }
 }
 
@@ -71,7 +84,7 @@ export function CameraRig({
   view: ViewName;
   /** Bumped when the same view is chosen again, so it re-frames. */
   nonce: number;
-  size: { length: number; width: number; height: number; frontAxleZ: number; trackHalf: number };
+  size: { length: number; width: number; height: number; frontAxleZ: number; trackHalf: number; wheelbase: number };
 }) {
   const controls = useRef<OrbitControlsImpl>(null);
   const camera = useThree((s) => s.camera);
@@ -134,7 +147,8 @@ export function CameraRig({
       enableDamping
       dampingFactor={0.07}
       autoRotateSpeed={0.55}
-      minDistance={1.6}
+      // Close enough to sit in the driver's seat for the interior view.
+      minDistance={0.05}
       maxDistance={14}
       // Never under the floor: it looks broken, and there is nothing there.
       maxPolarAngle={Math.PI / 2 - 0.03}

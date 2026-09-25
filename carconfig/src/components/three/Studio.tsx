@@ -22,15 +22,29 @@ import type { SceneName } from "./scenes";
  * gives the car a reflection to stand in, which grounds it far better than a
  * shadow alone.
  */
-const HDRI: Record<Exclude<SceneName, "studio">, { file: string; ground: boolean; intensity: number }> = {
+const HDRI: Record<Exclude<SceneName, "studio" | "dark">, { file: string; ground: boolean; intensity: number }> = {
   photo: { file: "/hdri/studio_small_09.hdr", ground: false, intensity: 1 },
   road: { file: "/hdri/rural_asphalt_road.hdr", ground: true, intensity: 1 },
   sunset: { file: "/hdri/venice_sunset.hdr", ground: true, intensity: 1.1 },
   night: { file: "/hdri/cobblestone_street_night.hdr", ground: true, intensity: 0.9 },
 };
 
+/**
+ * The generated studio in two tones. "Light" is the neutral grey room of a
+ * professional car photography studio, and the default: paint reflects
+ * white softboxes against mid-grey walls, which shows every surface without
+ * flattering it. "Dark" is the same softboxes in a black room — more
+ * dramatic, less honest about shape.
+ */
+const TONES = {
+  // A studio floor is satin, not wet: a soft hint of the car in it, and the
+  // contact shadow doing the work of grounding it.
+  studio: { bg: "#c9ccd0", room: "#5d6166", floor: "#b9bcc0", mirror: 0.06, mix: 3, fog: [14, 34] as const },
+  dark: { bg: "#0b0e11", room: "#05070a", floor: "#0d1013", mirror: 0.35, mix: 18, fog: [11, 26] as const },
+};
+
 export function Studio({ quality, scene = "studio" }: { quality: "high" | "low"; scene?: SceneName }) {
-  if (scene !== "studio") {
+  if (scene !== "studio" && scene !== "dark") {
     const h = HDRI[scene];
     return (
       <>
@@ -56,13 +70,14 @@ export function Studio({ quality, scene = "studio" }: { quality: "high" | "low";
     );
   }
 
+  const tone = TONES[scene];
   return (
     <>
-      <color attach="background" args={["#0b0e11"]} />
-      <fog attach="fog" args={["#0b0e11", 11, 26]} />
+      <color attach="background" args={[tone.bg]} />
+      <fog attach="fog" args={[tone.bg, tone.fog[0], tone.fog[1]]} />
 
       <Environment resolution={quality === "high" ? 512 : 256} frames={1}>
-        <color attach="background" args={["#05070a"]} />
+        <color attach="background" args={[tone.room]} />
 
         {/* The overhead softbox: one broad panel and three strips. */}
         <Lightformer intensity={1.6} rotation-x={Math.PI / 2} position={[0, 6, 0]} scale={[12, 5, 1]} />
@@ -78,14 +93,6 @@ export function Studio({ quality, scene = "studio" }: { quality: "high" | "low";
         <Lightformer intensity={0.9} position={[0, 2, 12]} scale={[10, 3, 1]} />
         <Lightformer intensity={0.6} rotation-y={Math.PI} position={[0, 2, -12]} scale={[10, 3, 1]} />
 
-        {/* A cool strip high on one side for a little colour in the reflections. */}
-        <Lightformer
-          color="#7fb4ff"
-          intensity={3}
-          scale={[6, 0.35, 1]}
-          position={[8, 5, 8]}
-          onUpdate={(self) => self.lookAt(0, 0, 0)}
-        />
       </Environment>
 
       {/* One real light for crisp shadows; the environment does the rest. */}
@@ -109,17 +116,17 @@ export function Studio({ quality, scene = "studio" }: { quality: "high" | "low";
             blur={[400, 120]}
             resolution={1024}
             mixBlur={1}
-            mixStrength={18}
+            mixStrength={tone.mix}
             roughness={0.9}
             depthScale={1.1}
             minDepthThreshold={0.35}
             maxDepthThreshold={1.3}
-            color="#0d1013"
-            metalness={0.55}
-            mirror={0.35}
+            color={tone.floor}
+            metalness={0.3}
+            mirror={tone.mirror}
           />
         ) : (
-          <meshStandardMaterial color="#0d1013" roughness={0.85} metalness={0.2} />
+          <meshStandardMaterial color={tone.floor} roughness={0.85} metalness={0.1} />
         )}
       </mesh>
 

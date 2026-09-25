@@ -8,6 +8,7 @@ import type { ModelAsset, ModelTuning } from "@/lib/three/model-assets";
 import { createBodyShape } from "@/lib/three/body-shape";
 import { Aero } from "./Aero";
 import { paintMaterial } from "./materials";
+import { materialWords, normaliseMaterial } from "./model-materials";
 import { Wheel } from "./Wheel";
 
 /**
@@ -33,14 +34,6 @@ const DEG = Math.PI / 180;
 // Words starting this way: "Tireside" and "Rim 1" match, "Trim" does not.
 const WHEEL_RE = /\b(wheel|rim|tyre|tire|brake|caliper|disc|rotor|lug|hub|spoke)/i;
 
-/** "WheelFrontLRim1" → "Wheel Front L Rim 1", so word boundaries mean something. */
-function words(name: string): string {
-  return name
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/([A-Za-z])(\d)/g, "$1 $2")
-    .replace(/(\d)([A-Za-z])/g, "$1 $2")
-    .replace(/[_.\-:]+/g, " ");
-}
 const PAINT_RE = /paint|body|exterior|shell|coat/i;
 const NOT_PAINT_RE =
   /glass|window|windshield|light|lamp|tire|tyre|rubber|chrome|interior|seat|dash|rim|wheel|brake|caliper|disc|logo|badge|emblem|plate|licen[cs]e|mirror|grill|trim|carbon|plastic|under|engine|exhaust|gasket|black|matte|metal/i;
@@ -59,7 +52,7 @@ interface Prepared {
 
 function chainName(o: THREE.Object3D): string {
   const names: string[] = [];
-  for (let p: THREE.Object3D | null = o; p; p = p.parent) if (p.name) names.push(words(p.name));
+  for (let p: THREE.Object3D | null = o; p; p = p.parent) if (p.name) names.push(materialWords(p.name));
   return names.join(" ");
 }
 
@@ -81,9 +74,11 @@ function prepare(scene: THREE.Object3D, length: number | null, fallbackLength: n
   const model = scene.clone(true);
   // Materials are shared with the loader's cache; repainting this car must
   // not repaint every other instance of it.
+  // Recognised materials are also given physically correct properties.
   model.traverse((o) => {
     if (!(o instanceof THREE.Mesh)) return;
-    o.material = Array.isArray(o.material) ? o.material.map((m) => m.clone()) : o.material.clone();
+    const own = (m: THREE.Material) => normaliseMaterial(m.clone());
+    o.material = Array.isArray(o.material) ? o.material.map(own) : own(o.material);
     o.castShadow = true;
     o.receiveShadow = true;
   });
@@ -132,7 +127,7 @@ function prepare(scene: THREE.Object3D, length: number | null, fallbackLength: n
     let merged = false;
     root.traverse((o) => {
       if (!(o instanceof THREE.Mesh)) return;
-      const label = `${chainName(o)} ${materialsOf(o).map((m) => words(m.name)).join(" ")}`;
+      const label = `${chainName(o)} ${materialsOf(o).map((m) => materialWords(m.name)).join(" ")}`;
       if (!WHEEL_RE.test(label) || /steering|spare|light|lamp|arch|well/i.test(label)) return;
       const b = new THREE.Box3().setFromObject(o);
       // A wheel part sits low and outboard, and is no taller than a big wheel.

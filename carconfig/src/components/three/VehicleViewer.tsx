@@ -52,6 +52,7 @@ export default function VehicleViewer({
       height: config.height,
       frontAxleZ: config.length / 2 - overhang * S.frontOverhangShare,
       trackHalf: config.width / 2 - 0.12,
+      wheelbase: config.wheelbase,
     };
   }, [config.style, config.length, config.width, config.height, config.wheelbase]);
 
@@ -59,7 +60,9 @@ export default function VehicleViewer({
     <Canvas
       shadows
       dpr={quality === "high" ? [1, 1.75] : [1, 1.25]}
-      camera={{ position: [6, 1.6, 7], fov: 30, near: 0.05, far: 80 }}
+      // About a 55mm lens on full frame: the focal length car photographers
+      // use for three-quarter shots, long enough not to stretch the nose.
+      camera={{ position: [6, 1.2, 7], fov: 25, near: 0.05, far: 80 }}
       gl={{
         antialias: false,
         powerPreference: "high-performance",
@@ -91,9 +94,11 @@ export default function VehicleViewer({
         ) : (
           <></>
         )}
-        <Bloom mipmapBlur luminanceThreshold={1} luminanceSmoothing={0.2} intensity={0.55} />
+        {/* Only the lamps glow, and not much: exaggerated bloom is the first
+            thing that makes a render look like a render. */}
+        <Bloom mipmapBlur luminanceThreshold={1.4} luminanceSmoothing={0.1} intensity={0.22} />
         <ToneMapping mode={ToneMappingMode.AGX} />
-        <Vignette offset={0.28} darkness={0.55} />
+        <Vignette offset={0.35} darkness={0.25} />
         {quality === "low" ? <SMAA /> : <></>}
       </EffectComposer>
     </Canvas>

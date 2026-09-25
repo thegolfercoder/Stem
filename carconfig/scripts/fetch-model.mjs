@@ -209,6 +209,19 @@ async function main() {
       { stdio: "inherit" },
     );
 
+    // The accuracy gate: a model that is not the real car's proportions is
+    // not used, however good it looks. Only possible where the car has
+    // published dimensions; --strict makes a failure final.
+    try {
+      execFileSync(process.execPath, [join(ROOT, "scripts", "check-model.mjs"), out, "--for", target], { stdio: "inherit" });
+    } catch (e) {
+      if (e.status === 1 && opts.strict) {
+        rmSync(out, { force: true });
+        fail(`${credit.name} does not match the real car's proportions; not used.`);
+      }
+      // Status 2: no published dimensions to check against. Nothing to gate on.
+    }
+
     const manifest = existsSync(MANIFEST) ? JSON.parse(readFileSync(MANIFEST, "utf8")) : {};
     manifest[target] = {
       file: `/models/${fileName}`,

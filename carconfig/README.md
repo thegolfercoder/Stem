@@ -181,6 +181,27 @@ and a vignette. If the frame rate drops, quality steps down on its own.
    in the build's wheels when it can find all four. The licence's required
    credit is shown under the viewer.
 
+**Adding a car to configurator quality.** Generated bodies are a fallback.
+Configurator-grade models come from CAD data or expert modelling, not code.
+Each car goes through the same steps:
+
+1. **Identify the exact car:** generation, facelift, body style and trim
+   (e.g. BMW M3 Competition xDrive, G80, pre-facelift, saloon), and record its
+   published length, width, height and wheelbase in a measured profile.
+2. **Source a model of that version.** Take a free CC0 or CC BY model from
+   `model-candidates.json`, or a purchased one whose licence allows web
+   display. Refuse other generations and "inspired by" models.
+3. **Fetch with `--strict`.** `check-model` compares the model's height,
+   width and wheelbase, each as a share of its length, with the published
+   figures. A model outside tolerance (wheelbase ±2%, height ±4%) is rejected.
+4. **Normalise materials.** Glass, lamp lenses, chrome, tyres, carbon,
+   piano black, plastics and leather are recognised by name and given
+   physically correct properties. Anything unrecognised keeps its author's
+   material.
+5. **Check it in the studio** from the ¾ front, side, ¾ rear, front and
+   interior views. Paint, wheel swapping and aero placement get per-model
+   tuning where the automatic handling guesses wrong.
+
 A CC licence on Sketchfab is the uploader's claim. Some uploads are
 extracted from games, and the uploader had no right to license them. Check
 a model's page before relying on it for anything public.
