@@ -5,3 +5,7 @@ next-env.d.ts
 .env
 .env.local
 .vpic-cache/
+
+# The repository ignores models/ folders (downloaded ML weights); the site's car
+# models are part of the site and are committed.
+!public/models/

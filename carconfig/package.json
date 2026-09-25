@@ -14,7 +14,8 @@
     "fetch-model": "node scripts/fetch-model.mjs",
     "find-models": "node scripts/find-models.mjs",
     "fetch-all-models": "node scripts/fetch-all-models.mjs",
-    "check-model": "node scripts/check-model.mjs"
+    "check-model": "node scripts/check-model.mjs",
+    "build-model": "node scripts/build-model.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

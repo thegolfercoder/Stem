@@ -1,1 +1,12 @@
-{}
+{
+  "porsche/911-gt3-rs": {
+    "file": "/models/porsche__911-gt3-rs.glb",
+    "name": "Porsche 911 GT3 RS (992)",
+    "author": "Stem",
+    "authorUrl": null,
+    "own": true,
+    "licenseLabel": "built for this site",
+    "licenseUrl": "https://github.com/thegolfercoder/Stem/blob/main/carconfig/tools/blender/gt3rs.py",
+    "sourceUrl": "https://github.com/thegolfercoder/Stem/blob/main/carconfig/tools/blender/gt3rs.py"
+  }
+}

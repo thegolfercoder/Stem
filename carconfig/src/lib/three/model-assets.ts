@@ -19,6 +19,8 @@ export interface ModelCredit {
   readonly licenseLabel: string;
   readonly licenseUrl: string;
   readonly sourceUrl: string;
+  /** Built for this site (tools/blender) rather than downloaded; sourceUrl is its build script. */
+  readonly own: boolean;
 }
 
 export interface ModelAsset {
@@ -51,6 +53,7 @@ interface ManifestEntry {
   readonly licenseLabel: string;
   readonly licenseUrl: string;
   readonly sourceUrl: string;
+  readonly own?: boolean;
 }
 
 const ENTRIES = manifest as Readonly<Record<string, ManifestEntry>>;
@@ -73,6 +76,7 @@ export function modelAssetFor(makeSlug: string, modelSlug: string): ModelAsset |
       licenseLabel: e.licenseLabel,
       licenseUrl: e.licenseUrl,
       sourceUrl: e.sourceUrl,
+      own: e.own === true,
     },
     tuning: TUNING[key] ?? {},
   };

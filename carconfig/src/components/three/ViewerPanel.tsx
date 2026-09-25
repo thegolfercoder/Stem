@@ -78,7 +78,15 @@ export function ViewerPanel({ config }: { config: ViewerConfig }) {
       </div>
 
       <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex items-end justify-between gap-3 p-3">
-        {credit ? (
+        {credit?.own ? (
+          <p className="pointer-events-auto max-w-[62%] text-[10.5px] leading-snug text-[var(--color-ink-faint)]">
+            3D model built for this site from the maker&apos;s published dimensions and studio photographs (
+            <a href={credit.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--color-ink)]">
+              build script
+            </a>
+            ).
+          </p>
+        ) : credit ? (
           // Required by the model's licence: name the work, the author and the licence.
           <p className="pointer-events-auto max-w-[62%] text-[10.5px] leading-snug text-[var(--color-ink-faint)]">
             3D model:{" "}
