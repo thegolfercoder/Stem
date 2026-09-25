@@ -269,13 +269,24 @@ export function createBodyShape(input: BodyShapeInput): BodyShape {
    * above the arches, as every height here is.
    */
   const tracedTubTop = (t: TracedSide): [number, number][] => {
-    const minY = Math.max(arches[0].y + arches[0].r, arches[1].y + arches[1].r) + 0.06;
+    // Only over a wheel does the body have to clear the arch; ahead of the
+    // front wheel and behind the rear one the traced nose and tail can be as
+    // low as the real car's.
+    const clear = (z: number) => {
+      let y = 0.25;
+      for (const a of arches) {
+        const dz = Math.abs(z - a.z);
+        const reach = a.r + 0.12;
+        if (dz < reach) y = Math.max(y, a.y + Math.sqrt(Math.max(reach * reach - dz * dz, 0)) + 0.02);
+      }
+      return y;
+    };
     const pts: [number, number][] = [];
     for (const [x, y] of t.top) {
-      if (x <= t.cowl || x >= t.backlight) pts.push([zAt(x), Math.max(y * H, minY)]);
+      if (x <= t.cowl || x >= t.backlight) pts.push([zAt(x), Math.max(y * H, clear(zAt(x)))]);
     }
     for (const [x, y] of t.belt) {
-      if (x > t.cowl && x < t.backlight) pts.push([zAt(x), Math.max(y * H, minY)]);
+      if (x > t.cowl && x < t.backlight) pts.push([zAt(x), Math.max(y * H, clear(zAt(x)))]);
     }
     return pts;
   };

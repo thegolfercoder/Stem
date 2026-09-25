@@ -355,11 +355,14 @@ export const VEHICLES: readonly VehicleProfile[] = [
     paintHex: "#6e7377",
   }),
 
-  // The halo car. Centre-lock hubs, a staggered 20/21in fitment and brakes
-  // big enough that nothing smaller than stock will cover them. Porsche does
-  // not publish wheel offsets, so the two below are placeholders the viewer
-  // needs to place the wheel; no clearance envelope is recorded, and the
-  // engine answers "unknown" to anything that would lean on one.
+  // The halo car, and the first built to configurator standard. Every figure
+  // below is from Porsche's own technical data sheet for the 992 GT3 RS (MY
+  // 08/2022, EU model), which is still the current car for the 2026 model
+  // year: the 992.2 facelift had not been revealed when this was written.
+  // Centre-lock hubs, a staggered 20/21in fitment, and brakes big enough that
+  // nothing smaller than stock will cover them. No clearance envelope is
+  // recorded, so the engine answers "unknown" to anything that leans on one.
+  // Source: newsroom.porsche.com/dam/jcr:1d390f77-93c3-49c0-89c7-634f5f02b26a/S22_3515_en.pdf
   defineVehicle({
     slug: "porsche-911-gt3-rs-992-2023",
     manufacturer: "Porsche",
@@ -367,7 +370,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     generationCode: "992",
     generationName: "992 (2023–)",
     years: [2023, null],
-    year: 2023,
+    year: 2026,
     trim: "GT3 RS",
     engine: {
       code: "4.0 GT flat-six",
@@ -385,14 +388,14 @@ export const VEHICLES: readonly VehicleProfile[] = [
     boltCircleMm: 0,
     centerBoreMm: 0,
     front: {
-      wheel: [20, 10, 50],
+      wheel: [20, 10, 45],
       tire: [275, 35],
-      brake: [408, 6, "Six-piston fixed front caliper"],
+      brake: [408, 6, "Six-piston aluminium monobloc fixed caliper"],
     },
     rear: {
-      wheel: [21, 13, 47],
+      wheel: [21, 13, 31],
       tire: [335, 30],
-      brake: [380, 4, "Four-piston fixed rear caliper"],
+      brake: [380, 4, "Four-piston aluminium monobloc fixed caliper"],
     },
     traits: [
       "double_wishbone_front",
@@ -404,6 +407,7 @@ export const VEHICLES: readonly VehicleProfile[] = [
     ],
     bodyProfile: "coupe",
     dims: [4572, 1900, 1322, 2457],
+    track: [1630, 1582],
     paintHex: "#6fae3c",
   }),
 

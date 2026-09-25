@@ -58,6 +58,9 @@ export interface ViewerConfig {
   readonly width: number;
   readonly height: number;
   readonly wheelbase: number;
+  /** Published track widths in metres, or null to derive them from the body. */
+  readonly trackFront: number | null;
+  readonly trackRear: number | null;
   /**
    * "published" when these are the car's own dimensions, "typical" when they
    * are a stand-in for the body style. The viewer says which.
@@ -204,6 +207,8 @@ export function deriveViewerConfig(
     height: (dims?.heightMm ?? defaults.heightMm) / 1000,
     wheelbase: (dims?.wheelbaseMm ?? defaults.wheelbaseMm) / 1000,
     dimensionSource: dims ? "published" : "typical",
+    trackFront: dims?.trackFrontMm ? dims.trackFrontMm / 1000 : null,
+    trackRear: dims?.trackRearMm ? dims.trackRearMm / 1000 : null,
     face: model?.face ?? faceFamilyFor(vehicle.makeSlug, style),
     model,
     asset: modelAssetFor(vehicle.makeSlug, vehicle.modelSlug),

@@ -217,8 +217,10 @@ export function RealCar({ config, asset }: { config: ViewerConfig; asset: ModelA
         wheelbase: config.wheelbase,
         frontTireRadius: rollingRadiusM(config.front.stock),
         rearTireRadius: rollingRadiusM(config.rear.stock),
+        overrides: config.model?.overrides,
+        traced: config.model?.traced,
       }),
-    [config.style, config.length, config.width, config.height, config.wheelbase, config.front.stock, config.rear.stock],
+    [config.style, config.length, config.width, config.height, config.wheelbase, config.front.stock, config.rear.stock, config.model],
   );
   const deckOffset = useMemo(() => {
     const z = proxy.zRear + 0.25;

@@ -145,6 +145,9 @@ export interface VehicleDimensions {
   readonly widthMm: number;
   readonly heightMm: number;
   readonly wheelbaseMm: number;
+  /** Published track widths, tyre centre to tyre centre, where known. */
+  readonly trackFrontMm?: number;
+  readonly trackRearMm?: number;
 }
 
 export interface VehicleProfile {

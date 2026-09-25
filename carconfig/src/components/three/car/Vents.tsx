@@ -56,6 +56,35 @@ function patchesFor(shape: BodyShape, features: readonly FactoryFeature[]) {
     }
   }
 
+  // Side openings are placed by height on the flank, so they sit where the
+  // photographs show them whatever the section's shape.
+  const thetaAt = (z: number, y: number) => {
+    const sec = shape.tubSection(z);
+    const yc = (sec.yTop + sec.yBottom) / 2;
+    const b = (sec.yTop - sec.yBottom) / 2;
+    const v = Math.max(-0.98, Math.min(0.98, (y - yc) / b));
+    const n = v >= 0 ? shape.style.roundTop : shape.style.roundBottom;
+    return Math.sign(v) * Math.asin(Math.abs(v) ** (n / 2));
+  };
+  const H = shape.input.height;
+  const [front, rear] = shape.arches;
+
+  if (features.includes("arch_vents")) {
+    // A tall opening in the wing just behind the front wheel.
+    const z0 = front.z - front.r - 0.16;
+    const z1 = front.z - front.r - 0.03;
+    const zm = (z0 + z1) / 2;
+    recess.push(...mirrored({ z: [z0, z1], t: [thetaAt(zm, 0.22 * H), thetaAt(zm, 0.5 * H)] }));
+  }
+
+  if (features.includes("side_intakes")) {
+    // A slim intake high in the rear quarter, just ahead of the rear wheel.
+    const z0 = rear.z + rear.r + 0.04;
+    const z1 = rear.z + rear.r + 0.24;
+    const zm = (z0 + z1) / 2;
+    recess.push(...mirrored({ z: [z0, z1], t: [thetaAt(zm, 0.46 * H), thetaAt(zm, 0.62 * H)] }));
+  }
+
   return { recess, slats };
 }
 

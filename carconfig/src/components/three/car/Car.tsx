@@ -52,6 +52,7 @@ export function Car({ config }: { config: ViewerConfig }) {
         frontTireRadius: stockF,
         rearTireRadius: stockR,
         overrides: config.model?.overrides,
+        traced: config.model?.traced,
       }),
     [config.style, config.length, config.width, config.height, config.wheelbase, stockF, stockR, config.model],
   );
@@ -80,8 +81,11 @@ export function Car({ config }: { config: ViewerConfig }) {
   const corner = (axle: "front" | "rear") => {
     const a = config[axle];
     const z = axle === "front" ? shape.zFrontAxle : shape.zRearAxle;
-    const stockCentre =
-      shape.tubSection(z).hw - TIRE_INSET - a.stock.tireWidthMm / 2000;
+    // The published track where there is one, kept inside the body's
+    // own width; otherwise the tyre is tucked just inside the body.
+    const fromBody = shape.tubSection(z).hw - TIRE_INSET - a.stock.tireWidthMm / 2000;
+    const track = axle === "front" ? config.trackFront : config.trackRear;
+    const stockCentre = track ? Math.min(track / 2, fromBody + TIRE_INSET) : fromBody;
     const offsetShift = (a.stock.offsetMm - a.fitted.offsetMm) / 1000;
     return {
       x: stockCentre + offsetShift,

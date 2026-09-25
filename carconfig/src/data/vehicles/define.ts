@@ -59,6 +59,8 @@ export interface VehicleInput {
   readonly bodyProfile: BodyProfile;
   /** [length, width, height, wheelbase] in mm, as published. */
   readonly dims: readonly [number, number, number, number];
+  /** [front, rear] track in mm, as published. Omit when unknown. */
+  readonly track?: readonly [number, number];
   readonly paintHex: string;
 }
 
@@ -146,6 +148,8 @@ export function defineVehicle(input: VehicleInput): VehicleProfile {
       widthMm: input.dims[1],
       heightMm: input.dims[2],
       wheelbaseMm: input.dims[3],
+      trackFrontMm: input.track?.[0],
+      trackRearMm: input.track?.[1],
     } satisfies VehicleDimensions,
     defaultPaintHex: input.paintHex,
     provenance: OEM_PUBLISHED,
