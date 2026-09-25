@@ -105,3 +105,45 @@ describe.each(STYLES)("body shape: %s", (style) => {
     }
   });
 });
+
+describe("a body built from a traced side view", () => {
+  // A plain coupe silhouette, as fractions of length and height.
+  const traced = {
+    frontAxle: 0.2,
+    cowl: 0.36,
+    roofFront: 0.48,
+    roofRear: 0.62,
+    backlight: 0.8,
+    top: [
+      [0, 0.42], [0.1, 0.5], [0.36, 0.64], [0.48, 0.99], [0.55, 1], [0.62, 0.98], [0.8, 0.68], [0.95, 0.62], [1, 0.52],
+    ],
+    belt: [[0.36, 0.64], [0.6, 0.67], [0.8, 0.68]],
+    bottom: [[0, 0.14], [0.2, 0.09], [0.8, 0.09], [1, 0.16]],
+  } as const;
+  const input = { ...inputFor("coupe"), traced };
+  const shape = createBodyShape(input);
+  const H = input.height;
+
+  it("puts the greenhouse where the tracing does", () => {
+    expect(shape.zFront - shape.zCowl).toBeCloseTo(0.36 * input.length, 6);
+    expect(shape.zFront - shape.zBacklight).toBeCloseTo(0.8 * input.length, 6);
+  });
+
+  it("follows the traced roofline to the published height", () => {
+    const roofMid = (shape.zRoofFront + shape.zRoofRear) / 2;
+    expect(shape.roofAt(roofMid)).toBeGreaterThan(0.97 * H);
+    expect(shape.roofAt(roofMid)).toBeLessThanOrEqual(H + 1e-6);
+  });
+
+  it("keeps the published wheelbase even if the tracing's rear axle is off", () => {
+    expect(shape.zFrontAxle - shape.zRearAxle).toBeCloseTo(input.wheelbase, 6);
+  });
+
+  it("keeps every promise an untraced body makes", () => {
+    shape.arches.forEach((arch, i) => {
+      const r = i === 0 ? input.frontTireRadius : input.rearTireRadius;
+      expect(shape.tubSection(arch.z).yBottom).toBeGreaterThanOrEqual(arch.y + r - 1e-6);
+    });
+    expect(shape.zFront - shape.zRear).toBeCloseTo(input.length, 3);
+  });
+});

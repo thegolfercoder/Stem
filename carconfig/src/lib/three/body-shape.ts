@@ -34,6 +34,33 @@ export interface BodyShapeInput {
   readonly rearTireRadius: number;
   /** Per-model adjustments to the style's proportions. */
   readonly overrides?: Partial<StylePreset>;
+  /** The car's real side view, traced from reference photographs. */
+  readonly traced?: TracedSide;
+}
+
+/**
+ * A side view traced from photographs of the actual car.
+ *
+ * Positions along the car are fractions of its length from the front bumper
+ * (0) to the rear (1); heights are fractions of its height. So a tracing is
+ * independent of the photo's scale, and the car is still built to its
+ * published dimensions. The front axle is placed where the photo shows it and
+ * the rear one a published wheelbase behind, so a slightly foreshortened
+ * photo cannot change the wheelbase.
+ */
+export interface TracedSide {
+  readonly frontAxle: number;
+  /** Windshield base, roof front and rear, rear-glass base. */
+  readonly cowl: number;
+  readonly roofFront: number;
+  readonly roofRear: number;
+  readonly backlight: number;
+  /** Upper silhouette from nose to tail: bonnet, windshield, roof, rear glass, deck. */
+  readonly top: readonly (readonly [number, number])[];
+  /** Bottom edge of the side glass, from the windshield base to the rear glass. */
+  readonly belt: readonly (readonly [number, number])[];
+  /** Lower silhouette: bumpers and sills, ignoring the wheel openings. */
+  readonly bottom: readonly (readonly [number, number])[];
 }
 
 export interface Section {
@@ -212,7 +239,10 @@ export function createBodyShape(input: BodyShapeInput): BodyShape {
   const zFront = L / 2;
   const zRear = -L / 2;
   const overhang = L - WB;
-  const zFrontAxle = zFront - overhang * S.frontOverhangShare;
+  const T = input.traced;
+  /** A traced position along the car, as z. */
+  const zAt = (x: number) => zFront - x * L;
+  const zFrontAxle = T ? zAt(T.frontAxle) : zFront - overhang * S.frontOverhangShare;
   const zRearAxle = zFrontAxle - WB;
 
   // The cap's furthest point, so a leaned face still ends exactly at the
@@ -228,10 +258,27 @@ export function createBodyShape(input: BodyShapeInput): BodyShape {
   const archTop = Math.max(arches[0].y + arches[0].r, arches[1].y + arches[1].r);
 
   // --- greenhouse landmarks -------------------------------------------------
-  const zCowl = zFrontAxle - S.cowl * WB;
-  const zRoofFront = zCowl - S.windshieldRun;
-  const zRoofRear = zRoofFront - S.roof * WB;
-  const zBacklight = Math.max(zRoofRear - S.backlightRun, zBodyRear + 0.12);
+  const zCowl = T ? zAt(T.cowl) : zFrontAxle - S.cowl * WB;
+  const zRoofFront = T ? zAt(T.roofFront) : zCowl - S.windshieldRun;
+  const zRoofRear = T ? zAt(T.roofRear) : zRoofFront - S.roof * WB;
+  const zBacklight = T ? zAt(T.backlight) : Math.max(zRoofRear - S.backlightRun, zBodyRear + 0.12);
+
+  /**
+   * The body's top line from a tracing: the silhouette ahead of the
+   * windshield and behind the rear glass, and the window line between. Kept
+   * above the arches, as every height here is.
+   */
+  const tracedTubTop = (t: TracedSide): [number, number][] => {
+    const minY = Math.max(arches[0].y + arches[0].r, arches[1].y + arches[1].r) + 0.06;
+    const pts: [number, number][] = [];
+    for (const [x, y] of t.top) {
+      if (x <= t.cowl || x >= t.backlight) pts.push([zAt(x), Math.max(y * H, minY)]);
+    }
+    for (const [x, y] of t.belt) {
+      if (x > t.cowl && x < t.backlight) pts.push([zAt(x), Math.max(y * H, minY)]);
+    }
+    return pts;
+  };
 
   // --- heights --------------------------------------------------------------
   // Every height is kept above the arches: a hood that dips into its own wheel
@@ -259,7 +306,7 @@ export function createBodyShape(input: BodyShapeInput): BodyShape {
   if (zBacklight - zBodyRear > 0.45) {
     topPoints.push([lerp(zBodyRear, zBacklight, 0.45), deck - 0.005]);
   }
-  const [tx, ty] = monotone(topPoints);
+  const [tx, ty] = T ? monotone(tracedTubTop(T)) : monotone(topPoints);
   const topCurve = pchip(tx, ty);
 
   // How far the centreline sits below the wing tops at z. Nothing under the
@@ -271,10 +318,16 @@ export function createBodyShape(input: BodyShapeInput): BodyShape {
     peakRear * smoothstep(zBacklight, zBacklight - 0.3, z);
 
   // --- floor, lifting toward the ends ----------------------------------------
+  const tracedBottom = T
+    ? (() => {
+        const [bx, by] = monotone(T.bottom.map(([x, y]) => [zAt(x), y * H] as [number, number]));
+        return pchip(bx, by);
+      })()
+    : null;
   const floorAt = (z: number) => {
     const frontLift = S.liftFront * smoothstep(arches[0].z + arches[0].r, zFront, z);
     const rearLift = S.liftRear * smoothstep(arches[1].z - arches[1].r, zRear, z);
-    let y = S.clearance + frontLift + rearLift;
+    let y = tracedBottom ? tracedBottom(z) : S.clearance + frontLift + rearLift;
 
     // Over each wheel the floor rides up to the arch: a semicircle above the
     // axle, and straight down below it. That is what an arch looks like.
@@ -435,6 +488,15 @@ export function createBodyShape(input: BodyShapeInput): BodyShape {
   // --- greenhouse -------------------------------------------------------------
   const roofH = H;
   const cabinTopCurve = (() => {
+    if (T) {
+      // The traced roofline between the windshield base and the rear glass.
+      const pts: [number, number][] = T.top
+        .filter(([x]) => x >= T.cowl && x <= T.backlight)
+        .map(([x, y]) => [zAt(x), y * H]);
+      pts.push([zCowl, topCurve(zCowl) - 0.03], [zBacklight, topCurve(zBacklight) - 0.03]);
+      const [xs, ys] = monotone(pts);
+      return pchip(xs, ys);
+    }
     const baseRear = topCurve(zBacklight) - 0.03;
     const baseFront = topCurve(zCowl) - 0.03;
     const roofMid = lerp(zRoofRear, zRoofFront, 0.55);
