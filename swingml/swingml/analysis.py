@@ -20,9 +20,10 @@ back to a time and to the nearest original frame before it leaves.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
+from itertools import pairwise
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -147,6 +148,14 @@ class SwingAnalysis(BaseModel):
             "Per event, how far from the truth a prediction like this one has been "
             "observed to fall. Empty when no calibration was supplied, which is the "
             "honest state rather than a default of zero."
+        ),
+    )
+    positions_set_by: Literal["model", "golfer"] = Field(
+        default="model",
+        description=(
+            "Who placed the eight positions. When the golfer moved them, every "
+            "timing below is measured from their frames, and the model's error "
+            "bands no longer apply and are not reported."
         ),
     )
     tempo_uncertainty: RelativeBand | None = Field(
@@ -593,6 +602,57 @@ def analyse_pose_sequence(
         handedness=config.handedness,
         event_uncertainty=uncertainty,
         tempo_uncertainty=tempo_band,
+    )
+
+
+def analyse_with_positions(
+    sequence: PoseSequence,
+    source_frames: Sequence[int],
+    handedness: Handedness,
+    config: AnalysisConfig | None = None,
+    video: VideoInfo | None = None,
+) -> SwingAnalysis:
+    """The swing measured from eight positions the golfer chose, not the model.
+
+    `source_frames` index the tracked sequence, as `event_source_frames` does. The
+    measurements are the same functions of the same landmarks; only where the
+    eight positions sit has changed, so the model plays no part and its error
+    bands, which describe the model, are not attached.
+
+    Raises ValueError if the positions are not in swing order.
+    """
+    config = config or AnalysisConfig()
+    chosen = [int(f) for f in source_frames]
+    if len(chosen) != len(SwingEvent.ordered()):
+        raise ValueError(f"expected {len(SwingEvent.ordered())} positions, got {len(chosen)}")
+    if any(b <= a for a, b in pairwise(chosen)):
+        raise ValueError("the eight positions must be in swing order, each after the last")
+    if chosen[0] < 0 or chosen[-1] >= sequence.n_frames:
+        raise ValueError("a position lies outside the clip")
+
+    rate = config.features.canonical_rate_hz
+    resampled, grid = resample_pose(sequence, rate)
+    detection_rate = float(np.mean(resampled.detected)) if resampled.detected is not None else 1.0
+    times = sequence.timestamps_s[chosen].astype(np.float64)
+    positions = np.clip((times - grid[0]) * rate, 0, resampled.n_frames - 1)
+    frames = np.rint(positions).astype(int)
+    if np.any(np.diff(frames) <= 0):
+        raise ValueError("two positions are closer together than the analysis can separate")
+    events = EventSequence(
+        frames=tuple(int(f) for f in frames),  # type: ignore[arg-type]
+        confidence=(1.0,) * 8,
+        subframe=tuple(float(p) for p in positions),  # type: ignore[arg-type]
+    )
+    return SwingAnalysis(
+        video=video,
+        detection_rate=detection_rate,
+        canonical_frames=resampled.n_frames,
+        events=events,
+        event_times_s=tuple(float(t) for t in times),
+        event_source_frames=tuple(chosen),
+        metrics=compute_metrics(resampled, events, handedness, config.metrics),
+        handedness=handedness,
+        positions_set_by="golfer",
     )
 
 

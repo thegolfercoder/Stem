@@ -38,6 +38,15 @@
 <section class="film">
   <h2>The eight positions</h2>
   <p class="section-sub">Click one to hold it. Times are relative to the start of the clip.</p>
+  {% if analysis.positions_set_by == 'golfer' %}
+  <p class="banner-note">
+    <strong>Positions set by you</strong>{% if positions %} &mdash; you moved
+    {{ positions.moved|select|list|length }} of eight{% endif %}. Every timing below
+    is measured from your frames; the model's error bands describe the model, so they
+    are not shown.
+    {% if positions and positions.training_label %}This swing is marked as a training label.{% endif %}
+  </p>
+  {% endif %}
   <div class="strip">
     {% for e in events %}
     <figure class="frame" data-time="{{ e.time_s }}" tabindex="0">
@@ -52,7 +61,7 @@
         {% if e.band_ms is not none %}
         <span class="frame-band" title="{{ e.band_note }}">&plusmn;{{ '%.0f'|format(e.band_ms) }} ms</span>
         {% endif %}
-        <span class="conf" style="--c: {{ e.confidence }}"><i></i></span>
+        {% if analysis.positions_set_by == 'model' %}<span class="conf" style="--c: {{ e.confidence }}"><i></i></span>{% endif %}
       </figcaption>
     </figure>
     {% endfor %}
@@ -94,6 +103,30 @@
     <input id="scrub-range" type="range" min="0" max="{{ sequence|length - 1 }}" value="0" step="1">
   </div>
   <div class="scrub-marks" id="scrub-marks"></div>
+  {% if can_set_positions %}
+  <div class="pos-editor" id="pos-editor">
+    <h3>Put a position on the right frame</h3>
+    <p class="section-sub">
+      Scrub to the frame where a position really happens, choose it, and set it.
+      The swing is re-measured from your frames when you save.
+    </p>
+    <div class="pos-row">
+      <select id="pos-event" aria-label="Position to set">
+        {% for e in events %}<option value="{{ loop.index0 }}">{{ e.label }}</option>{% endfor %}
+      </select>
+      <button class="btn" id="pos-set" type="button">Set to this frame</button>
+      {% if positions %}<button class="btn ghost" id="pos-reset" type="button">Reset to the model's</button>{% endif %}
+    </div>
+    <label class="pos-confirm">
+      <input type="checkbox" id="pos-label" {% if positions and positions.training_label %}checked{% endif %}>
+      All eight positions are right. Use this swing to train the model on phone footage.
+    </label>
+    <div class="pos-row">
+      <button class="btn primary" id="pos-save" type="button">Save positions</button>
+      <span class="pos-status" id="pos-status" role="status"></span>
+    </div>
+  </div>
+  {% endif %}
   <p class="footnote">
     <a href="{{ url_for('media_video', swing_id=swing.id) }}" download>Download the original clip</a>
     &mdash; kept exactly as you uploaded it.

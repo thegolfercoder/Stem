@@ -222,6 +222,45 @@ class SwingStore:
             cursor = connection.execute(f"UPDATE swings SET {', '.join(sets)} WHERE id = ?", params)
         return cursor.rowcount > 0
 
+    def replace_analysis(self, swing_id: int, analysis: SwingAnalysis) -> bool:
+        """Swap in a re-measured analysis, such as one from the golfer's positions.
+
+        The queryable columns move with it, so trends and the session summary
+        read the swing as it now stands. Confidence is the model's, so it is
+        cleared when the golfer placed the positions rather than set to a figure
+        nobody measured.
+        """
+        metrics = None if isinstance(analysis.metrics, NoReading) else analysis.metrics
+        ok = not isinstance(analysis.events, NoReading)
+        confidence = (
+            None
+            if isinstance(analysis.events, NoReading) or analysis.positions_set_by != "model"
+            else float(sum(analysis.events.confidence) / len(analysis.events.confidence))
+        )
+        with self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE swings SET
+                    ok = ?, refusal = ?, mean_confidence = ?, tempo_ratio = ?,
+                    backswing_ms = ?, downswing_ms = ?, head_movement = ?, pelvis_sway = ?,
+                    analysis_json = ?
+                WHERE id = ?
+                """,
+                (
+                    int(ok),
+                    analysis.events.reason if isinstance(analysis.events, NoReading) else None,
+                    confidence,
+                    _value(metrics, "tempo_ratio"),
+                    _value(metrics, "backswing_duration"),
+                    _value(metrics, "downswing_duration"),
+                    _value(metrics, "head_movement"),
+                    _value(metrics, "pelvis_sway"),
+                    json.dumps(analysis.model_dump(mode="json")),
+                    swing_id,
+                ),
+            )
+        return cursor.rowcount > 0
+
     def counts(self) -> tuple[int, int]:
         """How many swings are stored, and how many of those produced a reading."""
         with self._connect() as connection:

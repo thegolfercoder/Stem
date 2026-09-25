@@ -121,7 +121,8 @@ tempo at 3.50 rather than 3.20 against a truth of 2.10. Both seeds agree, averag
 it with the shipped model does not move address, and leaving address unsupervised
 doubles the tempo error. More of GolfDB's footage teaches more of GolfDB's address
 convention; which convention a phone user's address follows is a question only
-labelled phone swings can answer, and this repository has one.
+labelled phone swings can answer, and this repository has one. The desktop app
+can now make more: see *Your own swings as labels* below.
 
 Rory's swings were held out before training, not picked afterwards; his group is 86
 clips because some of his source videos show other golfers, and all of them were
@@ -542,6 +543,27 @@ few points on a few hundred clips, which is the regime where a difference can be
 entirely which clips were drawn; and a model chosen on generated footage alone
 picked, once, a checkpoint that put the finish thirty-eight frames late on the
 only real swing in the repository.
+
+### Your own swings as labels
+
+Broadcast footage stopped helping on phone video (see *Measured accuracy*), so the
+next training signal has to be phone swings with their positions marked. The
+desktop app collects them. On a swing's page, scrub to the frame where a position
+really happens, choose the position and press *Set to this frame*; the swing is
+re-measured from your frames when you save, *Reset to the model's* puts the
+model's answer back, and the model's error bands are not shown against positions
+you chose. Tick *All eight positions are right* and the swing becomes a training
+label; moving one position alone never does. The app keeps each swing's tracked
+landmarks, so nothing is tracked again:
+
+```bash
+python scripts/make_labelled_dataset.py --out out/phone/labelled.npz
+```
+
+The archive is the same format as the GolfDB ones, so `experiment.py
+--real-train` trains on it and `compare.py` scores against it. Every swing in it
+is one golfer on one phone, so hold out whole sessions rather than single swings
+when measuring, or the number measures memory of that day's swing.
 
 ## Layout
 

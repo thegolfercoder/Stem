@@ -390,3 +390,13 @@ input[type=text]:focus, select:focus { outline: 2px solid var(--accent); outline
 .chat-form textarea { flex: 1; resize: vertical; background: var(--panel); color: var(--ink);
   border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font: inherit; }
 .chat-form textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Setting positions by hand */
+.pos-editor { margin-top: 18px; padding: 16px; border: 1px solid var(--line, #2a2f3a); border-radius: 12px; }
+.pos-editor h3 { margin: 0 0 4px; font-size: 1rem; }
+.pos-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
+.pos-row select { min-height: 36px; padding: 0 10px; border-radius: 8px; }
+.pos-confirm { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; font-size: 0.92rem; }
+.pos-status { font-size: 0.9rem; opacity: 0.85; }
+.pos-status.is-bad { color: #e5484d; opacity: 1; }
+.banner-note { margin: 8px 0 14px; padding: 10px 14px; border-left: 3px solid var(--accent, #4f8cff); border-radius: 6px; background: rgba(79, 140, 255, 0.08); font-size: 0.93rem; }

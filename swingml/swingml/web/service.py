@@ -45,6 +45,7 @@ from swingml.assets import (
     home,
 )
 from swingml.events import SwingEvent
+from swingml.labels import save_pose
 from swingml.model.calibration import ModelCalibration
 from swingml.model.ensemble import (
     SwingEventEnsemble,
@@ -347,6 +348,10 @@ def record_swing(
     swing_id = store.add(
         analysis, source_name=source_name, video_path=video_path, label=label, club=club
     )
+    # The landmarks are kept for every swing, refused or not, so positions the
+    # golfer sets can be measured without tracking the clip again.
+    with contextlib.suppress(Exception):
+        save_pose(sequence, frames_dir() / str(swing_id))
     if isinstance(analysis.events, NoReading):
         return swing_id
 
@@ -422,3 +427,22 @@ def sequence_manifest(swing_id: int) -> list[dict[str, object]]:
 
 def analysis_from_row(payload: dict[str, object]) -> SwingAnalysis:
     return SwingAnalysis.model_validate(payload)
+
+
+def event_pictures_from_strip(swing_id: int, event_frames: tuple[int, ...]) -> None:
+    """Point the eight position pictures at the strip's frames after a move.
+
+    The strip already holds every tracked frame around the swing, drawn and
+    cropped, so a moved position needs no second read of the clip. A position
+    outside the strip loses its picture rather than keeping one of the wrong
+    moment.
+    """
+    directory = frames_dir() / str(swing_id)
+    by_frame = {int(str(item["frame"])): str(item["name"]) for item in sequence_manifest(swing_id)}
+    for event in SwingEvent.ordered():
+        target = directory / f"{int(event)}_{event.name.lower()}.jpg"
+        source = by_frame.get(int(event_frames[int(event)]))
+        if source is not None and (directory / source).is_file():
+            shutil.copyfile(directory / source, target)
+        else:
+            target.unlink(missing_ok=True)

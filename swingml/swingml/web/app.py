@@ -27,9 +27,18 @@ from flask import (
     url_for,
 )
 
-from swingml.analysis import SwingAnalysis
+from swingml.analysis import SwingAnalysis, analyse_with_positions
 from swingml.assets import find_event_model, home
 from swingml.events import CLUB_DEFINED_EVENTS, SwingEvent
+from swingml.labels import (
+    GolferPositions,
+    clear_positions,
+    load_model_analysis,
+    load_pose,
+    read_positions,
+    save_model_analysis,
+    write_positions,
+)
 from swingml.model.calibration import ErrorBand, RelativeBand
 from swingml.quantity import NoReading, Quantity
 from swingml.session import summarise_session
@@ -38,6 +47,7 @@ from swingml.store import StoredSwing, SwingStore
 from swingml.web.service import (
     AnalysisService,
     event_frame_files,
+    event_pictures_from_strip,
     frames_dir,
     save_upload,
     sequence_manifest,
@@ -380,6 +390,8 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
             advice=advice,
             clubs=swing_store.clubs(),
             format_number=_format_number,
+            positions=read_positions(frames_dir() / str(swing_id)),
+            can_set_positions=(frames_dir() / str(swing_id) / "pose.npz").is_file(),
         )
 
     @app.get("/session")
@@ -465,6 +477,71 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
     def api_delete_swing(swing_id: int) -> Any:
         if not swing_store.delete(swing_id):
             return jsonify({"error": "no such swing"}), 404
+        return jsonify({"ok": True})
+
+    @app.post("/api/swings/<int:swing_id>/positions")
+    def api_set_positions(swing_id: int) -> Any:
+        """Re-measure the swing from eight positions the golfer chose."""
+        stored = swing_store.get(swing_id)
+        if stored is None:
+            return jsonify({"error": "no such swing"}), 404
+        payload = request.get_json(silent=True) or {}
+        frames = payload.get("frames")
+        if not isinstance(frames, list) or not all(isinstance(f, int) for f in frames):
+            return jsonify({"error": "frames must be a list of eight frame numbers"}), 400
+        directory = frames_dir() / str(swing_id)
+        sequence = load_pose(directory)
+        if sequence is None:
+            return jsonify(
+                {
+                    "error": (
+                        "this swing was analysed before its landmarks were kept; "
+                        "analyse the clip again to set its positions"
+                    )
+                }
+            ), 409
+        current = SwingAnalysis.model_validate(stored.analysis)
+        earlier = read_positions(directory)
+        if earlier is not None:
+            model_frames = earlier.model_frames
+        elif not isinstance(current.events, NoReading):
+            model_frames = current.event_source_frames
+        else:
+            return jsonify({"error": "no positions were found in this clip to move"}), 409
+        try:
+            moved = analyse_with_positions(
+                sequence, frames, current.handedness, video=current.video
+            )
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+        if current.positions_set_by == "model":
+            save_model_analysis(directory, stored.analysis)
+        swing_store.replace_analysis(swing_id, moved)
+        write_positions(
+            directory,
+            GolferPositions(
+                frames=tuple(frames),
+                model_frames=tuple(model_frames),
+                handedness=current.handedness,
+                training_label=bool(payload.get("training_label", False)),
+            ),
+        )
+        event_pictures_from_strip(swing_id, moved.event_source_frames)
+        return jsonify({"ok": True})
+
+    @app.delete("/api/swings/<int:swing_id>/positions")
+    def api_reset_positions(swing_id: int) -> Any:
+        """Put the model's positions and measurements back."""
+        if swing_store.get(swing_id) is None:
+            return jsonify({"error": "no such swing"}), 404
+        directory = frames_dir() / str(swing_id)
+        original = load_model_analysis(directory)
+        if original is None:
+            return jsonify({"error": "the model's positions were never changed"}), 409
+        restored = SwingAnalysis.model_validate(original)
+        swing_store.replace_analysis(swing_id, restored)
+        clear_positions(directory)
+        event_pictures_from_strip(swing_id, restored.event_source_frames)
         return jsonify({"ok": True})
 
     @app.get("/api/swings/<int:swing_id>/analysis")
