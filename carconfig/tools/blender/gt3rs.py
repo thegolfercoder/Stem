@@ -487,7 +487,7 @@ def body_rings():
         if xf > 0.988:
             k = 0.55 + 0.45 * ((1 - xf) / 0.012)
         mid_h = (half[0][1] + half[-1][1]) / 2
-        ring = full_ring([(x * k, mid_h + (h - mid_h) * (0.7 + 0.3 * k)) for x, h in half])
+        ring = full_ring([(x * k, mid_h + (h - mid_h) * (0.85 + 0.15 * k)) for x, h in half])
         rings.append([B(x, U(xf), h) for x, h in ring])
     return rings
 
@@ -867,6 +867,13 @@ def build_greenhouse(mats):
     m.offset = -1
     m.use_quality_normals = True
     apply_modifiers(gh)
+    # A closed shell now: point every face outward. Browsers draw one side of
+    # a face only, so an inward roof would be invisible from outside.
+    bm = bmesh.new()
+    bm.from_mesh(gh.data)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(gh.data)
+    bm.free()
 
     # The rim the thickening leaves round each opening is the window frame:
     # faces whose every corner lies on an outline.

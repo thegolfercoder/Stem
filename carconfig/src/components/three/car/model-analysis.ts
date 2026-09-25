@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import type { MaterialStats } from "@/lib/three/model-paint";
-import { nameWords } from "@/lib/three/model-paint";
 import { classifyMaterial } from "./model-materials";
 
 /**
@@ -16,15 +15,11 @@ export function materialsOf(mesh: THREE.Mesh): THREE.Material[] {
   return Array.isArray(mesh.material) ? mesh.material : [mesh.material];
 }
 
-const FLOOR_NAME = /\b(ground|floor|backdrop|stage|platform|podium|turntable|studio|suelo|boden|pavimento|sol)\b/;
-
 /**
- * Remove whatever the author stood the car on: a floor, shadow catcher,
- * backdrop or display base. Three tells:
- *   - flat and as big as the scene (a ground plane);
- *   - named for what it is ("Ground", "Suelo") and as long as the scene;
- *   - a base: wider and longer than everything else, with its top below the
- *     bottom fifth of the rest.
+ * Remove whatever the author stood the car on: a floor, shadow catcher or
+ * display base, flat or not. What gives it away is reaching beyond the car
+ * on every side while sitting under it. The car's own undertray is flat and
+ * as long as the car, but never bigger than it.
  */
 export function dropFloor(model: THREE.Object3D) {
   model.updateMatrixWorld(true);
@@ -32,29 +27,17 @@ export function dropFloor(model: THREE.Object3D) {
   model.traverse((o) => {
     if (o instanceof THREE.Mesh) meshes.push({ o, box: new THREE.Box3().setFromObject(o) });
   });
-  const whole = new THREE.Box3().setFromObject(model);
-  const span = whole.getSize(new THREE.Vector3());
-  const largest = Math.max(span.x, span.y, span.z);
 
   const floors = new Set<THREE.Mesh>();
   for (const { o, box } of meshes) {
-    const s = box.getSize(new THREE.Vector3());
-    const thinnest = Math.min(s.x, s.y, s.z);
-    const widest = Math.max(s.x, s.y, s.z);
-    if (thinnest < widest * 0.01 && widest > largest * 0.5) floors.add(o);
-    else if (FLOOR_NAME.test(nameWords(o.name)) && widest > largest * 0.8) floors.add(o);
-  }
-  // A base is judged against everything else, so find the rest's extent.
-  for (const { o, box } of meshes) {
-    if (floors.has(o)) continue;
     const rest = new THREE.Box3();
     for (const m of meshes) if (m.o !== o && !floors.has(m.o)) rest.union(m.box);
     if (rest.isEmpty()) continue;
     const r = rest.getSize(new THREE.Vector3());
     const s = box.getSize(new THREE.Vector3());
-    const wider = s.x > r.x * 1.1 && s.z > r.z * 1.1;
-    const below = box.max.y < rest.min.y + r.y * 0.2;
-    if (wider && below) floors.add(o);
+    const beyond = s.x > r.x * 1.05 && s.z > r.z * 1.05;
+    const under = box.max.y < rest.min.y + r.y * 0.2;
+    if (beyond && under) floors.add(o);
   }
   for (const o of floors) o.removeFromParent();
 }
