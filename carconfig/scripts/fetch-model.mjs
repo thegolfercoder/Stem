@@ -277,10 +277,14 @@ async function main() {
     const fileName = `${target.replace("/", "__")}.glb`;
     const out = join(OUT_DIR, fileName);
     console.log(`Optimising ${credit.name}…`);
+    // Older exports describe materials as specular/glossiness, which three.js
+    // no longer reads: every surface would come out bare white metal.
+    const converted = join(work, "metalrough.glb");
+    execFileSync(GLTF_TRANSFORM, ["metalrough", source, converted], { stdio: "inherit" });
     execFileSync(
       GLTF_TRANSFORM,
       [
-        "optimize", source, out,
+        "optimize", converted, out,
         "--compress", "meshopt",
         "--texture-compress", "webp",
         "--texture-size", "2048",

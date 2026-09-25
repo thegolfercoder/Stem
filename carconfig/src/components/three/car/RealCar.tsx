@@ -14,6 +14,7 @@ import { frontDirection, type NamedPart } from "@/lib/three/model-orientation";
 import { choosePaint, type PaintChoice } from "@/lib/three/model-paint";
 import { dropFloor, materialStats, materialsOf, wheelsByName, wheelsByShape, type WheelGroup } from "./model-analysis";
 import { modelProgress } from "./model-progress";
+import { specGlossPlugin } from "./spec-gloss";
 import { Wheel } from "./Wheel";
 
 /**
@@ -227,6 +228,7 @@ export function RealCar({
     asset.file,
     (loader) => {
       loader.setMeshoptDecoder(MeshoptDecoder());
+      loader.register(specGlossPlugin);
     },
     (e) => modelProgress.set({ url: asset.file, loaded: e.loaded, total: e.total, done: false, failed: false }),
   );

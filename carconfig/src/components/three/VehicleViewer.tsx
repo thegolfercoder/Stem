@@ -1,7 +1,8 @@
 "use client";
 
 import { PerformanceMonitor } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useLoader } from "@react-three/fiber";
+import { GLTFLoader } from "three-stdlib";
 import {
   Bloom,
   EffectComposer,
@@ -45,6 +46,13 @@ export default function VehicleViewer({
   onModelInfo?: (info: ModelInfo) => void;
 }) {
   const [quality, setQuality] = useState<"high" | "low">("high");
+  // Bumped by "Try again" after a failed download, to load the model afresh.
+  const [attempt, setAttempt] = useState(0);
+  const retry = (url: string) => {
+    useLoader.clear(GLTFLoader, url);
+    modelProgress.set({ url, failed: false, done: false, loaded: 0, total: 0 });
+    setAttempt((n) => n + 1);
+  };
 
   const size = useMemo(() => {
     const S = BODY_STYLES[config.style];
@@ -80,7 +88,7 @@ export default function VehicleViewer({
         {config.asset ? (
           // The generated car stands in while the model downloads, and for
           // good if it fails to load.
-          <ModelBoundary fallback={<Car config={config} />}>
+          <ModelBoundary key={`${config.asset.file}#${attempt}`} fallback={<Car config={config} />}>
             <Suspense fallback={<Car config={config} />}>
               <RealCar config={config} asset={config.asset} onModelInfo={onModelInfo} />
             </Suspense>
@@ -106,20 +114,27 @@ export default function VehicleViewer({
         {quality === "low" ? <SMAA /> : <></>}
       </EffectComposer>
     </Canvas>
-    {config.asset ? <LoadingBadge url={config.asset.file} /> : null}
+    {config.asset ? <LoadingBadge url={config.asset.file} onRetry={retry} /> : null}
     </div>
   );
 }
 
 /** How far a big model's download has got, over the stand-in car. */
-function LoadingBadge({ url }: { url: string }) {
+function LoadingBadge({ url, onRetry }: { url: string; onRetry: (url: string) => void }) {
   const p = useSyncExternalStore(modelProgress.subscribe, modelProgress.get, modelProgress.get);
   if (p.url !== url) return null;
   if (p.failed) {
     return (
       <div className="pointer-events-none absolute inset-x-0 top-14 flex justify-center">
-        <span className="rounded bg-black/55 px-3 py-1.5 text-[11px] text-[var(--color-ink-dim)] backdrop-blur">
+        <span className="pointer-events-auto flex items-center gap-3 rounded bg-black/55 px-3 py-1.5 text-[11px] text-[var(--color-ink-dim)] backdrop-blur">
           The 3D model could not be loaded; showing a stand-in.
+          <button
+            type="button"
+            onClick={() => onRetry(url)}
+            className="rounded border border-white/20 px-2 py-0.5 text-[var(--color-ink)] hover:border-[var(--color-accent)]"
+          >
+            Try again
+          </button>
         </span>
       </div>
     );

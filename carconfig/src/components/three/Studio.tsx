@@ -39,7 +39,7 @@ const HDRI: Record<Exclude<SceneName, "studio" | "dark">, { file: string; ground
 const TONES = {
   // A studio floor is satin, not wet: a soft hint of the car in it, and the
   // contact shadow doing the work of grounding it.
-  studio: { bg: "#c9ccd0", room: "#5d6166", floor: "#b9bcc0", mirror: 0.06, mix: 3, fog: [14, 34] as const },
+  studio: { bg: "#c9ccd0", room: "#5d6166", floor: "#b9bcc0", mirror: 0.02, mix: 1.1, fog: [14, 34] as const },
   dark: { bg: "#0b0e11", room: "#05070a", floor: "#0d1013", mirror: 0.35, mix: 18, fog: [11, 26] as const },
 };
 
@@ -113,7 +113,7 @@ export function Studio({ quality, scene = "studio" }: { quality: "high" | "low";
         <circleGeometry args={[22, 96]} />
         {quality === "high" ? (
           <MeshReflectorMaterial
-            blur={[400, 120]}
+            blur={[700, 220]}
             resolution={1024}
             mixBlur={1}
             mixStrength={tone.mix}
