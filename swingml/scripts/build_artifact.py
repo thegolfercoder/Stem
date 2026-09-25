@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import importlib
 import json
 import re
 import shutil
@@ -92,8 +93,10 @@ def write_vp9(source: Path, target: Path) -> bool:
     goes through the video element, which drops frames when the machine is busy.
     Every frame is kept at its original time, so both copies are the same swing.
     """
+    # Imported by name so the type checker reads the same with or without it
+    # installed: it ships no type information, and CI does not install it.
     try:
-        import imageio_ffmpeg  # type: ignore[import-untyped]
+        imageio_ffmpeg = importlib.import_module("imageio_ffmpeg")
     except ImportError:
         return False
     command = [
