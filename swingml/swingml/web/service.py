@@ -56,7 +56,12 @@ from swingml.quantity import NoReading
 from swingml.skeleton import Handedness, infer_handedness
 from swingml.store import SwingStore
 from swingml.video.reader import VideoInfo, VideoReader
-from swingml.web.frames import extract_event_frames, extract_sequence_frames
+from swingml.web.frames import (
+    extract_event_frames,
+    extract_sequence_frames,
+    frames_at,
+    strip_frames,
+)
 
 if TYPE_CHECKING:
     from swingml.model.tcn import SwingEventNet
@@ -71,6 +76,12 @@ browser app does the same, so the two answer alike.
 
 POSE_MAX_RATE_HZ = 60.0
 """The model looks at sixty frames a second; a 240 fps clip is tracked at this."""
+
+STRIP_LEAD_S = 0.5
+STRIP_TAIL_S = 0.25
+STRIP_MAX_FRAMES = 240
+"""The scrubbing strip: every tracked frame from just before address to just after
+the finish. Four seconds at sixty frames a second, which no swing needs."""
 
 
 class JobState(StrEnum):
@@ -340,17 +351,30 @@ def record_swing(
         return swing_id
 
     directory = frames_dir() / str(swing_id)
+    events = analysis.event_source_frames
+    times = sequence.timestamps_s
+    # The strip runs from half a second before address to a quarter after the
+    # finish, every tracked frame of it, so a position the model placed wrongly
+    # can be moved to the right frame - including an address it put too late.
+    first = int(np.searchsorted(times, times[events[0]] - STRIP_LEAD_S))
+    last = int(np.searchsorted(times, times[events[-1]] + STRIP_TAIL_S, side="right")) - 1
+    strip = strip_frames(sequence, first, last, STRIP_MAX_FRAMES)
+    # One read of the clip for both sets of pictures.
+    images: dict[int, NDArray[np.uint8]] = {}
     with contextlib.suppress(Exception):
-        extract_event_frames(video_path, sequence, analysis.event_source_frames, directory)
+        images = frames_at(video_path, sequence, sorted(set(strip) | set(events)))
     with contextlib.suppress(Exception):
-        events = analysis.event_source_frames
+        extract_event_frames(video_path, sequence, events, directory, images=images)
+    with contextlib.suppress(Exception):
         manifest = extract_sequence_frames(
             video_path,
             sequence,
-            first_frame=events[0],
-            last_frame=events[-1],
+            first_frame=first,
+            last_frame=last,
             destination=directory,
+            max_frames=STRIP_MAX_FRAMES,
             crop_frames=list(events),
+            images=images,
         )
         (directory / "sequence.json").write_text(json.dumps(manifest), encoding="utf-8")
     return swing_id
