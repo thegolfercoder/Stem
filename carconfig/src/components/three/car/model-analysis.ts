@@ -189,14 +189,23 @@ function splitAcrossCorners(mesh: THREE.Mesh): THREE.Mesh[] | null {
   for (let key = 0; key < 4; key++) {
     const geo = new THREE.BufferGeometry();
     for (const [name, attr] of Object.entries(g.attributes)) {
-      const a = attr as THREE.BufferAttribute;
+      // Raw stored values, copied as stored: quantised attributes keep their
+      // integer encoding and normalised flag.
+      const a = attr as THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
       const size = a.itemSize;
-      const Ctor = a.array.constructor as new (n: number) => THREE.TypedArray;
+      const interleaved = a instanceof THREE.InterleavedBufferAttribute;
+      const src = interleaved ? a.data.array : a.array;
+      const stride = interleaved ? a.data.stride : size;
+      const offset = interleaved ? a.offset : 0;
+      const Ctor = src.constructor as new (n: number) => THREE.TypedArray;
       const out = new Ctor(counts[key]! * 3 * size);
       let w = 0;
       for (let t = 0; t < triangles; t++) {
         if (corner[t] !== key) continue;
-        for (let k = 0; k < 3; k++) for (let i = 0; i < size; i++) out[w++] = a.getComponent(t * 3 + k, i);
+        for (let k = 0; k < 3; k++) {
+          const base = (t * 3 + k) * stride + offset;
+          for (let i = 0; i < size; i++) out[w++] = src[base + i]!;
+        }
       }
       geo.setAttribute(name, new THREE.BufferAttribute(out, size, a.normalized));
     }
