@@ -32,3 +32,9 @@ swingml/dist/
 ios/SwingCore/.build/
 ios/**/*.xcodeproj/xcuserdata/
 ios/Pods/
+
+# iPhone app: generated project, pods and the downloaded pose model.
+ios/SwingStudio.xcodeproj/
+ios/SwingStudio.xcworkspace/
+ios/Podfile.lock
+ios/SwingStudio/Resources/pose_landmarker_heavy.task

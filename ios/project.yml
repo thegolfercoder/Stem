@@ -1,0 +1,38 @@
+# XcodeGen project for the Swing Studio iPhone app. Generate the Xcode project
+# with ./setup.sh (which also fetches the pose model and installs MediaPipe).
+name: SwingStudio
+options:
+  bundleIdPrefix: com.swingml
+  deploymentTarget:
+    iOS: "17.0"
+packages:
+  SwingCore:
+    path: SwingCore
+targets:
+  SwingStudio:
+    type: application
+    platform: iOS
+    sources:
+      - path: SwingStudio
+    dependencies:
+      - package: SwingCore
+    info:
+      path: SwingStudio/Info.plist
+      properties:
+        CFBundleDisplayName: Swing Studio
+        CFBundleShortVersionString: "0.2.0"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSPhotoLibraryUsageDescription: Swing Studio reads the swing videos you choose, on this iPhone. Nothing is uploaded.
+        NSLocalNetworkUsageDescription: The coach talks to Ollama running on your own computer, over your Wi-Fi.
+        # Ollama on a computer at home is plain http on a local address.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+          NSAllowsArbitraryLoads: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.swingml.studio
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
