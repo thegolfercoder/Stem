@@ -38,6 +38,15 @@
 <section class="film">
   <h2>The eight positions</h2>
   <p class="section-sub">Click one to hold it. Times are relative to the start of the clip.</p>
+  {% if analysis.positions_set_by == 'golfer' %}
+  <p class="banner-note">
+    <strong>Positions set by you</strong>{% if positions %} &mdash; you moved
+    {{ positions.moved|select|list|length }} of eight{% endif %}. Every timing below
+    is measured from your frames; the model's error bands describe the model, so they
+    are not shown.
+    {% if positions and positions.training_label %}This swing is marked as a training label.{% endif %}
+  </p>
+  {% endif %}
   <div class="strip">
     {% for e in events %}
     <figure class="frame" data-time="{{ e.time_s }}" tabindex="0">
@@ -52,7 +61,7 @@
         {% if e.band_ms is not none %}
         <span class="frame-band" title="{{ e.band_note }}">&plusmn;{{ '%.0f'|format(e.band_ms) }} ms</span>
         {% endif %}
-        <span class="conf" style="--c: {{ e.confidence }}"><i></i></span>
+        {% if analysis.positions_set_by == 'model' %}<span class="conf" style="--c: {{ e.confidence }}"><i></i></span>{% endif %}
       </figcaption>
     </figure>
     {% endfor %}
@@ -64,8 +73,8 @@
     distance that contained
     {{ band_coverage }}% of those errors at the confidence the model reported here, so a
     doubtful event gets a wider band than a certain one. A band appears only where
-    enough held-out clips landed at that confidence to measure one, and none of this is
-    a claim about footage of a real golfer on grass.
+    enough held-out clips landed at that confidence to measure one. Your own footage -
+    a phone, another angle - may differ from what the bands were measured on.
   </p>
   {% endif %}
   <p class="footnote">
@@ -94,6 +103,30 @@
     <input id="scrub-range" type="range" min="0" max="{{ sequence|length - 1 }}" value="0" step="1">
   </div>
   <div class="scrub-marks" id="scrub-marks"></div>
+  {% if can_set_positions %}
+  <div class="pos-editor" id="pos-editor">
+    <h3>Put a position on the right frame</h3>
+    <p class="section-sub">
+      Scrub to the frame where a position really happens, choose it, and set it.
+      The swing is re-measured from your frames when you save.
+    </p>
+    <div class="pos-row">
+      <select id="pos-event" aria-label="Position to set">
+        {% for e in events %}<option value="{{ loop.index0 }}">{{ e.label }}</option>{% endfor %}
+      </select>
+      <button class="btn" id="pos-set" type="button">Set to this frame</button>
+      {% if positions %}<button class="btn ghost" id="pos-reset" type="button">Reset to the model's</button>{% endif %}
+    </div>
+    <label class="pos-confirm">
+      <input type="checkbox" id="pos-label" {% if positions and positions.training_label %}checked{% endif %}>
+      All eight positions are right. Use this swing to train the model on phone footage.
+    </label>
+    <div class="pos-row">
+      <button class="btn primary" id="pos-save" type="button">Save positions</button>
+      <span class="pos-status" id="pos-status" role="status"></span>
+    </div>
+  </div>
+  {% endif %}
   <p class="footnote">
     <a href="{{ url_for('media_video', swing_id=swing.id) }}" download>Download the original clip</a>
     &mdash; kept exactly as you uploaded it.
@@ -102,6 +135,35 @@
 <script id="seq-data" type="application/json">{{ sequence|tojson }}</script>
 <script id="event-data" type="application/json">{{ events|tojson }}</script>
 {% endif %}
+
+{% if story %}
+<section class="story-section">
+  <h2>The swing, start to finish</h2>
+  <p class="section-sub">What happened in each part, in order. Every figure is one of the
+    measurements below; nothing is added that was not measured.</p>
+  <ol class="beats">
+    {% for beat in story %}
+    <li><div><h3>{{ beat.title }}<span class="prov prov-{{ beat.provenance }}">{{ beat.provenance }}</span></h3>
+      <p>{{ beat.text }}</p></div></li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
+
+<section class="coach-section" id="coach" hidden>
+  <h2>A coach's read <span class="prov prov-opinion">local AI</span></h2>
+  <p class="section-sub">A language model on this computer looks at the eight positions and
+    the measurements above and says what it would work on. It is an opinion, not a
+    measurement, and nothing is sent anywhere.</p>
+  <div class="coach-box">
+    <div class="coach-actions">
+      <button class="btn primary" id="coach-ask" type="button">Get a coach's read</button>
+      <span class="coach-status" id="coach-status" role="status"></span>
+    </div>
+    <div class="coach-text" id="coach-text" aria-live="polite"></div>
+    <p class="coach-meta" id="coach-meta"></p>
+  </div>
+</section>
 
 {% for group in groups %}
 <section class="metrics">
@@ -167,4 +229,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='swing.js') }}"></script>
+<script src="{{ url_for('static', filename='coach.js') }}"></script>
 {% endblock %}

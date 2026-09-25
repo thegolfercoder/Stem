@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Swing analysis{% endblock %}</title>
+<title>{% block title %}Swing Studio{% endblock %}</title>
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
@@ -11,17 +11,20 @@
 <header class="topbar">
   <a class="brand" href="{{ url_for('index') }}">
     <span class="mark" aria-hidden="true"></span>
-    <span>Swing&nbsp;analysis</span>
+    <span>Swing&nbsp;Studio</span>
   </a>
   <nav>
     <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="here"{% endif %}>Swings</a>
     <a href="{{ url_for('session_page') }}" {% if request.endpoint == 'session_page' %}class="here"{% endif %}>Consistency</a>
+    <a href="{{ url_for('coach.chat_page') }}" {% if request.endpoint == 'coach.chat_page' %}class="here"{% endif %}>Ask the coach</a>
+    <span class="ai-pill" id="ai-pill" title="Local AI through Ollama"><i></i><span>Local AI</span></span>
   </nav>
 </header>
 <main>{% block content %}{% endblock %}</main>
 <footer class="foot">
   <p>Everything runs on this machine. No clip leaves it.</p>
 </footer>
+<script src="{{ url_for('static', filename='ai.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

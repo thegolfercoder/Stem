@@ -1,0 +1,8 @@
+# Google's MediaPipe pose tracker for iOS, the same model the desktop and the
+# browser use, so the swing model sees the same kind of landmarks everywhere.
+platform :ios, '17.0'
+
+target 'SwingStudio' do
+  use_frameworks!
+  pod 'MediaPipeTasksVision', '>= 0.10.14'
+end

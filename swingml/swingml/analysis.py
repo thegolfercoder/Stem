@@ -20,11 +20,12 @@ back to a time and to the nearest original frame before it leaves.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
+from itertools import pairwise
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-import torch
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -44,11 +45,14 @@ from swingml.model.ensemble import (
     EnsembleConfig,
     SwingEventEnsemble,
 )
-from swingml.model.tcn import DEFAULT_DILATIONS, PaddingMode, SwingEventNet
+from swingml.model.numpy_net import NumpyEventNet
 from swingml.pose.base import PoseEstimator, PoseSequence
 from swingml.quantity import NoReading
 from swingml.skeleton import Handedness
 from swingml.video.reader import VideoInfo, VideoReader
+
+if TYPE_CHECKING:
+    from swingml.model.tcn import PaddingMode, SwingEventNet
 
 
 class AnalysisConfig(BaseModel):
@@ -67,18 +71,28 @@ class AnalysisConfig(BaseModel):
         ),
     )
     min_mean_confidence: float = Field(
+        default=0.20,
+        description=(
+            "Mean confidence over all eight events below which no swing is reported. "
+            "Read together with min_core_confidence; both must be met.\n\n"
+            "It was 0.30 on its own, set when the model had seen only rendered "
+            "swings. Measured on real ones that rule turned away 69 percent of the "
+            "real swings in the held-out GolfDB clips - a finish the clip cut short, "
+            "or a toe-up the estimator cannot see, drags a mean of all eight down "
+            "however sure the rest are. Both thresholds were then chosen on the "
+            "validation and calibration clips (170 swings, and 350 stretches of the "
+            "same videos with no swing in them: the golfer before address, after "
+            "the finish, and a backswing that never comes down) and reported on the "
+            "held-out ones (224 swings, 473 such stretches): with the installed model "
+            "they turn away 0.9 percent of real swings and accept 0.6 percent of the "
+            "stretches with none."
+        ),
+    )
+    min_core_confidence: float = Field(
         default=0.30,
         description=(
-            "Mean event confidence below which no swing is reported.\n\n"
-            "This was left switched off until there was something to set it from, "
-            "because a guessed threshold is worse than none. Measured over a set of "
-            "clips built to contain no swing - somebody standing at address, a swing "
-            "cut off at the top, an empty frame - the model returned 0.02, 0.27 and "
-            "0.15. Over clips that did contain a swing, filmed face on, down the "
-            "line, at forty-five degrees, tilted, left handed, near, far, and at "
-            "three frame rates, it returned 0.38 at worst and 0.89 or better on "
-            "eleven of twelve. The gap is wide and this sits in it, close enough to "
-            "the bad group to keep the hardest real angle."
+            "Mean confidence over address, top, mid-downswing and impact below which "
+            "no swing is reported: the positions every real swing is sure of."
         ),
     )
     min_detection_rate: float = Field(
@@ -134,6 +148,14 @@ class SwingAnalysis(BaseModel):
             "Per event, how far from the truth a prediction like this one has been "
             "observed to fall. Empty when no calibration was supplied, which is the "
             "honest state rather than a default of zero."
+        ),
+    )
+    positions_set_by: Literal["model", "golfer"] = Field(
+        default="model",
+        description=(
+            "Who placed the eight positions. When the golfer moved them, every "
+            "timing below is measured from their frames, and the model's error "
+            "bands no longer apply and are not reported."
         ),
     )
     tempo_uncertainty: RelativeBand | None = Field(
@@ -239,6 +261,8 @@ def save_model(model: SwingEventNet, path: Path | str) -> None:
     offers a kernel size and a padding mode, and a run that changed either wrote a
     checkpoint that quietly came back as a different network.
     """
+    import torch
+
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
@@ -254,12 +278,24 @@ def save_model(model: SwingEventNet, path: Path | str) -> None:
     )
 
 
+def load_event_model(checkpoint_path: Path | str) -> SwingEventNet | NumpyEventNet:
+    """Whichever network a file holds: the NumPy weights (.npz) the packaged
+    application runs, which need no PyTorch, or a PyTorch checkpoint (.pt)."""
+    if Path(checkpoint_path).suffix == ".npz":
+        return NumpyEventNet.load(checkpoint_path)
+    return load_model(checkpoint_path)
+
+
 def load_model(checkpoint_path: Path | str) -> SwingEventNet:
-    """Rebuild the trained model from a checkpoint.
+    """Rebuild the trained model from a PyTorch checkpoint.
 
     Tolerant of a checkpoint that predates a field, because a model that took an
     hour to train should not become unloadable over a missing dictionary key.
     """
+    import torch
+
+    from swingml.model.tcn import DEFAULT_DILATIONS, SwingEventNet
+
     checkpoint = torch.load(str(checkpoint_path), map_location="cpu", weights_only=False)
     state = checkpoint["state_dict"]
 
@@ -315,7 +351,7 @@ def _implausible_timing(
     return None
 
 
-def model_fingerprint(model: SwingEventNet | SwingEventEnsemble) -> str:
+def model_fingerprint(model: SwingEventNet | NumpyEventNet | SwingEventEnsemble) -> str:
     """The digest a calibration is checked against.
 
     An ensemble folds in every member and the settings that change its answers,
@@ -326,8 +362,8 @@ def model_fingerprint(model: SwingEventNet | SwingEventEnsemble) -> str:
     if isinstance(model, SwingEventEnsemble):
         parts: list[tuple[str, NDArray[np.float32]]] = []
         for index, member in enumerate(model.members):
-            for name, tensor in member.state_dict().items():
-                parts.append((f"{index}.{name}", tensor.detach().numpy()))
+            for name, values in _weights(member):
+                parts.append((f"{index}.{name}", values))
         warps = ",".join(f"{w:.6f}" for w in model.config.time_warps)
         return fingerprint_state(
             [
@@ -338,9 +374,14 @@ def model_fingerprint(model: SwingEventNet | SwingEventEnsemble) -> str:
                 ),
             ]
         )
-    return fingerprint_state(
-        (name, tensor.detach().numpy()) for name, tensor in model.state_dict().items()
-    )
+    return fingerprint_state(_weights(model))
+
+
+def _weights(model: SwingEventNet | NumpyEventNet) -> list[tuple[str, NDArray[np.float32]]]:
+    """Every named weight array, whichever implementation holds them."""
+    if isinstance(model, NumpyEventNet):
+        return list(model.arrays.items())
+    return [(name, tensor.detach().numpy()) for name, tensor in model.state_dict().items()]
 
 
 class ResolvedModel(BaseModel):
@@ -357,7 +398,10 @@ class ResolvedModel(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid", arbitrary_types_allowed=True)
 
-    model: SwingEventNet | SwingEventEnsemble
+    # Any, because naming the PyTorch network here would import PyTorch, which
+    # the packaged application runs without: SwingEventNet, NumpyEventNet or an
+    # ensemble of either.
+    model: Any
     paths: tuple[Path, ...]
     calibration: ModelCalibration | None
 
@@ -387,7 +431,7 @@ def resolve_model(
     paths: tuple[Path, ...]
     if explicit is not None:
         paths = (Path(explicit),)
-        model: SwingEventNet | SwingEventEnsemble = load_model(explicit)
+        model: SwingEventNet | NumpyEventNet | SwingEventEnsemble = load_event_model(explicit)
     else:
         members = find_event_ensemble()
         if members:
@@ -401,7 +445,7 @@ def resolve_model(
             if single is None:
                 return None
             paths = (single,)
-            model = load_model(single)
+            model = load_event_model(single)
 
     # Whichever table was measured through these weights, if any of them was.
     # Choosing by fingerprint rather than by where the file sits means a machine
@@ -420,7 +464,7 @@ def resolve_model(
 
 def analyse_pose_sequence(
     sequence: PoseSequence,
-    model: SwingEventNet | SwingEventEnsemble,
+    model: SwingEventNet | NumpyEventNet | SwingEventEnsemble,
     config: AnalysisConfig | None = None,
     video: VideoInfo | None = None,
 ) -> SwingAnalysis:
@@ -437,9 +481,11 @@ def analyse_pose_sequence(
     detection_rate = float(np.mean(resampled.detected)) if resampled.detected is not None else 1.0
 
     features = extract_features(resampled, config.handedness, config.features)
-    if isinstance(model, SwingEventEnsemble):
+    if isinstance(model, SwingEventEnsemble | NumpyEventNet):
         logits = model.logits(features)
     else:
+        import torch
+
         # Asked for explicitly rather than assumed. `load_model` does it, so the
         # shipped path was fine, but a model handed straight over from training is
         # still in training mode and its dropout is still on - which does not fail,
@@ -470,7 +516,7 @@ def analyse_pose_sequence(
             handedness=config.handedness,
         )
 
-    events = decode_events(logits, config.min_mean_confidence)
+    events = decode_events(logits, config.min_mean_confidence, config.min_core_confidence)
     if isinstance(events, NoReading):
         return SwingAnalysis(
             video=video,
@@ -559,9 +605,60 @@ def analyse_pose_sequence(
     )
 
 
+def analyse_with_positions(
+    sequence: PoseSequence,
+    source_frames: Sequence[int],
+    handedness: Handedness,
+    config: AnalysisConfig | None = None,
+    video: VideoInfo | None = None,
+) -> SwingAnalysis:
+    """The swing measured from eight positions the golfer chose, not the model.
+
+    `source_frames` index the tracked sequence, as `event_source_frames` does. The
+    measurements are the same functions of the same landmarks; only where the
+    eight positions sit has changed, so the model plays no part and its error
+    bands, which describe the model, are not attached.
+
+    Raises ValueError if the positions are not in swing order.
+    """
+    config = config or AnalysisConfig()
+    chosen = [int(f) for f in source_frames]
+    if len(chosen) != len(SwingEvent.ordered()):
+        raise ValueError(f"expected {len(SwingEvent.ordered())} positions, got {len(chosen)}")
+    if any(b <= a for a, b in pairwise(chosen)):
+        raise ValueError("the eight positions must be in swing order, each after the last")
+    if chosen[0] < 0 or chosen[-1] >= sequence.n_frames:
+        raise ValueError("a position lies outside the clip")
+
+    rate = config.features.canonical_rate_hz
+    resampled, grid = resample_pose(sequence, rate)
+    detection_rate = float(np.mean(resampled.detected)) if resampled.detected is not None else 1.0
+    times = sequence.timestamps_s[chosen].astype(np.float64)
+    positions = np.clip((times - grid[0]) * rate, 0, resampled.n_frames - 1)
+    frames = np.rint(positions).astype(int)
+    if np.any(np.diff(frames) <= 0):
+        raise ValueError("two positions are closer together than the analysis can separate")
+    events = EventSequence(
+        frames=tuple(int(f) for f in frames),  # type: ignore[arg-type]
+        confidence=(1.0,) * 8,
+        subframe=tuple(float(p) for p in positions),  # type: ignore[arg-type]
+    )
+    return SwingAnalysis(
+        video=video,
+        detection_rate=detection_rate,
+        canonical_frames=resampled.n_frames,
+        events=events,
+        event_times_s=tuple(float(t) for t in times),
+        event_source_frames=tuple(chosen),
+        metrics=compute_metrics(resampled, events, handedness, config.metrics),
+        handedness=handedness,
+        positions_set_by="golfer",
+    )
+
+
 def analyse_video(
     path: Path | str,
-    model: SwingEventNet | SwingEventEnsemble,
+    model: SwingEventNet | NumpyEventNet | SwingEventEnsemble,
     estimator: PoseEstimator,
     config: AnalysisConfig | None = None,
     on_progress: Callable[[int, int], None] | None = None,

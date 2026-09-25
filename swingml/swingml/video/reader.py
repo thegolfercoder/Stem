@@ -102,15 +102,27 @@ class VideoReader:
     def close(self) -> None:
         self.capture.release()
 
-    def frames(self) -> Iterator[tuple[NDArray[np.uint8], float]]:
+    def frames(
+        self, max_side: int | None = None, max_rate_hz: float | None = None
+    ) -> Iterator[tuple[NDArray[np.uint8], float]]:
         """Yield each frame as RGB, with its presentation time in seconds.
 
         Falls back to the nominal rate for any frame whose timestamp the container
         does not carry, which happens on the first frame in some encoders. The
         fallback is monotonic, so downstream code never sees time run backwards.
+
+        Args:
+            max_side: shrink frames whose longer side is larger than this. The pose
+                estimator works at a few hundred pixels whatever it is given, so a
+                4K frame costs time for nothing; and the event model was trained
+                on landmarks from small video, which a smaller input matches.
+            max_rate_hz: skip frames closer together than this. The model looks
+                at sixty a second, so a 240 fps slow-motion clip tracked in full
+                is four times the work for the same answer.
         """
         index = 0
         last_time = -1.0
+        kept = -np.inf
         while True:
             position_ms = self.capture.get(cv2.CAP_PROP_POS_MSEC)
             ok, frame = self.capture.read()
@@ -121,10 +133,17 @@ class VideoReader:
             if not np.isfinite(time_s) or time_s <= last_time:
                 time_s = last_time + 1.0 / self.nominal_fps if index else 0.0
             last_time = time_s
+            index += 1
+            if max_rate_hz is not None and time_s - kept < 1.0 / max_rate_hz - 2e-3:
+                continue
+            kept = time_s
 
+            if max_side is not None and max(frame.shape[:2]) > max_side:
+                scale = max_side / max(frame.shape[:2])
+                size = (round(frame.shape[1] * scale), round(frame.shape[0] * scale))
+                frame = cv2.resize(frame, size, interpolation=cv2.INTER_AREA)
             rgb = np.asarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), dtype=np.uint8)
             yield rgb, time_s
-            index += 1
 
     def describe_stream(self, n_frames: int, timestamps: NDArray[np.float64]) -> VideoInfo:
         """Describe a clip that was streamed rather than held in memory.

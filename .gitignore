@@ -21,3 +21,20 @@ models/
 # The one exception is the real-swing regression fixture, which is checked in on
 # purpose: without it there is nothing here but generated data.
 !swingml/tests/fixtures/*.mov
+
+# The pose estimator model is bundled into desktop builds, not committed (30 MB).
+swingml/swingml/data/pose_landmarker_heavy.task
+# Desktop build output.
+swingml/build/
+swingml/dist/
+
+# Swift build output.
+ios/SwingCore/.build/
+ios/**/*.xcodeproj/xcuserdata/
+ios/Pods/
+
+# iPhone app: generated project, pods and the downloaded pose model.
+ios/SwingStudio.xcodeproj/
+ios/SwingStudio.xcworkspace/
+ios/Podfile.lock
+ios/SwingStudio/Resources/pose_landmarker_heavy.task

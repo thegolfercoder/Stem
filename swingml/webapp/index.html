@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Swing analysis</title>
+<link rel="icon" href="data:,">
+<title>Swing Story</title>
 <style>
 :root {
   --bg:#0e1014; --panel:#161a21; --panel-2:#1c212a; --line:#262d38;
@@ -12,11 +13,25 @@
   --radius:14px;
   --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --on-accent:#06131a; --back:#4fc3f7; --down:#ffb84d; --follow:#6b7688;
+  color-scheme: dark;
 }
+/* Dark first. The light palette applies when the system asks for it and nobody
+   has chosen otherwise, or when light has been chosen outright - a host that
+   stamps data-theme on the root must win in both directions, or the page shows
+   one theme's text on the other theme's ground. */
 @media (prefers-color-scheme: light) {
-  :root { --bg:#f6f7f9; --panel:#fff; --panel-2:#f0f2f5; --line:#dfe3e9;
+  :root:not([data-theme="dark"]) {
+          --bg:#f6f7f9; --panel:#fff; --panel-2:#f0f2f5; --line:#dfe3e9;
           --ink:#161a21; --ink-dim:#58616f; --ink-faint:#8b94a3;
-          --accent:#0d7fb0; --accent-warm:#b46a00; }
+          --accent:#0d7fb0; --accent-warm:#b46a00; --on-accent:#fff;
+          --back:#0d7fb0; --down:#b46a00; --follow:#8b94a3; color-scheme: light; }
+}
+:root[data-theme="light"] {
+  --bg:#f6f7f9; --panel:#fff; --panel-2:#f0f2f5; --line:#dfe3e9;
+  --ink:#161a21; --ink-dim:#58616f; --ink-faint:#8b94a3;
+  --accent:#0d7fb0; --accent-warm:#b46a00; --on-accent:#fff;
+  --back:#0d7fb0; --down:#b46a00; --follow:#8b94a3; color-scheme: light;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -42,10 +57,34 @@ h1{font-size:34px;letter-spacing:-.02em;margin:18px 0 8px;font-weight:660}
 .drop-main{margin:0 0 6px;font-size:16px;font-weight:560}
 .drop-sub{margin:0;color:var(--ink-faint);font-size:13px}
 .btn-primary{background:var(--accent);border:1px solid transparent;
-  color:#06131a;padding:10px 20px;border-radius:10px;cursor:pointer;font:inherit;
+  color:var(--on-accent);padding:10px 20px;border-radius:10px;cursor:pointer;font:inherit;
   font-size:14.5px;font-weight:600;margin-top:14px}
 .btn-primary:hover{filter:brightness(1.08)}
-@media (prefers-color-scheme: light){ .btn-primary{color:#fff} }
+.btn-link{background:none;border:0;color:var(--accent);font:inherit;font-size:13.5px;
+  cursor:pointer;padding:6px 4px;margin-top:6px;text-decoration:underline;text-underline-offset:3px}
+.btn-link:focus-visible,.btn-primary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* The swing told in order. A timeline to scale, then what happened in each part
+   in words, every sentence built from a measured number and carrying how it was
+   obtained - the same rule as the cards above, in prose. */
+.story{display:grid;gap:18px;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);padding:20px 22px}
+.timeline{overflow-x:auto}
+.timeline svg{display:block;width:100%;min-width:520px;height:auto}
+.timeline text{fill:var(--ink-dim);font-family:var(--font);font-size:11px}
+.timeline .t-strong{fill:var(--ink);font-weight:600}
+.timeline .t-time{fill:var(--ink-faint);font-family:var(--mono);font-size:10px}
+.phase-key{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--ink-dim)}
+.phase-key i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.beats{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:beat}
+.beats li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;counter-increment:beat}
+.beats li::before{content:counter(beat);width:24px;height:24px;border-radius:50%;
+  display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--ink-dim);
+  border:1px solid var(--line);background:var(--panel-2);font-variant-numeric:tabular-nums}
+.beats h3{margin:1px 0 2px;font-size:14.5px;font-weight:620;letter-spacing:-.005em}
+.beats p{margin:0;color:var(--ink-dim);max-width:68ch}
+.beats b{color:var(--ink);font-variant-numeric:tabular-nums;font-weight:620}
+.beats .prov{margin-left:6px;vertical-align:1px}
 
 /* Settings sit beside the action rather than inside the drop target: handedness
    is not part of dropping a file, and putting it under a divider in there made
@@ -123,6 +162,16 @@ h2.section{font-size:19px;margin:28px 0 4px;letter-spacing:-.01em}
 .prov-measured{color:var(--good)}
 .prov-derived{color:var(--accent)}
 .prov-projected{color:var(--accent-warm)}
+.prov-claude{color:var(--ink-dim);vertical-align:3px;margin-left:8px}
+.coach{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px;display:grid;gap:14px}
+.coach-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.coach-status{color:var(--ink-dim);font-size:13.5px}
+.coach-text{white-space:pre-wrap;max-width:72ch;line-height:1.55}
+.coach-text:empty{display:none}
+.send-diag{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.send-diag-note{color:var(--ink-dim);font-size:13px;max-width:62ch}
+.prov-set_by_you{color:var(--ink);border-color:var(--accent);align-self:flex-start;margin-top:2px}
 .empty{color:var(--ink-dim);background:var(--panel);border:1px solid var(--line);
   border-radius:var(--radius);padding:18px;margin:0}
 .btn{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);padding:8px 14px;
@@ -155,16 +204,23 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
   display:flex;flex-direction:column;gap:10px}
 .lightbox canvas{max-width:100%;max-height:78vh;object-fit:contain;border-radius:12px;
   border:1px solid var(--line);background:#000;display:block;margin:0 auto}
+/* The backdrop is dark in both themes, so the text on it is light in both. */
 .lightbox figcaption{display:flex;justify-content:space-between;gap:14px;align-items:baseline;
-  color:var(--ink);font-size:15px;font-weight:560}
-.lightbox .lb-time{color:var(--ink-faint);font-family:var(--mono);font-size:13px;font-weight:400}
+  color:#f2f4f7;font-size:15px;font-weight:560}
+.lightbox .lb-time{color:#b8bec8;font-family:var(--mono);font-size:13px;font-weight:400}
 .lb-close{position:absolute;top:16px;right:18px;background:var(--panel);color:var(--ink);
   border:1px solid var(--line);border-radius:9px;width:34px;height:34px;font-size:19px;
   line-height:1;cursor:pointer}
 .lb-nav{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:9px;
   padding:7px 13px;font:inherit;font-size:13.5px;cursor:pointer}
 .lb-nav:hover,.lb-close:hover{border-color:var(--accent)}
-.lb-controls{display:flex;gap:8px;justify-content:center}
+.lb-controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.lb-use{border-color:var(--accent)}
+.lb-use:disabled{opacity:.45;cursor:default;border-color:var(--line)}
+.lb-note{margin:0;text-align:center;color:#c9ced6;font-size:13px}
+.lb-link{background:none;border:0;color:var(--accent);font:inherit;cursor:pointer;
+  text-decoration:underline;padding:0 0 0 6px}
+.lightbox .lb-link{color:#8cc4ff}
 .frame{cursor:zoom-in}
 .hidden{display:none}
 [hidden]{display:none}
@@ -176,7 +232,7 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
 </style>
 </head>
 <body>
-<header><span class="mark"></span><b>Swing analysis</b></header>
+<header><span class="mark"></span><b>Swing Story</b></header>
 <main>
   <h1>Drop in a swing</h1>
   <p class="lede">
@@ -195,12 +251,14 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
     <p class="drop-main" id="drop-main">Drag a video here</p>
     <p class="drop-sub" id="drop-sub">.mov .mp4 .m4v &middot; portrait or landscape &middot; any frame rate, slow motion included</p>
     <button type="button" id="browse" class="btn-primary">Choose a video</button>
+    <div><button type="button" id="sample" class="btn-link" hidden>or try it on a sample swing</button></div>
   </div>
 
   <div class="options">
     <span class="options-label">Golfer is</span>
     <div class="segmented" id="handedness" role="group" aria-label="Handedness">
-      <button type="button" data-value="right" aria-pressed="true">Right-handed</button>
+      <button type="button" data-value="auto" aria-pressed="true">Detect</button>
+      <button type="button" data-value="right" aria-pressed="false">Right-handed</button>
       <button type="button" data-value="left" aria-pressed="false">Left-handed</button>
     </div>
   </div>
@@ -241,6 +299,12 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
       from a clip that did not contain a swing. A wrong number gets acted on; a missing one gets
       looked into.</p>
     <p class="footnote" id="refusal-diagnostics" hidden></p>
+    <div class="send-diag" id="send-diag-box" hidden>
+      <button class="btn" id="send-diag" type="button">Send this clip's diagnostics to Claude</button>
+      <span class="send-diag-note" id="send-diag-note">The poses found, the model's scores and
+        small pictures of the clip, filed with this run so it can be fixed. The video itself
+        goes too if it is under 20&nbsp;MB.</span>
+    </div>
   </div>
 
   <div id="results" hidden>
@@ -254,6 +318,11 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
       the strongest numbers here, which is why they come first.</p>
     <div class="metric-grid" id="tempo-cards"></div>
 
+    <h2 class="section">The swing, start to finish</h2>
+    <p class="section-sub">The whole motion to scale, then what happened in each part. Every
+      figure is one of the measurements on this page; nothing is added that was not measured.</p>
+    <div class="story" id="story"></div>
+
     <h2 class="section">The eight positions</h2>
     <p class="section-sub">Where the model put each one, and how far out it has been measured
       to be. Click any frame to see it full size, then step through them with the arrow keys.</p>
@@ -262,6 +331,21 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
     <p class="footnote"><span class="ast">*</span> Toe-up and mid-follow-through are defined
       by the club shaft being horizontal. A body-pose estimator does not see the club, so
       these two are placed from the body's motion rather than observed directly.</p>
+
+    <section id="coach-section" hidden>
+      <h2 class="section">A coach's read <span class="prov prov-claude">Claude's read</span></h2>
+      <p class="section-sub">Claude looks at the frames and the measurements and says what it
+        would work on. This is an opinion from pictures, not a measurement. It uses your
+        Claude usage and runs only when you ask.</p>
+      <div class="coach">
+        <div class="coach-actions">
+          <button class="btn btn-primary" id="coach-ask" type="button">Ask Claude to read this swing</button>
+          <button class="btn" id="coach-stop" type="button" hidden>Stop</button>
+          <span class="coach-status" id="coach-status" role="status"></span>
+        </div>
+        <div class="coach-text" id="coach-text" aria-live="polite"></div>
+      </div>
+    </section>
 
     <h2 class="section">Rotation at the top</h2>
     <p class="section-sub">How far the shoulders and hips had turned away from square to the
@@ -276,6 +360,7 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
       length, so no calibration is needed.</p>
     <div class="metric-grid" id="stability-cards"></div>
 
+    <div class="send-diag" id="send-diag-slot"></div>
     <div class="result-actions">
       <button class="btn" id="download" type="button">Download the numbers as JSON</button>
       <button class="btn" id="again-bottom" type="button">Analyse another clip</button>
@@ -288,9 +373,16 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
       <div id="lb-canvas"></div>
       <figcaption><span id="lb-label"></span><span class="lb-time" id="lb-time"></span></figcaption>
       <div class="lb-controls">
-        <button class="lb-nav" id="lb-prev" type="button">&larr; Previous</button>
-        <button class="lb-nav" id="lb-next" type="button">Next &rarr;</button>
+        <button class="lb-nav" id="lb-prev" type="button">&larr; Previous position</button>
+        <button class="lb-nav" id="lb-next" type="button">Next position &rarr;</button>
       </div>
+      <div class="lb-controls lb-adjust">
+        <button class="lb-nav" id="lb-back" type="button" aria-label="One frame earlier" title="One frame earlier (,)">&lsaquo; Frame</button>
+        <button class="lb-nav lb-use" id="lb-use" type="button">Use this frame</button>
+        <button class="lb-nav" id="lb-fwd" type="button" aria-label="One frame later" title="One frame later (.)">Frame &rsaquo;</button>
+      </div>
+      <p class="lb-note"><span id="lb-note"></span>
+        <button class="lb-link" id="lb-reset" type="button" hidden>Back to the model's frame</button></p>
     </figure>
   </div>
 
@@ -298,9 +390,10 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
   <canvas id="scratch-canvas" class="hidden"></canvas>
 </main>
 <footer>
-  <p>Runs entirely in your browser. The clip never leaves this device. The pose estimator is
-     fetched from Google's servers the first time and cached after that.</p>
+  <p id="footer-note">Runs entirely in your browser. The clip never leaves this device. The pose
+     estimator is fetched from Google's servers the first time and cached after that.</p>
 </footer>
+<script>/*__MP4BOX__*/</script>
 <script type="module">
 /*__ENGINE__*/
 /*__MODEL__*/

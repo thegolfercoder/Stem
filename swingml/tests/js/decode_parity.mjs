@@ -11,8 +11,9 @@ import { readFileSync } from "node:fs";
 import { decodeEvents } from "../../webapp/model.js";
 
 const job = JSON.parse(readFileSync(process.argv[2], "utf8"));
-const results = job.cases.map(({ logits, n, classes, minMeanConfidence }) => {
-  const decoded = decodeEvents(Float32Array.from(logits), n, classes, minMeanConfidence);
+const results = job.cases.map(({ logits, n, classes, minMeanConfidence, minCoreConfidence }) => {
+  const decoded = decodeEvents(Float32Array.from(logits), n, classes, minMeanConfidence,
+                               minCoreConfidence || 0);
   return decoded.ok
     ? {
         ok: true,

@@ -10,7 +10,7 @@
  */
 import { readFileSync } from "node:fs";
 import { PoseSequence, resamplePose, extractFeatures } from "../../webapp/engine.js";
-import { SwingEventNet, decodeEvents } from "../../webapp/model.js";
+import { SwingEventModel, decodeEvents } from "../../webapp/model.js";
 import { computeMetrics } from "../../webapp/metrics.js";
 
 const job = JSON.parse(readFileSync(process.argv[2], "utf8"));
@@ -24,10 +24,11 @@ const config = payload.features;
 const { sequence: resampled } = resamplePose(sequence, config.canonical_rate_hz);
 const { features, n, width } = extractFeatures(resampled, job.handedness, config);
 
-const net = new SwingEventNet(payload);
+const net = new SwingEventModel(payload);
 const logits = net.forward(features, n, width);
 const decoded = decodeEvents(
   logits, n, payload.architecture.classes, payload.thresholds.min_mean_confidence,
+  payload.thresholds.min_core_confidence || 0,
 );
 
 const result = { n, ok: decoded.ok };
