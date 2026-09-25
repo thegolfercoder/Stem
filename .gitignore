@@ -27,3 +27,8 @@ swingml/swingml/data/pose_landmarker_heavy.task
 # Desktop build output.
 swingml/build/
 swingml/dist/
+
+# Swift build output.
+ios/SwingCore/.build/
+ios/**/*.xcodeproj/xcuserdata/
+ios/Pods/
