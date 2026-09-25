@@ -62,14 +62,19 @@ A clip that does not contain a measurable swing produces no numbers and a reason
 never a plausible-looking guess. Three independent checks:
 
 - a body must be found in at least half the frames
-- the model's mean confidence across the eight events must clear 0.30
+- the model must be confident of the swing's core - address, the top,
+  mid-downswing and impact, geometric mean 0.30 or more - and of all eight
+  events together, 0.20 or more
 - the halves of the swing must last a plausible length of time
 
-Those thresholds are measured rather than chosen. On clips built to contain no
-swing — somebody standing at address, a swing cut off at the top, an empty frame —
-the model returned confidences of 0.02, 0.27 and 0.15. On clips containing one,
-filmed from every angle and frame rate, it returned 0.89 or better on eleven of
-twelve. The threshold sits in that gap.
+Those thresholds are measured rather than chosen. The first rule, a mean of 0.30
+across all eight events, was set when the model had seen only rendered swings, and
+on real footage it refused 69% of real swings: a finish cut short by the camera or
+a toe-up the model had never seen dragged the mean down. The current rule was tuned
+on the validation and calibration swings against no-swing stretches cut from the
+same videos (standing over the ball, walking in, the swing's first half only), and
+on held-out ones it refuses 0.9% of real swings and accepts 0.6% of no-swing
+stretches.
 
 This matters more than it sounds. Before those checks existed, a clip of somebody
 standing still produced a tempo ratio of 0.21 and a clip cut off at the top
@@ -79,31 +84,44 @@ looked into.
 ## Measured accuracy
 
 **On real footage, which is what matters.** The shipped model was fine-tuned on
-281 real swings from GolfDB and chosen on 85 more; the figures below are from 201
-it never saw, grouped by golfer and by source video so nobody in them appears in
-training. Scored on address, the top, mid-downswing and impact - the four events
-where GolfDB's labels and this project's agree within a frame once tempo is
-controlled for, and the four the tempo ratio is built from:
+281 real swings from GolfDB for seven of the eight positions and chosen on 85 more;
+the figures below are from 201 it never saw, grouped by golfer and by source video
+so nobody in them appears in training, scored on all eight events:
 
 | | ±1 frame | ±2 | ±5 | Tempo error, median | 80th percentile |
 |---|---|---|---|---|---|
-| Model before | 26.4% | 39.8% | 53.6% | 25.0% | 62.5% |
-| **Shipped** | **45.5%** | **62.4%** | **80.2%** | **15.4%** | **34.4%** |
-| Rory McIlroy, 23 swings held out, before | 18.5% | 38.0% | 45.7% | 30.1% | 112.7% |
-| **Rory McIlroy, shipped** | **41.3%** | **60.9%** | **81.5%** | **13.9%** | **34.2%** |
+| First real fine-tune, four positions supervised | 28.7% | | | | |
+| **Shipped, seven positions** | **41.9%** | **55.2%** | **71.7%** | **15.2%** | **28.0%** |
 
-A paired bootstrap over the 201 clips puts the gain within one frame at **+9.4
-points [+7.1, +11.8]** across all eight events and the tempo improvement at
-**-9.6 points [-16.6, -3.6]**; both intervals exclude zero.
+The finish is left to the model's rendered-footage convention, because GolfDB marks
+it differently from this project and from the one real phone clip whose frames were
+checked by hand; it lands within one frame almost never and carries a band to say
+so. Scored on the four events the tempo ratio is built from, an earlier real
+fine-tune moved within one frame from 26.4% to 45.5% against the rendered-only
+model (paired bootstrap, all eight events, +9.4 points [+7.1, +11.8]), and on
+Rory McIlroy's 23 swings, held out as a blind test, from 18.5% to 41.3%.
 
-The error bands were re-measured through these weights on 85 real swings used for
-nothing else. The tempo band is **±29%**, and cross-validated it held for 82.4% of
-swings against the 80% it claims; per event, 82.5% of 680 held-out events fell
-inside their bands. They are wide where they should be: the top, mid-downswing and
-impact are placed to within three to five frames at 60 Hz, while the finish, which
-this project and a human annotator define differently, carries a band of about
-two seconds. A band that said otherwise would be the band that used to ship, which
-claimed ±9% and on the one real clip in the repository did not contain the truth.
+The error bands were re-measured through the shipped weights on 85 real swings used
+for nothing else. The tempo band is **±27%** for 80% of swings. Per event the
+top, mid-downswing and impact are placed to within two to five frames at 60 Hz,
+address to within 18, and the finish carries a band of about a second and a half.
+A band that said otherwise would be the band that used to ship, which claimed ±9%
+and on the one real clip in the repository did not contain the truth.
+
+**More broadcast footage, tried and not shipped.** All 1,216 GolfDB clips that pass
+the extraction gates were split with the earlier holdout frozen
+(`split_golfdb.py --freeze`), more than doubling the real training set to 619
+swings. Retrained the same way, the model is better on broadcast footage it never
+saw, and the paired bootstrap resolves it: on the same 201 swings, within one frame
++2.6 points [+0.8, +4.2] and tempo error -2.9 points [-5.1, -0.7]; on the 320 of
+the enlarged holdout, +2.5 [+1.2, +3.9] and -2.2 [-3.7, -0.7]. It is not shipped,
+because it fails the real-clip gate: on the phone clip it puts address at frame 79
+against a clubhead-verified 84 (the shipped model says 81), and reads that swing's
+tempo at 3.50 rather than 3.20 against a truth of 2.10. Both seeds agree, averaging
+it with the shipped model does not move address, and leaving address unsupervised
+doubles the tempo error. More of GolfDB's footage teaches more of GolfDB's address
+convention; which convention a phone user's address follows is a question only
+labelled phone swings can answer, and this repository has one.
 
 Rory's swings were held out before training, not picked afterwards; his group is 86
 clips because some of his source videos show other golfers, and all of them were
