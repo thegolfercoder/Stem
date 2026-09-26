@@ -47,6 +47,100 @@ export function dropFloor(model) {
   return floors.size;
 }
 
+/**
+ * Removes reference boards left in a scene: a big flat quad or two (a
+ * blueprint, a backdrop card) standing beside or behind the car. Real flat
+ * parts (number plates, badges) are small, so size keeps them.
+ */
+export function dropBoards(model) {
+  model.updateMatrixWorld(true);
+  const meshes = [];
+  model.traverse((o) => o.isMesh && meshes.push({ o, box: box3(o) }));
+  const boards = meshes.filter(({ o, box }) => {
+    const g = o.geometry;
+    const tris = (g.index?.count ?? g.attributes.position?.count ?? 0) / 3;
+    if (tris > 200) return false;
+    const s = box.getSize(new THREE.Vector3()).toArray().sort((a, b) => a - b);
+    return s[0] < s[2] * 0.15;
+  });
+  if (!boards.length || boards.length === meshes.length) return 0;
+  const rest = new THREE.Box3();
+  for (const m of meshes) if (!boards.includes(m)) rest.union(m.box);
+  const r = rest.getSize(new THREE.Vector3()).toArray().sort((a, b) => b - a);
+  let removed = 0;
+  for (const { o, box } of boards) {
+    const s = box.getSize(new THREE.Vector3()).toArray().sort((a, b) => b - a);
+    const rh = rest.max.y - rest.min.y;
+    // Taller than the car, or sticking out past it: scenery, not bodywork.
+    const outside = box.max.y > rest.max.y + rh * 0.1 || box.min.x < rest.min.x - 0.1 * r[1] || box.max.x > rest.max.x + 0.1 * r[1] || box.min.z < rest.min.z - 0.05 * r[0] || box.max.z > rest.max.z + 0.05 * r[0];
+    if (s[0] > r[1] * 0.6 && s[1] > r[2] * 0.6 && outside) {
+      o.removeFromParent();
+      removed++;
+    }
+  }
+  return removed;
+}
+
+/**
+ * Removes a single part that hangs far below everything else: a stand, a
+ * display board or a card the car was photographed against. No real part of
+ * a car reaches 15% of its height below all its other parts.
+ */
+export function dropStands(model) {
+  model.updateMatrixWorld(true);
+  const meshes = [];
+  model.traverse((o) => o.isMesh && meshes.push({ o, box: box3(o) }));
+  if (meshes.length < 3) return 0;
+  const lowest = [...meshes].sort((a, b) => a.box.min.y - b.box.min.y);
+  const [first] = lowest;
+  const rest = new THREE.Box3();
+  for (const m of meshes) if (m !== first) rest.union(m.box);
+  const h = rest.max.y - rest.min.y;
+  if (rest.min.y - first.box.min.y > 0.15 * h) {
+    first.o.removeFromParent();
+    return 1 + dropStands(model);
+  }
+  return 0;
+}
+
+/**
+ * Removes parts that alone make the car much wider or longer than the rest
+ * of it: a ground disc the car sits on, or a stray object left far away in
+ * the scene. A real part never adds a quarter to a car's footprint, and one
+ * with few triangles never adds an eighth.
+ */
+export function dropDebris(model) {
+  model.updateMatrixWorld(true);
+  const meshes = [];
+  let total = 0;
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    const tris = (o.geometry.index?.count ?? o.geometry.attributes.position?.count ?? 0) / 3;
+    total += tris;
+    meshes.push({ o, box: box3(o), tris });
+  });
+  if (meshes.length < 3) return 0;
+  const whole = new THREE.Box3();
+  meshes.forEach((m) => whole.union(m.box));
+  const W = whole.getSize(new THREE.Vector3());
+  let removed = 0;
+  for (const m of meshes) {
+    const rest = new THREE.Box3();
+    for (const n of meshes) if (n !== m && n.o.parent) rest.union(n.box);
+    if (rest.isEmpty()) continue;
+    const R = rest.getSize(new THREE.Vector3());
+    const grows = Math.max(W.x / R.x, W.z / R.z);
+    const flat = m.box.max.y - m.box.min.y < R.y * 0.3;
+    if ((grows > 1.25 && flat) || (grows > 1.12 && m.tris < total * 0.02)) {
+      m.o.removeFromParent();
+      removed++;
+      whole.copy(rest);
+      W.copy(R);
+    }
+  }
+  return removed;
+}
+
 /** Which way the nose points along z, from what the parts are called: +1, -1 or 0 (no idea). */
 export function frontVote(root) {
   const box = box3(root);
@@ -62,7 +156,28 @@ export function frontVote(root) {
     for (const [re, w] of FRONT) if (re.test(l)) vote += w * side;
     for (const [re, w] of REAR) if (re.test(l)) vote -= w * side;
   });
-  return Math.sign(vote);
+  if (vote !== 0) return Math.sign(vote);
+  return Math.sign(tailLampVote(root, box, mid, len));
+}
+
+/**
+ * When names say nothing: small, strongly red parts at one end of the car are
+ * its tail lamps (red paint is a large surface and does not count).
+ */
+function tailLampVote(root, box, mid, len) {
+  const width = box.max.x - box.min.x;
+  let vote = 0;
+  const red = (c) => c && c.r > 0.15 && c.r > 3 * c.g && c.r > 3 * c.b;
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const b = box3(o);
+    const s = b.getSize(new THREE.Vector3());
+    const along = (b.getCenter(new THREE.Vector3()).z - mid) / len;
+    if (Math.abs(along) < 0.38 || s.x > width * 0.6 || s.z > len * 0.25) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    if (mats.some((m) => red(m?.color) || (m?.emissive && red(m.emissive) && m.emissiveIntensity > 0))) vote -= Math.sign(along);
+  });
+  return vote;
 }
 
 /**
@@ -87,7 +202,7 @@ export function chooseLength(rawLength, entry) {
  * Returns the root and what was decided, for the vehicle info panel and logs.
  */
 export function normalize(model, entry) {
-  const removed = dropFloor(model);
+  const removed = dropFloor(model) + dropBoards(model) + dropStands(model) + dropDebris(model);
   const orient = new THREE.Group();
   orient.name = "orient";
   orient.add(model);

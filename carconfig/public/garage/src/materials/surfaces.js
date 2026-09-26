@@ -15,7 +15,11 @@ export function texturesOf(material) {
 }
 
 export function sharpenTextures(material, anisotropy) {
-  for (const t of texturesOf(material)) if (t.anisotropy < anisotropy) (t.anisotropy = anisotropy), (t.needsUpdate = true);
+  for (const t of texturesOf(material)) {
+    if (t.anisotropy >= anisotropy) continue;
+    t.anisotropy = anisotropy;
+    t.needsUpdate = true;
+  }
 }
 
 /**

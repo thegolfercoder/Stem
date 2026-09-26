@@ -17,7 +17,10 @@ function setSlot(slot, material) {
   if (slot.index === null) slot.mesh.material = material;
   else {
     // Multi-material meshes share their array between clones; give each mesh its own.
-    if (!slot.mesh.userData.ownArray) (slot.mesh.material = slot.mesh.material.slice()), (slot.mesh.userData.ownArray = true);
+    if (!slot.mesh.userData.ownArray) {
+      slot.mesh.material = slot.mesh.material.slice();
+      slot.mesh.userData.ownArray = true;
+    }
     slot.mesh.material[slot.index] = material;
   }
 }
@@ -210,7 +213,10 @@ export class Vehicle {
       geometries.add(o.geometry);
       materialsOf(o).forEach((m) => m && materials.add(m));
     });
-    for (const [orig, up] of this.factory) materials.add(orig), materials.add(up);
+    for (const [orig, up] of this.factory) {
+      materials.add(orig);
+      materials.add(up);
+    }
     for (const m of this.lit?.values() ?? []) materials.add(m);
     const textures = new Set();
     for (const m of materials) {

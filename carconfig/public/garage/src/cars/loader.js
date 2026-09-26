@@ -88,7 +88,10 @@ export class ModelLoader {
     signal?.throwIfAborted?.();
     const buffer = new Uint8Array(received || chunks[0].byteLength);
     let offset = 0;
-    for (const c of chunks) buffer.set(c, offset), (offset += c.byteLength);
+    for (const c of chunks) {
+      buffer.set(c, offset);
+      offset += c.byteLength;
+    }
 
     const base = url.slice(0, url.lastIndexOf("/") + 1);
     try {
@@ -112,7 +115,10 @@ export class VehicleCache {
   }
   get(id) {
     const v = this.items.get(id);
-    if (v) this.items.delete(id), this.items.set(id, v);
+    if (v) {
+      this.items.delete(id);
+      this.items.set(id, v);
+    }
     return v;
   }
   put(id, vehicle, keep) {

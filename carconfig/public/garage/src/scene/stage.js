@@ -71,7 +71,7 @@ const FLOOR = {
         for (int i = 0; i < 2; i++) {
           vec3 l = vWorld - uBeamPos[i];
           float dist = length(l);
-          float cone = smoothstep(0.82, 0.97, dot(l / dist, uBeamDir));
+          float cone = smoothstep(0.86, 0.975, dot(l / dist, uBeamDir));
           col += vec3(1.0, 0.96, 0.9) * cone * uBeam / (1.0 + dist * dist * 0.18);
         }
       }
@@ -130,7 +130,7 @@ export class Stage {
       uReflect: { value: 0 },
       uCarHalf: { value: new THREE.Vector2(1, 2.3) },
       uBeamPos: { value: [new THREE.Vector3(), new THREE.Vector3()] },
-      uBeamDir: { value: new THREE.Vector3(0, -0.12, 1).normalize() },
+      uBeamDir: { value: new THREE.Vector3(0, -0.34, 1).normalize() },
       uBeam: { value: 0 },
     };
     this.floor = new THREE.Mesh(

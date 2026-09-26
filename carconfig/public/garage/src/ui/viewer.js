@@ -80,12 +80,20 @@ export function mountViewer(store, { goTo, resetView, setTurntable, retry, entry
     panel.classList.remove("dragging");
     panel.style.transform = "";
     const dy = e.clientY - drag.y;
-    if (drag.moved < 6) setDrawer(!drag.start);
-    else setDrawer(dy < -40 ? true : dy > 40 ? false : drag.start);
+    // A tap is handled by the click event (which keyboards also send); a drag decides here.
+    if (drag.moved >= 6) {
+      setDrawer(dy < -40 ? true : dy > 40 ? false : drag.start);
+      suppressClick = true;
+    }
     drag = null;
   };
+  let suppressClick = false;
   handle.addEventListener("pointerup", endDrag);
   handle.addEventListener("pointercancel", endDrag);
+  handle.addEventListener("click", () => {
+    if (suppressClick) return void (suppressClick = false);
+    setDrawer(!app.classList.contains("drawer-open"));
+  });
 
   // Keyboard
   document.addEventListener("keydown", (e) => {

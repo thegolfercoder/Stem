@@ -65,7 +65,7 @@ export class Studio {
     this.camera.updateProjectionMatrix();
     this.pipeline.resize(w, h);
     // Still at a preset: keep the car framed for the new shape.
-    if (this.vehicle && this.rig.view && Math.abs(aspectBefore - this.camera.aspect) > 0.01 && !this.rig.flight) this.rig.goTo(this.viewById(this.rig.view), { instant: true });
+    if (this.vehicle && Math.abs(aspectBefore - this.camera.aspect) > 0.01) this.rig.refit(this.rig.view && this.viewById(this.rig.view));
     this.invalidate();
   }
 
@@ -113,7 +113,7 @@ export class Studio {
     this.vehicle.object.updateMatrixWorld(true);
     this.stage.updateShadow(this.renderer);
     const beams = this.vehicle.build?.lights === "on" ? this.vehicle.frontLamps.map((p) => p.clone().setY(Math.max(0.35, p.y))) : [];
-    this.stage.setBeams(beams, this.environmentId === "dark" || this.environmentId === "sunset" ? 1.4 : 0.6);
+    this.stage.setBeams(beams, this.environmentId === "dark" || this.environmentId === "sunset" ? 1.2 : 0.25);
     this.pipeline.setBloom(Boolean(this.vehicle.build && this.vehicle.build.lights !== "off"));
     this.invalidate();
   }

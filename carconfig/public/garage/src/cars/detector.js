@@ -91,7 +91,18 @@ export function choosePaint(stats) {
   if (best.hasMap && /\b(atlas|baked?)\b/.test(nameWords(best.name))) return { how: "none", ids: [] };
   const dist = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
   const isDefault = (c) => [1, 0.8].some((v) => c.every((x) => Math.abs(x - v) < 1e-3));
-  const siblings = best.hasMap || isDefault(best.rgb) ? [] : surfaces.filter((m) => m !== best && !m.hasMap && m.span >= 0.15 && dist(m.rgb, best.rgb) < 0.03);
+  // Plain materials of the same colour are the same paint. A strongly coloured
+  // body is sometimes split into many shades of one hue (exports that bake
+  // shading into colours); those count too.
+  const hsl = (c) => new THREE.Color(c[0], c[1], c[2]).getHSL({});
+  const b = hsl(best.rgb);
+  const hueGap = (x, y) => Math.min(Math.abs(x - y), 1 - Math.abs(x - y));
+  const sameHue = (m) => {
+    if (b.s < 0.3) return false;
+    const c = hsl(m.rgb);
+    return c.s > 0.25 && hueGap(c.h, b.h) < 0.035 && Math.abs(c.l - b.l) < 0.25;
+  };
+  const siblings = best.hasMap || isDefault(best.rgb) ? [] : surfaces.filter((m) => m !== best && !m.hasMap && (m.span >= 0.15 || share(m) > 0.01) && (dist(m.rgb, best.rgb) < 0.03 || sameHue(m)));
   return { how: "largest", ids: [best.id, ...siblings.map((m) => m.id)] };
 }
 
@@ -187,8 +198,10 @@ export function wheelsByName(root, carLength) {
     if ((b.min.x < 0 && b.max.x > 0 && bs.x > 0.6) || (b.min.z < 0 && b.max.z > 0 && bs.z > carLength * 0.4)) tangled = true;
     if (Math.abs(bc.x) < 0.15) return;
     const key = cornerKey(bc), g = groups.get(key);
-    if (g) g.box.union(b), g.meshes.push(o);
-    else groups.set(key, { box: b, meshes: [o] });
+    if (g) {
+      g.box.union(b);
+      g.meshes.push(o);
+    }    else groups.set(key, { box: b, meshes: [o] });
   });
   return tangled ? null : sane(absorbInside(root, groups));
 }
@@ -204,7 +217,10 @@ function absorbInside(root, groups) {
     if (!o.isMesh || taken.has(o)) return;
     const b = box3(o);
     const hit = zones.find(({ zone }) => zone.containsBox(b));
-    if (hit) hit.g.meshes.push(o), taken.add(o);
+    if (hit) {
+      hit.g.meshes.push(o);
+      taken.add(o);
+    }
   });
   return groups;
 }

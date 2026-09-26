@@ -16,7 +16,10 @@
     "find-objaverse-models": "node scripts/find-objaverse-models.mjs",
     "fetch-all-models": "node scripts/fetch-all-models.mjs",
     "check-model": "node scripts/check-model.mjs",
-    "build-model": "node scripts/build-model.mjs"
+    "build-model": "node scripts/build-model.mjs",
+    "garage:catalog": "node scripts/build-garage-catalog.mjs",
+    "garage:audit": "node scripts/garage-audit.mjs",
+    "garage:artifact": "node scripts/build-garage-artifact.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

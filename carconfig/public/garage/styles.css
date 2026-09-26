@@ -210,7 +210,8 @@ button { cursor: pointer; }
   transform: rotate(45deg) translate(-2px, -2px);
 }
 .section[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
-.section-body { padding: 2px 16px 18px; display: grid; gap: 16px; }
+.section-body { padding: 2px 16px 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.section-body > *, .custom > * { min-width: 0; }
 
 .group-label {
   display: flex; justify-content: space-between; gap: 8px;
@@ -335,12 +336,15 @@ button { cursor: pointer; }
 
   .panel {
     position: absolute; left: 0; right: 0; bottom: 0; z-index: 10;
-    height: 64dvh; max-height: calc(100% - 40px);
+    height: 58dvh; max-height: calc(100% - 120px);
     border-left: 0; border-top: 1px solid var(--rule-strong);
     transform: translateY(calc(100% - 56px)); transition: transform 0.24s ease;
   }
   .panel.dragging { transition: none; }
   .app.drawer-open .panel { transform: none; }
+  /* Keep the car in sight above the open drawer. */
+  .app.drawer-open .viewer { height: max(120px, calc(100% - 58dvh)); }
+  .app.drawer-open .views, .app.drawer-open .credit { display: none; }
   .drawer-handle {
     display: flex; align-items: center; justify-content: center; gap: 10px; flex-direction: column;
     height: 56px; flex: none; width: 100%; border: 0; border-bottom: 1px solid var(--rule); background: var(--panel);

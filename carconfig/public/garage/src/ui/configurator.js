@@ -24,7 +24,7 @@ export function mountConfigurator(store, { setBuild, setEnvironment, setTurntabl
   };
 
   /** A row of mutually exclusive choices. */
-  function chips(label, options, read, write, { dot = false } = {}) {
+  function chips(label, options, read, write, { dot = false, value = true } = {}) {
     const buttons = options.map((o) =>
       h(
         "button",
@@ -37,7 +37,7 @@ export function mountConfigurator(store, { setBuild, setEnvironment, setTurntabl
     updaters.push((s) => {
       const cur = read(s);
       buttons.forEach((b, i) => b.setAttribute("aria-pressed", String(options[i].id === cur)));
-      out.textContent = options.find((o) => o.id === cur)?.label ?? "";
+      if (value) out.textContent = options.find((o) => o.id === cur)?.label ?? "";
     });
     return h("div", { role: "group", "aria-label": label }, h("div", { class: "group-label" }, h("span", {}, label), out), h("div", { class: "chips" }, buttons));
   }
@@ -87,6 +87,7 @@ export function mountConfigurator(store, { setBuild, setEnvironment, setTurntabl
         const preset = presetFor(hex, finish);
         set({ paint: { hex, finish, name: preset?.name ?? "Custom" } });
       },
+      { value: false },
     );
 
     // Custom colour: picker, HEX and RGB, all kept in step.
@@ -122,7 +123,10 @@ export function mountConfigurator(store, { setBuild, setEnvironment, setTurntabl
       name.textContent = p ? p.name : "Factory";
       finishText.textContent = p ? finishLabel(p.finish) : "As built";
       const hex = p?.hex ?? caps.factoryHex ?? "#808080";
-      if (document.activeElement !== hexIn) (hexIn.value = hex.toUpperCase()), hexIn.removeAttribute("aria-invalid");
+      if (document.activeElement !== hexIn) {
+        hexIn.value = hex.toUpperCase();
+        hexIn.removeAttribute("aria-invalid");
+      }
       picker.value = hex;
       hexToRgb(hex).forEach((v, i) => document.activeElement !== rgbIns[i] && (rgbIns[i].value = v));
     });

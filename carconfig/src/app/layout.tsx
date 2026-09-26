@@ -29,6 +29,13 @@ function SiteHeader() {
           >
             Vehicles
           </Link>
+          {/* A static page outside the app router, so a plain link. */}
+          <a
+            href="/garage/index.html"
+            className="rounded px-3 py-1.5 text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-ink)]"
+          >
+            Garage
+          </a>
           <Link
             href="/builds"
             className="rounded px-3 py-1.5 text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-ink)]"

@@ -115,6 +115,18 @@ export class CameraRig {
     this.flight = { t: 0, duration, s0, dTheta, s1, t0: start.target, t1: pose.target };
   }
 
+  /** Re-frames the current preset after the view changes shape, mid-move or not. */
+  refit(view) {
+    if (!this.view || !view) return;
+    if (!this.flight) return this.goTo(view, { instant: true });
+    const pose = this.poseFor(view);
+    const f = this.flight;
+    f.s1 = new THREE.Spherical().setFromVector3(pose.position.clone().sub(pose.target));
+    f.t1 = pose.target;
+    const d = f.s1.theta - f.s0.theta;
+    f.dTheta = Math.atan2(Math.sin(d), Math.cos(d));
+  }
+
   /** An entrance for a newly loaded car: a slow push in from further round. */
   intro(view) {
     const pose = this.poseFor(view);
