@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- carbon:page-start -->
+<title>Carbon Garage</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Where the vehicle models live, and in which form: "<path prefix>|<extension>". -->
+<meta name="carbon-models" content="../models/|.glb">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header class="topbar">
+    <button type="button" class="icon-btn garage-toggle" id="garage-toggle" aria-controls="garage" aria-expanded="false">Garage</button>
+    <div class="brand">Carbon Garage</div>
+    <div class="vehicle-head" aria-live="polite">
+      <div class="vh-make" id="vh-make"></div>
+      <div class="vh-model" id="vh-model"></div>
+    </div>
+    <div class="topbar-actions">
+      <button type="button" class="icon-btn" id="turntable" aria-pressed="false" title="Turntable">Turntable</button>
+      <button type="button" class="icon-btn" id="reset-view" title="Reset view">Reset view</button>
+      <button type="button" class="icon-btn" id="fullscreen" aria-pressed="false" title="Fullscreen (Esc to exit)">Fullscreen</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <nav class="garage" id="garage" aria-label="Vehicles">
+      <div class="garage-tools">
+        <label class="visually-hidden" for="garage-search">Search vehicles</label>
+        <input type="search" id="garage-search" placeholder="Search make or model" autocomplete="off">
+        <div class="garage-filters" id="garage-filters" role="group" aria-label="Category"></div>
+      </div>
+      <ol class="garage-list" id="garage-list"></ol>
+      <p class="garage-empty" id="garage-empty" hidden>No vehicle matches.</p>
+    </nav>
+
+    <main class="viewer" id="viewer">
+      <canvas id="view" aria-label="3D view of the selected vehicle. Drag to orbit, right-drag or two fingers to pan, scroll or pinch to zoom."></canvas>
+
+      <div class="views" role="group" aria-label="Camera views" id="views"></div>
+
+      <div class="loading" id="loading" hidden>
+        <div class="loading-card">
+          <div class="loading-brand">Carbon Garage</div>
+          <div class="loading-what" id="loading-what">Loading vehicle</div>
+          <div class="loading-name" id="loading-name"></div>
+          <div class="loading-track"><div class="loading-fill" id="loading-fill"></div></div>
+          <div class="loading-pct" id="loading-pct">0%</div>
+          <button type="button" class="btn" id="loading-retry" hidden>Retry</button>
+        </div>
+      </div>
+
+      <p class="credit" id="credit"></p>
+      <button type="button" class="immersive-config" id="immersive-config">Configure</button>
+    </main>
+
+    <aside class="panel" id="panel" aria-label="Configuration">
+      <button type="button" class="drawer-handle" id="drawer-handle" aria-controls="panel" aria-expanded="false">
+        <span class="drawer-grip" aria-hidden="true"></span>
+        <span>Configure</span>
+      </button>
+      <div class="panel-scroll" id="config"></div>
+      <section class="summary" id="summary" aria-label="Build summary"></section>
+    </aside>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="src/main.js"></script>
+<!-- carbon:page-end -->
+</body>
+</html>
