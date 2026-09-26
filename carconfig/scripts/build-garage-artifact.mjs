@@ -55,12 +55,19 @@ await MeshoptDecoder.ready;
 await MeshoptEncoder.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ "meshopt.decoder": MeshoptDecoder, "meshopt.encoder": MeshoptEncoder });
 
+/**
+ * The model as glTF JSON whose one buffer (geometry and images alike, as in a
+ * .glb) is a data URI. The page repacks it into a .glb in memory, so nothing
+ * is ever fetched from a data: URL.
+ */
 async function toEmbeddedJson(glbPath) {
-  const doc = await io.read(glbPath);
-  const { json, resources } = await io.writeJSON(doc);
-  const dataUri = (uri, type) => `data:${type};base64,${Buffer.from(resources[uri]).toString("base64")}`;
-  for (const b of json.buffers ?? []) if (b.uri && resources[b.uri]) b.uri = dataUri(b.uri, "application/octet-stream");
-  for (const img of json.images ?? []) if (img.uri && resources[img.uri]) img.uri = dataUri(img.uri, img.mimeType ?? "image/png");
+  const glb = Buffer.from(await io.writeBinary(await io.read(glbPath)));
+  const jsonLength = glb.readUInt32LE(12);
+  const json = JSON.parse(glb.subarray(20, 20 + jsonLength).toString("utf8"));
+  const binStart = 20 + jsonLength;
+  const binLength = glb.readUInt32LE(binStart);
+  const bin = glb.subarray(binStart + 8, binStart + 8 + binLength);
+  json.buffers[0].uri = `data:application/octet-stream;base64,${bin.toString("base64")}`;
   return JSON.stringify(json);
 }
 

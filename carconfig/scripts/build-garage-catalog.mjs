@@ -14,7 +14,7 @@
 import { readFileSync, statSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join, basename } from "node:path";
 import { fileURLToPath } from "node:url";
-import { GARAGE_VEHICLES, DUPLICATE_OF } from "./lib/garage-vehicles.mjs";
+import { GARAGE_VEHICLES, DUPLICATE_OF, EXCLUDED } from "./lib/garage-vehicles.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const assets = JSON.parse(readFileSync(join(root, "src/data/vehicles/model-assets.json"), "utf8"));
@@ -47,7 +47,7 @@ const vehicles = GARAGE_VEHICLES.map((v) => {
 
 const listed = new Set(GARAGE_VEHICLES.map((v) => v.id));
 for (const [id, a] of Object.entries(assets)) {
-  if (a.file?.startsWith("/models/") && !listed.has(id) && !DUPLICATE_OF[id]) problems.push(`${id}: local model not in the garage list`);
+  if (a.file?.startsWith("/models/") && !listed.has(id) && !DUPLICATE_OF[id] && !EXCLUDED[id]) problems.push(`${id}: local model not in the garage list`);
 }
 if (problems.length) {
   console.error(problems.join("\n"));

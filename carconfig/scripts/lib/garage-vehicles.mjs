@@ -24,17 +24,14 @@ export const GARAGE_VEHICLES = [
   { id: "porsche/718-cayman", manufacturer: "Porsche", model: "718 Cayman GT4", generation: "982", year: 2020, category: "Sports", bodyStyle: "Coupe", dimensions: d(4456, 1801, 1269), specifications: s("4.0 L flat-six", 414), featured: true },
   { id: "chevrolet/corvette", manufacturer: "Chevrolet", model: "Corvette Stingray", generation: "C8", year: 2020, category: "Sports", bodyStyle: "Coupe", dimensions: d(4630, 1933, 1234), specifications: s("6.2 L V8", 490), featured: true },
   { id: "bmw/m4", manufacturer: "BMW", model: "M4", generation: "F82", year: 2015, category: "Sports", bodyStyle: "Coupe", dimensions: d(4671, 1870, 1383), specifications: s("3.0 L twin-turbo inline-six", 425), featured: true },
-  { id: "bmw/m2", manufacturer: "BMW", model: "M2", generation: null, year: null, category: "Sports", bodyStyle: "Coupe", dimensions: null, specifications: null, featured: true },
   { id: "bmw/1m", manufacturer: "BMW", model: "1 Series M Coupé", generation: "E82", year: 2011, category: "Sports", bodyStyle: "Coupe", dimensions: d(4380, 1803, 1420), specifications: s("3.0 L twin-turbo inline-six", 335) },
   { id: "bmw/i8", manufacturer: "BMW", model: "i8", generation: "I12", year: 2015, category: "Sports", bodyStyle: "Coupe", dimensions: d(4689, 1942, 1291), specifications: s("1.5 L turbo three + electric", 357), featured: true },
-  { id: "bmw/z3", manufacturer: "BMW", model: "Z3 Roadster", generation: "E36/7", year: 1999, category: "Sports", bodyStyle: "Roadster", dimensions: null, specifications: null },
   { id: "toyota/supra", manufacturer: "Toyota", model: "Supra", generation: null, year: null, category: "Sports", bodyStyle: "Coupe", dimensions: null, specifications: null },
   { id: "acura/nsx", manufacturer: "Acura", model: "NSX Roadster", generation: null, year: null, category: "Sports", bodyStyle: "Roadster", dimensions: null, specifications: null },
   { id: "alfa-romeo/4c", manufacturer: "Alfa Romeo", model: "4C", generation: "960", year: 2014, category: "Sports", bodyStyle: "Coupe", dimensions: d(3989, 1864, 1183), specifications: s("1.75 L turbo inline-four", 237) },
   { id: "audi/tt", manufacturer: "Audi", model: "TT", generation: "8N", year: 2001, category: "Sports", bodyStyle: "Coupe", dimensions: d(4041), specifications: null },
   { id: "audi/tt-rs", manufacturer: "Audi", model: "TT RS", generation: "8S", year: 2018, category: "Sports", bodyStyle: "Coupe", dimensions: null, specifications: s("2.5 L turbo inline-five", 394) },
   { id: "audi/rs-5", manufacturer: "Audi", model: "RS 5", generation: null, year: null, category: "Sports", bodyStyle: "Coupe", dimensions: null, specifications: null, featured: true },
-  { id: "aston-martin/vantage", manufacturer: "Aston Martin", model: "V8 Vantage", generation: null, year: 2010, category: "Sports", bodyStyle: "Coupe", dimensions: null, specifications: null },
   { id: "lotus/elise", manufacturer: "Lotus", model: "Elise", generation: null, year: null, category: "Sports", bodyStyle: "Roadster", dimensions: null, specifications: null },
   { id: "lotus/evora", manufacturer: "Lotus", model: "Evora S", generation: null, year: 2011, category: "Sports", bodyStyle: "Coupe", dimensions: d(4342), specifications: s("3.5 L supercharged V6", 345) },
   { id: "dodge/viper", manufacturer: "Dodge", model: "Viper SRT-10", generation: "ZB II", year: 2010, category: "Sports", bodyStyle: "Coupe", dimensions: null, specifications: s("8.4 L V10", 600) },
@@ -44,7 +41,6 @@ export const GARAGE_VEHICLES = [
   { id: "mclaren/720s", manufacturer: "McLaren", model: "720S", generation: null, year: 2017, category: "Supercar", bodyStyle: "Coupe", dimensions: d(4543), specifications: s("4.0 L twin-turbo V8", 710), featured: true },
   { id: "mclaren/750s", manufacturer: "McLaren", model: "750S", generation: null, year: 2023, category: "Supercar", bodyStyle: "Coupe", dimensions: d(4569), specifications: s("4.0 L twin-turbo V8", 740), featured: true },
   { id: "mclaren/mp4-12c", manufacturer: "McLaren", model: "MP4-12C", generation: null, year: 2011, category: "Supercar", bodyStyle: "Coupe", dimensions: d(4509), specifications: s("3.8 L twin-turbo V8", 592) },
-  { id: "lamborghini/murcielago", manufacturer: "Lamborghini", model: "Murciélago", generation: null, year: null, category: "Supercar", bodyStyle: "Coupe", dimensions: d(4580), specifications: null, featured: true },
   { id: "ford/gt", manufacturer: "Ford", model: "GT", generation: null, year: null, category: "Supercar", bodyStyle: "Coupe", dimensions: null, specifications: null, featured: true },
 
   { id: "mclaren/650s", manufacturer: "McLaren", model: "650S GT3", generation: null, year: null, category: "Race", bodyStyle: "Coupe", dimensions: null, specifications: null },
@@ -67,7 +63,6 @@ export const GARAGE_VEHICLES = [
   { id: "chevrolet/monte-carlo", manufacturer: "Chevrolet", model: "Monte Carlo SS", generation: null, year: null, category: "Muscle", bodyStyle: "Coupe", dimensions: null, specifications: null },
 
   // Sedans
-  { id: "bmw/m5", manufacturer: "BMW", model: "M5", generation: "E60", year: 2009, category: "Sedan", bodyStyle: "Sedan", dimensions: d(4855, 1846, 1469), specifications: s("5.0 L V10", 500), featured: true },
   { id: "mercedes-benz/s-class", manufacturer: "Mercedes-Benz", model: "S-Class", generation: "W222", year: null, category: "Sedan", bodyStyle: "Sedan", dimensions: null, specifications: null, featured: true },
   { id: "audi/a7", manufacturer: "Audi", model: "A7 Sportback", generation: "C8", year: 2019, category: "Sedan", bodyStyle: "Sedan", dimensions: d(4969), specifications: null },
   { id: "audi/a3", manufacturer: "Audi", model: "A3 Sedan", generation: null, year: null, category: "Sedan", bodyStyle: "Sedan", dimensions: null, specifications: null },
@@ -75,7 +70,6 @@ export const GARAGE_VEHICLES = [
   { id: "bmw/alpina", manufacturer: "Alpina", model: "B10", generation: "E39", year: null, category: "Sedan", bodyStyle: "Sedan", dimensions: null, specifications: null },
   { id: "cadillac/ct5", manufacturer: "Cadillac", model: "CT5", generation: null, year: 2020, category: "Sedan", bodyStyle: "Sedan", dimensions: d(4924), specifications: null },
   { id: "cadillac/ct6", manufacturer: "Cadillac", model: "CT6", generation: null, year: null, category: "Sedan", bodyStyle: "Sedan", dimensions: null, specifications: null },
-  { id: "cadillac/ats", manufacturer: "Cadillac", model: "ATS", generation: null, year: null, category: "Sedan", bodyStyle: "Sedan", dimensions: null, specifications: null },
   { id: "cadillac/cts", manufacturer: "Cadillac", model: "CTS", generation: "1st gen", year: 2003, category: "Sedan", bodyStyle: "Sedan", dimensions: null, specifications: null },
   { id: "cadillac/dts", manufacturer: "Cadillac", model: "DTS", generation: null, year: null, category: "Sedan", bodyStyle: "Sedan", dimensions: null, specifications: null },
   { id: "genesis/g70", manufacturer: "Genesis", model: "G70", generation: null, year: null, category: "Sedan", bodyStyle: "Sedan", dimensions: null, specifications: null },
@@ -143,3 +137,13 @@ export const GARAGE_VEHICLES = [
 
 /** Model entries that point at the same file as another entry and so are not listed twice. */
 export const DUPLICATE_OF = { "audi/e-tron": "audi/e-tron-gt", "honda/civic": "honda/civic-si" };
+
+/** Local models kept out of the garage, and why. They stay on the rest of the site. */
+export const EXCLUDED = {
+  "bmw/z3": "3D scan fused to the patch of ground it was scanned on",
+  "cadillac/ats": "3D scan fused to the patch of ground it was scanned on",
+  "aston-martin/vantage": "stretched: the model is 83% as wide as it is long",
+  "lamborghini/murcielago": "stretched sideways (76% as wide as long) and 2.4 million triangles",
+  "bmw/m2": "a body shell with no wheels",
+  "bmw/m5": "unfinished: untextured panels and a wheel out of place",
+};

@@ -29,6 +29,38 @@ function specGlossPlugin(parser) {
   };
 }
 
+/**
+ * glTF JSON with its buffer embedded as a data URI, repacked as a binary glTF
+ * in memory, so the buffer is read here instead of fetched from a data: URL
+ * (which strict content security policies refuse).
+ */
+export function embeddedJsonToGlb(bytes) {
+  const json = JSON.parse(new TextDecoder().decode(bytes));
+  const buffers = json.buffers ?? [];
+  const uri = buffers[0]?.uri;
+  if (buffers.length !== 1 || !uri?.startsWith("data:")) return bytes;
+  const bin = Uint8Array.from(atob(uri.slice(uri.indexOf(",") + 1)), (c) => c.charCodeAt(0));
+  delete buffers[0].uri;
+  buffers[0].byteLength = bin.byteLength;
+  const text = new TextEncoder().encode(JSON.stringify(json));
+  const pad = (n) => (4 - (n % 4)) % 4;
+  const jsonLen = text.byteLength + pad(text.byteLength);
+  const binLen = bin.byteLength + pad(bin.byteLength);
+  const out = new Uint8Array(12 + 8 + jsonLen + 8 + binLen);
+  const view = new DataView(out.buffer);
+  view.setUint32(0, 0x46546c67, true); // "glTF"
+  view.setUint32(4, 2, true);
+  view.setUint32(8, out.byteLength, true);
+  view.setUint32(12, jsonLen, true);
+  view.setUint32(16, 0x4e4f534a, true); // "JSON"
+  out.set(text, 20);
+  out.fill(0x20, 20 + text.byteLength, 20 + jsonLen);
+  view.setUint32(20 + jsonLen, binLen, true);
+  view.setUint32(24 + jsonLen, 0x004e4942, true); // "BIN"
+  out.set(bin, 28 + jsonLen);
+  return out;
+}
+
 export class LoadError extends Error {
   constructor(message, { cause, url, status } = {}) {
     super(message, { cause });
@@ -95,7 +127,8 @@ export class ModelLoader {
 
     const base = url.slice(0, url.lastIndexOf("/") + 1);
     try {
-      const gltf = await this.loader.parseAsync(buffer.buffer, base);
+      const bytes = buffer[0] === 0x7b ? embeddedJsonToGlb(buffer) : buffer;
+      const gltf = await this.loader.parseAsync(bytes.buffer, base);
       onProgress?.(1);
       return gltf;
     } catch (err) {

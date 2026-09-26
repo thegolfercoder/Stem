@@ -126,30 +126,6 @@
    }
   },
   {
-   "id": "bmw/m2",
-   "manufacturer": "BMW",
-   "model": "M2",
-   "generation": null,
-   "year": null,
-   "category": "Sports",
-   "bodyStyle": "Coupe",
-   "dimensions": null,
-   "specifications": null,
-   "featured": true,
-   "modelPath": "bmw__m2.glb",
-   "bytes": 1867936,
-   "capabilities": null,
-   "credit": {
-    "title": "BMW M2 Coupe",
-    "author": "MdMahib",
-    "authorUrl": "https://sketchfab.com/MdMahib",
-    "license": "CC BY 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/6b425fa3d4e74eb9bf3c94d98a4beba3",
-    "own": false
-   }
-  },
-  {
    "id": "bmw/1m",
    "manufacturer": "BMW",
    "model": "1 Series M Coupé",
@@ -207,29 +183,6 @@
     "license": "CC BY 4.0",
     "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/37d7468d2c314205b048df4bfd66eb32",
-    "own": false
-   }
-  },
-  {
-   "id": "bmw/z3",
-   "manufacturer": "BMW",
-   "model": "Z3 Roadster",
-   "generation": "E36/7",
-   "year": 1999,
-   "category": "Sports",
-   "bodyStyle": "Roadster",
-   "dimensions": null,
-   "specifications": null,
-   "modelPath": "bmw__z3.glb",
-   "bytes": 2622780,
-   "capabilities": null,
-   "credit": {
-    "title": "1999 - BMW Z3 - Cabriolet",
-    "author": "vrchris",
-    "authorUrl": "https://sketchfab.com/vrchris",
-    "license": "CC BY 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/37a12cf05b604bba8f06706bb3cd9b02",
     "own": false
    }
   },
@@ -383,29 +336,6 @@
     "license": "CC BY 4.0",
     "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/75d636ab26b1423ca61ffd0fd758fd0a",
-    "own": false
-   }
-  },
-  {
-   "id": "aston-martin/vantage",
-   "manufacturer": "Aston Martin",
-   "model": "V8 Vantage",
-   "generation": null,
-   "year": 2010,
-   "category": "Sports",
-   "bodyStyle": "Coupe",
-   "dimensions": null,
-   "specifications": null,
-   "modelPath": "aston-martin__vantage.glb",
-   "bytes": 244188,
-   "capabilities": null,
-   "credit": {
-    "title": "Astonmartin Vantage 2010",
-    "author": "navix11",
-    "authorUrl": "https://sketchfab.com/navix11",
-    "license": "CC BY 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/28db417a72fe472d8ffccb9f55b85c8f",
     "own": false
    }
   },
@@ -623,34 +553,6 @@
     "license": "CC BY 4.0",
     "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/af95c87b69314f37833ba4a9659c2deb",
-    "own": false
-   }
-  },
-  {
-   "id": "lamborghini/murcielago",
-   "manufacturer": "Lamborghini",
-   "model": "Murciélago",
-   "generation": null,
-   "year": null,
-   "category": "Supercar",
-   "bodyStyle": "Coupe",
-   "dimensions": {
-    "length": 4580,
-    "width": null,
-    "height": null
-   },
-   "specifications": null,
-   "featured": true,
-   "modelPath": "lamborghini__murcielago.glb",
-   "bytes": 7718792,
-   "capabilities": null,
-   "credit": {
-    "title": "Lamborghini Murcielago",
-    "author": "CanberkYucekok",
-    "authorUrl": "https://sketchfab.com/CanberkYucekok",
-    "license": "CC BY 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/ed038ccfb8044acdaa781aac7e5ce7ef",
     "own": false
    }
   },
@@ -1038,37 +940,6 @@
    }
   },
   {
-   "id": "bmw/m5",
-   "manufacturer": "BMW",
-   "model": "M5",
-   "generation": "E60",
-   "year": 2009,
-   "category": "Sedan",
-   "bodyStyle": "Sedan",
-   "dimensions": {
-    "length": 4855,
-    "width": 1846,
-    "height": 1469
-   },
-   "specifications": {
-    "engine": "5.0 L V10",
-    "powerHp": 500
-   },
-   "featured": true,
-   "modelPath": "bmw__m5.glb",
-   "bytes": 3675964,
-   "capabilities": null,
-   "credit": {
-    "title": "2009 BMW M5 E60",
-    "author": "MaximillianMus",
-    "authorUrl": "https://sketchfab.com/G305er",
-    "license": "CC BY 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/46799ff9bae44dc79e8f481bd9a3ae0b",
-    "own": false
-   }
-  },
-  {
    "id": "mercedes-benz/s-class",
    "manufacturer": "Mercedes-Benz",
    "model": "S-Class",
@@ -1235,29 +1106,6 @@
     "license": "CC BY 4.0",
     "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/331a5931230440078a0cc4e42901f7d7",
-    "own": false
-   }
-  },
-  {
-   "id": "cadillac/ats",
-   "manufacturer": "Cadillac",
-   "model": "ATS",
-   "generation": null,
-   "year": null,
-   "category": "Sedan",
-   "bodyStyle": "Sedan",
-   "dimensions": null,
-   "specifications": null,
-   "modelPath": "cadillac__ats.glb",
-   "bytes": 2490180,
-   "capabilities": null,
-   "credit": {
-    "title": "Cadillac | ATS Sedan",
-    "author": "Mantis-Vision",
-    "authorUrl": "https://sketchfab.com/Mantis-Vision",
-    "license": "CC BY 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/85f8e19b4d1a4df3b99737e5e7dfda75",
     "own": false
    }
   },
