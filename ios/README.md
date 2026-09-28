@@ -23,6 +23,24 @@ re-installing every 7 days). Plug in your iPhone, pick it as the destination and
 press **Run**. The first time, trust the developer on the phone under
 *Settings > General > VPN & Device Management*.
 
+## Run it in the iOS Simulator
+
+No iPhone and no Apple ID needed:
+
+```sh
+brew install xcodegen cocoapods
+cd ios
+./run_simulator.sh            # or SIM_DEVICE="iPhone 16 Pro" ./run_simulator.sh
+```
+
+It fetches the pose model, generates the project, installs MediaPipe, builds for
+the first available iPhone simulator, installs the app, adds every video in
+`ios/samples/` to the Simulator's Photos, and launches it. The Simulator has no
+camera, so pick a swing from Photos (or drag any video onto the Simulator window
+to add it). Pose tracking falls back to the CPU there, so a clip takes longer
+than on a phone. For the coach, Ollama running on the same Mac is
+`http://localhost:11434`; `OLLAMA_HOST=0.0.0.0` is not needed.
+
 ## The coach
 
 1. Install [Ollama](https://ollama.com) on your Mac or PC.
