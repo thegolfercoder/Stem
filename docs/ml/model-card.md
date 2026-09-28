@@ -102,11 +102,12 @@ model before this one:
 ```bash
 git checkout a5459ad -- swingml/swingml/data/swing_event_net.pt \
     swingml/swingml/data/event_calibration.json
-python swingml/scripts/export_numpy_model.py          # rewrites swing_event_net.npz
-python swingml/scripts/export_web_model.py            # browser payload
-cp swingml/out/web/model.json ios/SwingCore/Sources/SwingCore/Resources/model.json
-(cd ios/SwingCore && python Tests/make_golden.py)     # Swift reference outputs
-pytest -q swingml/tests                                # must pass, parity included
+cd swingml
+python scripts/export_numpy_model.py                  # rewrites swingml/data/swing_event_net.npz
+python scripts/export_web_model.py                    # browser payload, out/web/model.json
+cp out/web/model.json ../ios/SwingCore/Sources/SwingCore/Resources/model.json
+python ../ios/SwingCore/Tests/make_golden.py          # Swift reference outputs
+pytest -q                                             # must pass, parity included
 ```
 
 Verify with `sha256sum` against the values recorded in that release's model card,

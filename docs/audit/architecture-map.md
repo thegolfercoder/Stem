@@ -17,7 +17,7 @@ What exists, where it is, and how the pieces connect. Lines of code from
 
 | Component | Path | Size | Role | Tested by |
 |---|---|---|---|---|
-| Analysis engine (Python) | `swingml/swingml/` | 56 files, ~15k lines of code | pose, features, model, decoder, gates, metrics, calibration, provenance | 297 pytest tests |
+| Analysis engine (Python) | `swingml/swingml/` | 56 files, ~15k lines of code | pose, features, model, decoder, gates, metrics, calibration, provenance | 285 pytest tests at the audited commit |
 | Event model | `swingml/swingml/data/swing_event_net.{pt,npz}` | 349k params | dilated TCN, 8 events + background | release gate, real fixture test |
 | Error bands | `swingml/swingml/data/event_calibration.json` | | per-event and tempo bands measured on `golfdb-calibration-v1`, fingerprint-matched | `test_calibration*`, gate coverage |
 | Synthetic generator | `swingml/synth/` | 1.6k | swing kinematics, camera, noise, renderer | synth tests |
@@ -52,7 +52,11 @@ that the error-band file must match (`ModelCalibration.matches`). The iPhone app
 carries a copy checked by `tests/test_model_copies.py`. There is no model registry
 beyond git history and the model card.
 
-## What does not exist
+## What did not exist at the audited commit
+
+Since the audit the desktop app has gained the practice loop, capture preflight, a
+local event log, export and erase (`docs/architecture.md`). Still missing:
+
 
 - Accounts, sync, sharing, coach permissions: every platform is single-user and local.
 - A practice loop that ties an insight to a drill and a retest.

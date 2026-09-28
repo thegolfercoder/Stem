@@ -8,7 +8,8 @@ analysis from a phone camera, and radar DSP for the ball.
 
 | Path | What it is | State |
 |---|---|---|
-| `swingml/` | **Swing analysis from a single phone camera.** Pose estimation, a temporal model over the eight swing events, and the metrics that follow. Runs as a local web app, a command line tool, or one self-contained HTML file with no install. | Working. |
+| `swingml/` | **Swing analysis from a single phone camera.** Pose estimation, a temporal model over the eight swing events, the metrics that follow, and a practice loop (priority, drill, retest, verdict). Runs as a desktop app, a local web app, a command line tool, or one self-contained HTML file with no install. | Working; accuracy measured on broadcast footage. |
+| `ios/` | **Swing Studio for iPhone.** The analysis ported to Swift, held to the browser engine by tests. | Builds in CI; not yet run on a device. |
 | `launchmon-py/` | **Radar DSP for a launch monitor.** A 24 GHz CW Doppler front end arriving as USB-C audio, and the signal processing that turns it into ball and club speed. | Working. No hardware yet. |
 | [`GolfLaunchMonitor_V1_Proposal.pdf`](GolfLaunchMonitor_V1_Proposal.pdf) | The V1 build proposal both halves are aimed at. | — |
 
@@ -27,14 +28,23 @@ Video of a swing goes in. Out comes the eight positions of the swing with a time
 for each, the tempo ratio, rotation at the top and movement against the ground -
 each carrying a measured error band and a label saying how it was arrived at.
 
-On **real swings no model trained on** - 201 clips from GolfDB, grouped so no golfer
-or source video reaches training - the shipped model places address, the top,
-mid-downswing and impact **within one frame 45.5% of the time and within five
-80.2%**, with a median tempo error of **15.4%**. The model before it scored 26.4%,
-53.6% and 25.0% on the same clips. The tempo band it shows is **±29%**, measured on
-85 further real swings and cross-validated at 82.4% coverage against the 80% it
-claims. On 23 swings of Rory McIlroy held out on purpose it scores 41.3% within a
-frame and a 13.9% median tempo error, against 18.5% and 30.1% before.
+On **real swings no model trained on** - 201 clips from GolfDB in 35 golfer/video
+groups, frozen as `swingml/swingml/manifests/golfdb-holdout-v1.json` - the shipped
+model places address, the top, mid-downswing and impact **within one frame 48.9% of
+the time** (95% CI 44.8-52.9) and within two 64.1%, with a median tempo error of
+**15.1%**. Its tempo band, **±27%**, contained the truth for 85.4% of those swings. It
+beats four simple baselines fitted on the same data (the best, a one-layer temporal
+classifier, scores 40.7%).
+
+Two weaknesses matter more than those averages. Tempo readings are **compressed
+toward about 3.3** (a true 2.35 reads 2.95, a true 5.12 reads 3.65), so a golfer's
+change shows smaller than it is. And every figure is on broadcast and range video:
+the one phone swing checked by hand reads tempo 3.20 against a true 2.10.
+
+**Where to start reading:** `docs/audit/current-state.md` (what works, what does
+not, which claims hold), `docs/audit/failure-inventory.md`, `docs/ml/model-card.md`,
+`docs/product/known-limitations.md`, and `docs/architecture.md`. A candidate model
+ships only through `python -m swingml.model.release_gate` (`docs/runbooks/model-release.md`).
 
 Those are lower than the figures on rendered swings, which is the point:
 `swingml/README.md` explains why the rendered numbers flattered the model and what

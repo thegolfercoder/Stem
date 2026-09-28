@@ -95,6 +95,8 @@ carries the assumption.
 | 17 | **The rendered training corpus is not reproducible** byte-for-byte: it was lost with an earlier container. | `swingml/README.md`. | **Open**; the base model's synthetic pre-training cannot be re-run exactly. Fine-tuning on real data is reproducible from the manifests. |
 | 18 | **Only one labelled phone swing.** Every real accuracy figure is on broadcast/range footage. | Data card. | **Open**; collection path built (`scripts/make_labelled_dataset.py`, desktop position editor). |
 | 19 | **Club- and ball-defined values** (face, path, plane, attack angle, spin, speed, launch, carry) cannot come from one uncalibrated camera and a body tracker. | Physics of the setup. | **By design**: never output; the coach guard drops sentences that assert them. |
+| 21 | **Local server open to other web pages.** No Host or Origin check: DNS rebinding could read swings; a cross-site post could reach routes that do not require JSON. | Found writing `docs/security/threat-model.md`. | **Fixed**: Host must be 127.0.0.1/localhost unless serving on the LAN by explicit choice; state changes with another site's Origin refused. `test_requests_for_another_host_name_are_refused` |
+| 22 | **Deleting a swing left its video and frames on disk.** | Found writing `docs/legal/data-retention-and-deletion.md`. | **Fixed**: `test_deleting_a_swing_removes_its_files` |
 | 20 | **Radar DSP (`launchmon-py`)** passes its tests on simulated signals only; no hardware, no field validation. | 148 tests on synthetic returns. | **Open**; not part of the product. |
 
 ## Claims checked

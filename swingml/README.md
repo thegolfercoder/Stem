@@ -65,16 +65,23 @@ never a plausible-looking guess. Three independent checks:
 - the model must be confident of the swing's core - address, the top,
   mid-downswing and impact, geometric mean 0.30 or more - and of all eight
   events together, 0.20 or more
-- the halves of the swing must last a plausible length of time
+- the halves of the swing must last a plausible length of time, at the clip's own
+  speed or, for slow motion, at 2, 4 or 8 times it
 
 Those thresholds are measured rather than chosen. The first rule, a mean of 0.30
 across all eight events, was set when the model had seen only rendered swings, and
-on real footage it refused 69% of real swings: a finish cut short by the camera or
-a toe-up the model had never seen dragged the mean down. The current rule was tuned
-on the validation and calibration swings against no-swing stretches cut from the
-same videos (standing over the ball, walking in, the swing's first half only), and
-on held-out ones it refuses 0.9% of real swings and accepts 0.6% of no-swing
-stretches.
+on real footage it refused 69% of real swings. The current rule was tuned on the
+validation and calibration swings against no-swing stretches cut from the same
+videos.
+
+Measured through the whole decision on the 201 held-out real swings
+(`scripts/measure_refusals.py`), it answers 199 and accepts 3 of 424 no-swing
+stretches (0.7%). That includes a fourth check added after an audit found the
+first three refusing 71 of the 82 slow-motion replays in that set as "not a swing":
+a clip refused for its events is re-read as if played 2, 4 and 8 times faster, and
+if it then reads as a swing its tempo is reported and every duration refused, since
+the true speed cannot be known. An earlier version of this README quoted "0.9% of
+real swings refused"; that measured the confidence rule alone.
 
 This matters more than it sounds. Before those checks existed, a clip of somebody
 standing still produced a tempo ratio of 0.21 and a clip cut off at the top
