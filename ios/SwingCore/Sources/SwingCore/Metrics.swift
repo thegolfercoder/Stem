@@ -9,7 +9,9 @@ public struct SwingMetrics: Codable, Equatable {
     public var tempoRatio: Double?
     public var backswingMs: Double
     public var downswingMs: Double
-    public var wholeMs: Double
+    /// Always nil: the finish lands a median 29 frames from the label on held-out real
+    /// swings, so no duration ending there is reported. Mirrors the Python and browser engines.
+    public var wholeMs: Double?
     public var peakHandSpeedMs: Double
     public var shoulderTurnDeg: Double?
     public var hipTurnDeg: Double?
@@ -56,7 +58,6 @@ public func computeMetrics(_ sequence: PoseSequence, _ events: DecodedEvents,
     }
     let backswing = eventTimes[3] - eventTimes[0]
     let downswing = eventTimes[5] - eventTimes[3]
-    let whole = eventTimes[7] - eventTimes[0]
 
     let coords = normalisePose(sequence, config)
     let square = sequence.squareXY()
@@ -109,7 +110,7 @@ public func computeMetrics(_ sequence: PoseSequence, _ events: DecodedEvents,
     return SwingMetrics(
         eventTimes: eventTimes,
         tempoRatio: downswing > 0 ? backswing / downswing : nil,
-        backswingMs: backswing * 1000, downswingMs: downswing * 1000, wholeMs: whole * 1000,
+        backswingMs: backswing * 1000, downswingMs: downswing * 1000, wholeMs: nil,
         peakHandSpeedMs: (times[peakFrame] - times[impact]) * 1000,
         shoulderTurnDeg: shoulderTurn, hipTurnDeg: hipTurn,
         headMovement: head, pelvisSway: sway, pelvisLift: lift, feetInShot: haveFeet)

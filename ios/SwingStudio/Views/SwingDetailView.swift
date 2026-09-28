@@ -98,7 +98,7 @@ struct SwingDetailView: View {
     private func measurements(_ record: SwingRecord) -> some View {
         let m = record.result.metrics
         let cells: [(String, String, String)] = [
-            ("Whole swing", String(format: "%.0f ms", m.wholeMs), "address to finish"),
+            ("Whole swing", "not measured", "the finish can't be timed from one camera"),
             ("Hands fastest", String(format: "%.0f ms", m.peakHandSpeedMs), "relative to impact"),
             ("Shoulder turn", m.shoulderTurnDeg.map { String(format: "%.0f°", $0) } ?? "no reading", "from foreshortening"),
             ("Hip turn", m.hipTurnDeg.map { String(format: "%.0f°", $0) } ?? "no reading", "from foreshortening"),

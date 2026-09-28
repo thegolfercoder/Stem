@@ -47,7 +47,7 @@ from swingml.model.ensemble import (
 )
 from swingml.model.numpy_net import NumpyEventNet
 from swingml.pose.base import PoseEstimator, PoseSequence
-from swingml.quantity import NoReading
+from swingml.quantity import NoReading, Quantity
 from swingml.skeleton import Handedness
 from swingml.video.reader import VideoInfo, VideoReader
 
@@ -123,6 +123,15 @@ class AnalysisConfig(BaseModel):
     max_frames: int | None = Field(
         default=None, description="Cap on frames read, for very long clips."
     )
+    slow_motion_factors: tuple[float, ...] = Field(
+        default=(2.0, 4.0, 8.0),
+        description=(
+            "Playback slow-downs tried when a clip is refused for its events. A "
+            "phone's slow-motion export shows a swing four or eight times slower "
+            "than it happened, and read at recorded speed it looks like no swing "
+            "at all. Empty turns the retry off."
+        ),
+    )
 
 
 class SwingAnalysis(BaseModel):
@@ -148,6 +157,14 @@ class SwingAnalysis(BaseModel):
             "Per event, how far from the truth a prediction like this one has been "
             "observed to fall. Empty when no calibration was supplied, which is the "
             "honest state rather than a default of zero."
+        ),
+    )
+    playback_slowed_by: float | None = Field(
+        default=None,
+        description=(
+            "Set when the clip only read as a swing once treated as slow motion "
+            "played back this many times slower. Tempo survives an even slow-down; "
+            "durations do not, and are refused."
         ),
     )
     positions_set_by: Literal["model", "golfer"] = Field(
@@ -473,8 +490,103 @@ def analyse_pose_sequence(
     Separated from the video path so the model can be exercised on generated
     sequences without rendering and re-detecting them, and so a different pose
     source can be dropped in without touching anything here.
+
+    A clip refused for its events is tried again as slow motion (see
+    `AnalysisConfig.slow_motion_factors`): measured on 201 held-out real swings,
+    the 82 slow-motion replays among them have a median backswing of 3.07 s at
+    playback speed, past any real backswing, and the model's confidence on a
+    swing slowed four or eight times collapses below the refusal threshold. Read
+    as if played faster, the same frames decode as a swing. Whichever slow-down
+    decodes with the most confident core events and passes every gate is kept,
+    and the result says so.
     """
     config = config or AnalysisConfig()
+    first = _analyse_at_recorded_speed(sequence, model, config, video)
+    if not isinstance(first.events, NoReading) or first.events.source != "events":
+        return first
+    best: tuple[float, float, SwingAnalysis] | None = None
+    for factor in config.slow_motion_factors:
+        faster = sequence.model_copy(update={"timestamps_s": sequence.timestamps_s / factor})
+        attempt = _analyse_at_recorded_speed(faster, model, config, video)
+        if isinstance(attempt.events, NoReading):
+            continue
+        core = float(
+            np.exp(
+                np.mean(
+                    np.log(np.maximum([attempt.events.confidence[i] for i in (0, 3, 4, 5)], 1e-12))
+                )
+            )
+        )
+        if best is None or core > best[0]:
+            best = (core, factor, attempt)
+    if best is None:
+        return first
+    return _as_slow_motion(best[2], best[1])
+
+
+SLOWED_REASON = (
+    "the clip reads as a swing only when treated as slow motion played back about "
+    "{factor:.0f} times slower, and how much slower it really was cannot be known "
+    "from the video, so no duration is reported. Film at normal speed for timings"
+)
+SLOWED_ASSUMPTION = (
+    "slow motion: assumes the whole swing was slowed by the same factor. A phone's "
+    "slow-motion clip ramps speed at its start and end; if the swing crosses a ramp "
+    "this ratio is wrong"
+)
+
+
+def _as_slow_motion(analysis: SwingAnalysis, factor: float) -> SwingAnalysis:
+    """An analysis made at a guessed speed, with everything that depends on the guess refused.
+
+    Frame numbers are unchanged (every timestamp was scaled alike, so the nearest
+    frame is the same frame); times go back onto the clip's own timeline.
+    """
+    reason = SLOWED_REASON.format(factor=factor)
+    refused = NoReading(reason=reason, source="timestamps")
+    metrics = analysis.metrics
+    if not isinstance(metrics, NoReading):
+        tempo = metrics.tempo_ratio
+        metrics = metrics.model_copy(
+            update={
+                "tempo_ratio": (
+                    tempo.model_copy(
+                        update={"assumptions": (*tempo.assumptions, SLOWED_ASSUMPTION)}
+                    )
+                    if isinstance(tempo, Quantity)
+                    else tempo
+                ),
+                "backswing_duration": refused,
+                "downswing_duration": refused,
+                "swing_duration": refused,
+                "time_to_peak_hand_speed": refused,
+                "kinematic_peak_times_ms": {},
+            }
+        )
+    bands = tuple(
+        NoReading(
+            reason="the error bands were measured in milliseconds at recorded speed",
+            source="calibration",
+        )
+        for _ in analysis.event_uncertainty
+    )
+    return analysis.model_copy(
+        update={
+            "metrics": metrics,
+            "event_times_s": tuple(t * factor for t in analysis.event_times_s),
+            "event_uncertainty": bands,
+            "playback_slowed_by": factor,
+        }
+    )
+
+
+def _analyse_at_recorded_speed(
+    sequence: PoseSequence,
+    model: SwingEventNet | NumpyEventNet | SwingEventEnsemble,
+    config: AnalysisConfig,
+    video: VideoInfo | None,
+) -> SwingAnalysis:
+    """One pass at the clip's own timestamps: resample, detect, decode, gate, measure."""
     original_times = sequence.timestamps_s.copy()
 
     resampled, grid = resample_pose(sequence, config.features.canonical_rate_hz)

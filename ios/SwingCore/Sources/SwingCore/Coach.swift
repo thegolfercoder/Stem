@@ -85,8 +85,9 @@ public enum CoachPrompts {
             lines.append(String(format: "Tempo, backswing time over downswing time: %.2f", tempo) + spread
                 + ". The downswing is always the shorter of the two; good players are usually quoted near 3.")
         }
-        lines.append(String(format: "Timing: backswing %.0f ms, downswing %.0f ms, address to finish %.0f ms.",
-                            m.backswingMs, m.downswingMs, m.wholeMs))
+        lines.append(String(format: "Timing: backswing %.0f ms, downswing %.0f ms. The finish cannot be timed "
+                            + "reliably from one camera, so there is no follow-through or whole-swing time.",
+                            m.backswingMs, m.downswingMs))
         lines.append(String(format: "Hands fastest %.0f ms %@ impact.", abs(m.peakHandSpeedMs),
                             m.peakHandSpeedMs < 0 ? "before" : "after"))
         if let turn = m.shoulderTurnDeg {

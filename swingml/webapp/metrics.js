@@ -81,7 +81,6 @@ export function computeMetrics(sequence, events, handedness, config) {
 
   const backswing = frames[TOP] - frames[ADDRESS];
   const downswing = frames[IMPACT] - frames[TOP];
-  const whole = frames[FINISH] - frames[ADDRESS];
 
   const coords = normalisePose(sequence, config);
   const square = sequence.squareXY();
@@ -142,7 +141,10 @@ export function computeMetrics(sequence, events, handedness, config) {
     tempoRatio: downswing > 0 ? backswing / downswing : null,
     backswingMs: backswing * 1000,
     downswingMs: downswing * 1000,
-    wholeMs: whole * 1000,
+    // The finish lands a median 29 frames from the label on 201 held-out real
+    // swings, so no duration ending there is reported (see FINISH_UNRELIABLE in
+    // swingml/metrics/swing.py, which this mirrors).
+    wholeMs: null,
     peakHandSpeedMs: (times[peakFrame] - times[impact]) * 1000,
     shoulderTurnDeg: shoulderTurn,
     hipTurnDeg: hipTurn,

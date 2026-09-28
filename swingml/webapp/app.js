@@ -295,7 +295,7 @@ function coachPrompt(withImage) {
   lines.push(`Golfer: ${a.handedness}-handed (${state.handednessFrom === "detected" ? "detected from the pose" : state.handednessFrom === "assumed" ? "assumed" : "set by the user"}).`);
   lines.push(`Tempo, backswing time divided by downswing time: ${m.tempoRatio.toFixed(2)}` +
     (band ? ` (measured 80% error range about +/-${Math.round(100 * band.half_width_fraction)}%)` : "") + ".");
-  lines.push(`Backswing ${Math.round(m.backswingMs)} ms, downswing ${Math.round(m.downswingMs)} ms, address to finish ${Math.round(m.wholeMs)} ms.`);
+  lines.push(`Backswing ${Math.round(m.backswingMs)} ms, downswing ${Math.round(m.downswingMs)} ms. The finish cannot be timed reliably from one camera, so there is no follow-through or whole-swing time.`);
   lines.push(`Hands fastest ${Math.round(m.peakHandSpeedMs)} ms relative to impact (negative is before).`);
   if (m.shoulderTurnDeg !== null) lines.push(`Shoulder turn at the top, from 2D foreshortening only: about ${m.shoulderTurnDeg.toFixed(0)} degrees.`);
   if (m.hipTurnDeg !== null) lines.push(`Hip turn at the top, same method: about ${m.hipTurnDeg.toFixed(0)} degrees.`);
@@ -2008,7 +2008,6 @@ function renderStory(m) {
     `${seg(t[5], t[7], "var(--follow)")}${ticks}</svg>`;
 
   const s = (ms) => (ms / 1000).toFixed(2);
-  const follow = m.wholeMs - m.backswingMs - m.downswingMs;
   const ratio = m.tempoRatio;
   const tempoNote = ratio === null ? "" :
     ratio >= 2.7 && ratio <= 3.3 ? "which sits in the band tour players are usually quoted at, near 3 to 1" :
@@ -2044,8 +2043,9 @@ function renderStory(m) {
       "projected"]);
   }
   beats.push(["Impact to the finish",
-    `The follow-through took <b>${s(follow)} s</b>, and the whole motion ` +
-    `<b>${s(m.wholeMs)} s</b> from address to a held finish.`, "measured"]);
+    `The finish is marked on the timeline, but not timed: on real swings the model places ` +
+    `it about half a second from where a person would, so no follow-through or ` +
+    `whole-swing duration is given.`, "refused"]);
 
   el("story").innerHTML =
     `<div class="phase-key"><span><i style="background:var(--back)"></i>Backswing</span>` +
@@ -2075,7 +2075,7 @@ function showMetrics(m, decoded, detectionRate, sequence) {
          tempoRange(state.payload.calibration, m.tempoRatio)) +
     card("Backswing", Math.round(m.backswingMs), "ms", "address → top", "measured") +
     card("Downswing", Math.round(m.downswingMs), "ms", "top → impact", "measured") +
-    card("Whole swing", Math.round(m.wholeMs), "ms", "address → finish", "measured") +
+    card("Whole swing", "no reading", "", "the finish cannot be placed reliably from one camera", "measured") +
     card("Peak hand speed", Math.round(m.peakHandSpeedMs), "ms",
          "relative to impact; negative is before", "measured");
 
