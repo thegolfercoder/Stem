@@ -2075,7 +2075,7 @@ function showMetrics(m, decoded, detectionRate, sequence) {
          tempoRange(state.payload.calibration, m.tempoRatio)) +
     card("Backswing", Math.round(m.backswingMs), "ms", "address → top", "measured") +
     card("Downswing", Math.round(m.downswingMs), "ms", "top → impact", "measured") +
-    card("Whole swing", "no reading", "", "the finish cannot be placed reliably from one camera", "measured") +
+    card("Whole swing", "no reading", "", "the finish cannot be placed reliably from one camera", "refused") +
     card("Peak hand speed", Math.round(m.peakHandSpeedMs), "ms",
          "relative to impact; negative is before", "measured");
 
