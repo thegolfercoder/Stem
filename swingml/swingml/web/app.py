@@ -13,6 +13,7 @@ that goes blank without one is not usable there.
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -51,8 +52,11 @@ from swingml.web.service import (
     frames_dir,
     save_upload,
     sequence_manifest,
+    videos_dir,
 )
 from swingml.web.story import swing_story
+
+LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 ALLOWED_SUFFIXES = {".mov", ".mp4", ".m4v", ".avi", ".mkv", ".webm"}
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
@@ -370,9 +374,34 @@ def build_trend(
     }
 
 
-def create_app(store: SwingStore | None = None, model_path: Path | None = None) -> Flask:
+def create_app(
+    store: SwingStore | None = None,
+    model_path: Path | None = None,
+    allow_any_host: bool = False,
+) -> Flask:
+    """The local app. `allow_any_host` is for serving beyond this machine on purpose."""
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
+
+    @app.before_request
+    def only_this_machine() -> Any:
+        """Refuse requests addressed to another host name, or sent by another site.
+
+        The server listens on 127.0.0.1 only, which stops other machines but not
+        other web pages open in the golfer's own browser: a site whose domain is
+        pointed at 127.0.0.1 (DNS rebinding) arrives with its own name in the Host
+        header, and a cross-site form post arrives with its own Origin.
+        """
+        host = (request.host or "").rsplit(":", 1)[0].strip("[]").lower()
+        if not allow_any_host and host not in LOCAL_HOSTS:
+            return jsonify({"error": "this app only answers requests to 127.0.0.1"}), 403
+        origin = request.headers.get("Origin")
+        if request.method not in ("GET", "HEAD", "OPTIONS") and origin:
+            origin_host = origin.split("://", 1)[-1].split("/", 1)[0]
+            if origin_host != request.host:
+                return jsonify({"error": "requests from other sites are refused"}), 403
+        return None
+
     app.config["JSON_SORT_KEYS"] = False
 
     swing_store = store or SwingStore()
@@ -524,8 +553,15 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
 
     @app.delete("/api/swings/<int:swing_id>")
     def api_delete_swing(swing_id: int) -> Any:
-        if not swing_store.delete(swing_id):
+        stored = swing_store.get(swing_id)
+        if stored is None or not swing_store.delete(swing_id):
             return jsonify({"error": "no such swing"}), 404
+        # The row is gone; so are the files that only existed for it.
+        shutil.rmtree(frames_dir() / str(swing_id), ignore_errors=True)
+        if stored.video_path:
+            video = Path(stored.video_path)
+            if video.resolve().parent == videos_dir().resolve():
+                video.unlink(missing_ok=True)
         return jsonify({"ok": True})
 
     @app.post("/api/swings/<int:swing_id>/positions")

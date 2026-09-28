@@ -198,3 +198,49 @@ def test_swing_can_be_relabelled_then_removed(client) -> None:  # type: ignore[n
 
 def test_unknown_job_is_a_404(client) -> None:  # type: ignore[no-untyped-def]
     assert client.get("/api/jobs/nonexistent").status_code == 404
+
+
+# -- only this machine -------------------------------------------------------------
+
+
+def test_requests_for_another_host_name_are_refused(client) -> None:  # type: ignore[no-untyped-def]
+    """DNS rebinding: a site pointed at 127.0.0.1 arrives with its own name."""
+    response = client.get("/api/swings", headers={"Host": "evil.example:5000"})
+    assert response.status_code == 403
+    assert client.get("/api/swings", headers={"Host": "127.0.0.1:5000"}).status_code == 200
+
+
+def test_state_changes_from_another_site_are_refused(client) -> None:  # type: ignore[no-untyped-def]
+    refused = client.delete("/api/swings/1", headers={"Origin": "https://evil.example"})
+    assert refused.status_code == 403
+    assert client.get("/swing/1").status_code == 200
+
+
+def test_deleting_a_swing_removes_its_files(tmp_path: Path, monkeypatch, analysis) -> None:  # type: ignore[no-untyped-def]
+    from swingml.web.service import frames_dir, videos_dir
+
+    monkeypatch.setenv("SWINGML_HOME", str(tmp_path / "home"))
+    video = videos_dir() / "clip.mov"
+    video.write_bytes(b"x")
+    store = SwingStore(tmp_path / "s.db")
+    swing_id = store.add(analysis, source_name="clip.mov", video_path=video)
+    (frames_dir() / str(swing_id)).mkdir(parents=True)
+    (frames_dir() / str(swing_id) / "0_address.jpg").write_bytes(b"x")
+    app = create_app(store=store)
+    app.config.update(TESTING=True)
+    assert app.test_client().delete(f"/api/swings/{swing_id}").status_code == 200
+    assert not video.exists()
+    assert not (frames_dir() / str(swing_id)).exists()
+
+
+def test_serving_on_the_network_is_an_explicit_choice(tmp_path: Path, analysis) -> None:  # type: ignore[no-untyped-def]
+    store = SwingStore(tmp_path / "s.db")
+    app = create_app(store=store, allow_any_host=True)
+    app.config.update(TESTING=True)
+    http = app.test_client()
+    assert http.get("/api/swings", headers={"Host": "192.168.1.20:8000"}).status_code == 200
+    refused = http.post(
+        "/api/plans", json={"focus": "capture"},
+        headers={"Host": "192.168.1.20:8000", "Origin": "https://evil.example"},
+    )  # fmt: skip
+    assert refused.status_code == 403
