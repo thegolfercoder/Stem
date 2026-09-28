@@ -1,0 +1,180 @@
+{
+  "model": "swingml/data/swing_event_net.pt",
+  "should_read_and_did": 12,
+  "should_read_but_refused": 0,
+  "should_refuse_and_did": 3,
+  "should_refuse_but_read": 0,
+  "clips": [
+    {
+      "clip": "angled_45",
+      "should_refuse": false,
+      "outcome": "read",
+      "tempo": 2.9729518659654004,
+      "true_tempo": 3.0,
+      "tempo_error_pct": -0.9016044678199867,
+      "backswing_ms": 833.7861326877138,
+      "mean_confidence": 0.7381455288726149,
+      "detection_rate": 0.7297297297297297,
+      "seconds": 37.3
+    },
+    {
+      "clip": "close_up_feet_cut",
+      "should_refuse": false,
+      "outcome": "read",
+      "tempo": 3.0923389408103064,
+      "true_tempo": 3.0,
+      "tempo_error_pct": 3.0779646936768787,
+      "backswing_ms": 830.7954469401373,
+      "mean_confidence": 0.7551243940310386,
+      "detection_rate": 1.0,
+      "seconds": 17.7
+    },
+    {
+      "clip": "down_the_line",
+      "should_refuse": false,
+      "outcome": "read",
+      "tempo": 4.2291185875717625,
+      "true_tempo": 3.0,
+      "tempo_error_pct": 40.970619585725416,
+      "backswing_ms": 1082.946832699387,
+      "mean_confidence": 0.39280090727292966,
+      "detection_rate": 0.7567567567567568,
+      "seconds": 18.7
+    },
+    {
+      "clip": "empty_scene",
+      "should_refuse": true,
+      "outcome": "refused",
+      "reason": "a body was found in only 0 percent of frames, below the 50 percent a swing needs. There may be nobody in shot, or the golfer may be too small, too dark or too far outside the frame to follow",
+      "true_tempo": null,
+      "detection_rate": 0.0,
+      "seconds": 2.1
+    },
+    {
+      "clip": "face_on_normal",
+      "should_refuse": false,
+      "outcome": "read",
+      "tempo": 3.2508208398414,
+      "true_tempo": 3.0,
+      "tempo_error_pct": 8.36069466138,
+      "backswing_ms": 880.7275009242139,
+      "mean_confidence": 0.7576343101780952,
+      "detection_rate": 1.0,
+      "seconds": 17.5
+    },
+    {
+      "clip": "far_away",
+      "should_refuse": false,
+      "outcome": "read",
+      "tempo": 3.341421358670719,
+      "true_tempo": 3.0,
+      "tempo_error_pct": 11.380711955690629,
+      "backswing_ms": 898.0457996116728,
+      "mean_confidence": 0.7703982589146828,
+      "detection_rate": 1.0,
+      "seconds": 17.1
+    },
+    {
+      "clip": "half_swing_cut_at_top",
+      "should_refuse": true,
+      "outcome": "refused",
+      "reason": "address, top, mid-downswing and impact have a mean confidence of 0.005, below the 0.30 required; this clip probably does not contain a swing",
+      "true_tempo": null,
+      "detection_rate": 1.0,
+      "seconds": 9.0
+    },
+    {
+      "clip": "landscape_720",
+      "should_refuse": false,
+      "outcome": "read",
+      "tempo": 3.415960829707825,
+      "true_tempo": 3.0,
+      "tempo_error_pct": 13.86536099026084,
+      "backswing_ms": 930.1140477202358,
+      "mean_confidence": 0.7464047757036605,
+      "detection_rate": 1.0,
+      "seconds": 17.2
+    },
+    {
+      "clip": "left_handed",
+      "should_refuse": false,
+      "outcome": "read",
+      "tempo": 2.9982659884200014,
+      "true_tempo": 3.0,
+      "tempo_error_pct": -0.057800385999954663,
+      "backswing_ms": 816.016386058773,
+      "mean_confidence": 0.7499695188795915,
+      "detection_rate": 1.0,
+      "seconds": 17.4
+    },
+    {
+      "clip": "no_swing_standing",
+      "should_refuse": true,
+      "outcome": "refused",
+      "reason": "address, top, mid-downswing and impact have a mean confidence of 0.010, below the 0.30 required; this clip probably does not contain a swing",
+      "true_tempo": null,
+      "detection_rate": 1.0,
+      "seconds": 6.2
+    },
+    {
+      "clip": "quick_tempo",
+      "should_refuse": false,
+      "outcome": "read",
+      "tempo": 3.7476433897630366,
+      "true_tempo": 3.6923076923076925,
+      "tempo_error_pct": 1.4986751394155682,
+      "backswing_ms": 867.08883505679,
+      "mean_confidence": 0.7604407219969973,
+      "detection_rate": 1.0,
+      "seconds": 16.8
+    },
+    {
+      "clip": "slow_motion_120",
+      "should_refuse": false,
+      "outcome": "read",
+      "tempo": 3.090997986165179,
+      "true_tempo": 3.0,
+      "tempo_error_pct": 3.033266205505969,
+      "backswing_ms": 835.3343082613525,
+      "mean_confidence": 0.7434867379605614,
+      "detection_rate": 1.0,
+      "seconds": 34.3
+    },
+    {
+      "clip": "slow_tempo",
+      "should_refuse": false,
+      "outcome": "read",
+      "tempo": 2.5481207036243623,
+      "true_tempo": 2.1818181818181817,
+      "tempo_error_pct": 16.788865582783277,
+      "backswing_ms": 896.3598904489191,
+      "mean_confidence": 0.7775834466914664,
+      "detection_rate": 1.0,
+      "seconds": 17.1
+    },
+    {
+      "clip": "thirty_fps",
+      "should_refuse": false,
+      "outcome": "read",
+      "tempo": 2.8851545947464183,
+      "true_tempo": 3.0,
+      "tempo_error_pct": -3.828180175119389,
+      "backswing_ms": 864.8625522336301,
+      "mean_confidence": 0.7582778685288288,
+      "detection_rate": 1.0,
+      "seconds": 8.5
+    },
+    {
+      "clip": "tilted_camera",
+      "should_refuse": false,
+      "outcome": "read",
+      "tempo": 3.391788523965885,
+      "true_tempo": 3.0,
+      "tempo_error_pct": 13.059617465529499,
+      "backswing_ms": 865.4804575074546,
+      "mean_confidence": 0.7656403962838441,
+      "detection_rate": 1.0,
+      "seconds": 16.7
+    }
+  ]
+}
