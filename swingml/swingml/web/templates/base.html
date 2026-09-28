@@ -16,7 +16,9 @@
   <nav>
     <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="here"{% endif %}>Swings</a>
     <a href="{{ url_for('session_page') }}" {% if request.endpoint == 'session_page' %}class="here"{% endif %}>Consistency</a>
+    <a href="{{ url_for('practice.practice_page') }}" {% if request.endpoint == 'practice.practice_page' %}class="here"{% endif %}>Practice</a>
     <a href="{{ url_for('coach.chat_page') }}" {% if request.endpoint == 'coach.chat_page' %}class="here"{% endif %}>Ask the coach</a>
+    <a href="{{ url_for('practice.data_page') }}" {% if request.endpoint == 'practice.data_page' %}class="here"{% endif %}>Your data</a>
     <span class="ai-pill" id="ai-pill" title="Local AI through Ollama"><i></i><span>Local AI</span></span>
   </nav>
 </header>

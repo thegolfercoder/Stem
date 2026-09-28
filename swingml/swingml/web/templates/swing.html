@@ -22,6 +22,65 @@
   </div>
 </section>
 
+{% if analysis.capture_warnings %}
+<section class="banner-note capture-warnings">
+  <strong>How this was filmed</strong>
+  <ul>{% for w in analysis.capture_warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+{% if insight %}
+<section class="insight insight-{{ insight.kind }}" id="insight">
+  <p class="eyebrow">Your priority now &middot; evidence: {{ insight.confidence }}</p>
+  <h2>{{ insight.title }}</h2>
+  <p>{{ insight.summary }}</p>
+  {% if insight.evidence %}
+  <details class="evidence" {% if insight.kind in ('tempo_quick', 'tempo_slow', 'capture') %}open{% endif %}>
+    <summary>The evidence</summary>
+    <ul>
+      {% for e in insight.evidence %}
+      <li>
+        {% if e.swing_id %}<a href="{{ url_for('swing_page', swing_id=e.swing_id) }}">{{ e.label }}</a>{% else %}{{ e.label }}{% endif %}:
+        {{ e.value }} <span class="prov prov-{{ e.provenance }}">{{ e.provenance }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+  {% if insight.drill %}
+  <div class="drill">
+    <h3>Drill: {{ insight.drill.title }}</h3>
+    <ol>{% for step in insight.drill.steps %}<li>{{ step }}</li>{% endfor %}</ol>
+    <p><strong>Reps:</strong> {{ insight.drill.reps }}</p>
+    <p><strong>What counts as improvement:</strong> {{ insight.success }}</p>
+    <p><strong>Retest:</strong> {{ insight.retest }}</p>
+    <button class="btn primary start-plan" type="button" data-focus="{{ insight.drill.focus }}" data-from="{{ swing.id }}">Start practising this</button>
+  </div>
+  {% elif insight.choices %}
+  <div class="drill">
+    <h3>Choose what to practise</h3>
+    <p>{{ insight.retest }} The app will compare your next swings with these ones.</p>
+    <div class="choice-row">
+      {% for focus, label in insight.choices %}
+      <button class="btn start-plan" type="button" data-focus="{{ focus }}" data-from="{{ swing.id }}">{{ label }}</button>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <p><strong>Next:</strong> {{ insight.retest }}</p>
+  {% endif %}
+  {% if active_plan %}
+  <p class="plan-note">You are practising: {{ active_plan.focus.replace('_', ' ') }}. <a href="{{ url_for('practice.practice_page') }}">See whether it is working</a>.</p>
+  {% endif %}
+  {% if insight.limitations %}
+  <details class="limits"><summary>What this priority cannot tell you</summary>
+    <ul>{% for l in insight.limitations %}<li>{{ l }}</li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+  <p class="insight-status" id="plan-status" role="status"></p>
+</section>
+{% endif %}
+
 {% if refusal %}
 <section class="banner warn">
   <h2>No swing was found in this clip</h2>
@@ -150,6 +209,13 @@
 </section>
 {% endif %}
 
+{% if unknowns and not refusal %}
+<section class="unknowns">
+  <h2>What this analysis cannot tell you</h2>
+  <ul>{% for u in unknowns %}<li>{{ u }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+
 <section class="coach-section" id="coach" hidden>
   <h2>A coach's read <span class="prov prov-opinion">local AI</span></h2>
   <p class="section-sub">A language model on this computer looks at the eight positions and
@@ -230,4 +296,5 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='swing.js') }}"></script>
 <script src="{{ url_for('static', filename='coach.js') }}"></script>
+<script src="{{ url_for('static', filename='practice.js') }}"></script>
 {% endblock %}

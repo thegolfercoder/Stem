@@ -400,3 +400,27 @@ input[type=text]:focus, select:focus { outline: 2px solid var(--accent); outline
 .pos-status { font-size: 0.9rem; opacity: 0.85; }
 .pos-status.is-bad { color: #e5484d; opacity: 1; }
 .banner-note { margin: 8px 0 14px; padding: 10px 14px; border-left: 3px solid var(--accent, #4f8cff); border-radius: 6px; background: rgba(79, 140, 255, 0.08); font-size: 0.93rem; }
+
+/* The practice loop */
+.insight { margin: 18px 0 22px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.insight h2 { margin: 4px 0 8px; }
+.insight .eyebrow, .verdict .eyebrow { margin: 0; font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
+.insight-capture, .insight-tempo_quick, .insight-tempo_slow { border-left: 4px solid var(--accent-warm); }
+.insight .evidence ul, .insight .limits ul { margin: 6px 0 0 18px; }
+.drill { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.drill h3 { margin: 0 0 6px; font-size: 1rem; }
+.choice-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.plan-note { margin-top: 12px; }
+.insight-status { min-height: 1em; font-size: 0.9rem; }
+.unknowns ul, .drill-section ol, .plan-swings ul, .plan-history ul { margin-left: 18px; }
+.verdict { margin: 18px 0; padding: 18px 20px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); }
+.verdict-improved { border-left: 4px solid #3fb950; }
+.verdict-worsened { border-left: 4px solid #e5484d; }
+.verdict-no_detectable_change, .verdict-not_enough_swings { border-left: 4px solid var(--accent); }
+.verdict-not_comparable { border-left: 4px solid var(--accent-warm); }
+.warnings { margin: 10px 0 0 18px; }
+.warnings .blocking { font-weight: 600; }
+.feedback-section textarea { width: 100%; max-width: 520px; margin: 8px 0; display: block; }
+.data-section { margin: 20px 0; }
+.events td { padding: 4px 16px 4px 0; }
+.danger-zone { border-top: 1px solid var(--line); padding-top: 16px; }

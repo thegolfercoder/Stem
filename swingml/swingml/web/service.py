@@ -44,6 +44,7 @@ from swingml.analysis import (
 from swingml.assets import (
     home,
 )
+from swingml.capture import Preflight, preflight
 from swingml.events import SwingEvent
 from swingml.labels import save_pose
 from swingml.model.calibration import ModelCalibration
@@ -212,13 +213,14 @@ class AnalysisService:
         handedness: Handedness | None,
         club: str | None = None,
         label: str | None = None,
+        plan_id: int | None = None,
     ) -> Job:
         job = Job(id=uuid.uuid4().hex[:12], filename=original_name)
         with self._jobs_lock:
             self._jobs[job.id] = job
         thread = threading.Thread(
             target=self._run,
-            args=(job, upload_path, original_name, handedness, club, label),
+            args=(job, upload_path, original_name, handedness, club, label, plan_id),
             daemon=True,
         )
         thread.start()
@@ -242,6 +244,7 @@ class AnalysisService:
         handedness: Handedness | None,
         club: str | None,
         label: str | None,
+        plan_id: int | None = None,
     ) -> None:
         try:
             with self._run_lock:
@@ -249,12 +252,27 @@ class AnalysisService:
                 job.message = "loading the model"
                 model, _ = self._ensure_loaded()
 
+                job.message = "checking how the clip was filmed"
+                _, estimator = self._ensure_loaded()
+                check = preflight(upload_path, estimator)
+                if check.blocking:
+                    self._refuse_at_preflight(job, check, upload_path, original_name, club, label)
+                    return
+
                 job.message = "finding the body in each frame"
                 sequence, video_info = self._extract_pose(upload_path, job)
 
                 job.state = JobState.ANALYSING
                 job.message = "finding the swing"
                 analysis = self.analyse(sequence, model, handedness, video_info)
+                if check.warnings:
+                    analysis = analysis.model_copy(
+                        update={
+                            "capture_warnings": tuple(
+                                f"{c.name}: {c.measured}. {c.advice}" for c in check.warnings
+                            )
+                        }
+                    )
 
                 job.state = JobState.RENDERING
                 job.message = "saving the key frames"
@@ -269,6 +287,16 @@ class AnalysisService:
                 )
 
                 job.swing_id = swing_id
+                refused = isinstance(analysis.events, NoReading)
+                self.store.log_event(
+                    "analysis_refused" if refused else "analysis_succeeded",
+                    reason=analysis.events.reason
+                    if isinstance(analysis.events, NoReading)
+                    else None,
+                )
+                if plan_id is not None:
+                    self.store.add_plan_swing(plan_id, swing_id, "retest")
+                    self.store.log_event("retest_recorded", plan=plan_id, refused=refused)
                 job.state = JobState.DONE
                 job.message = (
                     analysis.events.reason if isinstance(analysis.events, NoReading) else "done"
@@ -278,6 +306,36 @@ class AnalysisService:
             job.error = str(error) or error.__class__.__name__
             job.message = "analysis failed"
             traceback.print_exc()
+
+    def _refuse_at_preflight(
+        self,
+        job: Job,
+        check: Preflight,
+        upload_path: Path,
+        original_name: str,
+        club: str | None,
+        label: str | None,
+    ) -> None:
+        """Store the refusal the quick look found, without tracking the whole clip."""
+        reason = "; ".join(f"{c.name}: {c.measured}" for c in check.blocking)
+        advice = " ".join(c.advice for c in check.blocking)
+        refusal = NoReading(reason=f"{reason}. {advice}", source="capture")
+        analysis = SwingAnalysis(
+            video=None,
+            detection_rate=0.0,
+            canonical_frames=0,
+            events=refusal,
+            event_times_s=(),
+            event_source_frames=(),
+            metrics=refusal,
+            handedness=Handedness.RIGHT,
+        )
+        job.swing_id = self.store.add(
+            analysis, source_name=original_name, video_path=upload_path, label=label, club=club
+        )
+        self.store.log_event("analysis_refused", reason=reason, at="preflight")
+        job.state = JobState.DONE
+        job.message = refusal.reason
 
     def analyse(
         self,

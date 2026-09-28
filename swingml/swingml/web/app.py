@@ -265,6 +265,40 @@ PRETTY_NAMES: dict[str, str] = {
 }
 
 
+NEVER_MEASURED = (
+    "Club face, club path, swing plane and attack angle: the pose tracker does not see the club.",
+    "Ball speed, spin, launch and carry: nothing here sees the ball.",
+    "Club-head speed: one camera cannot measure it.",
+)
+
+
+def not_known(analysis: SwingAnalysis) -> list[str]:
+    """What this analysis cannot say, most specific first."""
+    items: list[str] = []
+    metrics = analysis.metrics
+    if not isinstance(metrics, NoReading):
+        for name in ("swing_duration", "backswing_duration", "downswing_duration"):
+            reading = getattr(metrics, name)
+            if isinstance(reading, NoReading):
+                items.append(f"{pretty_name(name)}: {reading.reason}.")
+                break
+    if analysis.playback_slowed_by is not None:
+        items.append(
+            "Real timing: this clip read as slow motion (about "
+            f"{analysis.playback_slowed_by:.0f}x), so no duration is given."
+        )
+    if analysis.positions_set_by == "model":
+        items.append(
+            "Toe-up and mid-follow-through are defined by the club and placed from the body."
+        )
+    items.append(
+        "Tempo readings are pulled toward about 3.3; a tempo far from 3 reads closer to 3 "
+        "than it is."
+    )
+    items.extend(NEVER_MEASURED)
+    return items
+
+
 def pretty_name(name: str) -> str:
     """A label a person would use, falling back to the field name made readable."""
     return PRETTY_NAMES.get(name, name.replace("_", " ").capitalize())
@@ -346,8 +380,11 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
     app.extensions["swingml"] = {"store": swing_store, "service": service}
 
     from swingml.web.coach_routes import create_blueprint
+    from swingml.web.practice import create_blueprint as practice_blueprint
+    from swingml.web.practice import insight_for
 
     app.register_blueprint(create_blueprint(swing_store))
+    app.register_blueprint(practice_blueprint(swing_store))
 
     # -- pages -------------------------------------------------------------
 
@@ -376,8 +413,13 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
         refusal = analysis.events.reason if isinstance(analysis.events, NoReading) else None
         advice = advice_for(refusal) if refusal else None
         band = next((b for b in analysis.event_uncertainty if isinstance(b, ErrorBand)), None)
+        insight = insight_for(swing_store, swing_id)
+        swing_store.log_event("insight_viewed", kind=insight.kind, swing=swing_id)
         return render_template(
             "swing.html",
+            insight=insight,
+            unknowns=not_known(analysis),
+            active_plan=swing_store.active_plan(),
             band_corpus=band.measured_on if band else None,
             band_coverage=round(100 * band.coverage) if band else None,
             swing=stored,
@@ -446,8 +488,15 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
         club = (request.form.get("club") or "").strip() or None
         label = (request.form.get("label") or "").strip() or None
 
+        plan_field = (request.form.get("plan") or "").strip()
+        plan_id = int(plan_field) if plan_field.isdigit() else None
+        if plan_id is not None and swing_store.plan(plan_id) is None:
+            return jsonify({"error": "that practice plan does not exist"}), 400
+
         path = save_upload(upload.stream, upload.filename)
-        job = service.submit(path, upload.filename, handedness, club=club, label=label)
+        job = service.submit(
+            path, upload.filename, handedness, club=club, label=label, plan_id=plan_id
+        )
         return jsonify(job.as_dict()), 202
 
     @app.get("/api/jobs/<job_id>")

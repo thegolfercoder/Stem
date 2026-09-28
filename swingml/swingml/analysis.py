@@ -31,6 +31,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from swingml.events import EventSequence, SwingEvent
 from swingml.features import FeatureConfig, extract_features, resample_pose
+from swingml.insights.compare import CameraSignature, camera_signature
 from swingml.metrics.swing import MetricConfig, SwingMetrics, compute_metrics
 from swingml.model.calibration import (
     ErrorBand,
@@ -158,6 +159,17 @@ class SwingAnalysis(BaseModel):
             "observed to fall. Empty when no calibration was supplied, which is the "
             "honest state rather than a default of zero."
         ),
+    )
+    camera: CameraSignature | None = Field(
+        default=None,
+        description=(
+            "Where the camera was, read from the golfer's body at address, so swings "
+            "filmed from different spots are not compared as though they were not."
+        ),
+    )
+    capture_warnings: tuple[str, ...] = Field(
+        default=(),
+        description="What the quick look before analysis found wrong with how the clip was filmed.",
     )
     playback_slowed_by: float | None = Field(
         default=None,
@@ -501,7 +513,7 @@ def analyse_pose_sequence(
     and the result says so.
     """
     config = config or AnalysisConfig()
-    first = _analyse_at_recorded_speed(sequence, model, config, video)
+    first = _with_camera(_analyse_at_recorded_speed(sequence, model, config, video), sequence)
     if not isinstance(first.events, NoReading) or first.events.source != "events":
         return first
     best: tuple[float, float, SwingAnalysis] | None = None
@@ -521,7 +533,15 @@ def analyse_pose_sequence(
             best = (core, factor, attempt)
     if best is None:
         return first
-    return _as_slow_motion(best[2], best[1])
+    return _with_camera(_as_slow_motion(best[2], best[1]), sequence)
+
+
+def _with_camera(analysis: SwingAnalysis, sequence: PoseSequence) -> SwingAnalysis:
+    if isinstance(analysis.events, NoReading) or not analysis.event_source_frames:
+        return analysis
+    return analysis.model_copy(
+        update={"camera": camera_signature(sequence, analysis.event_source_frames[0])}
+    )
 
 
 SLOWED_REASON = (
@@ -765,6 +785,7 @@ def analyse_with_positions(
         metrics=compute_metrics(resampled, events, handedness, config.metrics),
         handedness=handedness,
         positions_set_by="golfer",
+        camera=camera_signature(sequence, chosen[0]),
     )
 
 

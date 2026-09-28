@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Practice{% endblock %}
+{% block content %}
+
+{% if not plan %}
+<section class="swing-head"><div>
+  <h1>Practice</h1>
+  <p class="sub">No plan is running. Open any analysed swing: its page names one priority and a drill,
+    or lets you choose what to work on, and starts a plan from there.</p>
+</div></section>
+{% else %}
+<section class="swing-head"><div>
+  <h1>{{ drill.title if drill else plan.focus }}</h1>
+  <p class="sub">Started {{ plan.created_at[:10] }}{% if plan.club %} &middot; {{ plan.club }}{% endif %}
+    &middot; measured by {{ plan.metric.replace('_', ' ') }}, aiming to {{ plan.direction }} it</p>
+</div>
+<div class="head-actions">
+  <a class="btn primary" href="{{ url_for('index', plan=plan.id) }}">Record retest swings</a>
+  <button class="btn close-plan" type="button" data-plan="{{ plan.id }}" data-status="completed">Finish plan</button>
+  <button class="btn ghost close-plan" type="button" data-plan="{{ plan.id }}" data-status="abandoned">Stop</button>
+</div></section>
+
+{% if capture %}
+<section class="verdict verdict-{{ 'improved' if capture.clean_in_a_row >= 3 else 'no_detectable_change' }}">
+  <h2>{% if capture.clean_in_a_row >= 3 %}Done: three clean recordings in a row{% else %}{{ capture.clean_in_a_row }} of 3 clean recordings in a row{% endif %}</h2>
+  <p>{{ capture.recorded }} retest swing(s) recorded for this plan.</p>
+</section>
+{% elif change %}
+<section class="verdict verdict-{{ change.verdict }}" id="verdict">
+  <p class="eyebrow">Is it working?</p>
+  <h2>{{ {'improved': 'Yes: it moved the way the drill aims',
+          'worsened': 'It moved, the opposite way to the drill',
+          'no_detectable_change': 'No change the swings can show yet',
+          'not_comparable': 'These swings cannot be compared',
+          'not_enough_swings': 'Not enough swings to tell yet'}[change.verdict] }}</h2>
+  <p>{{ change.explanation }}</p>
+  {% if change.difference is not none %}
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-label">Before ({{ change.n_before }} swings)</div>
+      <div class="metric-value">{{ ('%.2f' if change.mean_before|abs >= 1 else '%.3f')|format(change.mean_before) }}</div></div>
+    <div class="metric"><div class="metric-label">After ({{ change.n_after }} swings)</div>
+      <div class="metric-value">{{ ('%.2f' if change.mean_after|abs >= 1 else '%.3f')|format(change.mean_after) }}</div></div>
+    <div class="metric"><div class="metric-label">Change, 95% interval</div>
+      <div class="metric-value">{{ '%+.3g'|format(change.difference) }}</div>
+      <div class="metric-range">{{ '%+.3g'|format(change.interval[0]) }} to {{ '%+.3g'|format(change.interval[1]) }}</div></div>
+  </div>
+  {% endif %}
+  {% if change.comparability.blocking or change.comparability.warnings %}
+  <ul class="warnings">
+    {% for b in change.comparability.blocking %}<li class="blocking">{{ b }}</li>{% endfor %}
+    {% for w in change.comparability.warnings %}<li>{{ w }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if drill %}
+<section class="drill-section">
+  <h2>The drill</h2>
+  <ol>{% for step in drill.steps %}<li>{{ step }}</li>{% endfor %}</ol>
+  <p><strong>Reps:</strong> {{ drill.reps }}</p>
+  <p><strong>What counts as improvement:</strong> {{ drill.what_counts }}</p>
+</section>
+{% endif %}
+
+<section class="plan-swings">
+  <h2>Before</h2>
+  {% if baseline %}
+  <ul>{% for r in baseline %}<li><a href="{{ url_for('swing_page', swing_id=r.swing.id) }}">{{ r.swing.label or r.swing.source_name }}</a>
+    &middot; {{ (('%.2f' if r.value|abs >= 1 else '%.3f')|format(r.value)) if r.value is not none else 'no reading' }}</li>{% endfor %}</ul>
+  {% else %}<p class="section-sub">No earlier swings could serve as a baseline{% if plan.focus != 'capture' %}; the first retest swings will not have anything to be compared with{% endif %}.</p>{% endif %}
+  <h2>After</h2>
+  {% if retest %}
+  <ul>{% for r in retest %}<li><a href="{{ url_for('swing_page', swing_id=r.swing.id) }}">{{ r.swing.label or r.swing.source_name }}</a>
+    &middot; {% if not r.swing.ok %}refused{% else %}{{ (('%.2f' if r.value|abs >= 1 else '%.3f')|format(r.value)) if r.value is not none else 'no reading' }}{% endif %}</li>{% endfor %}</ul>
+  {% else %}<p class="section-sub">No retest swings yet. Practise the drill, then record them from the same spot.</p>{% endif %}
+</section>
+
+<section class="feedback-section">
+  <h2>How is it going?</h2>
+  <form id="feedback" data-plan="{{ plan.id }}">
+    <p>Is this plan useful to you?</p>
+    <div class="choice-row">{% for n in range(1, 6) %}<label><input type="radio" name="useful" value="{{ n }}"> {{ n }}</label>{% endfor %}</div>
+    <textarea rows="2" placeholder="What does the drill feel like? (optional)"></textarea>
+    <button class="btn" type="submit">Save</button> <span class="feedback-status" role="status"></span>
+  </form>
+  <p class="footnote">If practising causes pain, stop and see a qualified professional. This app gives no medical advice.</p>
+</section>
+{% endif %}
+
+{% if history %}
+<section class="plan-history">
+  <h2>Earlier plans</h2>
+  <ul>{% for p in history %}<li>{{ p.created_at[:10] }} &middot; {{ (drills[p.drill_id].title if p.drill_id in drills else p.focus) }} &middot; {{ p.status }}
+    &middot; {{ p.baseline|length }} before, {{ p.retest|length }} after</li>{% endfor %}</ul>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='practice.js') }}"></script>{% endblock %}

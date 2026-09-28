@@ -16,7 +16,12 @@
   </p>
 </section>
 
+{% set plan_q = request.args.get('plan', '') %}
+{% if plan_q %}
+<p class="banner-note" id="retest-banner"><strong>Recording retest swings</strong> for your practice plan. Film from the same spot, with the same club, as before. <a href="{{ url_for('practice.practice_page') }}">Back to the plan</a></p>
+{% endif %}
 <form id="upload" class="dropzone" {% if not ready %}aria-disabled="true"{% endif %}>
+  <input type="hidden" id="plan" value="{{ plan_q }}">
   <input type="file" id="file" name="video" accept="video/*" hidden>
   <div class="drop-inner">
     <div class="drop-icon" aria-hidden="true"></div>

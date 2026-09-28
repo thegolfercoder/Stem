@@ -30,7 +30,7 @@ from swingml.analysis import SwingAnalysis
 from swingml.assets import home
 from swingml.quantity import NoReading
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS swings (
@@ -54,6 +54,42 @@ CREATE TABLE IF NOT EXISTS swings (
 );
 CREATE INDEX IF NOT EXISTS swings_created_at ON swings (created_at);
 CREATE INDEX IF NOT EXISTS swings_club ON swings (club);
+
+-- Version 2: the practice loop. Additive, so a version 1 file gains these tables
+-- the first time it is opened and loses nothing.
+CREATE TABLE IF NOT EXISTS plans (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at  TEXT    NOT NULL,
+    focus       TEXT    NOT NULL,
+    drill_id    TEXT    NOT NULL,
+    metric      TEXT    NOT NULL,
+    direction   TEXT    NOT NULL,
+    club        TEXT,
+    status      TEXT    NOT NULL DEFAULT 'active',
+    closed_at   TEXT,
+    insight_json TEXT
+);
+CREATE TABLE IF NOT EXISTS plan_swings (
+    plan_id  INTEGER NOT NULL,
+    swing_id INTEGER NOT NULL,
+    role     TEXT    NOT NULL CHECK (role IN ('baseline', 'retest')),
+    PRIMARY KEY (plan_id, swing_id)
+);
+CREATE TABLE IF NOT EXISTS feedback (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT    NOT NULL,
+    plan_id    INTEGER,
+    swing_id   INTEGER,
+    useful     INTEGER CHECK (useful BETWEEN 1 AND 5),
+    feel       TEXT
+);
+-- Product events, kept on this machine only. Never sent anywhere.
+CREATE TABLE IF NOT EXISTS events (
+    id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    at    TEXT    NOT NULL,
+    name  TEXT    NOT NULL,
+    props TEXT
+);
 
 CREATE TABLE IF NOT EXISTS meta (
     key   TEXT PRIMARY KEY,
@@ -204,7 +240,153 @@ class SwingStore:
     def delete(self, swing_id: int) -> bool:
         with self._connect() as connection:
             cursor = connection.execute("DELETE FROM swings WHERE id = ?", (swing_id,))
+            connection.execute("DELETE FROM plan_swings WHERE swing_id = ?", (swing_id,))
+            connection.execute("DELETE FROM feedback WHERE swing_id = ?", (swing_id,))
         return cursor.rowcount > 0
+
+    # -- the practice loop ------------------------------------------------------
+
+    def create_plan(
+        self,
+        focus: str,
+        drill_id: str,
+        metric: str,
+        direction: str,
+        club: str | None,
+        baseline: list[int],
+        insight: dict[str, Any] | None = None,
+    ) -> int:
+        """Start practising one thing; any plan still active is abandoned first."""
+        now = datetime.now(UTC).isoformat()
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE plans SET status = 'abandoned', closed_at = ? WHERE status = 'active'",
+                (now,),
+            )
+            cursor = connection.execute(
+                "INSERT INTO plans (created_at, focus, drill_id, metric, direction, club, "
+                "insight_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    now,
+                    focus,
+                    drill_id,
+                    metric,
+                    direction,
+                    club,
+                    json.dumps(insight) if insight is not None else None,
+                ),
+            )
+            plan_id = int(cursor.lastrowid or 0)
+            connection.executemany(
+                "INSERT OR IGNORE INTO plan_swings (plan_id, swing_id, role) "
+                "VALUES (?, ?, 'baseline')",
+                [(plan_id, swing_id) for swing_id in baseline],
+            )
+        return plan_id
+
+    def plan(self, plan_id: int) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute("SELECT * FROM plans WHERE id = ?", (plan_id,)).fetchone()
+            if row is None:
+                return None
+            swings = connection.execute(
+                "SELECT swing_id, role FROM plan_swings WHERE plan_id = ? ORDER BY swing_id",
+                (plan_id,),
+            ).fetchall()
+        plan = dict(row)
+        plan["baseline"] = [r["swing_id"] for r in swings if r["role"] == "baseline"]
+        plan["retest"] = [r["swing_id"] for r in swings if r["role"] == "retest"]
+        return plan
+
+    def active_plan(self) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT id FROM plans WHERE status = 'active' ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+        return self.plan(int(row["id"])) if row is not None else None
+
+    def plans(self) -> list[dict[str, Any]]:
+        with self._connect() as connection:
+            rows = connection.execute("SELECT id FROM plans ORDER BY id DESC").fetchall()
+        return [p for p in (self.plan(int(r["id"])) for r in rows) if p is not None]
+
+    def add_plan_swing(self, plan_id: int, swing_id: int, role: str = "retest") -> None:
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT OR REPLACE INTO plan_swings (plan_id, swing_id, role) VALUES (?, ?, ?)",
+                (plan_id, swing_id, role),
+            )
+
+    def close_plan(self, plan_id: int, status: str) -> bool:
+        if status not in ("completed", "abandoned"):
+            raise ValueError(f"a plan closes as completed or abandoned, not {status!r}")
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "UPDATE plans SET status = ?, closed_at = ? WHERE id = ? AND status = 'active'",
+                (status, datetime.now(UTC).isoformat(), plan_id),
+            )
+        return cursor.rowcount > 0
+
+    def add_feedback(
+        self, plan_id: int | None, swing_id: int | None, useful: int | None, feel: str | None
+    ) -> int:
+        if useful is not None and not 1 <= useful <= 5:
+            raise ValueError("usefulness is rated from 1 to 5")
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "INSERT INTO feedback (created_at, plan_id, swing_id, useful, feel) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (datetime.now(UTC).isoformat(), plan_id, swing_id, useful, feel),
+            )
+        return int(cursor.lastrowid or 0)
+
+    def feedback(self, plan_id: int) -> list[dict[str, Any]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM feedback WHERE plan_id = ? ORDER BY id", (plan_id,)
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    # -- local product events -----------------------------------------------------
+
+    def log_event(self, name: str, **props: Any) -> None:
+        """Record that something happened, on this machine only. Never raises."""
+        try:
+            with self._connect() as connection:
+                connection.execute(
+                    "INSERT INTO events (at, name, props) VALUES (?, ?, ?)",
+                    (datetime.now(UTC).isoformat(), name, json.dumps(props) if props else None),
+                )
+        except sqlite3.Error:
+            return
+
+    def event_counts(self) -> dict[str, int]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT name, COUNT(*) AS n FROM events GROUP BY name ORDER BY name"
+            ).fetchall()
+        return {r["name"]: int(r["n"]) for r in rows}
+
+    # -- your data --------------------------------------------------------------
+
+    def export_all(self) -> dict[str, Any]:
+        """Everything stored about the golfer except the video files themselves."""
+        with self._connect() as connection:
+            tables = {
+                name: [dict(r) for r in connection.execute(f"SELECT * FROM {name}").fetchall()]
+                for name in ("swings", "plans", "plan_swings", "feedback", "events")
+            }
+        for row in tables["swings"]:
+            row["analysis"] = json.loads(row.pop("analysis_json"))
+        return {"schema_version": SCHEMA_VERSION, **tables}
+
+    def erase_all(self) -> int:
+        """Delete every row. Returns how many swings there were."""
+        with self._connect() as connection:
+            count = int(connection.execute("SELECT COUNT(*) FROM swings").fetchone()[0])
+            for name in ("swings", "plans", "plan_swings", "feedback", "events"):
+                connection.execute(f"DELETE FROM {name}")
+        return count
 
     def update(self, swing_id: int, label: str | None = None, club: str | None = None) -> bool:
         sets: list[str] = []
