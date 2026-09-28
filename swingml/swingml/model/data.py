@@ -227,6 +227,42 @@ def collate(
     }
 
 
+def soft_positions(logits: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    """Each event's expected frame under the network's own probabilities, differentiably.
+
+    (B, T, NUM_CLASSES) logits and a (B, T) mask of real frames give (B, NUM_EVENTS)
+    positions: for each event, the frames weighted by the probability the network
+    gives that event there, normalised over the clip. It is what the decoder's
+    arg-max would be if the network put all of an event's mass in one place, and it
+    moves smoothly as the mass moves, so a loss on it reaches the weights.
+    """
+    scores = torch.log_softmax(logits, dim=-1)[..., :NUM_EVENTS]
+    scores = scores.masked_fill(~mask.unsqueeze(-1), float("-inf"))
+    weights = torch.softmax(scores, dim=1)
+    frames = torch.arange(logits.shape[1], dtype=logits.dtype, device=logits.device)
+    return (weights * frames[None, :, None]).sum(dim=1)
+
+
+def tempo_log_error(logits: torch.Tensor, events: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    """Mean absolute error of log tempo read from `soft_positions`, against the labels.
+
+    The frame-wise cross-entropy scores each event on its own, so a network can
+    lower it by moving address and top toward where they usually are, and that is
+    the compression measured on real swings (slope 0.44). This scores the ratio
+    the product actually reports, so being wrong about a quick or a slow swing
+    costs in proportion to how wrong the tempo comes out.
+    """
+    positions = soft_positions(logits, mask)
+    back = (positions[:, 3] - positions[:, 0]).clamp_min(1.0)
+    down = (positions[:, 5] - positions[:, 3]).clamp_min(1.0)
+    labels = events.to(logits.dtype)
+    true_back = (labels[:, 3] - labels[:, 0]).clamp_min(1.0)
+    true_down = (labels[:, 5] - labels[:, 3]).clamp_min(1.0)
+    read = torch.log(back) - torch.log(down)
+    truth = torch.log(true_back) - torch.log(true_down)
+    return (read - truth).abs().mean()
+
+
 def masked_soft_cross_entropy(
     logits: torch.Tensor,
     target: torch.Tensor,

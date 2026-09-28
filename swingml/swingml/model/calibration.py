@@ -430,8 +430,12 @@ def load_calibration(path: Path | str) -> ModelCalibration:
     """Read a calibration from disk, validating it rather than trusting it.
 
     A hand-edited or half-written table would otherwise surface as a wrong error
-    bar, which is the one failure this whole module exists to prevent.
+    bar, which is the one failure this whole module exists to prevent. The table
+    shipped in the package is also checked against its released SHA-256.
     """
+    from swingml.assets import verify_shipped
+
+    verify_shipped(path)
     return ModelCalibration.model_validate_json(Path(path).read_text(encoding="utf-8"))
 
 

@@ -85,6 +85,9 @@ def fake_ollama() -> Iterator[str]:
     thread.start()
     yield f"http://127.0.0.1:{server.server_address[1]}"
     server.shutdown()
+    # shutdown() stops the loop; only server_close() releases the listening socket.
+    server.server_close()
+    thread.join()
 
 
 # -- the guard -----------------------------------------------------------------

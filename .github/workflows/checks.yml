@@ -26,8 +26,10 @@ jobs:
       run:
         working-directory: swingml
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      # v5/v6/v5: the Node 24 releases. The v4/v5/v4 ones ran on Node 20, which
+      # the runner deprecates and was already forcing onto Node 24 with a warning.
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
@@ -50,7 +52,7 @@ jobs:
         run: |
           mypy -p swingml -p synth
           mypy scripts
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
       - name: browser payload
@@ -70,8 +72,8 @@ jobs:
       run:
         working-directory: launchmon-py
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip

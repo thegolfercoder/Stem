@@ -129,7 +129,14 @@ class OllamaClient:
         return request
 
     def _json(self, path: str, payload: dict[str, object] | None = None) -> dict[str, object]:
-        with urllib.request.urlopen(self._request(path, payload), timeout=self.timeout_s) as reply:
+        try:
+            reply = urllib.request.urlopen(self._request(path, payload), timeout=self.timeout_s)
+        except urllib.error.HTTPError as error:
+            # An error status still carries a response, and its socket stays open
+            # until that response is closed; the callers only want the exception.
+            error.close()
+            raise
+        with reply:
             loaded = json.loads(reply.read().decode("utf-8"))
         if not isinstance(loaded, dict):
             raise OllamaError(f"{path} returned {type(loaded).__name__}, not an object")
@@ -201,7 +208,8 @@ class OllamaClient:
         try:
             reply = urllib.request.urlopen(self._request("/api/chat", payload), timeout=timeout_s)
         except urllib.error.HTTPError as error:
-            detail = error.read().decode("utf-8", "replace")[:300]
+            with error:
+                detail = error.read().decode("utf-8", "replace")[:300]
             raise OllamaError(f"Ollama refused the request ({error.code}): {detail}") from error
         except (urllib.error.URLError, OSError) as error:
             raise OllamaError(f"could not reach Ollama at {self.base_url}: {error}") from error

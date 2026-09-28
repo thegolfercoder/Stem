@@ -30,6 +30,8 @@ datas = [
     (str(ROOT / "swingml" / "web" / "static"), "swingml/web/static"),
     (str(DATA / "swing_event_net.npz"), "swingml/data"),
     (str(DATA / "event_calibration.json"), "swingml/data"),
+    # The released SHA-256 of the two above; the app refuses either if it differs.
+    (str(DATA / "checksums.json"), "swingml/data"),
     (str(pose_model), "swingml/data"),
 ]
 datas += collect_data_files("mediapipe")

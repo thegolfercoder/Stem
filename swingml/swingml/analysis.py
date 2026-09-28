@@ -309,7 +309,14 @@ def save_model(model: SwingEventNet, path: Path | str) -> None:
 
 def load_event_model(checkpoint_path: Path | str) -> SwingEventNet | NumpyEventNet:
     """Whichever network a file holds: the NumPy weights (.npz) the packaged
-    application runs, which need no PyTorch, or a PyTorch checkpoint (.pt)."""
+    application runs, which need no PyTorch, or a PyTorch checkpoint (.pt).
+
+    A file from the package's own data is checked against its released SHA-256
+    first (`assets.verify_shipped`), and refused if it differs.
+    """
+    from swingml.assets import verify_shipped
+
+    verify_shipped(checkpoint_path)
     if Path(checkpoint_path).suffix == ".npz":
         return NumpyEventNet.load(checkpoint_path)
     return load_model(checkpoint_path)

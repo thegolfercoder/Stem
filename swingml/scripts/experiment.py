@@ -42,7 +42,12 @@ from swingml.model.benchmark import (
     load_samples,
     record,
 )
-from swingml.model.data import SwingDataset, collate, masked_soft_cross_entropy
+from swingml.model.data import (
+    SwingDataset,
+    collate,
+    masked_soft_cross_entropy,
+    tempo_log_error,
+)
 from swingml.model.tcn import SwingEventNet
 from synth.dataset import Sample
 
@@ -149,6 +154,12 @@ class Setup:
     beyond the ends of the clip, and the batch collation decides what is beyond
     the end of a short clip in a batch. Setting one without the other trains a
     network against a boundary it will not meet when it runs.
+    """
+    tempo_weight: float = 0.0
+    """Weight of the auxiliary loss on log tempo read from soft event positions.
+
+    Zero is the frame-wise loss alone, which is what every model before it was
+    trained with. See `swingml.model.data.tempo_log_error`.
     """
     init_from: Path | None = None
     validate_every: int = 1
@@ -285,6 +296,10 @@ def train(
                 batch["mask"],
                 label_smoothing=setup.label_smoothing,
             )
+            if setup.tempo_weight > 0.0:
+                loss = loss + setup.tempo_weight * tempo_log_error(
+                    logits, batch["events"], batch["mask"]
+                )
             loss.backward()  # type: ignore[no-untyped-call]
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimiser.step()
@@ -427,6 +442,12 @@ def main() -> None:
     parser.add_argument("--ema-decay", type=float, default=0.0)
     parser.add_argument("--label-smoothing", type=float, default=0.0)
     parser.add_argument(
+        "--tempo-weight",
+        type=float,
+        default=0.0,
+        help="weight of the auxiliary log-tempo loss from soft event positions; 0 is off",
+    )
+    parser.add_argument(
         "--edge-padding",
         action="store_true",
         help=(
@@ -548,6 +569,7 @@ def main() -> None:
         ema_decay=args.ema_decay,
         label_smoothing=args.label_smoothing,
         edge_padding=args.edge_padding,
+        tempo_weight=args.tempo_weight,
         init_from=args.init_from,
         validate_every=args.validate_every,
         extra_only=args.extra_only,
