@@ -32,7 +32,12 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: install
-        run: pip install -e ".[dev]"
+        # libEGL: MediaPipe's native runtime loads it when a pose landmarker is
+        # created, and ubuntu-latest does not ship it. Without it the tests that
+        # run the real estimator (the capture preflight) cannot run here.
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q libegl1 libgles2
+          pip install -e ".[dev]"
       - name: lint
         run: |
           ruff check .

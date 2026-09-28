@@ -72,12 +72,20 @@ def test_filming_problems_warn_without_blocking(meta, images, tracked, expected:
 
 
 def _estimator():  # type: ignore[no-untyped-def]
+    """A working pose estimator, or a skip saying why this machine has none.
+
+    Two things can be missing: the pose model (downloaded on first use) and the
+    native runtime MediaPipe loads when a landmarker is created, which needs
+    libEGL on Linux. Creating one is the only reliable test for the second.
+    """
     from swingml.pose.mediapipe_pose import MediaPipePoseEstimator
 
     try:
-        return MediaPipePoseEstimator()
-    except Exception as error:  # the pose model may be absent offline
-        pytest.skip(f"pose estimator unavailable: {error}")
+        estimator = MediaPipePoseEstimator()
+        estimator.estimate_stream(iter([(np.zeros((64, 64, 3), dtype=np.uint8), 0.0)]))
+    except Exception as error:
+        pytest.skip(f"pose estimator unavailable on this machine: {error}")
+    return estimator
 
 
 def test_the_real_phone_fixture_passes(tmp_path: Path) -> None:
