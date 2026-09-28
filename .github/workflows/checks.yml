@@ -45,11 +45,18 @@ jobs:
         run: |
           mypy -p swingml -p synth
           mypy scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: browser payload
+        # The browser/Python parity tests skip themselves without the exported
+        # weights, and a fresh checkout has none - so for as long as this step was
+        # missing, all 22 of them were skipped here on every run and nothing in CI
+        # compared the browser engine with Python. Exporting takes two seconds.
+        run: python scripts/export_web_model.py
       - name: tests
-        # The browser and parity tests skip themselves when the built page and
-        # the exported weights are absent, which they are in a fresh checkout -
-        # both are build products. Everything that does not need them runs.
-        run: pytest -q
+        # Only the page test still skips: it needs Playwright and a browser.
+        run: pytest -q -rs
 
   launchmon:
     name: radar dsp
