@@ -84,14 +84,28 @@ The shipped recipe (`e7_s0`) plus an auxiliary loss on the log tempo computed
 from soft event positions (`--tempo-weight`), at weights 0.5 and 2.0, seed 0, no
 holdout during training. Scored on validation with `tempo_experiments.py model`.
 
-*Results are added here when the runs finish.*
+| | weight 0.5 | weight 2.0 |
+|---|---|---|
+| Slope | −0.10 [−0.20, +0.03] (reads 0.28) | −0.005 [−0.11, +0.15] (reads 0.37) |
+| Tempo error | **+4.7 [+0.1, +6.7] pts** | +3.4 [−0.7, +6.4] pts |
+| Within 1 frame | −0.3 [−3.6, +2.8] pts | −2.1 [−5.5, +1.3] pts |
+| False confidence | +2.4 [−4.4, +9.5] pts | +3.5 [−5.2, +11.8] pts |
+
+**Result: rejected.** Neither weight makes tempo less compressed, and the lower
+weight makes tempo error worse. A loss on the ratio computed from soft positions
+can be lowered by moving the soft positions without moving the decoded ones, and
+with 281 training swings there is not enough spread of real tempos for it to learn
+more. One seed each: a second seed could move these numbers, but not from "no
+improvement" to a large one given the intervals. Neither candidate goes to the
+release gate. Raw outputs: `docs/audit/w1-t05_s0.json`, `w1-t20_s0.json`.
 
 ## What this means for the product
 
 Tempo from one camera through this model is a compressed reading. None of the
 three post-hoc fixes (placement, address rule, inversion) makes it less
-compressed without making it worse. The app already compares golfers against the
+compressed without making it worse, and neither does a tempo term in training. The app already compares golfers against the
 same model's readings of tour swings rather than against true tempos, and states
 the compression and the 2.1-read-as-3.2 phone example beside every tempo
-priority. That stays. The path to real improvement is training signal (item 4) and
-labelled phone swings (the phone test set).
+priority. That stays. What remains is data: more swings with a real spread of tempos
+(labelled phone swings, which the app's position editor already collects), and a
+phone test set to measure the result on the footage the product is for.
