@@ -2504,7 +2504,12 @@ function renderPractice(swingId) {
   el("practice-data").innerHTML = log.available
     ? `<span>${kept} clip${kept === 1 ? "" : "s"} kept in this browser, numbers only.</span>
        <button class="btn" type="button" id="practice-export">Export</button>
-       <button class="btn" type="button" id="practice-erase">Erase everything</button>`
+       <button class="btn" type="button" id="practice-erase">Erase everything</button>
+       <span id="erase-confirm" hidden>
+         <label for="erase-typed">Type ERASE to delete every kept swing and plan:</label>
+         <input id="erase-typed" class="text-input" autocomplete="off" maxlength="10">
+         <button class="btn" type="button" id="erase-go">Delete</button>
+       </span>`
     : "<span>This browser is not letting the page keep anything, so each clip is judged " +
       "on its own and no plan can be kept. A private window or blocked site data does this.</span>";
   refreshPracticeOptions();
@@ -2523,7 +2528,13 @@ function refreshPracticeOptions() {
 
 function wirePractice() {
   state.log = new PracticeLog(browserStorage());
-  refreshPracticeOptions();
+  // Coming back to the page shows the plan and the latest priority straight away.
+  const kept = state.log.swings;
+  if (kept.length || state.log.activePlan()) {
+    renderPractice(kept.length ? kept[kept.length - 1].id : null);
+  } else {
+    refreshPracticeOptions();
+  }
   el("practice").addEventListener("click", (event) => {
     const log = state.log;
     const rules = state.payload.practice;
@@ -2543,8 +2554,16 @@ function wirePractice() {
       setTimeout(() => URL.revokeObjectURL(link.href), 1000);
       return;
     } else if (event.target.id === "practice-erase") {
-      const typed = window.prompt("This deletes every kept swing and plan from this browser. Type ERASE to confirm.");
-      if (typed !== "ERASE") return;
+      // Asked on the page rather than in a prompt dialog, which a sandboxed page
+      // may not be allowed to open.
+      el("erase-confirm").hidden = false;
+      el("erase-typed").focus();
+      return;
+    } else if (event.target.id === "erase-go") {
+      if (el("erase-typed").value.trim() !== "ERASE") {
+        el("erase-typed").focus();
+        return;
+      }
       log.eraseAll();
       state.practiceSwing = null;
       if (state.analysis) state.analysis.logId = null;
