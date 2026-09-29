@@ -179,6 +179,29 @@ h2.section{font-size:19px;margin:28px 0 4px;letter-spacing:-.01em}
   border-radius:9px;cursor:pointer;font:inherit;font-size:13.5px}
 .btn:hover{border-color:var(--accent)}
 .result-actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+/* The practice loop: a plan's verdict, the priority, and the swings kept. */
+.text-input{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);font:inherit;
+  font-size:13.5px;padding:6px 10px;border-radius:9px;min-width:0;width:12em;max-width:100%}
+.text-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.options-check{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13.5px;color:var(--ink-dim)}
+.options-check[hidden]{display:none}
+.practice-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 18px;margin-top:12px}
+.practice-card h3{margin:0 0 6px;font-size:17px;letter-spacing:-.01em}
+.practice-card p{margin:0 0 8px;color:var(--ink-dim);max-width:72ch}
+.practice-card .eyebrow{margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint)}
+.practice-card.v-improved{border-color:color-mix(in srgb,var(--good) 55%,var(--line))}
+.practice-card.v-worsened,.practice-card.v-not_comparable{border-color:color-mix(in srgb,var(--warn) 55%,var(--line))}
+.practice-card ol,.practice-card ul{margin:6px 0 10px;padding-left:20px;color:var(--ink-dim);max-width:72ch}
+.practice-card li{margin:2px 0}
+.practice-card .blocking{color:var(--ink)}
+.evidence{list-style:none;padding:0 !important;display:grid;gap:4px}
+.evidence li{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:13.5px}
+.evidence b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.practice-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.practice-data{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;
+  color:var(--ink-faint);font-size:12.5px}
+.confidence{font-size:12.5px;color:var(--ink-faint)}
 /* A line saying what was read, and the way back to reading another. Both sat at
    the very bottom before, under four sections of numbers, so the only obvious
    way to try a second clip was to scroll past everything or reload the page. */
@@ -262,7 +285,14 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
       <button type="button" data-value="right" aria-pressed="false">Right-handed</button>
       <button type="button" data-value="left" aria-pressed="false">Left-handed</button>
     </div>
+    <label class="options-label" for="club">Club</label>
+    <input id="club" class="text-input" list="club-list" placeholder="optional, e.g. 7 iron"
+           autocomplete="off" maxlength="40">
+    <datalist id="club-list"></datalist>
   </div>
+  <label class="options-check" id="for-plan-box" hidden>
+    <input type="checkbox" id="for-plan" checked>
+    Count the next clip as a retest swing for your plan: <span id="for-plan-name"></span></label>
   <p class="first-run">The first clip you analyse also downloads the body-tracking model,
      about 30&nbsp;MB. After that it is cached and every later clip starts straight away.</p>
 
@@ -368,6 +398,16 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
     </div>
   </div>
 
+  <section id="practice" hidden>
+    <h2 class="section">What to work on <span class="prov prov-derived">from your swings</span></h2>
+    <p class="section-sub">Chosen by fixed rules from the swings analysed in this browser, the
+      same rules as the desktop app, never by a language model. Only the numbers are kept, on
+      this device: never the clip or a frame of it.</p>
+    <div id="plan-panel"></div>
+    <div id="priority-panel"></div>
+    <div class="practice-data" id="practice-data"></div>
+  </section>
+
   <div class="lightbox" id="lightbox" hidden>
     <button class="lb-close" id="lb-close" type="button" aria-label="Close">&times;</button>
     <figure>
@@ -399,6 +439,7 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
 /*__ENGINE__*/
 /*__MODEL__*/
 /*__METRICS__*/
+/*__PRACTICE__*/
 /*__APP__*/
 boot(/*__PAYLOAD__*/);
 </script>

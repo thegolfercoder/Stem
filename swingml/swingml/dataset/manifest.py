@@ -31,6 +31,7 @@ from itertools import combinations
 from pathlib import Path
 
 import numpy as np
+from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -110,6 +111,42 @@ def verify(manifest: Manifest, root: Path) -> Path:
     if clip_ids_of(archive) != manifest.clip_ids:
         raise ManifestError(f"{manifest.name}: clip ids differ from the frozen list")
     return archive
+
+
+MANIFESTS = Path(__file__).resolve().parent.parent / "manifests"
+
+
+def groups_for(archive: Path, manifests: Path = MANIFESTS) -> tuple[str, ...] | None:
+    """The leakage group of each clip in `archive`, from the manifest that froze it.
+
+    Matched by the archive's SHA-256, so a changed archive finds no manifest
+    rather than someone else's groups. None when no manifest froze these bytes.
+    """
+    digest = sha256_of(archive)
+    for path in sorted(manifests.glob("*.json")):
+        manifest = load(path)
+        if manifest.sha256 == digest:
+            return manifest.groups
+    return None
+
+
+def group_resamples(
+    groups: Sequence[str], resamples: int, rng: np.random.Generator
+) -> list[NDArray[np.int64]]:
+    """Row indices for each bootstrap draw, drawing whole golfer/video groups.
+
+    Clips of one golfer from one video are not independent: resampling them one
+    at a time makes an interval narrower than the evidence, by as much as clips
+    within a group agree. Each draw picks as many groups as there are, with
+    replacement, and takes every row of each group it picked.
+    """
+    labels = np.asarray(groups)
+    members = [np.nonzero(labels == g)[0] for g in sorted(set(labels.tolist()))]
+    draws = []
+    for _ in range(resamples):
+        chosen = rng.integers(0, len(members), len(members))
+        draws.append(np.concatenate([members[i] for i in chosen]).astype(np.int64))
+    return draws
 
 
 def leaks(manifests: Sequence[Manifest]) -> list[str]:

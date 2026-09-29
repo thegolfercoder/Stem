@@ -7,6 +7,7 @@ import SwingCore
 /// where a real change shows.
 struct HistoryView: View {
     @EnvironmentObject private var history: HistoryStore
+    @EnvironmentObject private var practice: PracticeStore
     @State private var club = "All clubs"
 
     private var clubs: [String] {
@@ -42,7 +43,10 @@ struct HistoryView: View {
                             .listRowBackground(Color.clear)
                     }
                     .onDelete { offsets in
-                        for offset in offsets { history.delete(shown[offset].id) }
+                        for offset in offsets {
+                            if let practiceId = shown[offset].practiceId { practice.remove(practiceId) }
+                            history.delete(shown[offset].id)
+                        }
                     }
                 }
             }

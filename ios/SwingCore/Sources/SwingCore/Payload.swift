@@ -143,10 +143,12 @@ public struct ModelPayload: Decodable {
     public let calibration: Calibration?
     public let timeWarps: [Double]?
     public let members: [Member]?
+    /// The practice loop's drills, tour reference and tolerances (Practice.swift).
+    public let practice: PracticeRules?
 
     enum CodingKeys: String, CodingKey {
         case architecture, tensors, weightsBase64 = "weights_base64", features, thresholds
-        case calibration, timeWarps = "time_warps", members
+        case calibration, timeWarps = "time_warps", members, practice
     }
 
     /// The model shipped with this package.

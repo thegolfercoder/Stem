@@ -22,7 +22,7 @@ IOS_PAYLOAD = (
     SWINGML.parent / "ios" / "SwingCore" / "Sources" / "SwingCore" / "Resources" / "model.json"
 )
 SHARED = ("architecture", "tensors", "weights_base64", "features", "thresholds", "calibration",
-          "time_warps")  # fmt: skip
+          "time_warps", "practice")  # fmt: skip
 
 
 @pytest.mark.skipif(not IOS_PAYLOAD.is_file(), reason="the iPhone app is not in this checkout")

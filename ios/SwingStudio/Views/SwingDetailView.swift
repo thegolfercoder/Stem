@@ -8,6 +8,7 @@ struct SwingDetailView: View {
     let id: UUID
     @EnvironmentObject private var history: HistoryStore
     @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var practice: PracticeStore
     @State private var coachText = ""
     @State private var coachStatus = ""
     @State private var coaching = false
@@ -21,6 +22,13 @@ struct SwingDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     tempo(record)
+                    // The priority as it stood after this swing, so the page says the
+                    // same thing however many swings came later.
+                    if let practiceId = record.practiceId, let rules = practice.rules,
+                       practice.log.swing(practiceId) != nil {
+                        PriorityCard(insight: practice.log.insight(rules, upTo: practiceId), swingId: practiceId,
+                                     canStart: practice.log.activePlan == nil)
+                    }
                     positions(record)
                     measurements(record)
                     coach(record)

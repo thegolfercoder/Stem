@@ -70,10 +70,12 @@ real-time 114/119 -> 117/119, no-swing stretches accepted 2/424 -> 3/424, slow-
 motion tempo error 15.5%. *Pinned by*: `tests/test_measured_failures.py`,
 `tests/test_release_gate.py::test_the_gate_reads_a_slow_motion_swing_the_way_the_app_does`.
 
-*Still open*: the browser and iPhone engines do not have the retry yet; they
-refuse slow-motion exports (safely, with a reason). A phone slow-motion clip ramps
-speed at its ends; if the swing crosses a ramp the tempo is wrong, which is why it
-carries the assumption.
+*Ported*: the browser (`readAtSpeeds`, webapp/metrics.js) and iPhone
+(`SwingAnalyzer.analyse`) engines run the same retry, held to the desktop's
+answer on a slowed copy of the real swing (`tests/test_browser_slow_motion.py`,
+`ParityTests.testASlowMotionClipIsReadAsSlowMotionWithNoDurations`). *Still
+open*: a phone slow-motion clip ramps speed at its ends; if the swing crosses a
+ramp the tempo is wrong, which is why it carries the assumption.
 
 ## Other failures
 
@@ -84,14 +86,14 @@ carries the assumption.
 | 6 | **CI never ran browser/Python parity.** All 22 parity tests skip in a fresh checkout because the web payload is a build product. | Clean checkout: 253 passed, 23 skipped. | **Fixed**: CI exports the payload (2 s) before `pytest`. |
 | 7 | **The iPhone model copy could drift silently.** | A hand-copied `model.json`; nothing compared it. | **Fixed**: `tests/test_model_copies.py`. It matches today. |
 | 8 | **Synthetic evaluator scored every clip against tempo 3.0**, including clips generated at 2.2 and 3.8. | `scripts/evaluate_clips.py` had `--expect-tempo 3.0`. | **Fixed**: each clip is scored against the tempo it was generated with; JSON output. |
-| 9 | **Confidence intervals resampled clips, not golfers.** Clips of one golfer from one video are correlated; clip resampling understates uncertainty. | 201 clips are only 35 groups. | **Fixed in the release gate** (group bootstrap). `scripts/compare.py` and `benchmark_baselines.py` still resample clips; their intervals are optimistic. |
+| 9 | **Confidence intervals resampled clips, not golfers.** Clips of one golfer from one video are correlated; clip resampling understates uncertainty. | 201 clips are only 35 groups. | **Fixed** in the release gate, `scripts/compare.py` and `scripts/benchmark_baselines.py`: all three resample golfer/video groups from the frozen manifest matching the archive (`manifest.group_resamples`), and say so when no manifest matches. The intervals already recorded in `docs/audit/baselines.json` were resampled by clip and were not recomputed, since that would mean reading the holdout again; they are narrower than a group bootstrap would give. |
 | 10 | **No release gate.** A model shipped on a benchmark and a fixture test run by hand. | - | **Fixed**: `python -m swingml.model.release_gate`, nine gates, exit 2 on missing evidence. Retrained `g7_s1` fails it (fixture address, false confidence). |
 | 11 | **No frozen manifests.** "The holdout" meant 201 clips, then 320. | - | **Fixed**: `swingml/swingml/manifests/golfdb-*-v1.json`, `-v2.json` with SHA-256 and golfer/video groups; `python -m swingml.dataset.manifest check`. |
 | 12 | **False confidence.** On the real holdout 14.6% of answered swings read a tempo outside their own ±27% band while the model's core confidence was 0.5 or more. | Release gate report. | **Open**; gated so it cannot rise. |
 | 13 | **Down-the-line synthetic clip reads tempo +41%** with confidence 0.39, above the 0.30 refusal line. | `docs/audit/synthetic-eval.json`. | **Open**; on real footage down-the-line is not worse than face-on (48.2% vs 53.7% within one frame, within noise), so this is flagged, not acted on. |
 | 14 | **Left-handed golfers**: 23 in the holdout, tempo error 18.1% vs 14.6% right-handed. | Breakdown. | **Open**; too few to separate from noise. |
 | 15 | **Slow-motion time scale is a guess.** Retried clips report no durations; ms error bands are refused for them. | By construction. | **By design.** |
-| 16 | **ResourceWarning: unclosed socket** in three coach tests (FakeOllama fixture). | pytest warnings summary. | **Open** (test hygiene only). |
+| 16 | **ResourceWarning: unclosed socket** in three coach tests (FakeOllama fixture). | pytest warnings summary. | **Fixed**: the fixture shuts its server down and the client closes error responses. |
 | 17 | **The rendered training corpus is not reproducible** byte-for-byte: it was lost with an earlier container. | `swingml/README.md`. | **Open**; the base model's synthetic pre-training cannot be re-run exactly. Fine-tuning on real data is reproducible from the manifests. |
 | 18 | **Only one labelled phone swing.** Every real accuracy figure is on broadcast/range footage. | Data card. | **Open**; collection path built (`scripts/make_labelled_dataset.py`, desktop position editor). |
 | 19 | **Club- and ball-defined values** (face, path, plane, attack angle, spin, speed, launch, carry) cannot come from one uncalibrated camera and a body tracker. | Physics of the setup. | **By design**: never output; the coach guard drops sentences that assert them. |

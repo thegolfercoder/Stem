@@ -33,13 +33,18 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: swingml/requirements-dev.lock
       - name: install
         # libEGL: MediaPipe's native runtime loads it when a pose landmarker is
         # created, and ubuntu-latest does not ship it. Without it the tests that
         # run the real estimator (the capture preflight) cannot run here.
+        # The lock pins every package, so a run fails for a change in this
+        # repository and not for a release somebody else made that morning.
+        # Regenerate it with the command at its top after changing pyproject.toml.
         run: |
           sudo apt-get update -q && sudo apt-get install -y -q libegl1 libgles2
-          pip install -e ".[dev]"
+          pip install -r requirements-dev.lock
+          pip install -e . --no-deps
       - name: lint
         run: |
           ruff check .

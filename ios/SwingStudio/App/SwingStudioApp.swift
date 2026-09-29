@@ -5,12 +5,14 @@ import SwingCore
 struct SwingStudioApp: App {
     @StateObject private var history = HistoryStore()
     @StateObject private var settings = AppSettings()
+    @StateObject private var practice = PracticeStore()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(history)
                 .environmentObject(settings)
+                .environmentObject(practice)
                 .tint(Theme.accent)
                 .preferredColorScheme(.dark)
         }
@@ -35,6 +37,8 @@ struct RootView: View {
         TabView {
             AnalyseView()
                 .tabItem { Label("Analyse", systemImage: "figure.golf") }
+            PracticeView()
+                .tabItem { Label("Practice", systemImage: "target") }
             HistoryView()
                 .tabItem { Label("History", systemImage: "chart.xyaxis.line") }
             ChatView()

@@ -15,7 +15,14 @@ import pytest
 
 from swingml.analysis import AnalysisConfig, load_model
 from swingml.assets import find_event_model
-from swingml.dataset.manifest import ManifestError, freeze, leaks, verify
+from swingml.dataset.manifest import (
+    ManifestError,
+    freeze,
+    group_resamples,
+    groups_for,
+    leaks,
+    verify,
+)
 from swingml.features import extract_features, feature_layout, resample_pose
 from swingml.model import release_gate
 from swingml.skeleton import Handedness
@@ -61,6 +68,34 @@ def test_shared_golfers_are_a_leak_even_without_shared_clips(tmp_path: Path) -> 
     assert len(problems) == 1 and "groups" in problems[0]
     clean = freeze(_archive(tmp_path / "d.npz", [4]), "cal2", "calibration", {4: "c"}, "", tmp_path)
     assert leaks([test, clean]) == []
+
+
+def test_the_groups_of_an_archive_come_from_the_manifest_that_froze_it(tmp_path: Path) -> None:
+    archive = _archive(tmp_path / "a.npz", [1, 2, 3])
+    manifests = tmp_path / "manifests"
+    manifests.mkdir()
+    manifest = freeze(archive, "t", "holdout", {1: "g1", 2: "g1", 3: "g2"}, "test", tmp_path)
+    (manifests / "t.json").write_text(manifest.model_dump_json())
+    assert groups_for(archive, manifests) == ("g1", "g1", "g2")
+    # Other bytes, even with the same clips, are not the archive that was frozen.
+    other = _archive(tmp_path / "b.npz", [1, 2, 4])
+    assert groups_for(other, manifests) is None
+
+
+def test_a_group_bootstrap_draws_whole_groups_and_is_wider_when_groups_agree() -> None:
+    groups = [f"g{i // 5}" for i in range(40)]  # 8 groups of 5 clips
+    rng = np.random.default_rng(0)
+    for idx in group_resamples(groups, 50, rng):
+        drawn = [groups[i] for i in idx]
+        # Every group drawn comes whole, and as many group draws as there are groups.
+        assert all(drawn.count(g) % 5 == 0 for g in set(drawn))
+        assert len(idx) == 40
+    # Clips within a group agree: resampling them one by one understates the spread.
+    values = np.repeat(np.random.default_rng(1).normal(size=8), 5)
+    by_group = [values[i].mean() for i in group_resamples(groups, 2000, np.random.default_rng(2))]
+    rng = np.random.default_rng(3)
+    by_clip = [values[rng.integers(0, 40, 40)].mean() for _ in range(2000)]
+    assert np.std(by_group) > 1.8 * np.std(by_clip)
 
 
 def test_missing_evidence_exits_two_before_any_number(tmp_path: Path) -> None:

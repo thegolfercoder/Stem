@@ -21,6 +21,8 @@ struct SwingRecord: Codable, Identifiable {
     /// File names of the eight key frames, in order.
     var keyFrames: [String]
     var coach: CoachRead?
+    /// This swing's entry in the practice log (PracticeStore), when it has one.
+    var practiceId: Int?
 
     var tempo: Double? { result.metrics.tempoRatio }
 }
@@ -54,7 +56,8 @@ final class HistoryStore: ObservableObject {
     }
 
     @discardableResult
-    func add(result: SwingResult, keyFrames: [UIImage], sourceName: String, club: String?) -> SwingRecord {
+    func add(result: SwingResult, keyFrames: [UIImage], sourceName: String, club: String?,
+             practiceId: Int? = nil) -> SwingRecord {
         let id = UUID()
         let names = keyFrames.enumerated().compactMap { index, image -> String? in
             let name = "\(id.uuidString)-\(index).jpg"
@@ -63,7 +66,7 @@ final class HistoryStore: ObservableObject {
             return name
         }
         let record = SwingRecord(id: id, date: Date(), club: club, label: nil, sourceName: sourceName,
-                                 result: result, keyFrames: names, coach: nil)
+                                 result: result, keyFrames: names, coach: nil, practiceId: practiceId)
         records.insert(record, at: 0)
         save()
         return record
@@ -86,6 +89,15 @@ final class HistoryStore: ObservableObject {
         records[i].club = club
         records[i].label = label
         save()
+    }
+
+    /// Every swing and every picture of one, gone.
+    func eraseAll() {
+        for record in records {
+            for name in record.keyFrames { try? FileManager.default.removeItem(at: folder.appendingPathComponent(name)) }
+        }
+        records = []
+        try? FileManager.default.removeItem(at: index)
     }
 
     func delete(_ id: UUID) {

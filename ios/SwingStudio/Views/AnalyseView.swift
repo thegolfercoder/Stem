@@ -23,6 +23,8 @@ struct PickedMovie: Transferable {
 struct AnalyseView: View {
     @EnvironmentObject private var history: HistoryStore
     @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var practice: PracticeStore
+    @State private var forPlan = true
     @State private var picked: PhotosPickerItem?
     @State private var importing = false
     @State private var club = ""
@@ -58,6 +60,12 @@ struct AnalyseView: View {
 
                     TextField("Club (optional), e.g. 7 iron", text: $club)
                         .textFieldStyle(.roundedBorder)
+
+                    if let plan = practice.log.activePlan {
+                        Toggle("Count the next clip as a retest swing for your plan: "
+                               + (practice.rules?.drill(id: plan.drillId)?.title ?? plan.focus), isOn: $forPlan)
+                            .font(.footnote)
+                    }
 
                     if working {
                         VStack(alignment: .leading, spacing: 8) {
@@ -140,12 +148,19 @@ struct AnalyseView: View {
                     Task { @MainActor in status = text; fraction = value }
                 }
             }.value
+            let trimmed = club.trimmingCharacters(in: .whitespaces)
+            let clubName = trimmed.isEmpty ? nil : trimmed
+            // Every clip goes into the practice log, refusals too: they are what the
+            // capture priority is made from. Numbers only; never the video.
+            let countsForPlan = practice.log.activePlan != nil && forPlan
             switch outcome.verdict {
             case .swing(let result):
-                let clubName = club.trimmingCharacters(in: .whitespaces)
+                let practiceId = practice.record(
+                    .analysed(result, sequence: outcome.sequence, club: clubName), forPlan: countsForPlan)
                 opened = history.add(result: result, keyFrames: outcome.keyFrames, sourceName: name,
-                                     club: clubName.isEmpty ? nil : clubName)
+                                     club: clubName, practiceId: practiceId)
             case .refused(let reason, let advice, _):
+                practice.record(.refused(reason, detectionRate: nil, club: clubName), forPlan: countsForPlan)
                 refusal = (reason, advice)
             }
         } catch {

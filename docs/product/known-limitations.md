@@ -40,7 +40,10 @@ fixed, it moves to the changelog with the measurement that shows it.
     what its own swings could resolve; no study of within-golfer repeatability exists.
 13. **Priorities are limited to what has a reference.** Only tempo has one (tour
     readings); for everything else the golfer chooses the focus and the app measures it.
-14. **Desktop only.** The practice loop is not in the browser or iPhone apps.
+14. **The browser keeps its practice log in the browser.** Clearing site data, a
+    private window, or another browser starts from nothing, and nothing moves between
+    the desktop, the browser and the iPhone. The iPhone's practice screen builds in CI
+    but has not been run on a phone.
 
 ## Product
 

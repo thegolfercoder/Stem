@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from swingml.analysis import AnalysisConfig, load_model, model_fingerprint
 from swingml.assets import find_event_calibrations, find_event_ensemble, find_event_model
 from swingml.features import FeatureConfig, feature_layout
+from swingml.insights.payload import practice_payload
 from swingml.model.calibration import load_calibration
 from swingml.model.ensemble import SERVING_TIME_WARPS, EnsembleConfig, SwingEventEnsemble
 from swingml.model.tcn import SwingEventNet
@@ -132,6 +133,8 @@ def main() -> None:
             # as analyse_pose_sequence does (metrics.js readAtSpeeds).
             "slow_motion_factors": list(analysis.slow_motion_factors),
         },
+        # The practice loop's drills, reference and tolerances (webapp/practice.js).
+        "practice": practice_payload(),
         "source_model": str(paths[0]),
         "source_models": [str(path) for path in paths],
         "time_warps": list(warps),

@@ -159,7 +159,7 @@ def main() -> None:
 
     html = (args.source / "index.html").read_text(encoding="utf-8")
     for token, name in zip(
-        ("/*__ENGINE__*/", "/*__MODEL__*/", "/*__METRICS__*/", "/*__APP__*/"),
+        ("/*__ENGINE__*/", "/*__MODEL__*/", "/*__METRICS__*/", "/*__PRACTICE__*/", "/*__APP__*/"),
         MODULES,
         strict=True,
     ):

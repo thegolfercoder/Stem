@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-MODULES = ("engine.js", "model.js", "metrics.js", "app.js")
+MODULES = ("engine.js", "model.js", "metrics.js", "practice.js", "app.js")
 
 EXPORT_PATTERN = re.compile(
     r"^export\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)",
@@ -87,7 +87,7 @@ def main() -> None:
 
     html = (args.source / "index.html").read_text(encoding="utf-8")
     for token, name in zip(
-        ("/*__ENGINE__*/", "/*__MODEL__*/", "/*__METRICS__*/", "/*__APP__*/"),
+        ("/*__ENGINE__*/", "/*__MODEL__*/", "/*__METRICS__*/", "/*__PRACTICE__*/", "/*__APP__*/"),
         MODULES,
         strict=True,
     ):

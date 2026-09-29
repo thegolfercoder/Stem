@@ -13,6 +13,7 @@ import { PoseSequence, resamplePose, extractFeatures, normalisePose,
          BONES, EVENT_NAMES, CLUB_DEFINED, L } from "./engine.js";
 import { SwingEventModel, decodeEvents, errorBand } from "./model.js";
 import { computeMetrics, implausible, readAtSpeeds, slowedMetrics, slowedReason } from "./metrics.js";
+import { PracticeLog, cameraSignature, formatG3, storedMetrics } from "./practice.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 const POSE_MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/" +
@@ -1709,7 +1710,11 @@ async function analyse(file) {
     await new Promise((r) => setTimeout(r, 30));
     run.stage("modelled");
     state.handednessFrom = verdict.handednessFrom;
-    if (!verdict.ok) return refuse(verdict.reason, verdict.advice);
+    if (!verdict.ok) {
+      recordSwing({ ok: false, refusal: verdict.reason, detection_rate: verdict.detectionRate,
+                    handedness: null, camera: null, metrics: null, slowed_by: null });
+      return refuse(verdict.reason, verdict.advice);
+    }
     const { resampled, grid, decoded, handedness, metrics, detectionRate, slowedBy } = verdict;
     if (slowedBy) run.note({ slowedBy });
 
@@ -1720,6 +1725,7 @@ async function analyse(file) {
     stage(3);
     status("Drawing the key frames", "");
     await renderFrames(sequence, decoded, metrics, detectionRate);
+    recordSwing(analysedRecord());
     run.end({
       outcome: "analysed",
       tempo: metrics.tempoRatio === null ? null : Number(metrics.tempoRatio.toFixed(3)),
@@ -1741,6 +1747,7 @@ async function analyse(file) {
 /* Let go of the previous clip's video. It is kept while its results are on screen,
  * because correcting a position means showing frames from it again. */
 function releaseClip() {
+  show("practice", false);
   if (coach.ctl) coach.ctl.abort();
   show("coach-section", false);
   if (state.clip && state.clip.url) URL.revokeObjectURL(state.clip.url);
@@ -2284,6 +2291,11 @@ async function apply(next, e) {
     saveRun(state.run);
   }
   await renderFrames(analysis.sequence, next, analysis.metrics, analysis.detectionRate, true);
+  // A position moved by hand changes the numbers kept for the practice loop too.
+  if (analysis.logId && state.log) {
+    state.log.update(analysis.logId, analysedRecord());
+    renderPractice(analysis.logId);
+  }
   return null;
 }
 
@@ -2350,6 +2362,199 @@ function wireLightbox() {
 }
 
 
+/* ---- The practice loop: one priority, one drill, a retest, a verdict. ----
+ *
+ * The rules are in practice.js, held to the desktop's by tests. What is kept is
+ * the numbers of each clip, in this browser's own storage, never the clip. */
+
+const escapeHtml = (text) => String(text).replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+function browserStorage() {
+  // Reading localStorage throws where site data is blocked; the page still works.
+  try { return window.localStorage; } catch (error) { return null; }
+}
+
+function analysedRecord() {
+  const a = state.analysis;
+  const address = nearestFrame(a.sequence, a.metrics.eventTimes[0]);
+  return {
+    ok: true, refusal: null, detection_rate: a.detectionRate, handedness: a.handedness,
+    camera: cameraSignature(a.sequence, address),
+    metrics: storedMetrics(a.metrics, a.detectionRate),
+    slowed_by: a.slowedBy || null,
+    positions_set_by_you: a.userSet.size,
+  };
+}
+
+function recordSwing(record) {
+  if (!state.log) return;
+  const club = el("club").value.trim().slice(0, 40) || null;
+  const forPlan = Boolean(state.log.activePlan()) && el("for-plan").checked;
+  const swing = state.log.add({ ...record, club }, forPlan);
+  if (record.ok && state.analysis) state.analysis.logId = swing.id;
+  renderPractice(swing.id);
+}
+
+const VERDICT_TITLES = {
+  improved: "Yes: it moved the way the drill aims",
+  worsened: "It moved, the opposite way to the drill",
+  no_detectable_change: "No change the swings can show yet",
+  not_comparable: "These swings cannot be compared",
+  not_enough_swings: "Not enough swings to tell yet",
+};
+
+const METRIC_NAMES = {
+  tempo_ratio: "tempo", head_movement: "head movement", pelvis_sway: "pelvis sway",
+  shoulder_turn_foreshortened: "shoulder turn", detection_rate: "body found",
+};
+
+const signed = (x) => (x >= 0 ? "+" : "") + formatG3(x);
+const reading = (x) => (x === null || x === undefined ? "no reading"
+  : Math.abs(x) >= 1 ? x.toFixed(2) : x.toFixed(3));
+
+function drillMarkup(drill) {
+  return `<p class="eyebrow">The drill</p><h3>${escapeHtml(drill.title)}</h3>
+    <ol>${drill.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol>
+    <p><b>${escapeHtml(drill.reps)}.</b> ${escapeHtml(drill.what_counts)}</p>`;
+}
+
+function planMarkup(plan) {
+  const rules = state.payload.practice;
+  const log = state.log;
+  const drill = rules.drills.find((d) => d.id === plan.drill_id);
+  const name = drill ? drill.title : plan.focus;
+  const values = (ids) => ids.map((id) => log.get(id)).filter(Boolean).map((s) =>
+    `<li>Swing ${s.id}: <b>${s.ok ? reading(s.metrics && s.metrics[plan.metric]) : "refused"}</b></li>`).join("");
+  let verdict;
+  if (drill && drill.focus === "capture") {
+    const progress = log.captureProgress(plan);
+    const done = progress.clean_in_a_row >= 3;
+    verdict = `<div class="practice-card ${done ? "v-improved" : ""}">
+      <p class="eyebrow">Is it working?</p>
+      <h3>${done ? "Done: three clean recordings in a row"
+        : `${progress.clean_in_a_row} of 3 clean recordings in a row`}</h3>
+      <p>${progress.recorded} retest swing(s) recorded for this plan.</p></div>`;
+  } else {
+    const change = log.planChange(rules, plan);
+    const numbers = change.difference === null ? "" : `<div class="metric-grid">
+        ${card(`Before (${change.n_before} swings)`, reading(change.mean_before), "", "", "derived")}
+        ${card(`After (${change.n_after} swings)`, reading(change.mean_after), "", "", "derived")}
+        ${card("Change, 95% interval", signed(change.difference), "", "", "derived",
+               `<div class="metric-range">${signed(change.interval[0])} to ${signed(change.interval[1])}</div>`)}
+      </div>`;
+    const notes = [
+      ...change.comparability.blocking.map((b) => `<li class="blocking">${escapeHtml(b)}</li>`),
+      ...change.comparability.warnings.map((w) => `<li>${escapeHtml(w)}</li>`),
+    ].join("");
+    verdict = `<div class="practice-card v-${change.verdict}">
+      <p class="eyebrow">Is it working?</p>
+      <h3>${VERDICT_TITLES[change.verdict]}</h3>
+      <p>${escapeHtml(change.explanation)}</p>${numbers}
+      ${notes ? `<ul>${notes}</ul>` : ""}</div>`;
+  }
+  return `<div class="practice-card">
+      <p class="eyebrow">Your plan, started ${escapeHtml(plan.created_at.slice(0, 10))}${plan.club ? ` &middot; ${escapeHtml(plan.club)}` : ""}</p>
+      <h3>${escapeHtml(name)}</h3>
+      <p>Measured by ${METRIC_NAMES[plan.metric] || escapeHtml(plan.metric)}, aiming to ${plan.direction} it.
+        Analyse clips with the box above ticked to add retest swings.</p>
+      ${plan.baseline.length ? `<p class="eyebrow">Before the drill</p><ul class="evidence">${values(plan.baseline)}</ul>` : ""}
+      ${plan.retest.length ? `<p class="eyebrow">Retest swings</p><ul class="evidence">${values(plan.retest)}</ul>` : ""}
+      <div class="practice-actions">
+        <button class="btn" type="button" data-close="completed">Finish plan</button>
+        <button class="btn" type="button" data-close="abandoned">Stop</button>
+      </div>
+    </div>${verdict}${drill ? `<div class="practice-card">${drillMarkup(drill)}</div>` : ""}`;
+}
+
+function insightMarkup(insight, swingId) {
+  const evidence = insight.evidence.map((e) =>
+    `<li><span>${escapeHtml(e.label)}</span> <b>${escapeHtml(e.value)}</b>
+       <span class="prov prov-${e.provenance}">${e.provenance}</span></li>`).join("");
+  const plan = state.log.activePlan();
+  const start = insight.drill && !plan
+    ? `<button class="btn btn-primary" type="button" data-focus="${insight.drill.focus}">
+         Start this drill as a plan</button>` : "";
+  const choices = insight.choices.length && !plan
+    ? `<p class="eyebrow">Choose a focus</p><div class="practice-actions">${insight.choices.map(([focus, label]) =>
+        `<button class="btn" type="button" data-focus="${focus}">${escapeHtml(label)}</button>`).join("")}</div>` : "";
+  return `<div class="practice-card">
+      <p class="eyebrow">The priority after swing ${swingId}
+        <span class="confidence">&middot; confidence: ${insight.confidence}</span></p>
+      <h3>${escapeHtml(insight.title)}</h3>
+      <p>${escapeHtml(insight.summary)}</p>
+      ${evidence ? `<ul class="evidence">${evidence}</ul>` : ""}
+      ${insight.drill ? drillMarkup(insight.drill) : ""}
+      <p><b>Retest:</b> ${escapeHtml(insight.retest)} <b>What counts:</b> ${escapeHtml(insight.success)}</p>
+      ${insight.limitations.length ? `<p class="eyebrow">What this cannot tell</p>
+        <ul>${insight.limitations.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul>` : ""}
+      ${start || choices ? `<div class="practice-actions">${start}</div>${choices}` : ""}
+    </div>`;
+}
+
+function renderPractice(swingId) {
+  const log = state.log;
+  const rules = state.payload.practice;
+  if (!log || !rules) return;
+  state.practiceSwing = swingId;
+  const plan = log.activePlan();
+  el("plan-panel").innerHTML = plan ? planMarkup(plan) : "";
+  el("priority-panel").innerHTML = swingId ? insightMarkup(log.insightFor(rules, swingId), swingId) : "";
+  const kept = log.swings.length;
+  el("practice-data").innerHTML = log.available
+    ? `<span>${kept} clip${kept === 1 ? "" : "s"} kept in this browser, numbers only.</span>
+       <button class="btn" type="button" id="practice-export">Export</button>
+       <button class="btn" type="button" id="practice-erase">Erase everything</button>`
+    : "<span>This browser is not letting the page keep anything, so each clip is judged " +
+      "on its own and no plan can be kept. A private window or blocked site data does this.</span>";
+  refreshPracticeOptions();
+  show("practice", Boolean(swingId || plan));
+}
+
+function refreshPracticeOptions() {
+  const log = state.log;
+  if (!log) return;
+  el("club-list").innerHTML = log.clubs().map((c) => `<option value="${escapeHtml(c)}">`).join("");
+  const plan = log.activePlan();
+  const drill = plan && state.payload.practice.drills.find((d) => d.id === plan.drill_id);
+  el("for-plan-box").hidden = !plan;
+  el("for-plan-name").textContent = drill ? drill.title : "";
+}
+
+function wirePractice() {
+  state.log = new PracticeLog(browserStorage());
+  refreshPracticeOptions();
+  el("practice").addEventListener("click", (event) => {
+    const log = state.log;
+    const rules = state.payload.practice;
+    const focus = event.target.closest("[data-focus]");
+    const close = event.target.closest("[data-close]");
+    if (focus) {
+      log.startPlan(rules, focus.dataset.focus, state.practiceSwing);
+      el("for-plan").checked = true;
+    } else if (close) {
+      log.closePlan(close.dataset.close);
+    } else if (event.target.id === "practice-export") {
+      const blob = new Blob([JSON.stringify(log.exportAll(), null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "swing-practice.json";
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      return;
+    } else if (event.target.id === "practice-erase") {
+      const typed = window.prompt("This deletes every kept swing and plan from this browser. Type ERASE to confirm.");
+      if (typed !== "ERASE") return;
+      log.eraseAll();
+      state.practiceSwing = null;
+      if (state.analysis) state.analysis.logId = null;
+    } else {
+      return;
+    }
+    renderPractice(state.practiceSwing);
+  });
+}
+
 export function boot(payload) {
   state.payload = payload;
   connectReports();
@@ -2360,6 +2565,7 @@ export function boot(payload) {
   state.net = new SwingEventModel(payload);
   state.handedness = "auto";
   wireLightbox();
+  if (payload.practice) wirePractice();
 
   const input = el("file");
   const pick = () => input.click();

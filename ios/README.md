@@ -58,10 +58,10 @@ any sentence about club face, path, plane, spin or distance before you see it.
 
 | Part | What it is |
 | --- | --- |
-| `SwingCore/` | The analysis in plain Swift: features, the swing event network, the ordered decoder, measurements, error bands, handedness detection, the long-clip scan, and the coach's prompts and guard. No Apple-only frameworks, so `swift test` runs on Linux too. |
-| `SwingCore/Tests` | Holds the Swift code to the browser engine's answers on a real swing (and through them to the Python pipeline): features to 1e-5, network scores, positions, every measurement. `make_golden.py` regenerates the reference after a model change. |
+| `SwingCore/` | The analysis in plain Swift: features, the swing event network, the ordered decoder, measurements, error bands, handedness detection, the long-clip scan, the slow-motion retry, the practice loop's rules and log (`Practice.swift`), and the coach's prompts and guard. No Apple-only frameworks, so `swift test` runs on Linux too. |
+| `SwingCore/Tests` | Holds the Swift code to the browser engine's answers on a real swing (and through them to the Python pipeline): features to 1e-5, network scores, positions, every measurement. `make_golden.py` regenerates the reference after a model change. `PracticeTests` holds the practice rules to answers the Python gave for the same swings; `make_practice_golden.py` regenerates them. |
 | `SwingStudio/Pipeline` | AVFoundation reads every frame (H.264, HEVC, HDR, slow motion) the right way up; MediaPipe's pose landmarker tracks the body; the same orientation probe and candidate-stretch search as the web app. |
-| `SwingStudio/Views` | Analyse, the swing (tempo, eight positions, measurements, coach), history with a tempo chart, the coach chat, settings. |
+| `SwingStudio/Views` | Analyse, the swing (tempo, the priority after it, eight positions, measurements, coach), Practice (priority, drill, plan, retest verdict, export and erase), history with a tempo chart, the coach chat, settings. |
 
 The model file (`SwingCore/Sources/SwingCore/Resources/model.json`) is the same
 export the browser app carries, with its measured error bands.

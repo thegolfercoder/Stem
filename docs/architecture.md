@@ -51,10 +51,15 @@ cancellation, retry, a persistent queue, resumable tracking of long clips.
 
 | Port | Engine | Held to Python by |
 |---|---|---|
-| Browser (`swingml/webapp/`) | JS: `engine.js`, `model.js`, `metrics.js` | 22 parity tests on the real fixture (`test_browser_parity.py`), run in CI |
-| iPhone (`ios/SwingCore`) | Swift | 12 `swift test` cases against the browser engine's outputs (`make_golden.py`) |
+| Browser (`swingml/webapp/`) | JS: `engine.js`, `model.js`, `metrics.js`, `practice.js` | 22 parity tests on the real fixture (`test_browser_parity.py`), 5 on a slowed copy of it (`test_browser_slow_motion.py`), and 6 on the practice rules against `swingml/insights` over 400 generated swing histories and 400 before/after sets (`test_browser_practice.py`), run in CI |
+| iPhone (`ios/SwingCore`) | Swift, `Practice.swift` for the practice loop | `swift test`: the analysis against the browser engine's outputs (`make_golden.py`), the slow-motion read, and the practice rules against answers the Python produced (`make_practice_golden.py`; `test_ios_practice_golden.py` fails when that file is stale) |
 
-The practice loop and the slow-motion retry exist only in Python so far.
+All three engines run the slow-motion retry and the practice loop. The loop's
+inputs (drills, the tour tempo reference, the comparability tolerances, the t
+table) are not ported: they ship in the exported payload's `practice` section from
+`swingml/insights/payload.py`, so a drill or a threshold changes in one place. The
+browser keeps its practice log in the browser's own storage and the iPhone app in
+its own folder: numbers only, never the clip.
 
 ## Model release
 

@@ -1,9 +1,9 @@
 # User journeys
 
 The loop the product is built around, step by step, with what exists and what does
-not. Platform: the desktop app (Swing Studio), which is the only one with the whole
-loop. The browser app and the iPhone app analyse and keep history; neither has the
-practice loop yet.
+not. Platform: the desktop app (Swing Studio). The browser app and the iPhone app run
+the same practice loop (priority, drill, retest, verdict) under the same rules, held to
+the desktop's by tests; they have no capture preflight, event log or feedback form.
 
 ## 1. First swing
 
@@ -61,5 +61,4 @@ counts the app keeps are shown on the same page.
 |---|---|
 | Share a swing with a coach; coach annotates, assigns a drill, revokes access | Needs accounts, sync and permissions |
 | History across devices | Needs sync |
-| Practice loop on iPhone and in the browser | Port `insights/` to Swift and JS |
 | Live capture guidance in the camera | Needs the capture flow on the phone, not an upload |
