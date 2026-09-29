@@ -128,6 +128,9 @@ def main() -> None:
             "plausible_backswing_s": list(analysis.plausible_backswing_s),
             "plausible_downswing_s": list(analysis.plausible_downswing_s),
             "plausible_tempo": list(analysis.plausible_tempo),
+            # The browser retries a refused clip as slow motion at these speeds,
+            # as analyse_pose_sequence does (metrics.js readAtSpeeds).
+            "slow_motion_factors": list(analysis.slow_motion_factors),
         },
         "source_model": str(paths[0]),
         "source_models": [str(path) for path in paths],

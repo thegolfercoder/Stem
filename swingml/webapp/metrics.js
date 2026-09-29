@@ -8,7 +8,7 @@
  * was measured failing badly enough to be refused outright.
  */
 
-import { L, SWING_LANDMARKS, normalisePose, bodyScale, bodyAxisAngle } from "./engine.js";
+import { L, SWING_LANDMARKS, PoseSequence, normalisePose, bodyScale, bodyAxisAngle } from "./engine.js";
 
 const mid = (frame, a, b) => [
   0.5 * (frame[a][0] + frame[b][0]),
@@ -153,6 +153,69 @@ export function computeMetrics(sequence, events, handedness, config) {
     pelvisLift: lift,
     feetInShot: haveFeet,
   };
+}
+
+/* Slow motion, exactly as swingml.analysis.analyse_pose_sequence handles it.
+ *
+ * A phone's slow-motion export plays a swing four or eight times slower than it
+ * happened. Read at playback speed the backswing lasts three seconds, which the
+ * plausibility gate rightly refuses, and the model is unsure of a swing moving
+ * that slowly. Of 82 slow-motion replays in the real test set the Python side
+ * refused 71 before it retried them; read as if played 2, 4 or 8 times faster,
+ * all 82 decode. The factor is a guess the video cannot confirm, so every
+ * duration that depends on it is refused and the tempo ratio - which a uniform
+ * slow-down leaves unchanged - carries that assumption. */
+export const SLOWED_ASSUMPTION =
+  "slow motion: assumes the whole swing was slowed by the same factor. A phone's " +
+  "slow-motion clip ramps speed at its start and end; if the swing crosses a ramp " +
+  "this ratio is wrong";
+
+export const slowedReason = (factor) =>
+  `the clip reads as a swing only when treated as slow motion played back about ` +
+  `${factor.toFixed(0)} times slower, and how much slower it really was cannot be known ` +
+  `from the video, so no duration is reported. Film at normal speed for timings`;
+
+const CORE_EVENTS = [0, 3, 4, 5];
+
+/* Metrics read at a guessed speed, with everything that depends on the guess refused.
+ * Event times go back onto the clip's own timeline. */
+export function slowedMetrics(metrics, factor) {
+  return {
+    ...metrics,
+    eventTimes: metrics.eventTimes.map((t) => t * factor),
+    backswingMs: null,
+    downswingMs: null,
+    wholeMs: null,
+    peakHandSpeedMs: null,
+    tempoAssumptions: [SLOWED_ASSUMPTION],
+    slowedBy: factor,
+  };
+}
+
+/* `attempt(sequence)` reads one pose sequence at its own timestamps and returns
+ * `{ok, refusedBy, decoded, metrics, ...}`, where `refusedBy` is "events" when the
+ * decoder or the plausibility gate refused it. Only an events refusal is retried:
+ * a clip with no body in it is not a swing at any speed. Of the factors that
+ * decode, the one with the most confident core events is kept. */
+export function readAtSpeeds(sequence, attempt, factors) {
+  const first = attempt(sequence);
+  if (first.ok || first.refusedBy !== "events") return { ...first, slowedBy: null };
+  let best = null;
+  for (const factor of factors || []) {
+    const faster = new PoseSequence(
+      sequence.xy, sequence.visibility, sequence.world, sequence.detected,
+      Array.from(sequence.times, (t) => t / factor), sequence.width, sequence.height,
+    );
+    const got = attempt(faster);
+    if (!got.ok) continue;
+    const c = got.decoded.confidence;
+    const core = Math.exp(
+      CORE_EVENTS.reduce((sum, i) => sum + Math.log(Math.max(c[i], 1e-12)), 0) / CORE_EVENTS.length,
+    );
+    if (!best || core > best.core) best = { core, factor, got };
+  }
+  if (!best) return { ...first, slowedBy: null };
+  return { ...best.got, slowedBy: best.factor, metrics: slowedMetrics(best.got.metrics, best.factor) };
 }
 
 /* Whether what was found is shaped like a golf swing at all.

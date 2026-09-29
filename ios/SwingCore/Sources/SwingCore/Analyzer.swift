@@ -60,17 +60,50 @@ public final class SwingAnalyzer {
     }
 
     /// Analyse a tracked clip. `handedness` nil means work it out.
+    ///
+    /// A clip refused for its events is read again as slow motion, as if played 2, 4
+    /// or 8 times faster, exactly as `analyse_pose_sequence` (Python) and
+    /// `readAtSpeeds` (browser) do: a phone's slow-motion export otherwise reads as a
+    /// three-second backswing and is refused. Of the speeds that decode, the one
+    /// with the most confident core events is kept, and every duration is then
+    /// withheld (`SwingMetrics.slowedBy`), because the real speed-up is unknown.
     public func analyse(_ sequence: PoseSequence, handedness: Handedness? = nil) -> Verdict {
+        let (first, eventsRefused) = analyseAtRecordedSpeed(sequence, handedness: handedness)
+        if first.result != nil || !eventsRefused { return first }
+        var best: (core: Double, factor: Double, result: SwingResult)?
+        for factor in payload.thresholds.slowMotionFactors {
+            var faster = sequence
+            faster.times = sequence.times.map { $0 / factor }
+            guard let result = analyseAtRecordedSpeed(faster, handedness: handedness).verdict.result else {
+                continue
+            }
+            let core = exp([0, 3, 4, 5].map { log(max(result.confidence[$0], 1e-12)) }.reduce(0, +) / 4)
+            if best == nil || core > best!.core { best = (core, factor, result) }
+        }
+        guard let chosen = best else { return first }
+        var result = chosen.result
+        result.metrics.eventTimes = result.metrics.eventTimes.map { $0 * chosen.factor }
+        result.metrics.slowedBy = chosen.factor
+        result.grid = result.grid.map { $0 * chosen.factor }
+        return .swing(result)
+    }
+
+    /// One read at the clip's own timestamps. `eventsRefused` is true when the
+    /// decoder or the timing gate refused it: the only refusal worth retrying as
+    /// slow motion, since a clip with no body in it is not a swing at any speed.
+    private func analyseAtRecordedSpeed(_ sequence: PoseSequence, handedness: Handedness?)
+        -> (verdict: Verdict, eventsRefused: Bool)
+    {
         let config = payload.features, thresholds = payload.thresholds
         let resampled = resamplePose(sequence, rateHz: config.canonicalRateHz)
         let detectionRate = Double(resampled.detected.filter { $0 }.count) / Double(max(1, resampled.count))
         if detectionRate < thresholds.minDetectionRate {
-            return .refused(
+            return (.refused(
                 reason: String(format: "a body was found in only %.0f percent of frames, below the %.0f "
                     + "percent a swing needs", detectionRate * 100, thresholds.minDetectionRate * 100),
                 advice: "Make sure the golfer is fully in shot for the whole clip and reasonably well lit. "
                     + "Standing further back so the whole body fits beats filling the frame and losing the feet.",
-                score: detectionRate - 1)
+                score: detectionRate - 1), false)
         }
 
         // Handedness reaches only a few inputs, so a first pass either way finds the
@@ -97,26 +130,26 @@ public final class SwingAnalyzer {
         }
         guard let events = decoded.events else {
             if case .refused(let reason, let mean) = decoded {
-                return .refused(
+                return (.refused(
                     reason: reason,
                     advice: "This is most often a clip that stops before the finish, or one filmed from behind "
                         + "the golfer where the body hides itself. Face on, square to the target line, is what "
                         + "it handles best.",
-                    score: mean ?? 0)
+                    score: mean ?? 0), true)
             }
-            return .refused(reason: "no swing found", advice: "", score: 0)
+            return (.refused(reason: "no swing found", advice: "", score: 0), true)
         }
         let metrics = computeMetrics(resampled, events, config: config)
         if let problem = implausible(metrics, thresholds) {
-            return .refused(reason: problem,
-                            advice: "The clip probably does not contain a whole swing. Start recording before "
-                                + "the takeaway and keep going until the finish is held.",
-                            score: 0.5 * events.meanConfidence)
+            return (.refused(reason: problem,
+                             advice: "The clip probably does not contain a whole swing. Start recording before "
+                                 + "the takeaway and keep going until the finish is held.",
+                             score: 0.5 * events.meanConfidence), true)
         }
-        return .swing(SwingResult(
+        return (.swing(SwingResult(
             handedness: hand, handednessFrom: from, frames: events.frames, subframe: events.subframe,
             confidence: events.confidence, meanConfidence: events.meanConfidence, metrics: metrics,
-            detectionRate: detectionRate, grid: resampled.times))
+            detectionRate: detectionRate, grid: resampled.times)), false)
     }
 
     public func band(event: Int, confidence: Double) -> ErrorBand? {

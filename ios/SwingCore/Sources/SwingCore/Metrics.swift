@@ -19,7 +19,20 @@ public struct SwingMetrics: Codable, Equatable {
     public var pelvisSway: Double?
     public var pelvisLift: Double?
     public var feetInShot: Bool
+    /// Set when the clip only read as a swing treated as slow motion, played about
+    /// this many times slower. Every duration above was then measured against a
+    /// guessed clock and must not be shown (`hasDurations`); the tempo ratio, which
+    /// an even slow-down leaves unchanged, stands with that assumption.
+    public var slowedBy: Double? = nil
+
+    /// Whether the millisecond values mean anything: false for a slow-motion read.
+    public var hasDurations: Bool { slowedBy == nil }
 }
+
+/// Mirrors SLOWED_ASSUMPTION in the Python and browser engines.
+public let slowedAssumption =
+    "slow motion: assumes the whole swing was slowed by the same factor. A phone's slow-motion clip "
+    + "ramps speed at its start and end; if the swing crosses a ramp this ratio is wrong"
 
 func percentile(_ values: [Double], _ p: Double) -> Double {
     if values.isEmpty { return .nan }

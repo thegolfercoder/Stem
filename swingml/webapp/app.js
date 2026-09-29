@@ -12,7 +12,7 @@
 import { PoseSequence, resamplePose, extractFeatures, normalisePose,
          BONES, EVENT_NAMES, CLUB_DEFINED, L } from "./engine.js";
 import { SwingEventModel, decodeEvents, errorBand } from "./model.js";
-import { computeMetrics, implausible } from "./metrics.js";
+import { computeMetrics, implausible, readAtSpeeds, slowedMetrics, slowedReason } from "./metrics.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 const POSE_MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/" +
@@ -295,8 +295,14 @@ function coachPrompt(withImage) {
   lines.push(`Golfer: ${a.handedness}-handed (${state.handednessFrom === "detected" ? "detected from the pose" : state.handednessFrom === "assumed" ? "assumed" : "set by the user"}).`);
   lines.push(`Tempo, backswing time divided by downswing time: ${m.tempoRatio.toFixed(2)}` +
     (band ? ` (measured 80% error range about +/-${Math.round(100 * band.half_width_fraction)}%)` : "") + ".");
-  lines.push(`Backswing ${Math.round(m.backswingMs)} ms, downswing ${Math.round(m.downswingMs)} ms. The finish cannot be timed reliably from one camera, so there is no follow-through or whole-swing time.`);
-  lines.push(`Hands fastest ${Math.round(m.peakHandSpeedMs)} ms relative to impact (negative is before).`);
+  if (m.slowedBy) {
+    // The coach is given the refusal, not a number: a duration from a guessed
+    // playback speed is one it would repeat as fact.
+    lines.push(`This clip is slow motion (read as about ${m.slowedBy.toFixed(0)} times slower); ${slowedReason(m.slowedBy)}. The tempo ratio assumes the whole swing was slowed evenly. Do not state or estimate any duration.`);
+  } else {
+    lines.push(`Backswing ${Math.round(m.backswingMs)} ms, downswing ${Math.round(m.downswingMs)} ms. The finish cannot be timed reliably from one camera, so there is no follow-through or whole-swing time.`);
+    lines.push(`Hands fastest ${Math.round(m.peakHandSpeedMs)} ms relative to impact (negative is before).`);
+  }
   if (m.shoulderTurnDeg !== null) lines.push(`Shoulder turn at the top, from 2D foreshortening only: about ${m.shoulderTurnDeg.toFixed(0)} degrees.`);
   if (m.hipTurnDeg !== null) lines.push(`Hip turn at the top, same method: about ${m.hipTurnDeg.toFixed(0)} degrees.`);
   if (m.feetInShot) {
@@ -1537,12 +1543,15 @@ async function analyse(file) {
     const thresholds = state.payload.thresholds;
     state.diag = { attempts: [] };
 
-    /* What the model makes of one tracked stretch: a verdict, never a throw. */
-    const judge = (sequence) => {
+    /* What the model makes of one tracked stretch at its own timestamps: a verdict,
+     * never a throw. `refusedBy` says which layer refused, so only a refusal of
+     * the events is retried as slow motion. */
+    const attemptAt = (sequence) => {
       const { sequence: resampled, grid } = resamplePose(sequence, config.canonical_rate_hz);
       const detectionRate =
         resampled.detected.reduce((a, b) => a + (b ? 1 : 0), 0) / Math.max(1, resampled.n);
-      const verdict = { resampled, grid, detectionRate, ok: false, score: detectionRate - 1 };
+      const verdict = { resampled, grid, detectionRate, ok: false, score: detectionRate - 1,
+                        refusedBy: "detection" };
       if (detectionRate < thresholds.min_detection_rate) {
         verdict.reason =
           `a body was found in only ${Math.round(detectionRate * 100)} percent of frames, ` +
@@ -1588,7 +1597,7 @@ async function analyse(file) {
           }
         }
       }
-      Object.assign(verdict, { decoded, handedness, handednessFrom });
+      Object.assign(verdict, { decoded, handedness, handednessFrom, refusedBy: "events" });
       if (!decoded.ok) {
         verdict.score = decoded.meanConfidence || 0;
         verdict.reason = decoded.reason;
@@ -1610,9 +1619,14 @@ async function analyse(file) {
         return verdict;
       }
       verdict.ok = true;
+      verdict.refusedBy = null;
       verdict.score = 1 + decoded.meanConfidence;
       return verdict;
     };
+    // A slow-motion export is refused at playback speed; read as if played 2, 4
+    // or 8 times faster it is the same swing (see readAtSpeeds in metrics.js).
+    const judge = (sequence) =>
+      readAtSpeeds(sequence, attemptAt, thresholds.slow_motion_factors || [2, 4, 8]);
 
     // A short clip is tracked whole. A long one is scanned for the stretches that
     // look most like a swing, and each is tracked and put to the model in turn
@@ -1696,10 +1710,12 @@ async function analyse(file) {
     run.stage("modelled");
     state.handednessFrom = verdict.handednessFrom;
     if (!verdict.ok) return refuse(verdict.reason, verdict.advice);
-    const { resampled, grid, decoded, handedness, metrics, detectionRate } = verdict;
+    const { resampled, grid, decoded, handedness, metrics, detectionRate, slowedBy } = verdict;
+    if (slowedBy) run.note({ slowedBy });
 
     state.analysis = { sequence, resampled, grid, decoded, metrics, detectionRate,
-                       handedness, config, model: decoded, userSet: new Set() };
+                       handedness, config, model: decoded, userSet: new Set(),
+                       slowedBy: slowedBy || null };
     progress(0.92);
     stage(3);
     status("Drawing the key frames", "");
@@ -1707,6 +1723,7 @@ async function analyse(file) {
     run.end({
       outcome: "analysed",
       tempo: metrics.tempoRatio === null ? null : Number(metrics.tempoRatio.toFixed(3)),
+      slowedBy: slowedBy || null,
       eventTimes: metrics.eventTimes.map((t) => Number(t.toFixed(3))),
       confidence: decoded.confidence.map((c) => Number(c.toFixed(3))),
     });
@@ -1906,7 +1923,7 @@ async function renderFrames(sequence, decoded, metrics, detectionRate, quiet = f
       `<span class="frame-time">${metrics.eventTimes[e].toFixed(3)} s</span>` +
       (mine
         ? `<span class="prov prov-set_by_you">set by you</span>`
-        : bandMarkup(state.payload.calibration, e, decoded.confidence[e]) +
+        : (metrics.slowedBy ? "" : bandMarkup(state.payload.calibration, e, decoded.confidence[e])) +
           `<span class="conf"><i style="width:${(decoded.confidence[e] * 100).toFixed(0)}%"></i></span>`);
     figure.appendChild(caption);
     strip.appendChild(figure);
@@ -2014,20 +2031,32 @@ function renderStory(m) {
     ratio > 3.3 ? "a longer backswing relative to the downswing than the 3 to 1 tour players are usually quoted at" :
     "a quicker backswing relative to the downswing than the 3 to 1 tour players are usually quoted at";
   const beats = [];
-  beats.push(["Address to the top",
-    `The backswing took <b>${s(m.backswingMs)} s</b>, from the last still frame at address ` +
-    `to the instant the hands changed direction.`, "measured"]);
-  beats.push(["The top to impact",
-    `The downswing took <b>${s(m.downswingMs)} s</b>. Backswing over downswing gives a tempo of ` +
-    `<b>${ratio === null ? "no reading" : ratio.toFixed(2) + " : 1"}</b>` +
-    `${tempoNote ? ", " + tempoNote : ""}.`, "derived"]);
-  const peak = Math.round(m.peakHandSpeedMs);
-  beats.push(["Speed through the ball",
-    peak === 0
-      ? `The hands were moving fastest in the impact frame itself.`
-      : `The hands were moving fastest <b>${Math.abs(peak)} ms ${peak < 0 ? "before" : "after"}</b> ` +
-        `impact. At 30 frames a second one frame is 33 ms, so read this to the nearest frame.`,
-    "measured"]);
+  if (m.slowedBy) {
+    // Only the ratio survives a guessed playback speed; say so rather than
+    // printing durations measured against a clock the clip does not have.
+    beats.push(["Address to impact",
+      `This clip only reads as a swing when treated as slow motion, played about ` +
+      `<b>${m.slowedBy.toFixed(0)} times</b> slower than it happened, so no durations are ` +
+      `given. Backswing over downswing gives a tempo of ` +
+      `<b>${ratio === null ? "no reading" : ratio.toFixed(2) + " : 1"}</b>, which assumes the ` +
+      `whole swing was slowed evenly; a phone's slow motion ramps speed at its ends.`,
+      "derived"]);
+  } else {
+    beats.push(["Address to the top",
+      `The backswing took <b>${s(m.backswingMs)} s</b>, from the last still frame at address ` +
+      `to the instant the hands changed direction.`, "measured"]);
+    beats.push(["The top to impact",
+      `The downswing took <b>${s(m.downswingMs)} s</b>. Backswing over downswing gives a tempo of ` +
+      `<b>${ratio === null ? "no reading" : ratio.toFixed(2) + " : 1"}</b>` +
+      `${tempoNote ? ", " + tempoNote : ""}.`, "derived"]);
+    const peak = Math.round(m.peakHandSpeedMs);
+    beats.push(["Speed through the ball",
+      peak === 0
+        ? `The hands were moving fastest in the impact frame itself.`
+        : `The hands were moving fastest <b>${Math.abs(peak)} ms ${peak < 0 ? "before" : "after"}</b> ` +
+          `impact. At 30 frames a second one frame is 33 ms, so read this to the nearest frame.`,
+      "measured"]);
+  }
   if (m.shoulderTurnDeg !== null && m.hipTurnDeg !== null) {
     beats.push(["The turn at the top",
       `Shoulders turned <b>${m.shoulderTurnDeg.toFixed(0)}&deg;</b> and hips ` +
@@ -2070,14 +2099,24 @@ function showMetrics(m, decoded, detectionRate, sequence) {
       ? ` \u00b7 positions set by you: ${[...state.analysis.userSet].sort().map((e) => EVENT_NAMES[e]).join(", ")}`
       : "");
 
+  // A duration read at a guessed playback speed is refused, never shown as 0.
+  const slowNote = "slow motion: how much slower cannot be known from the video";
+  const duration = (label, ms, note) => ms === null
+    ? card(label, "no reading", "", slowNote, "refused")
+    : card(label, Math.round(ms), "ms", note, "measured");
+  if (m.slowedBy) {
+    el("summary").textContent +=
+      ` · read as slow motion played about ${m.slowedBy.toFixed(0)} times slower`;
+  }
   el("tempo-cards").innerHTML =
-    card("Tempo ratio", m.tempoRatio.toFixed(2), "", "backswing ÷ downswing", "derived",
+    card("Tempo ratio", m.tempoRatio.toFixed(2), "",
+         m.slowedBy ? "backswing ÷ downswing; assumes the whole swing was slowed evenly"
+                    : "backswing ÷ downswing", "derived",
          tempoRange(state.payload.calibration, m.tempoRatio)) +
-    card("Backswing", Math.round(m.backswingMs), "ms", "address → top", "measured") +
-    card("Downswing", Math.round(m.downswingMs), "ms", "top → impact", "measured") +
+    duration("Backswing", m.backswingMs, "address → top") +
+    duration("Downswing", m.downswingMs, "top → impact") +
     card("Whole swing", "no reading", "", "the finish cannot be placed reliably from one camera", "refused") +
-    card("Peak hand speed", Math.round(m.peakHandSpeedMs), "ms",
-         "relative to impact; negative is before", "measured");
+    duration("Peak hand speed", m.peakHandSpeedMs, "relative to impact; negative is before");
 
   el("turn-cards").innerHTML =
     (m.shoulderTurnDeg === null
@@ -2204,7 +2243,9 @@ async function setPosition(e, time) {
   const analysis = state.analysis;
   const { resampled, grid, sequence } = analysis;
   const rate = analysis.config.canonical_rate_hz;
-  const position = Math.max(0, Math.min(resampled.n - 1, (time - grid[0]) * rate));
+  // A slow-motion read lives on the sped-up timeline; the clip time goes onto it.
+  const onGrid = analysis.slowedBy ? time / analysis.slowedBy : time;
+  const position = Math.max(0, Math.min(resampled.n - 1, (onGrid - grid[0]) * rate));
   const decoded = analysis.decoded;
   for (let other = 0; other < 8; other++) {
     if (other < e && decoded.subframe[other] >= position) {
@@ -2227,8 +2268,12 @@ async function setPosition(e, time) {
 async function apply(next, e) {
   const analysis = state.analysis;
   analysis.decoded = next;
-  analysis.metrics = computeMetrics(analysis.resampled, next, analysis.handedness, analysis.config);
-  const byModel = computeMetrics(analysis.resampled, analysis.model, analysis.handedness, analysis.config);
+  const measure = (events) => {
+    const m = computeMetrics(analysis.resampled, events, analysis.handedness, analysis.config);
+    return analysis.slowedBy ? slowedMetrics(m, analysis.slowedBy) : m;
+  };
+  analysis.metrics = measure(next);
+  const byModel = measure(analysis.model);
   // How far off the model was, kept with the run report: the only measure there
   // is of how it does on footage like this person's.
   if (state.run) {

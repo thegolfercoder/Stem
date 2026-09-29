@@ -126,6 +126,32 @@ final class ParityTests: XCTestCase {
         if case .swing = Self.analyzer.analyse(still) { XCTFail("found a swing in a still clip") }
     }
 
+    /// The real swing stretched to four times its length, as a phone's slow-motion
+    /// export plays it. Refused at playback speed (a three-second backswing), it has
+    /// to be read as slow motion, as the Python and browser engines do, with every
+    /// duration withheld because the real speed-up cannot be known.
+    func testASlowMotionClipIsReadAsSlowMotionWithNoDurations() {
+        var slowed = sequence
+        slowed.times = sequence.times.map { $0 * 4 }
+        let verdict = Self.analyzer.analyse(slowed, handedness: .right)
+        guard let result = verdict.result else { return XCTFail("slow motion refused: \(verdict)") }
+        guard let factor = result.metrics.slowedBy else { return XCTFail("not read as slow motion") }
+        XCTAssert(Self.analyzer.payload.thresholds.slowMotionFactors.contains(factor))
+        XCTAssertFalse(result.metrics.hasDurations)
+        // Event times are back on the clip's own, slowed, timeline.
+        XCTAssertGreaterThan(result.metrics.eventTimes[5], result.metrics.eventTimes[0])
+        XCTAssertLessThanOrEqual(result.metrics.eventTimes[7], slowed.times.last! + 1e-6)
+        XCTAssertGreaterThanOrEqual(result.metrics.eventTimes[0], slowed.times[0] - 1e-6)
+    }
+
+    func testARealTimeClipIsNotTreatedAsSlowMotion() {
+        guard let result = Self.analyzer.analyse(sequence, handedness: .right).result else {
+            return XCTFail("the real swing was refused")
+        }
+        XCTAssertNil(result.metrics.slowedBy)
+        XCTAssertTrue(result.metrics.hasDurations)
+    }
+
     func testTheScanPointsAtTheSwing() {
         // The fixture sampled six times a second, as the app scans a long clip.
         let seq = sequence

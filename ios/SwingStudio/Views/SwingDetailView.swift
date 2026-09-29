@@ -55,9 +55,17 @@ struct SwingDetailView: View {
                             tempo * (1 - band), tempo * (1 + band)))
                     .font(.footnote).foregroundStyle(Theme.faint)
             }
-            Text(String(format: "Backswing %.0f ms, downswing %.0f ms. Good players are usually quoted near 3 : 1.",
-                        m.backswingMs, m.downswingMs))
-                .font(.subheadline)
+            if let factor = m.slowedBy {
+                // Durations from a guessed playback speed are withheld, never shown.
+                Text(String(format: "Read as slow motion, about %.0f× slower than it happened. How much slower "
+                            + "can't be known from the video, so no durations are given, and the ratio assumes "
+                            + "the whole swing was slowed evenly.", factor))
+                    .font(.subheadline)
+            } else {
+                Text(String(format: "Backswing %.0f ms, downswing %.0f ms. Good players are usually quoted near 3 : 1.",
+                            m.backswingMs, m.downswingMs))
+                    .font(.subheadline)
+            }
             Text("\(record.result.handedness.rawValue.capitalized)-handed (\(record.result.handednessFrom))")
                 .font(.caption).foregroundStyle(Theme.faint)
         }
@@ -79,7 +87,8 @@ struct SwingDetailView: View {
                                 Text(event.name + (event.clubDefined ? "*" : "")).font(.caption.bold())
                                 Text(String(format: "%.3f s", record.result.metrics.eventTimes[index]))
                                     .font(.caption2.monospacedDigit()).foregroundStyle(Theme.faint)
-                                if let band = analyzer?.band(event: index, confidence: record.result.confidence[index]) {
+                                if record.result.metrics.hasDurations,
+                                   let band = analyzer?.band(event: index, confidence: record.result.confidence[index]) {
                                     Text(String(format: "±%.0f ms", band.milliseconds))
                                         .font(.caption2).foregroundStyle(Theme.faint)
                                 }
@@ -99,7 +108,9 @@ struct SwingDetailView: View {
         let m = record.result.metrics
         let cells: [(String, String, String)] = [
             ("Whole swing", "not measured", "the finish can't be timed from one camera"),
-            ("Hands fastest", String(format: "%.0f ms", m.peakHandSpeedMs), "relative to impact"),
+            m.hasDurations
+                ? ("Hands fastest", String(format: "%.0f ms", m.peakHandSpeedMs), "relative to impact")
+                : ("Hands fastest", "not measured", "slow motion: real speed unknown"),
             ("Shoulder turn", m.shoulderTurnDeg.map { String(format: "%.0f°", $0) } ?? "no reading", "from foreshortening"),
             ("Hip turn", m.hipTurnDeg.map { String(format: "%.0f°", $0) } ?? "no reading", "from foreshortening"),
             ("Head movement", m.headMovement.map { String(format: "%.3f", $0) } ?? "feet not in shot", "body lengths"),

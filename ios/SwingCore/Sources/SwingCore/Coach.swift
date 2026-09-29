@@ -85,11 +85,19 @@ public enum CoachPrompts {
             lines.append(String(format: "Tempo, backswing time over downswing time: %.2f", tempo) + spread
                 + ". The downswing is always the shorter of the two; good players are usually quoted near 3.")
         }
-        lines.append(String(format: "Timing: backswing %.0f ms, downswing %.0f ms. The finish cannot be timed "
-                            + "reliably from one camera, so there is no follow-through or whole-swing time.",
-                            m.backswingMs, m.downswingMs))
-        lines.append(String(format: "Hands fastest %.0f ms %@ impact.", abs(m.peakHandSpeedMs),
-                            m.peakHandSpeedMs < 0 ? "before" : "after"))
+        if let factor = m.slowedBy {
+            // The coach is given the refusal, not a number it would repeat as fact.
+            lines.append(String(format: "This clip is slow motion, read as about %.0f times slower than it "
+                + "happened. How much slower cannot be known from the video, so no duration was measured; "
+                + "do not state or estimate one. The tempo ratio assumes the whole swing was slowed evenly.",
+                factor))
+        } else {
+            lines.append(String(format: "Timing: backswing %.0f ms, downswing %.0f ms. The finish cannot be timed "
+                                + "reliably from one camera, so there is no follow-through or whole-swing time.",
+                                m.backswingMs, m.downswingMs))
+            lines.append(String(format: "Hands fastest %.0f ms %@ impact.", abs(m.peakHandSpeedMs),
+                                m.peakHandSpeedMs < 0 ? "before" : "after"))
+        }
         if let turn = m.shoulderTurnDeg {
             lines.append(String(format: "Shoulder turn at the top, from how much the shoulders foreshorten in the "
                 + "picture (reads low; compare only with swings filmed from the same spot): about %.0f degrees.", turn))
@@ -136,7 +144,8 @@ public enum CoachPrompts {
             rows.append([
                 "\(i + 1)", formatter.string(from: swing.date), swing.club ?? "-", swing.label ?? "-",
                 m.tempoRatio.map { String(format: "%.2f", $0) } ?? "-",
-                String(format: "%.0f", m.backswingMs), String(format: "%.0f", m.downswingMs),
+                m.hasDurations ? String(format: "%.0f", m.backswingMs) : "slow motion",
+                m.hasDurations ? String(format: "%.0f", m.downswingMs) : "slow motion",
                 m.shoulderTurnDeg.map { String(format: "%.0f deg", $0) } ?? "-",
                 m.headMovement.map { String(format: "%.3f", $0) } ?? "-",
             ].joined(separator: " | "))

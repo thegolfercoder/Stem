@@ -67,6 +67,8 @@ public struct ModelPayload: Decodable {
         public let plausibleBackswingS: [Double]
         public let plausibleDownswingS: [Double]
         public let plausibleTempo: [Double]
+        /// Playback speed-ups a refused clip is retried at, as slow motion.
+        public let slowMotionFactors: [Double]
 
         enum CodingKeys: String, CodingKey {
             case minMeanConfidence = "min_mean_confidence"
@@ -75,6 +77,7 @@ public struct ModelPayload: Decodable {
             case plausibleBackswingS = "plausible_backswing_s"
             case plausibleDownswingS = "plausible_downswing_s"
             case plausibleTempo = "plausible_tempo"
+            case slowMotionFactors = "slow_motion_factors"
         }
 
         public init(from decoder: Decoder) throws {
@@ -86,6 +89,8 @@ public struct ModelPayload: Decodable {
             plausibleBackswingS = try c.decode([Double].self, forKey: .plausibleBackswingS)
             plausibleDownswingS = try c.decode([Double].self, forKey: .plausibleDownswingS)
             plausibleTempo = try c.decode([Double].self, forKey: .plausibleTempo)
+            // Older exports had no retry; the desktop's factors keep them in step.
+            slowMotionFactors = try c.decodeIfPresent([Double].self, forKey: .slowMotionFactors) ?? [2, 4, 8]
         }
     }
 
