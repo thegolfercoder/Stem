@@ -48,6 +48,7 @@ from swingml.model.data import (
     masked_soft_cross_entropy,
     tempo_log_error,
 )
+from swingml.model.rgb import widen_inputs
 from swingml.model.tcn import SwingEventNet
 from synth.dataset import Sample
 
@@ -256,6 +257,11 @@ def train(
         # in one pass was tried and lost: the cheap clips outnumber the real ones
         # nine to one and the model drifts to their landmark conventions.
         model = load_model(setup.init_from)
+        # Clips with image columns after the pose ones (swingml.model.rgb): the
+        # new inputs start at zero weight, so training begins from exactly the
+        # pose-only model's answers and has to earn any use of the pixels.
+        width = (extra[0].features.shape[1] if extra else None) or model.in_features
+        model = widen_inputs(model, int(width))
         model.train()
     else:
         model = SwingEventNet(

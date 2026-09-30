@@ -47,6 +47,7 @@ from swingml.model.baselines import ADDRESS, TOP, _rest_before, signals
 from swingml.model.calibration import conformal_quantile, load_calibration
 from swingml.model.decode import decode_events, log_softmax
 from swingml.model.release_gate import CORE, Clip, compress, load_any, logits_of, read_archive
+from swingml.model.rgb import fuse, load_sidecar, reading
 from swingml.quantity import NoReading
 
 SHIPPED_MODEL = Path("swingml/data/swing_event_net.pt")
@@ -619,13 +620,213 @@ def cmd_decompress(args: argparse.Namespace) -> None:
     )
 
 
+def with_images(clips: list[Clip], split_archive: Path, sidecar_path: Path) -> list[Clip]:
+    """The verified clips with image columns appended (`swingml.model.rgb`)."""
+    ids = [int(v) for v in np.load(split_archive)["seeds"]]
+    sidecar = load_sidecar(sidecar_path)
+    return [
+        clip.model_copy(update={"features": fuse(clip.features, clip_id, sidecar)})
+        for clip, clip_id in zip(clips, ids, strict=True)
+    ]
+
+
+# -- W3: tempo bands that depend on the model's confidence ---------------------------
+
+
+def relative_errors(rows: Sequence[Row]) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Relative tempo error and core confidence of every answered swing."""
+    kept = [r for r in rows if r.answered and np.isfinite(r.read_tempo) and r.true_tempo > 0]
+    error = np.array([abs(r.read_tempo - r.true_tempo) / r.true_tempo for r in kept])
+    confidence = np.array([r.core_confidence for r in kept])
+    return error, confidence
+
+
+def banded(
+    confidence: NDArray[np.float64], edges: Sequence[float], widths: Sequence[float]
+) -> NDArray[np.float64]:
+    return np.asarray([widths[int(np.searchsorted(edges, c, side="right"))] for c in confidence])
+
+
+SIGNALS = ("confidence", "spread", "short_downswing")
+
+
+def signals_of(cache: ClipCache, variant: Variant, config: AnalysisConfig) -> dict[str, float]:
+    """Candidate per-swing uncertainty signals, from the same read the app makes.
+
+    All three are oriented so that higher means less sure:
+
+    - `confidence`: the core confidence the app shows today, negated.
+    - `spread`: how spread out the model's probability is around address, the top
+      and impact (within 15 frames of each), carried through to the tempo ratio.
+    - `short_downswing`: one over the downswing's length in frames; a frame of
+      error is a larger share of a short downswing.
+    """
+    reading = decide(cache, variant, config)
+    if reading.positions is None or reading.confidence is None:
+        return {}
+    factor = reading.slowed_by or 1.0
+    _, logits = cache.at(variant.model, factor)
+    n = cache.clip.features.shape[0]
+    stretch = (n - 1) / max(logits.shape[0] - 1, 1) if reading.slowed_by else 1.0
+    grid = reading.positions / stretch
+    probabilities = np.exp(log_softmax(logits))
+    frames = np.arange(logits.shape[0], dtype=np.float64)
+
+    def sd(event: int) -> float:
+        window = np.abs(frames - grid[event]) <= 15
+        weights = probabilities[window, event]
+        if weights.sum() <= 0:
+            return float("nan")
+        weights = weights / weights.sum()
+        mean = float((frames[window] * weights).sum())
+        return float(np.sqrt(((frames[window] - mean) ** 2 * weights).sum()))
+
+    back = grid[3] - grid[0]
+    down = grid[5] - grid[3]
+    core = float(np.exp(np.mean(np.log(np.maximum(reading.confidence[list(CORE)], 1e-12)))))
+    return {
+        "confidence": -core,
+        "spread": float(np.hypot(sd(0), sd(3)) / back + np.hypot(sd(3), sd(5)) / down),
+        "short_downswing": float(1.0 / down) if down > 0 else float("nan"),
+    }
+
+
+def rank_correlation(a: NDArray[np.float64], b: NDArray[np.float64]) -> float:
+    finite = np.isfinite(a) & np.isfinite(b)
+    ranks_a = np.argsort(np.argsort(a[finite]))
+    ranks_b = np.argsort(np.argsort(b[finite]))
+    return float(np.corrcoef(ranks_a, ranks_b)[0, 1])
+
+
+def cmd_bands(args: argparse.Namespace) -> None:
+    """Fit an 80% tempo band per uncertainty level on one split; check it on another.
+
+    The shipped band is one number, +/-27%, for every swing. If some per-swing
+    signal says how wrong a reading is likely to be, a band per level of it should
+    hold its 80% coverage within each level and be narrower where the signal says
+    sure. Which signal is decided on the fitting split, by how well it ranks that
+    split's errors, before the checking split is read. If no signal ranks the
+    errors, the per-level widths come out alike and the single band stays.
+    """
+    fit_clips, _, fit_name = load_split(args.fit_manifest, args.root)
+    clips, groups, split = load_split(args.manifest, args.root)
+    model = load_any(args.model)
+    config = AnalysisConfig()
+    shipped = Variant("shipped", model, SHIPPED_REFINE, band=shipped_band(args.calibration))
+
+    def measured(
+        some: Sequence[Clip],
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], dict[str, NDArray[np.float64]], list[int]]:
+        caches = [ClipCache(c) for c in some]
+        rows = [score(c, shipped, config) for c in caches]
+        found = [signals_of(c, shipped, config) for c in caches]
+        kept = [
+            i
+            for i, r in enumerate(rows)
+            if r.answered and np.isfinite(r.read_tempo) and r.true_tempo > 0 and found[i]
+        ]
+        error = np.array(
+            [abs(rows[i].read_tempo - rows[i].true_tempo) / rows[i].true_tempo for i in kept]
+        )
+        claimed = np.array([rows[i].core_confidence for i in kept])
+        table = {name: np.array([found[i][name] for i in kept]) for name in SIGNALS}
+        return error, claimed, table, kept
+
+    fit_error, _, fit_table, _ = measured(fit_clips)
+    ranking = {name: rank_correlation(fit_table[name], fit_error) for name in SIGNALS}
+    signal = args.signal or max(ranking, key=lambda k: ranking[k])
+    print(
+        f"rank correlation with relative tempo error on {fit_name}: "
+        + ", ".join(f"{k} {v:+.3f}" for k, v in ranking.items())
+        + f"; using {signal}"
+    )
+    fit_signal = fit_table[signal]
+    edges = [float(q) for q in np.quantile(fit_signal, np.linspace(0, 1, args.levels + 1)[1:-1])]
+    level_of_fit = np.searchsorted(edges, fit_signal, side="right")
+    widths = [conformal_quantile(fit_error[level_of_fit == k], 0.8) for k in range(args.levels)]
+    single = conformal_quantile(fit_error, 0.8)
+    print(f"fitted on {fit_name} ({len(fit_error)} answered swings), 80% bands by {signal}:")
+    for k in range(args.levels):
+        lo = "min" if k == 0 else f"{edges[k - 1]:.4f}"
+        hi = "max" if k == args.levels - 1 else f"{edges[k]:.4f}"
+        n = int((level_of_fit == k).sum())
+        print(f"  {lo:>7} to {hi:<7}  n={n:3d}  +/-{100 * widths[k]:.1f}%")
+    print(f"  one band for all: +/-{100 * single:.1f}%")
+
+    error, claimed, table, kept = measured(clips)
+    value = table[signal]
+    labels = np.asarray([groups[i] for i in kept])
+    per_swing = banded(value, edges, widths)
+    level = np.searchsorted(edges, value, side="right")
+    members = [np.nonzero(labels == g)[0] for g in sorted(set(labels.tolist()))]
+    rng = np.random.default_rng(args.seed)
+
+    def summary(idx: NDArray[np.int64]) -> dict[str, float]:
+        out = {
+            "coverage_single": float(np.mean(error[idx] <= single)),
+            "coverage_banded": float(np.mean(error[idx] <= per_swing[idx])),
+            "median_width_banded": float(np.median(per_swing[idx])),
+            # Outside its band while the app claims confidence (the release gate's rule).
+            "false_confidence_single": float(
+                np.mean((error[idx] > single) & (claimed[idx] >= 0.5))
+            ),
+            "false_confidence_banded": float(
+                np.mean((error[idx] > per_swing[idx]) & (claimed[idx] >= 0.5))
+            ),
+            "rank_correlation": rank_correlation(value[idx], error[idx]),
+        }
+        for k in range(args.levels):
+            in_level = idx[level[idx] == k]
+            out[f"coverage_level_{k}"] = (
+                float(np.mean(error[in_level] <= widths[k])) if len(in_level) else float("nan")
+            )
+        return out
+
+    point = summary(np.arange(len(error)))
+    draws = []
+    for _ in range(args.resamples):
+        chosen = rng.integers(0, len(members), len(members))
+        draws.append(summary(np.concatenate([members[i] for i in chosen])))
+    result: dict[str, Any] = {
+        "split": split,
+        "fit": fit_name,
+        "signal": signal,
+        "ranking_on_fit": ranking,
+        "edges": edges,
+        "widths": widths,
+        "single": single,
+        "metrics": {},
+    }
+    print(f"\n{split}: {len(error)} answered swings in {len(members)} groups")
+    for key, number in point.items():
+        values = np.array([d[key] for d in draws], dtype=np.float64)
+        values = values[np.isfinite(values)]
+        low, high = np.percentile(values, [2.5, 97.5]) if len(values) else (np.nan, np.nan)
+        result["metrics"][key] = {"value": number, "ci95": [float(low), float(high)]}
+        print(f"  {key:26s} {number:.3f}  [{low:.3f}, {high:.3f}]")
+    if args.out is not None:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(json.dumps(result, indent=2) + "\n")
+        print(f"wrote {args.out}")
+
+
 def cmd_model(args: argparse.Namespace) -> None:
     clips, groups, split = load_split(args.manifest, args.root)
+    if args.rgb is not None:
+        clips = with_images(clips, args.root / load(args.manifest).archive, args.rgb)
+    width = clips[0].features.shape[1]
     band = shipped_band(args.calibration)
-    variants = [Variant("shipped", load_any(args.model), band=band, notes=str(args.model))]
+    variants = [
+        Variant("shipped", reading(load_any(args.model), width), band=band, notes=str(args.model))
+    ]
     for path in args.candidate:
         variants.append(
-            Variant(path.parent.name or path.stem, load_any(path), band=band, notes=str(path))
+            Variant(
+                path.parent.name or path.stem,
+                reading(load_any(path), width),
+                band=band,
+                notes=str(path),
+            )
         )
     rows = run_variants(clips, variants, AnalysisConfig())
     _report(args, split, variants, rows, groups)
@@ -654,9 +855,25 @@ def main(argv: Sequence[str] | None = None) -> None:
     decompress = commands.add_parser("decompress", help="experiment 4: post-hoc de-compression")
     common(decompress)
     decompress.add_argument("--fit-manifest", type=Path, required=True)
+    bands = commands.add_parser("bands", help="W3: tempo bands by confidence level")
+    common(bands)
+    bands.add_argument("--fit-manifest", type=Path, required=True)
+    bands.add_argument("--levels", type=int, default=3)
+    bands.add_argument(
+        "--signal",
+        choices=SIGNALS,
+        default=None,
+        help="default: whichever ranks the fitting split's errors best",
+    )
     model = commands.add_parser("model", help="experiment 2: candidate weights against shipped")
     common(model)
     model.add_argument("--candidate", type=Path, nargs="+", required=True)
+    model.add_argument(
+        "--rgb",
+        type=Path,
+        default=None,
+        help="image-feature sidecar for the manifest's split; pose-only models read past it",
+    )
 
     args = parser.parse_args(argv)
     {
@@ -664,6 +881,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         "address": cmd_address,
         "decompress": cmd_decompress,
         "model": cmd_model,
+        "bands": cmd_bands,
     }[args.command](args)
 
 
