@@ -38,6 +38,8 @@ from __future__ import annotations
 import base64
 import contextlib
 import json
+import os
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +51,7 @@ from swingml.events import SwingEvent
 from swingml.pose.base import PoseSequence
 from swingml.quantity import NoReading
 from swingml.skeleton import Handedness
+from tests.browser import chromium_path
 
 HERE = Path(__file__).parent
 LANDMARKS = HERE / "fixtures" / "real_swing_01.npz"
@@ -56,16 +59,27 @@ PAGE = HERE.parent / "out" / "web" / "swing-analysis.html"
 PAYLOAD = HERE.parent / "out" / "web" / "model.json"
 
 cv2 = pytest.importorskip("cv2", reason="needs opencv to generate a clip")
-sync_playwright = pytest.importorskip(
-    "playwright.sync_api", reason="needs playwright to drive a browser"
-).sync_playwright
+CHROMIUM = chromium_path()
 
-pytestmark = pytest.mark.skipif(
-    not PAGE.is_file() or not LANDMARKS.is_file(),
-    reason="needs the built page (python scripts/build_web_app.py) and the fixture",
-)
 
-CHROMIUM = "/opt/pw-browsers/chromium"
+def _missing() -> str | None:
+    if CHROMIUM is None:
+        return "needs playwright and a Chromium (python -m tests.browser says which)"
+    if not PAGE.is_file():
+        return "needs the built page (python scripts/build_web_app.py)"
+    if not LANDMARKS.is_file():
+        return "needs the fixture tests/fixtures/real_swing_01.npz"
+    return None
+
+
+MISSING = _missing()
+# CI and agents/check.sh set this where a browser is installed, so a page test that
+# cannot run there fails the run instead of skipping unseen.
+if MISSING and os.environ.get("STEM_PAGE_TESTS") == "required":
+    raise RuntimeError(f"the page tests are required here but cannot run: {MISSING}")
+pytestmark = pytest.mark.skipif(MISSING is not None, reason=MISSING or "")
+if MISSING is None:
+    from playwright.sync_api import sync_playwright
 
 # A stand-in for the MediaPipe module, replaying the landmarks the real estimator
 # produced for this clip. Frames are handed out in order, which is what the page
@@ -400,14 +414,35 @@ MEDIAPIPE_CDN = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14"
 KEPT = "() => JSON.parse(localStorage.getItem('swing-practice-v1') || 'null')"
 
 
+# Site data blocked, as a private window or a browser setting does: reading
+# localStorage throws.
+BLOCK_STORAGE = """Object.defineProperty(window, "localStorage", { configurable: true,
+  get() { throw new DOMException("The user denied storage", "SecurityError"); } });"""
+
+
+def _earlier() -> list[dict[str, Any]]:
+    """Two earlier swings of the same golfer, so one more makes three and the page
+    offers a focus to practise."""
+    return [
+        {"id": n, "at": "2026-09-29T10:00:00Z", "ok": True, "refusal": None,
+         "detection_rate": 0.99, "handedness": "right", "club": None, "camera": None,
+         "metrics": {"tempo_ratio": tempo, "detection_rate": 0.99}, "slowed_by": None,
+         "clip_key": f"earlier-{n}"}
+        for n, tempo in ((1, 3.2), (2, 3.4))
+    ]  # fmt: skip
+
+
 def _practice_page(
     playwright: Any,
     landmark_json: str,
     assets: dict[str, Any] | None = None,
     kept: dict[str, Any] | None = None,
+    *,
+    block_storage: bool = False,
 ) -> Any:
     browser = playwright.chromium.launch(executable_path=CHROMIUM)
-    page = browser.new_page(viewport={"width": 1180, "height": 900})
+    # A context of its own, so a test can open a second page on the same storage.
+    page = browser.new_context(viewport={"width": 1180, "height": 900}).new_page()
     errors: list[str] = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     page.route(
@@ -418,9 +453,13 @@ def _practice_page(
     if assets is not None:
         page.add_init_script(f"window.SWING_ASSETS = {json.dumps(assets)};")
     if kept is not None:
+        # Seeded once: init scripts run again on every reload.
         page.add_init_script(
+            "if (localStorage.getItem('swing-practice-v1') === null) "
             f"localStorage.setItem('swing-practice-v1', {json.dumps(json.dumps(kept))});"
         )
+    if block_storage:
+        page.add_init_script(BLOCK_STORAGE)
     page.goto(PAGE.resolve().as_uri())
     return browser, page, errors
 
@@ -440,18 +479,9 @@ def test_the_practice_log_keeps_one_swing_per_clip_and_can_forget_one(
     landmark_json: str, clip: Path
 ) -> None:
     """#22: one clip analysed again is one swing, and a kept swing can be removed."""
-    # Two earlier swings of the same golfer, so the clip makes a third and the
-    # page offers a focus to practise.
-    earlier = [
-        {"id": n, "at": "2026-09-29T10:00:00Z", "ok": True, "refusal": None,
-         "detection_rate": 0.99, "handedness": "right", "club": None, "camera": None,
-         "metrics": {"tempo_ratio": tempo, "detection_rate": 0.99}, "slowed_by": None,
-         "clip_key": f"earlier-{n}"}
-        for n, tempo in ((1, 3.2), (2, 3.4))
-    ]  # fmt: skip
     with sync_playwright() as playwright:
         browser, page, errors = _practice_page(
-            playwright, landmark_json, kept={"next": 3, "swings": earlier, "plans": []}
+            playwright, landmark_json, kept={"next": 3, "swings": _earlier(), "plans": []}
         )
         _analyse(page, clip)
         kept = page.evaluate(KEPT)
@@ -499,4 +529,63 @@ def test_the_sample_swing_is_not_kept(landmark_json: str, clip: Path) -> None:
         kept = page.evaluate(KEPT)
         assert kept is None or kept["swings"] == []
         assert errors == []
+        browser.close()
+
+
+def test_a_plan_counts_a_retest_clip_survives_a_reload_and_is_erased(
+    landmark_json: str, clip: Path, tmp_path: Path
+) -> None:
+    """#24: a plan's whole life on the page, through app.js's wiring, not only practice.js."""
+    retest = tmp_path / "retest.webm"  # another file, so another clip
+    shutil.copy(clip, retest)
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(
+            playwright, landmark_json, kept={"next": 3, "swings": _earlier(), "plans": []}
+        )
+        _analyse(page, clip)
+        page.click("#priority-panel [data-focus]")
+        assert page.is_checked("#for-plan")
+
+        # A new clip with the box ticked is kept and counted as a retest swing.
+        _analyse(page, retest)
+        kept = page.evaluate(KEPT)
+        assert [s["id"] for s in kept["swings"]] == [1, 2, 3, 4]
+        assert 3 in kept["plans"][0]["baseline"] and kept["plans"][0]["retest"] == [4]
+
+        # Coming back to the page shows the plan and its retest swing straight away.
+        page.reload()
+        page.wait_for_selector("#plan-panel .practice-card", state="visible")
+        plan_text = page.text_content("#plan-panel") or ""
+        assert "Your plan" in plan_text and "Retest swings" in plan_text
+        assert page.locator("#for-plan-box").is_visible()
+
+        # Erasing asks for the word, and a near miss deletes nothing.
+        page.click("#practice-erase")
+        page.fill("#erase-typed", "erase")
+        page.click("#erase-go")
+        assert len(page.evaluate(KEPT)["swings"]) == 4
+        page.fill("#erase-typed", "ERASE")
+        page.click("#erase-go")
+        kept = page.evaluate(KEPT)
+        assert kept is None or (kept["swings"] == [] and kept["plans"] == [])
+        assert (page.text_content("#plan-panel") or "").strip() == ""
+        assert errors == []
+        browser.close()
+
+
+def test_with_storage_blocked_the_page_still_analyses_and_keeps_nothing(
+    landmark_json: str, clip: Path
+) -> None:
+    """#24: blocked site data costs the practice log, not the analysis."""
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(playwright, landmark_json, block_storage=True)
+        _analyse(page, clip)
+        assert page.locator("#results").is_visible(), "the clip was not analysed"
+        assert "not letting the page keep anything" in (page.text_content("#practice-data") or "")
+        assert page.locator("#practice-erase").count() == 0
+        assert errors == []
+        # The same browser profile without the block: nothing was written.
+        other = page.context.new_page()
+        other.goto(PAGE.resolve().as_uri())
+        assert other.evaluate(KEPT) is None
         browser.close()

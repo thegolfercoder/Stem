@@ -37,5 +37,12 @@ if ! ldconfig -p 2>/dev/null | grep -q libEGL.so; then
     echo "note: libEGL could not be installed; tests that run the pose estimator will skip"
 fi
 command -v node >/dev/null 2>&1 || echo "note: node is missing; the browser parity tests will skip"
+# The page tests' driver. Its browser is preinstalled in the cloud containers;
+# elsewhere `python -m playwright install chromium` fetches one.
+if ! python -c "import playwright" >/dev/null 2>&1; then
+  pip install -q -r swingml/requirements-page.txt
+fi
+(cd swingml && python -m tests.browser >/dev/null 2>&1) ||
+  echo "note: no Chromium for the page tests; run: python -m playwright install chromium"
 
 echo "bootstrap: ready ($(python --version), torch $(python -c 'import torch; print(torch.__version__)'))"

@@ -27,7 +27,7 @@ What exists, where it is, and how the pieces connect. Lines of code from
 | Desktop app | `swingml/swingml/web/`, `desktop.py`, `packaging/` | Flask + pywebview | upload, analysis jobs, swing page, scrubber, position editor, labels, history, coach, chat | `test_store_and_web.py`, `test_golfer_positions.py`, `test_coach.py`, smoke test |
 | Store | `swingml/swingml/store.py` | SQLite | one row per swing, full analysis JSON | `test_store_and_web.py` |
 | Local coach | `swingml/swingml/coach/` | | Ollama client, prompts from measured values, sentence guard | `test_coach.py` |
-| Browser app | `swingml/webapp/` | 3.7k | WebCodecs decode, MediaPipe (WASM), JS port of the engine, Claude coach via artifact capability | parity tests (22), `test_page.py` (Playwright, skipped in CI) |
+| Browser app | `swingml/webapp/` | 3.7k | WebCodecs decode, MediaPipe (WASM), JS port of the engine, Claude coach via artifact capability | parity tests (22), `test_page.py` (Playwright; skipped in CI until #24, now required there) |
 | iPhone app | `ios/SwingCore` (Swift package), `ios/SwingStudio` (SwiftUI) | 2.9k | Swift port of the engine; AVFoundation + MediaPipe; history, coach over LAN | `swift test` (12, against the browser engine's reference), `xcodebuild` on CI |
 | Radar research | `launchmon-py/` | 2k | 24 GHz radar DSP on simulated signals | 148 tests |
 | CI | `.github/workflows/` | 3 workflows | `checks.yml` (lint, types, tests, parity), `ios.yml` (swift test, xcodebuild), `desktop.yml` (PyInstaller, 3 OSes, manual/tag) | |
