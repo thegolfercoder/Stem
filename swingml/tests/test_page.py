@@ -35,6 +35,7 @@ frame is where both faults lived.
 
 from __future__ import annotations
 
+import base64
 import contextlib
 import json
 from pathlib import Path
@@ -74,6 +75,9 @@ export const FilesetResolver = { forVisionTasks: async () => ({}) };
 export const PoseLandmarker = { createFromOptions: async () => {
   const data = window.__LANDMARKS__;
   let i = 0;
+  // Each new clip replays the fixture from its first frame (practice tests
+  // analyse the same clip more than once).
+  window.__resetLandmarks = () => { i = 0; };
   return { detectForVideo() {
     const f = Math.min(i++, data.detected.length - 1);
     if (!data.detected[f]) return { landmarks: [], worldLandmarks: [] };
@@ -388,3 +392,111 @@ def test_a_file_the_browser_cannot_decode_is_reported_rather_than_hung(
     # Names the likely cause and what to do about it, rather than only failing.
     assert "could not open" in session.refusal_reason.lower()
     assert "hevc" in session.refusal_reason.lower()
+
+
+# -- the practice section ------------------------------------------------------------
+
+MEDIAPIPE_CDN = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14"
+KEPT = "() => JSON.parse(localStorage.getItem('swing-practice-v1') || 'null')"
+
+
+def _practice_page(
+    playwright: Any,
+    landmark_json: str,
+    assets: dict[str, Any] | None = None,
+    kept: dict[str, Any] | None = None,
+) -> Any:
+    browser = playwright.chromium.launch(executable_path=CHROMIUM)
+    page = browser.new_page(viewport={"width": 1180, "height": 900})
+    errors: list[str] = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.route(
+        "**/vision_bundle.mjs",
+        lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+    )
+    page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+    if assets is not None:
+        page.add_init_script(f"window.SWING_ASSETS = {json.dumps(assets)};")
+    if kept is not None:
+        page.add_init_script(
+            f"localStorage.setItem('swing-practice-v1', {json.dumps(json.dumps(kept))});"
+        )
+    page.goto(PAGE.resolve().as_uri())
+    return browser, page, errors
+
+
+def _analyse(page: Any, clip: Path) -> None:
+    page.evaluate("() => window.__resetLandmarks && window.__resetLandmarks()")
+    page.set_input_files("input[type=file]", str(clip))
+    page.wait_for_function(
+        "() => document.getElementById('working').classList.contains('hidden')"
+        " && (document.getElementById('results').offsetParent !== null"
+        " || document.getElementById('refusal').offsetParent !== null)",
+        timeout=300_000,
+    )
+
+
+def test_the_practice_log_keeps_one_swing_per_clip_and_can_forget_one(
+    landmark_json: str, clip: Path
+) -> None:
+    """#22: one clip analysed again is one swing, and a kept swing can be removed."""
+    # Two earlier swings of the same golfer, so the clip makes a third and the
+    # page offers a focus to practise.
+    earlier = [
+        {"id": n, "at": "2026-09-29T10:00:00Z", "ok": True, "refusal": None,
+         "detection_rate": 0.99, "handedness": "right", "club": None, "camera": None,
+         "metrics": {"tempo_ratio": tempo, "detection_rate": 0.99}, "slowed_by": None,
+         "clip_key": f"earlier-{n}"}
+        for n, tempo in ((1, 3.2), (2, 3.4))
+    ]  # fmt: skip
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(
+            playwright, landmark_json, kept={"next": 3, "swings": earlier, "plans": []}
+        )
+        _analyse(page, clip)
+        kept = page.evaluate(KEPT)
+        assert [s["id"] for s in kept["swings"]] == [1, 2, 3] and kept["swings"][2]["ok"]
+        assert kept["swings"][2]["clip_key"], "the clip was not fingerprinted"
+
+        page.click("#priority-panel [data-focus]")  # start a focus as a plan
+        plan = page.evaluate(KEPT)["plans"][0]
+        assert plan["status"] == "active" and 3 in plan["baseline"]
+        assert page.is_checked("#for-plan")
+
+        # The same file again, with the retest box ticked: replaced, not added,
+        # and not counted as a retest swing of its own plan.
+        _analyse(page, clip)
+        page.wait_for_function(f"() => ({KEPT})().swings[2].reread_at")
+        kept = page.evaluate(KEPT)
+        assert len(kept["swings"]) == 3
+        assert kept["plans"][0]["retest"] == []
+        assert "replaced" in (page.text_content("#practice-data") or "")
+
+        page.click("details.kept summary")
+        page.click("[data-remove='3']")
+        kept = page.evaluate(KEPT)
+        assert [s["id"] for s in kept["swings"]] == [1, 2]
+        assert 3 not in kept["plans"][0]["baseline"] and kept["plans"][0]["retest"] == []
+        assert errors == []
+        browser.close()
+
+
+def test_the_sample_swing_is_not_kept(landmark_json: str, clip: Path) -> None:
+    """#22: the page's demonstration clip is not the golfer's swing."""
+    sample = "data:video/webm;base64," + base64.b64encode(clip.read_bytes()).decode("ascii")
+    assets = {"mediapipe": MEDIAPIPE_CDN, "model": [],
+              "sample": [{"src": sample, "type": "video/webm"}]}  # fmt: skip
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(playwright, landmark_json, assets)
+        page.wait_for_selector("#sample", state="visible")
+        page.click("#sample")
+        page.wait_for_function(
+            "() => document.getElementById('results').offsetParent !== null"
+            " || document.getElementById('refusal').offsetParent !== null",
+            timeout=300_000,
+        )
+        assert page.locator("#results").is_visible(), "the sample swing was not analysed"
+        kept = page.evaluate(KEPT)
+        assert kept is None or kept["swings"] == []
+        assert errors == []
+        browser.close()

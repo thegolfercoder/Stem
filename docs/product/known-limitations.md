@@ -49,7 +49,11 @@ fixed, it moves to the changelog with the measurement that shows it.
 14. **The browser keeps its practice log in the browser.** Clearing site data, a
     private window, or another browser starts from nothing, and nothing moves between
     the desktop, the browser and the iPhone. The iPhone's practice screen builds in CI
-    but has not been run on a phone.
+    but has not been run on a phone. The same clip analysed twice: the browser
+    replaces the earlier reading (it recognises the file by a hash of its name, size
+    and date), but the desktop and the iPhone keep a second swing, which the golfer
+    has to delete by hand; all three drop a deleted swing from its plans. The
+    browser's sample swing is never kept.
 
 ## Product
 

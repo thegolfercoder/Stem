@@ -54,4 +54,31 @@ if (job.plan) {
   };
 }
 
+if (job.ops) {
+  // A scripted sequence against one log: add (optionally for the plan), start a
+  // plan, remove a swing. Returns the log and the active plan's verdict.
+  const memory = new Map();
+  const storage = {
+    getItem: (k) => (memory.has(k) ? memory.get(k) : null),
+    setItem: (k, v) => memory.set(k, String(v)),
+    removeItem: (k) => memory.delete(k),
+  };
+  const log = new PracticeLog(storage);
+  const removed = [];
+  for (const op of job.ops) {
+    if (op.op === "add") log.add(op.record, Boolean(op.forPlan));
+    else if (op.op === "start") log.startPlan(rules, op.focus, op.from);
+    else if (op.op === "remove") removed.push(log.remove(op.id));
+  }
+  const plan = log.activePlan();
+  result.ops = {
+    swings: log.swings,
+    plan,
+    change: plan ? log.planChange(rules, plan) : null,
+    capture: plan ? log.captureProgress(plan) : null,
+    removed,
+    reloaded: new PracticeLog(storage).swings.length,
+  };
+}
+
 process.stdout.write(JSON.stringify(result));

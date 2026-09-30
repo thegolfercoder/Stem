@@ -301,6 +301,22 @@ export function storedMetrics(m, detectionRate) {
   };
 }
 
+/* A short fingerprint of a clip, so the same file analysed twice is recognised.
+ * From its name, size and modification time, hashed so the name itself is not
+ * kept (cyrb53: a small, fast, non-cryptographic 53-bit hash). */
+export function clipKey(name, size, lastModified) {
+  const text = `${name}|${size}|${lastModified}`;
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 2654435761);
+    h2 = Math.imul(h2 ^ c, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+
 /* Swings and plans kept in this browser. `storage` is anything with getItem and
  * setItem (localStorage, or a map in tests); every access is guarded, because a
  * private window or a browser set to block site data throws on it, and the page
@@ -344,12 +360,39 @@ export class PracticeLog {
    * retest swing for the active plan, as an upload from the desktop's practice
    * page does. */
   add(record, forPlan = false) {
-    const swing = { ...record, id: this.data.next++, at: new Date().toISOString() };
-    this.data.swings.push(swing);
+    // The same clip analysed again (dropped twice, or re-run with the other
+    // hand) replaces its earlier reading instead of becoming a second swing:
+    // one clip counted as three retest swings once turned "not enough swings"
+    // into "improved". It keeps its number and its place in any plan.
+    const again = record.clip_key
+      ? this.data.swings.find((s) => s.clip_key === record.clip_key) : null;
+    let swing;
+    if (again) {
+      Object.assign(again, record, { id: again.id, at: again.at, reread_at: new Date().toISOString() });
+      swing = again;
+    } else {
+      swing = { ...record, id: this.data.next++, at: new Date().toISOString() };
+      this.data.swings.push(swing);
+    }
     const plan = forPlan ? this.activePlan() : null;
-    if (plan) plan.retest.push(swing.id);
+    if (plan && !plan.baseline.includes(swing.id) && !plan.retest.includes(swing.id)) {
+      plan.retest.push(swing.id);
+    }
     this.save();
     return swing;
+  }
+
+  /* Forget one swing, and take it out of every plan's baseline and retest, as
+   * the desktop (`SwingStore.delete`) and the iPhone (`PracticeLog.remove`) do. */
+  remove(id) {
+    const before = this.data.swings.length;
+    this.data.swings = this.data.swings.filter((s) => s.id !== id);
+    for (const plan of this.data.plans) {
+      plan.baseline = plan.baseline.filter((n) => n !== id);
+      plan.retest = plan.retest.filter((n) => n !== id);
+    }
+    this.save();
+    return this.data.swings.length < before;
   }
 
   update(id, patch) {

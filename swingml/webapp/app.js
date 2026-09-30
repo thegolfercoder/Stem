@@ -13,7 +13,7 @@ import { PoseSequence, resamplePose, extractFeatures, normalisePose,
          BONES, EVENT_NAMES, CLUB_DEFINED, L } from "./engine.js";
 import { SwingEventModel, decodeEvents, errorBand } from "./model.js";
 import { computeMetrics, implausible, readAtSpeeds, slowedMetrics, slowedReason } from "./metrics.js";
-import { PracticeLog, cameraSignature, formatG3, storedMetrics } from "./practice.js";
+import { PracticeLog, cameraSignature, clipKey, formatG3, storedMetrics } from "./practice.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 const POSE_MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/" +
@@ -1470,9 +1470,12 @@ function drawPose(canvas, coordsFrame, visibilityFrame) {
   }
 }
 
-async function analyse(file) {
+/* `sample`: the page's own demonstration clip, which is not the golfer's swing
+ * and is never kept in their practice log. */
+async function analyse(file, { sample = false } = {}) {
   if (state.busy) return;
   state.busy = true;
+  state.fromSample = sample;
   releaseClip();
   show("results", false);
   show("refusal", false);
@@ -2389,11 +2392,19 @@ function analysedRecord() {
 
 function recordSwing(record) {
   if (!state.log) return;
+  if (state.fromSample) {
+    // A demonstration, not the golfer's swing: show their own log unchanged.
+    renderPractice(state.practiceSwing || null, "The sample swing is not kept in your practice log.");
+    return;
+  }
   const club = el("club").value.trim().slice(0, 40) || null;
   const forPlan = Boolean(state.log.activePlan()) && el("for-plan").checked;
-  const swing = state.log.add({ ...record, club }, forPlan);
+  const file = state.file;
+  const key = file ? clipKey(file.name, file.size, file.lastModified) : null;
+  const swing = state.log.add({ ...record, club, clip_key: key }, forPlan);
   if (record.ok && state.analysis) state.analysis.logId = swing.id;
-  renderPractice(swing.id);
+  renderPractice(swing.id, swing.reread_at ? `The same clip was analysed before, so swing ${swing.id} ` +
+    "was replaced by this reading rather than kept twice." : "");
 }
 
 const VERDICT_TITLES = {
@@ -2492,7 +2503,19 @@ function insightMarkup(insight, swingId) {
     </div>`;
 }
 
-function renderPractice(swingId) {
+function keptMarkup(log) {
+  const plan = log.activePlan();
+  const role = (id) => !plan ? "" : plan.baseline.includes(id) ? " · before the drill"
+    : plan.retest.includes(id) ? " · retest" : "";
+  const rows = log.swings.slice().reverse().map((s) => `<li><span>Swing ${s.id} · ${escapeHtml(
+    (s.at || "").slice(0, 10))}${s.club ? ` · ${escapeHtml(s.club)}` : ""}${role(s.id)}</span>
+      <b>${s.ok ? `tempo ${reading(s.metrics && s.metrics.tempo_ratio)}` : "refused"}</b>
+      <button class="btn" type="button" data-remove="${s.id}">Remove</button></li>`).join("");
+  return `<details class="kept"><summary>Swings kept (${log.swings.length})</summary>
+    <ul class="evidence">${rows}</ul></details>`;
+}
+
+function renderPractice(swingId, note = "") {
   const log = state.log;
   const rules = state.payload.practice;
   if (!log || !rules) return;
@@ -2502,7 +2525,8 @@ function renderPractice(swingId) {
   el("priority-panel").innerHTML = swingId ? insightMarkup(log.insightFor(rules, swingId), swingId) : "";
   const kept = log.swings.length;
   el("practice-data").innerHTML = log.available
-    ? `<span>${kept} clip${kept === 1 ? "" : "s"} kept in this browser, numbers only.</span>
+    ? `${note ? `<p class="practice-note">${escapeHtml(note)}</p>` : ""}${kept ? keptMarkup(log) : ""}
+       <span>${kept} clip${kept === 1 ? "" : "s"} kept in this browser, numbers only.</span>
        <button class="btn" type="button" id="practice-export">Export</button>
        <button class="btn" type="button" id="practice-erase">Erase everything</button>
        <span id="erase-confirm" hidden>
@@ -2540,7 +2564,16 @@ function wirePractice() {
     const rules = state.payload.practice;
     const focus = event.target.closest("[data-focus]");
     const close = event.target.closest("[data-close]");
-    if (focus) {
+    const remove = event.target.closest("[data-remove]");
+    if (remove) {
+      const id = Number(remove.dataset.remove);
+      log.remove(id);
+      if (state.analysis && state.analysis.logId === id) state.analysis.logId = null;
+      if (state.practiceSwing === id) {
+        const left = log.swings;
+        state.practiceSwing = left.length ? left[left.length - 1].id : null;
+      }
+    } else if (focus) {
       log.startPlan(rules, focus.dataset.focus, state.practiceSwing);
       el("for-plan").checked = true;
     } else if (close) {
@@ -2626,7 +2659,7 @@ export function boot(payload) {
         const response = await fetch(here(pick.src));
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const blob = await response.blob();
-        analyse(new File([blob], pick.src.split("/").pop(), { type: pick.type }));
+        analyse(new File([blob], pick.src.split("/").pop(), { type: pick.type }), { sample: true });
       } catch (error) {
         failed(new Error(`Could not load the sample swing.\n\n(${error.message})`));
       }

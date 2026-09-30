@@ -302,3 +302,73 @@ def test_a_plan_played_through_matches_the_desktop(focus: str, tmp_path: Path) -
     agree(change.model_dump(mode="json"), browser["change"], "change")
     assert browser["closed"] is True and browser["active"] is None
     assert browser["erased"] == 11 and browser["afterErase"] == 0
+
+
+def _swing(
+    tempo: float, key: str | None, handedness: str = "right", ok: bool = True
+) -> dict[str, Any]:
+    point = SwingPoint(
+        swing_id=0, value=tempo, handedness=handedness, club="7 iron", camera=CAMERAS[0]
+    )
+    record = browser_swing(point, 0.1)
+    record.update({"clip_key": key, "ok": ok, "refusal": None if ok else "no swing found"})
+    return record
+
+
+def _ops(ops: list[dict[str, Any]], tmp_path: Path) -> dict[str, Any]:
+    job = {"rules": practice_payload(), "choose": [], "compare": [], "g3": [], "ops": ops}
+    return run(job, tmp_path)["ops"]
+
+
+def test_one_clip_analysed_three_times_is_one_retest_swing(tmp_path: Path) -> None:
+    """QA's reproduction (#22): it used to read "improved" [+0.002, +0.498]."""
+    ops: list[dict[str, Any]] = [
+        {"op": "add", "record": _swing(t, f"b{i}")} for i, t in enumerate((2.7, 2.9, 2.8))
+    ]
+    ops.append({"op": "start", "focus": "tempo_quick", "from": 3})
+    ops += [{"op": "add", "record": _swing(3.05, "same clip"), "forPlan": True}] * 3
+    result = _ops(ops, tmp_path)
+    assert len(result["swings"]) == 4
+    assert result["plan"]["retest"] == [4]
+    assert result["change"]["verdict"] == "not_enough_swings"
+
+
+def test_a_reread_replaces_the_earlier_reading_and_keeps_its_place(tmp_path: Path) -> None:
+    ops: list[dict[str, Any]] = [
+        {"op": "add", "record": _swing(t, f"b{i}")} for i, t in enumerate((2.7, 2.9, 2.8))
+    ]
+    ops.append({"op": "start", "focus": "tempo_quick", "from": 3})
+    # A baseline clip re-run with the box ticked stays in the baseline only.
+    ops.append({"op": "add", "record": _swing(2.75, "b1"), "forPlan": True})
+    # A retest clip first read left-handed, then re-run right-handed: the plan
+    # holds the corrected reading, not a left swing that blocks every comparison.
+    for tempo in (3.0, 3.1):
+        ops.append({"op": "add", "record": _swing(tempo, f"r{tempo}"), "forPlan": True})
+    ops.append({"op": "add", "record": _swing(3.2, "wrong hand", "left"), "forPlan": True})
+    ops.append({"op": "add", "record": _swing(3.2, "wrong hand", "right"), "forPlan": True})
+    result = _ops(ops, tmp_path)
+    assert result["plan"]["baseline"] == [3, 2, 1]
+    assert result["plan"]["retest"] == [4, 5, 6]
+    by_id = {s["id"]: s for s in result["swings"]}
+    assert by_id[2]["metrics"]["tempo_ratio"] == 2.75 and "reread_at" in by_id[2]
+    assert by_id[6]["handedness"] == "right"
+    assert result["change"]["verdict"] != "not_comparable"
+
+
+def test_removing_a_swing_matches_the_iphone(tmp_path: Path) -> None:
+    """The scenario of PracticeTests.testACapturePlanCountsCleanRecordingsInARow."""
+    ops: list[dict[str, Any]] = [
+        {"op": "add", "record": _swing(0.0, None, ok=False)},
+        {"op": "start", "focus": "capture", "from": 1},
+        {"op": "add", "record": _swing(3.1, None), "forPlan": True},
+        {"op": "add", "record": _swing(0.0, None, ok=False), "forPlan": True},
+        {"op": "add", "record": _swing(3.1, None), "forPlan": True},
+        {"op": "add", "record": _swing(3.1, None), "forPlan": True},
+        {"op": "remove", "id": 2},
+        {"op": "remove", "id": 99},
+    ]
+    result = _ops(ops, tmp_path)
+    assert result["removed"] == [True, False]
+    assert result["plan"]["retest"] == [3, 4, 5]  # the Swift test's expectation
+    assert [s["id"] for s in result["swings"]] == [1, 3, 4, 5]
+    assert result["reloaded"] == 4
