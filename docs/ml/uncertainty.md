@@ -123,8 +123,12 @@ them (see above).
 - The shipped band stays. No follow-up change to the band is filed, because
   no tercile shows under-coverage.
 - The practical risk sits in the bias, not the band: at the ends a reading is
-  pulled toward the middle. The de-compression experiment
-  (`tempo-experiments.md` §4) and the phone test set (#13, #20) are what would
-  change that.
+  pulled toward the middle. Every fix tried for that was rejected
+  (`tempo-experiments.md`): sub-frame placement (§1) and an address rule (§2)
+  do not reduce it, de-compression by inverting the fitted shrinkage (§3)
+  nearly triples tempo error (+17.4 points [+11.1, +28.9]), and a tempo term in
+  the training loss (§4) does not move the slope. What remains is data:
+  labelled swings with a real spread of tempos. The phone test set (#13, #20)
+  would measure the bias on phone video; nothing here fixes it.
 - Re-run this check whenever the model, the band or the calibration split
   changes.
