@@ -23,6 +23,14 @@ Also since the audit:
 - **Per-swing uncertainty: the model's confidence does not predict tempo error.**
   Rank correlation +0.14 [−0.06, +0.33] for the best signal; the single band stays
   (`40896af`; `docs/ml/uncertainty.md`).
+- **Image features beside the pose: no detectable gain.** A pose+image model and a
+  pose-only control, same recipe and seed on 619 swings, differ by +0.7 points
+  [−2.1, +3.3] within 1 frame and −1.3 [−3.7, +2.9] in tempo error on
+  validation, and address does not move. Not sent to the release gate
+  (`docs/ml/image-features.md`, #10).
+- **The holdout is guarded in code,** and a phone test set path exists: phone
+  swings are frozen, and the gate scores them apart, gating from 150 swings by
+  30 golfers. No phone set has been collected yet (#23, #13, #20).
 - **An agent loop** (Strategist, Builder, QA) now maintains the backlog and reviews
   every change (`bb32b18`; `agents/README.md`).
 
