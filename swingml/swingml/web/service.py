@@ -45,6 +45,7 @@ from swingml.assets import (
     home,
 )
 from swingml.capture import Preflight, preflight
+from swingml.dataset.manifest import sha256_of
 from swingml.events import SwingEvent
 from swingml.labels import save_pose
 from swingml.model.calibration import ModelCalibration
@@ -249,6 +250,8 @@ class AnalysisService:
         try:
             with self._run_lock:
                 job.state = JobState.READING
+                # The same file analysed again is one swing (SwingStore.record).
+                clip_sha256 = sha256_of(upload_path)
                 job.message = "loading the model"
                 model, _ = self._ensure_loaded()
 
@@ -256,7 +259,9 @@ class AnalysisService:
                 _, estimator = self._ensure_loaded()
                 check = preflight(upload_path, estimator)
                 if check.blocking:
-                    self._refuse_at_preflight(job, check, upload_path, original_name, club, label)
+                    self._refuse_at_preflight(
+                        job, check, upload_path, original_name, club, label, clip_sha256
+                    )
                     return
 
                 job.message = "finding the body in each frame"
@@ -276,7 +281,7 @@ class AnalysisService:
 
                 job.state = JobState.RENDERING
                 job.message = "saving the key frames"
-                swing_id = record_swing(
+                swing_id, outcome = record_swing(
                     self.store,
                     analysis,
                     sequence,
@@ -284,9 +289,13 @@ class AnalysisService:
                     source_name=original_name,
                     label=label,
                     club=club,
+                    clip_sha256=clip_sha256,
                 )
 
                 job.swing_id = swing_id
+                if outcome == "kept":
+                    self._keep_earlier(job, swing_id, upload_path)
+                    return
                 refused = isinstance(analysis.events, NoReading)
                 self.store.log_event(
                     "analysis_refused" if refused else "analysis_succeeded",
@@ -301,6 +310,11 @@ class AnalysisService:
                 job.message = (
                     analysis.events.reason if isinstance(analysis.events, NoReading) else "done"
                 )
+                if outcome == "replaced":
+                    job.message += (
+                        f" The same clip was analysed before, so swing {swing_id} was replaced "
+                        "by this reading rather than kept twice."
+                    )
         except Exception as error:
             job.state = JobState.FAILED
             job.error = str(error) or error.__class__.__name__
@@ -315,6 +329,7 @@ class AnalysisService:
         original_name: str,
         club: str | None,
         label: str | None,
+        clip_sha256: str | None = None,
     ) -> None:
         """Store the refusal the quick look found, without tracking the whole clip."""
         reason = "; ".join(f"{c.name}: {c.measured}" for c in check.blocking)
@@ -330,12 +345,26 @@ class AnalysisService:
             metrics=refusal,
             handedness=Handedness.RIGHT,
         )
-        job.swing_id = self.store.add(
-            analysis, source_name=original_name, video_path=upload_path, label=label, club=club
+        swing_id, outcome = self.store.record(
+            analysis, original_name, upload_path, label, club, clip_sha256
         )
+        job.swing_id = swing_id
+        if outcome == "kept":
+            self._keep_earlier(job, swing_id, upload_path)
+            return
         self.store.log_event("analysis_refused", reason=reason, at="preflight")
         job.state = JobState.DONE
         job.message = refusal.reason
+
+    def _keep_earlier(self, job: Job, swing_id: int, upload_path: Path) -> None:
+        """A refused run of a clip already analysed: the earlier reading stands."""
+        with contextlib.suppress(OSError):
+            upload_path.unlink()  # a second copy of a clip that is already kept
+        self.store.log_event("analysis_refused", kept_earlier=swing_id)
+        job.state = JobState.DONE
+        job.message = (
+            f"This run was refused, so swing {swing_id} keeps its earlier reading of the same clip."
+        )
 
     def analyse(
         self,
@@ -395,23 +424,34 @@ def record_swing(
     source_name: str,
     label: str | None = None,
     club: str | None = None,
-) -> int:
+    clip_sha256: str | None = None,
+) -> tuple[int, str]:
     """Store an analysis and write the images the interface needs to show it.
+
+    Returns the swing's id and how it was stored (`SwingStore.record`): `new`,
+    `replaced` (the same clip analysed before; its files are rewritten), or
+    `kept` (a refused re-run of a clip already analysed; nothing is written).
 
     Shared by the web upload and the command line so that a swing analysed either
     way looks the same afterwards. Having the terminal produce a row the interface
     then renders without pictures is the kind of small inconsistency that makes
     software feel unfinished.
     """
-    swing_id = store.add(
-        analysis, source_name=source_name, video_path=video_path, label=label, club=club
-    )
+    earlier = store.by_clip(clip_sha256) if clip_sha256 else None
+    swing_id, outcome = store.record(analysis, source_name, video_path, label, club, clip_sha256)
+    if outcome == "kept":
+        return swing_id, outcome
+    if earlier is not None and earlier.video_path and Path(earlier.video_path) != video_path:
+        old = Path(earlier.video_path)
+        if old.parent.resolve() == videos_dir().resolve():
+            with contextlib.suppress(OSError):
+                old.unlink()  # the earlier upload of the same bytes
     # The landmarks are kept for every swing, refused or not, so positions the
     # golfer sets can be measured without tracking the clip again.
     with contextlib.suppress(Exception):
         save_pose(sequence, frames_dir() / str(swing_id))
     if isinstance(analysis.events, NoReading):
-        return swing_id
+        return swing_id, outcome
 
     directory = frames_dir() / str(swing_id)
     events = analysis.event_source_frames
@@ -440,7 +480,7 @@ def record_swing(
             images=images,
         )
         (directory / "sequence.json").write_text(json.dumps(manifest), encoding="utf-8")
-    return swing_id
+    return swing_id, outcome
 
 
 def save_upload(stream: IO[bytes], original_name: str) -> Path:

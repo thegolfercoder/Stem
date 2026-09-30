@@ -277,3 +277,93 @@ def test_deleting_a_swing_removes_it_from_plans(app_with_swings) -> None:  # typ
     store.delete(ids[0])
     plan = store.plan(plan_id)
     assert plan is not None and ids[0] not in plan["baseline"]
+
+
+class _Inline:
+    """A thread that runs its target when started, so a job finishes in the request."""
+
+    def __init__(self, target, args=(), daemon=None):  # type: ignore[no-untyped-def]
+        self.target, self.args = target, args
+
+    def start(self) -> None:
+        self.target(*self.args)
+
+
+def test_one_clip_uploaded_again_is_one_swing_and_one_retest(  # type: ignore[no-untyped-def]
+    app_with_swings, analysis: SwingAnalysis, sequence: PoseSequence, monkeypatch
+) -> None:
+    """#25: the browser's rule on the desktop, through the real upload route.
+
+    Everything past the upload is real (the job, the store, the plan) except
+    the pose model and the analysis, which return the readings listed here.
+    """
+    import io
+
+    from swingml.capture import Preflight
+    from swingml.web import service as service_module
+    from swingml.web.service import AnalysisService, videos_dir
+
+    refused = analysis.model_copy(
+        update={"events": NoReading(reason="no swing found", source="events")}
+    )
+    readings = iter([with_tempo(analysis, 2.9), with_tempo(analysis, 2.95),
+                     with_tempo(analysis, 3.0), refused])  # fmt: skip
+    monkeypatch.setattr(service_module.threading, "Thread", _Inline)
+    monkeypatch.setattr(service_module, "preflight", lambda path, est: Preflight(checks=()))
+    monkeypatch.setattr(AnalysisService, "ready", lambda self: (True, "ready"))
+    monkeypatch.setattr(AnalysisService, "_ensure_loaded", lambda self: (None, None))
+    monkeypatch.setattr(AnalysisService, "_extract_pose", lambda self, p, j: (sequence, None))
+    monkeypatch.setattr(AnalysisService, "analyse", lambda self, *a, **k: next(readings))
+
+    http, store, ids = app_with_swings
+    plan_id = http.post(
+        "/api/plans", json={"focus": "tempo_quick", "from_swing": ids[-1]}
+    ).get_json()["plan_id"]
+
+    def upload(content: bytes, name: str) -> dict[str, object]:
+        response = http.post(
+            "/api/analyse",
+            data={"video": (io.BytesIO(content), name), "plan": str(plan_id)},
+            content_type="multipart/form-data",
+        )
+        assert response.status_code == 202
+        job: dict[str, object] = response.get_json()
+        assert job["state"] == "done", job
+        return job
+
+    first = upload(b"clip A", "a.mov")
+    again = upload(b"clip A", "a copy.mov")  # the same bytes under another name
+    assert again["swing_id"] == first["swing_id"]
+    assert "replaced by this reading" in str(again["message"])
+    other = upload(b"clip B", "b.mov")
+    plan = store.plan(plan_id)
+    assert plan is not None and plan["retest"] == [first["swing_id"], other["swing_id"]]
+    assert len(store.recent()) == len(ids) + 2
+
+    kept = upload(b"clip A", "a.mov")  # run again and refused
+    assert kept["swing_id"] == first["swing_id"]
+    assert "keeps its earlier reading" in str(kept["message"])
+    swing = store.get(int(str(first["swing_id"])))
+    assert swing is not None and swing.ok and swing.tempo_ratio == pytest.approx(2.95)
+    assert swing.reread_at is not None
+    plan = store.plan(plan_id)
+    assert plan is not None and plan["retest"] == [first["swing_id"], other["swing_id"]]
+    # One copy of each clip on disk: the second and the refused upload of A are gone.
+    assert len(list(videos_dir().iterdir())) == 2
+
+
+def test_a_baseline_clip_uploaded_for_its_plan_stays_a_baseline_swing(
+    tmp_path: Path, analysis: SwingAnalysis
+) -> None:
+    store = SwingStore(tmp_path / "s.db")
+    ids = [store.add(with_tempo(analysis, t), source_name=f"{i}.mov", clip_sha256=f"sha{i}")
+           for i, t in enumerate([2.3, 2.4, 2.35])]  # fmt: skip
+    plan_id = store.create_plan(
+        focus="tempo_quick", drill_id="tempo_count", metric="tempo_ratio",
+        direction="increase", club=None, baseline=ids,
+    )  # fmt: skip
+    swing_id, outcome = store.record(with_tempo(analysis, 2.45), "0.mov", clip_sha256="sha0")
+    store.add_plan_swing(plan_id, swing_id, "retest")
+    plan = store.plan(plan_id)
+    assert outcome == "replaced" and swing_id == ids[0]
+    assert plan is not None and plan["retest"] == [] and sorted(plan["baseline"]) == ids

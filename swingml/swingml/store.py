@@ -30,7 +30,7 @@ from swingml.analysis import SwingAnalysis
 from swingml.assets import home
 from swingml.quantity import NoReading
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS swings (
@@ -117,6 +117,8 @@ class StoredSwing(BaseModel):
     backswing_ms: float | None
     downswing_ms: float | None
     analysis: dict[str, Any]
+    clip_sha256: str | None = None
+    reread_at: datetime | None = None
 
 
 def default_database() -> Path:
@@ -141,6 +143,14 @@ class SwingStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as connection:
             connection.executescript(SCHEMA)
+            # Version 3: which uploaded file a swing came from, so the same clip
+            # analysed again replaces its reading instead of becoming a second
+            # swing (#25). Added in place: a version 1 or 2 file keeps every row.
+            columns = {row["name"] for row in connection.execute("PRAGMA table_info(swings)")}
+            for column in ("clip_sha256", "reread_at"):
+                if column not in columns:
+                    connection.execute(f"ALTER TABLE swings ADD COLUMN {column} TEXT")
+            connection.execute("CREATE INDEX IF NOT EXISTS swings_clip ON swings (clip_sha256)")
             connection.execute(
                 "INSERT OR REPLACE INTO meta (key, value) VALUES ('schema_version', ?)",
                 (str(SCHEMA_VERSION),),
@@ -166,6 +176,7 @@ class SwingStore:
         video_path: Path | str | None = None,
         label: str | None = None,
         club: str | None = None,
+        clip_sha256: str | None = None,
     ) -> int:
         """Record one analysis, successful or refused, and return its id.
 
@@ -173,44 +184,63 @@ class SwingStore:
         one of the few honest measures of how well this works in the field, and
         it cannot be computed from a table that only contains the successes.
         """
-        metrics = None if isinstance(analysis.metrics, NoReading) else analysis.metrics
-        ok = not isinstance(analysis.events, NoReading)
-        refusal = analysis.events.reason if isinstance(analysis.events, NoReading) else None
-        confidence = (
-            None
-            if isinstance(analysis.events, NoReading)
-            else float(sum(analysis.events.confidence) / len(analysis.events.confidence))
+        columns = _reading_columns(analysis, source_name, video_path)
+        columns.update(
+            created_at=datetime.now(UTC).isoformat(),
+            label=label,
+            club=club,
+            clip_sha256=clip_sha256,
         )
-
+        names = ", ".join(columns)
+        marks = ", ".join("?" for _ in columns)
         with self._connect() as connection:
             cursor = connection.execute(
-                """
-                INSERT INTO swings (
-                    created_at, label, club, source_name, video_path, handedness,
-                    ok, refusal, detection_rate, mean_confidence, tempo_ratio,
-                    backswing_ms, downswing_ms, head_movement, pelvis_sway, analysis_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    datetime.now(UTC).isoformat(),
-                    label,
-                    club,
-                    source_name,
-                    str(video_path) if video_path is not None else None,
-                    analysis.handedness.value,
-                    int(ok),
-                    refusal,
-                    analysis.detection_rate,
-                    confidence,
-                    _value(metrics, "tempo_ratio"),
-                    _value(metrics, "backswing_duration"),
-                    _value(metrics, "downswing_duration"),
-                    _value(metrics, "head_movement"),
-                    _value(metrics, "pelvis_sway"),
-                    json.dumps(analysis.model_dump(mode="json")),
-                ),
+                f"INSERT INTO swings ({names}) VALUES ({marks})", tuple(columns.values())
             )
         return int(cursor.lastrowid or 0)
+
+    def record(
+        self,
+        analysis: SwingAnalysis,
+        source_name: str,
+        video_path: Path | str | None = None,
+        label: str | None = None,
+        club: str | None = None,
+        clip_sha256: str | None = None,
+    ) -> tuple[int, str]:
+        """Record one analysis of a clip: `new`, `replaced` or `kept`, with the id.
+
+        The same file analysed again (uploaded twice, or re-run with the other
+        hand) replaces its earlier reading in place. It keeps its number, its
+        date and its place in any plan, so one clip never counts as two swings.
+        A refused run never replaces an analysed reading of the same clip: the
+        earlier reading stands and nothing is written (`kept`), as in the
+        browser (#26).
+        """
+        earlier = self.by_clip(clip_sha256) if clip_sha256 else None
+        if earlier is None:
+            return self.add(analysis, source_name, video_path, label, club, clip_sha256), "new"
+        if earlier.ok and isinstance(analysis.events, NoReading):
+            return earlier.id, "kept"
+        columns = _reading_columns(analysis, source_name, video_path)
+        columns.update(reread_at=datetime.now(UTC).isoformat())
+        if label is not None:
+            columns["label"] = label
+        if club is not None:
+            columns["club"] = club
+        assignments = ", ".join(f"{name} = ?" for name in columns)
+        with self._connect() as connection:
+            connection.execute(
+                f"UPDATE swings SET {assignments} WHERE id = ?", (*columns.values(), earlier.id)
+            )
+        return earlier.id, "replaced"
+
+    def by_clip(self, clip_sha256: str) -> StoredSwing | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM swings WHERE clip_sha256 = ? ORDER BY id LIMIT 1", (clip_sha256,)
+            ).fetchone()
+        return _row_to_swing(row) if row is not None else None
 
     def get(self, swing_id: int) -> StoredSwing | None:
         with self._connect() as connection:
@@ -311,9 +341,11 @@ class SwingStore:
         return [p for p in (self.plan(int(r["id"])) for r in rows) if p is not None]
 
     def add_plan_swing(self, plan_id: int, swing_id: int, role: str = "retest") -> None:
+        """Add a swing to a plan. A swing already in it keeps its role: a baseline
+        clip uploaded again for the plan is not also its own retest (#25)."""
         with self._connect() as connection:
             connection.execute(
-                "INSERT OR REPLACE INTO plan_swings (plan_id, swing_id, role) VALUES (?, ?, ?)",
+                "INSERT OR IGNORE INTO plan_swings (plan_id, swing_id, role) VALUES (?, ?, ?)",
                 (plan_id, swing_id, role),
             )
 
@@ -452,6 +484,31 @@ class SwingStore:
         return int(row["total"]), int(row["ok"])
 
 
+def _reading_columns(
+    analysis: SwingAnalysis, source_name: str, video_path: Path | str | None
+) -> dict[str, Any]:
+    """The columns one analysis fills, for a new row or a re-read of one."""
+    metrics = None if isinstance(analysis.metrics, NoReading) else analysis.metrics
+    refused = isinstance(analysis.events, NoReading)
+    return {
+        "source_name": source_name,
+        "video_path": str(video_path) if video_path is not None else None,
+        "handedness": analysis.handedness.value,
+        "ok": int(not refused),
+        "refusal": analysis.events.reason if isinstance(analysis.events, NoReading) else None,
+        "detection_rate": analysis.detection_rate,
+        "mean_confidence": None
+        if isinstance(analysis.events, NoReading)
+        else float(sum(analysis.events.confidence) / len(analysis.events.confidence)),
+        "tempo_ratio": _value(metrics, "tempo_ratio"),
+        "backswing_ms": _value(metrics, "backswing_duration"),
+        "downswing_ms": _value(metrics, "downswing_duration"),
+        "head_movement": _value(metrics, "head_movement"),
+        "pelvis_sway": _value(metrics, "pelvis_sway"),
+        "analysis_json": json.dumps(analysis.model_dump(mode="json")),
+    }
+
+
 def _row_to_swing(row: sqlite3.Row) -> StoredSwing:
     return StoredSwing(
         id=row["id"],
@@ -468,4 +525,6 @@ def _row_to_swing(row: sqlite3.Row) -> StoredSwing:
         backswing_ms=row["backswing_ms"],
         downswing_ms=row["downswing_ms"],
         analysis=json.loads(row["analysis_json"]),
+        clip_sha256=row["clip_sha256"],
+        reread_at=datetime.fromisoformat(row["reread_at"]) if row["reread_at"] else None,
     )
