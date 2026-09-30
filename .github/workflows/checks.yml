@@ -72,14 +72,14 @@ jobs:
         # The page itself, driven in Chromium (tests/test_page.py): the practice
         # section's wiring, the refusal paths, the numbers on screen against
         # Python's. It used to skip here for want of a browser, so nothing in CI
-        # opened the page. Built from the tree first; STEM_PAGE_TESTS=required
-        # turns a test that cannot run into a failure rather than a skip.
+        # opened the page. The tests build the page from webapp/ themselves;
+        # STEM_PAGE_TESTS=required turns a test that cannot run into a failure
+        # rather than a skip.
         env:
           STEM_PAGE_TESTS: required
         run: |
           pip install -r requirements-page.txt
           python -m playwright install --with-deps chromium
-          python scripts/build_web_app.py
           pytest -q -rs tests/test_page.py
       - name: agent loop
         # The backlog ranker, item validator and loop settings the three agents

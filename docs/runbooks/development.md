@@ -20,10 +20,10 @@ ruff check . && ruff format --check .
 mypy -p swingml -p synth && mypy scripts
 python scripts/export_web_model.py     # without it, 22 browser parity tests skip
 pytest -q -rs --ignore=tests/test_page.py
-# The page in Chromium: Playwright pinned in requirements-page.txt, then the page
-# built from the tree. STEM_PAGE_TESTS=required fails rather than skips.
+# The page in Chromium (the tests build it from webapp/ themselves). Playwright is
+# pinned in requirements-page.txt. STEM_PAGE_TESTS=required fails rather than skips.
 pip install -r requirements-page.txt && python -m playwright install chromium
-python scripts/build_web_app.py && STEM_PAGE_TESTS=required pytest -q -rs tests/test_page.py
+STEM_PAGE_TESTS=required pytest -q -rs tests/test_page.py
 cd ../ios/SwingCore && swift test      # needs Swift 6
 cd ../../launchmon-py && pytest -q
 ```

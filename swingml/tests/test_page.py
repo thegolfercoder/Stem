@@ -31,15 +31,23 @@ count, a few tens of kilobytes, in a codec the headless browser can open. Its
 content does not matter, because the landmarks come from the stub. What matters
 is that the page has a real file to step through, since stepping video frame by
 frame is where both faults lived.
+
+The page is built from `webapp/` when this module loads, into a directory of its
+own. Driving `out/web/swing-analysis.html` instead tested whatever was last built
+there: stale, it failed correct code and could pass old code (#24).
 """
 
 from __future__ import annotations
 
+import atexit
 import base64
 import contextlib
 import json
 import os
 import shutil
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -55,7 +63,6 @@ from tests.browser import chromium_path
 
 HERE = Path(__file__).parent
 LANDMARKS = HERE / "fixtures" / "real_swing_01.npz"
-PAGE = HERE.parent / "out" / "web" / "swing-analysis.html"
 PAYLOAD = HERE.parent / "out" / "web" / "model.json"
 
 cv2 = pytest.importorskip("cv2", reason="needs opencv to generate a clip")
@@ -65,14 +72,28 @@ CHROMIUM = chromium_path()
 def _missing() -> str | None:
     if CHROMIUM is None:
         return "needs playwright and a Chromium (python -m tests.browser says which)"
-    if not PAGE.is_file():
-        return "needs the built page (python scripts/build_web_app.py)"
+    if not PAYLOAD.is_file():
+        return "needs the exported weights (python scripts/export_web_model.py)"
     if not LANDMARKS.is_file():
         return "needs the fixture tests/fixtures/real_swing_01.npz"
     return None
 
 
+def _build_page() -> Path:
+    """The page as the tree builds it now (about a tenth of a second)."""
+    where = Path(tempfile.mkdtemp(prefix="stem-page-"))
+    atexit.register(shutil.rmtree, where, ignore_errors=True)
+    page = where / "swing-analysis.html"
+    subprocess.run(
+        [sys.executable, str(HERE.parent / "scripts" / "build_web_app.py"),
+         "--model", str(PAYLOAD), "--source", str(HERE.parent / "webapp"), "--out", str(page)],
+        check=True, capture_output=True,
+    )  # fmt: skip
+    return page
+
+
 MISSING = _missing()
+PAGE = _build_page() if MISSING is None else HERE / "no-page.html"
 # CI and agents/check.sh set this where a browser is installed, so a page test that
 # cannot run there fails the run instead of skipping unseen.
 if MISSING and os.environ.get("STEM_PAGE_TESTS") == "required":

@@ -10,11 +10,11 @@
 # at a toolchain's bin directory; otherwise they are reported as not run, never
 # as passed. CI runs them on macOS either way.
 #
-# The page tests (swingml/tests/test_page.py) drive the built page in Chromium.
-# The page is rebuilt first, so they test the JavaScript in the tree, not a page
-# left over from an earlier build. They run when `python -m tests.browser` finds
-# Playwright and a Chromium (bootstrap.sh installs Playwright), and are then
-# required: one that cannot run fails the step instead of skipping.
+# The page tests (swingml/tests/test_page.py) drive the page in Chromium, built
+# by the tests themselves from webapp/ so they never test a stale build. They run
+# when `python -m tests.browser` finds Playwright and a Chromium (bootstrap.sh
+# installs Playwright), and are then required: one that cannot run fails the
+# step instead of skipping.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -58,7 +58,6 @@ step "webapp: syntax" bash -c "for f in swingml/webapp/*.js swingml/tests/js/*.m
 
 if [ "$QUICK" = 0 ]; then
   step "swingml: web payload" bash -c "cd swingml && python scripts/export_web_model.py"
-  step "web: build page" bash -c "cd swingml && python scripts/build_web_app.py"
   step "swingml: pytest" bash -c "cd swingml && python -m pytest -q -rs --ignore=tests/test_page.py"
   if browser="$(cd swingml && python -m tests.browser 2>&1)"; then
     step "web: page tests" bash -c "cd swingml && STEM_PAGE_TESTS=required python -m pytest -q -rs tests/test_page.py"
