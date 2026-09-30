@@ -166,6 +166,54 @@ final class PracticeTests: XCTestCase {
         }
     }
 
+    private func swing(_ tempo: Double, _ key: String) -> PracticeSwing {
+        PracticeSwing(ok: true, refusal: nil, detectionRate: 0.98, handedness: "right", club: "7 iron",
+                      camera: nil, metrics: ["tempo_ratio": tempo], slowedBy: nil, clipKey: key)
+    }
+
+    /// tests/test_browser_practice.py::test_one_clip_analysed_three_times_is_one_retest_swing (#22, #29)
+    func testOneClipAnalysedThreeTimesIsOneRetestSwing() throws {
+        var log = PracticeLog()
+        for (i, tempo) in [2.7, 2.9, 2.8].enumerated() { log.add(swing(tempo, "b\(i)")) }
+        _ = try XCTUnwrap(log.startPlan(Self.rules, focus: "tempo_quick", from: 3))
+        for _ in 0..<3 { log.add(swing(3.05, "same clip"), forPlan: true) }
+        XCTAssertEqual(log.swings.count, 4)
+        XCTAssertEqual(log.activePlan?.retest, [4])
+        XCTAssertNotNil(log.swing(4)?.rereadAt)
+        XCTAssertEqual(log.change(Self.rules, plan: try XCTUnwrap(log.activePlan))?.verdict, "not_enough_swings")
+        // A baseline clip analysed again for the plan stays in the baseline only.
+        log.add(swing(2.75, "b1"), forPlan: true)
+        XCTAssertEqual(log.activePlan?.retest, [4])
+        XCTAssertEqual(log.swing(2)?.metrics["tempo_ratio"], 2.75)
+    }
+
+    /// tests/test_browser_practice.py::test_a_refused_reread_keeps_the_analysed_reading (#26, #29)
+    func testARefusedRereadKeepsTheAnalysedReading() throws {
+        var log = PracticeLog()
+        for (i, tempo) in [2.7, 2.9, 2.8].enumerated() { log.add(swing(tempo, "b\(i)")) }
+        _ = try XCTUnwrap(log.startPlan(Self.rules, focus: "tempo_quick", from: 3))
+        for (i, tempo) in [3.3, 3.4, 3.35].enumerated() { log.add(swing(tempo, "r\(i)"), forPlan: true) }
+        let before = try XCTUnwrap(log.change(Self.rules, plan: try XCTUnwrap(log.activePlan)))
+        XCTAssertEqual(before.verdict, "improved")
+        XCTAssertEqual(before.nAfter, 3)
+        let swings = log.swings
+        let id = log.add(.refused("The handedness chosen does not match this swing.", detectionRate: 0.97,
+                                  club: "7 iron", clipKey: "r0"), forPlan: true)
+        XCTAssertEqual(id, 4)
+        XCTAssertEqual(log.swings, swings)
+        XCTAssertEqual(log.activePlan?.retest, [4, 5, 6])
+        let after = try XCTUnwrap(log.change(Self.rules, plan: try XCTUnwrap(log.activePlan)))
+        XCTAssertEqual(after.verdict, "improved")
+        XCTAssertEqual(after.nAfter, 3)
+        // A refusal is replaced by a later reading, and a refused re-read replaces a refusal.
+        log.add(.refused("no swing found", detectionRate: 0.4, club: nil, clipKey: "x"))
+        log.add(.refused("no body found", detectionRate: 0.2, club: nil, clipKey: "x"))
+        XCTAssertEqual(log.swings.last?.refusal, "no body found")
+        log.add(swing(3.0, "x"))
+        XCTAssertEqual(log.swings.count, 7)
+        XCTAssertEqual(log.swings.last?.ok, true)
+    }
+
     func testACapturePlanCountsCleanRecordingsInARow() {
         var log = PracticeLog()
         log.add(.refused("no swing found", detectionRate: 0.4, club: nil))

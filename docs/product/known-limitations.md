@@ -52,10 +52,12 @@ fixed, it moves to the changelog with the measurement that shows it.
     but has not been run on a phone. The same clip analysed twice: the browser
     replaces the earlier reading (it recognises the file by a hash of its name, size
     and date), except that a refused run never replaces an analysed reading of the
-    clip, which is kept and named on the page. The desktop now does the same,
-    recognising the uploaded file by its SHA-256 (#25). The iPhone still keeps
-    a second swing, which the golfer has to delete by hand (#29). All three drop
-    a deleted swing from its plans. The browser's sample swing is never kept.
+    clip, which is kept and named on the page. The desktop (#25) and the iPhone
+    (#29) do the same, recognising the clip by a SHA-256 of the file. The
+    iPhone's Practice tab lists refused clips so they can be removed. All three
+    drop a deleted swing from its plans. The browser's sample swing is never
+    kept. The iPhone's side of this is tested in SwingCore; the app itself is
+    only built in CI and has not been run on a phone (item 16).
 
 ## Product
 

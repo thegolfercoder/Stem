@@ -37,6 +37,22 @@ struct PracticeView: View {
             let kept = practice.log.swings.count
             Text("\(kept) clip\(kept == 1 ? "" : "s") kept on this iPhone, numbers only for the practice loop.")
                 .font(.footnote).foregroundStyle(Theme.faint)
+            // Analysed swings are removed from History; refused clips have no entry
+            // there, so they are removed here.
+            let refused = practice.log.swings.filter { !$0.ok }.reversed()
+            if !refused.isEmpty {
+                DisclosureGroup("Refused clips kept (\(refused.count))") {
+                    ForEach(Array(refused)) { swing in
+                        HStack {
+                            Text("Swing \(swing.id): \(swing.refusal ?? "refused")")
+                                .font(.caption).lineLimit(2)
+                            Spacer()
+                            Button("Remove", role: .destructive) { practice.remove(swing.id) }
+                        }
+                    }
+                }
+                .font(.footnote)
+            }
             HStack {
                 Button("Export") { exported = practice.exportFile() }
                 if let exported {

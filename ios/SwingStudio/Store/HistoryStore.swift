@@ -67,6 +67,16 @@ final class HistoryStore: ObservableObject {
         }
         let record = SwingRecord(id: id, date: Date(), club: club, label: nil, sourceName: sourceName,
                                  result: result, keyFrames: names, coach: nil, practiceId: practiceId)
+        // The same clip analysed again replaces its practice reading (PracticeLog.add),
+        // so its earlier entry here goes too, pictures and all.
+        if let practiceId {
+            for earlier in records where earlier.practiceId == practiceId {
+                for name in earlier.keyFrames {
+                    try? FileManager.default.removeItem(at: folder.appendingPathComponent(name))
+                }
+            }
+            records.removeAll { $0.practiceId == practiceId }
+        }
         records.insert(record, at: 0)
         save()
         return record

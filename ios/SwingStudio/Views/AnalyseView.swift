@@ -1,3 +1,4 @@
+import CryptoKit
 import PhotosUI
 import SwiftUI
 import SwingCore
@@ -142,6 +143,8 @@ struct AnalyseView: View {
         case .failure(let error): failure = error.localizedDescription; return
         }
         let handedness = settings.chosenHandedness
+        // The same clip analysed again is one swing in the practice log (#29).
+        let key = clipKey(of: url)
         do {
             let outcome = try await Task.detached(priority: .userInitiated) {
                 try await ClipAnalyzer(analyzer: analyzer).analyse(url: url, handedness: handedness) { text, value in
@@ -156,17 +159,32 @@ struct AnalyseView: View {
             switch outcome.verdict {
             case .swing(let result):
                 let practiceId = practice.record(
-                    .analysed(result, sequence: outcome.sequence, club: clubName), forPlan: countsForPlan)
+                    .analysed(result, sequence: outcome.sequence, club: clubName, clipKey: key),
+                    forPlan: countsForPlan)
                 opened = history.add(result: result, keyFrames: outcome.keyFrames, sourceName: name,
                                      club: clubName, practiceId: practiceId)
             case .refused(let reason, let advice, _):
-                practice.record(.refused(reason, detectionRate: nil, club: clubName), forPlan: countsForPlan)
-                refusal = (reason, advice)
+                let id = practice.record(.refused(reason, detectionRate: nil, club: clubName, clipKey: key),
+                                         forPlan: countsForPlan)
+                // A refused run never replaces an analysed reading of the same clip (#26).
+                let kept = practice.log.swing(id)?.ok == true
+                refusal = (reason, kept ? advice + " This clip was analysed before, so swing \(id) keeps "
+                                        + "that reading." : advice)
             }
         } catch {
             failure = error.localizedDescription
         }
     }
+}
+
+/// A hash of the clip's bytes, read in pieces: the same video picked again gets the
+/// same key, so it replaces its earlier reading instead of becoming a second swing.
+private func clipKey(of url: URL) -> String? {
+    guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+    defer { try? handle.close() }
+    var hasher = SHA256()
+    while let chunk = try? handle.read(upToCount: 1 << 20), !chunk.isEmpty { hasher.update(data: chunk) }
+    return hasher.finalize().map { String(format: "%02x", $0) }.joined()
 }
 
 struct SwingRow: View {

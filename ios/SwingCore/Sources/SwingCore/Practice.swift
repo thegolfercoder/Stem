@@ -442,15 +442,20 @@ public struct PracticeSwing: Codable, Equatable, Identifiable {
     /// tempo_ratio, head_movement, pelvis_sway, shoulder_turn_foreshortened, detection_rate.
     public var metrics: [String: Double]
     public var slowedBy: Double?
+    /// Which clip this reading came from (a hash of the file), so the same clip
+    /// analysed again is one swing, as in the browser and on the desktop.
+    public var clipKey: String?
+    /// When the clip was last analysed again, if it was.
+    public var rereadAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id, at, ok, refusal, detectionRate = "detection_rate", handedness, club, camera, metrics
-        case slowedBy = "slowed_by"
+        case slowedBy = "slowed_by", clipKey = "clip_key", rereadAt = "reread_at"
     }
 
     public init(id: Int = 0, at: Date = Date(), ok: Bool, refusal: String?, detectionRate: Double?,
                 handedness: String?, club: String?, camera: CameraSignature?, metrics: [String: Double],
-                slowedBy: Double?) {
+                slowedBy: Double?, clipKey: String? = nil) {
         self.id = id
         self.at = at
         self.ok = ok
@@ -461,10 +466,12 @@ public struct PracticeSwing: Codable, Equatable, Identifiable {
         self.camera = camera
         self.metrics = metrics
         self.slowedBy = slowedBy
+        self.clipKey = clipKey
     }
 
     /// An analysed swing, under the names the desktop stores its metrics by.
-    public static func analysed(_ result: SwingResult, sequence: PoseSequence, club: String?) -> PracticeSwing {
+    public static func analysed(_ result: SwingResult, sequence: PoseSequence, club: String?,
+                                clipKey: String? = nil) -> PracticeSwing {
         let m = result.metrics
         var metrics: [String: Double] = ["detection_rate": result.detectionRate]
         metrics["tempo_ratio"] = m.tempoRatio
@@ -475,12 +482,13 @@ public struct PracticeSwing: Codable, Equatable, Identifiable {
         return PracticeSwing(ok: true, refusal: nil, detectionRate: result.detectionRate,
                              handedness: result.handedness.rawValue, club: club,
                              camera: cameraSignature(sequence, addressFrame: address), metrics: metrics,
-                             slowedBy: m.slowedBy)
+                             slowedBy: m.slowedBy, clipKey: clipKey)
     }
 
-    public static func refused(_ reason: String, detectionRate: Double?, club: String?) -> PracticeSwing {
+    public static func refused(_ reason: String, detectionRate: Double?, club: String?,
+                               clipKey: String? = nil) -> PracticeSwing {
         PracticeSwing(ok: false, refusal: reason, detectionRate: detectionRate, handedness: nil, club: club,
-                      camera: nil, metrics: [:], slowedBy: nil)
+                      camera: nil, metrics: [:], slowedBy: nil, clipKey: clipKey)
     }
 }
 
@@ -518,14 +526,36 @@ public struct PracticeLog: Codable, Equatable {
     public var activePlan: PracticePlan? { plans.first { $0.status == "active" } }
 
     /// Keep one clip. With `forPlan`, it also counts as a retest swing for the active plan.
+    ///
+    /// The same clip analysed again (same `clipKey`) replaces its earlier reading in
+    /// place, keeping its number and its place in any plan, and is never added as a
+    /// retest of a plan it is already in: one clip counted as three retest swings
+    /// once turned "not enough swings" into "improved" (#22). A refused re-read never
+    /// replaces an analysed reading of the clip (#26). The rules of the browser's
+    /// PracticeLog.add (webapp/practice.js) and the desktop's SwingStore.record.
     @discardableResult
     public mutating func add(_ swing: PracticeSwing, forPlan: Bool = false) -> Int {
-        var kept = swing
-        kept.id = next
-        next += 1
-        swings.append(kept)
-        if forPlan, let i = plans.firstIndex(where: { $0.status == "active" }) { plans[i].retest.append(kept.id) }
-        return kept.id
+        let id: Int
+        if let key = swing.clipKey, let i = swings.firstIndex(where: { $0.clipKey == key }) {
+            if swings[i].ok && !swing.ok { return swings[i].id }
+            var replaced = swing
+            replaced.id = swings[i].id
+            replaced.at = swings[i].at
+            replaced.rereadAt = Date()
+            swings[i] = replaced
+            id = replaced.id
+        } else {
+            var kept = swing
+            kept.id = next
+            next += 1
+            swings.append(kept)
+            id = kept.id
+        }
+        if forPlan, let i = plans.firstIndex(where: { $0.status == "active" }),
+           !plans[i].baseline.contains(id), !plans[i].retest.contains(id) {
+            plans[i].retest.append(id)
+        }
+        return id
     }
 
     public mutating func remove(_ id: Int) {
