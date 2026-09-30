@@ -150,3 +150,25 @@ def test_the_gate_reports_phone_swings_apart_and_gates_only_when_enough(
     # The same weights on both sides: every paired difference is exactly zero.
     assert enough["gating"] and enough["passed"] is True
     assert enough["within_1_core4_difference"] == [0.0, 0.0, 0.0]
+
+
+def test_phone_and_golfdb_clip_numbers_are_not_compared_but_groups_are() -> None:
+    """QA's reproduction (#13): phone swings 1..150 against GolfDB ids 0..1395."""
+    from swingml.dataset.manifest import Manifest, leaks
+
+    def manifest(name: str, split: str, ids: range, group: str) -> Manifest:
+        return Manifest(
+            name=name, split=split, archive=f"{name}.npz", sha256=name, n_clips=len(ids),
+            clip_ids=tuple(ids), groups=tuple(f"{group}{i % 7}" for i in ids),
+            source="made up for a test", frozen_at="2026-09-30",
+        )  # fmt: skip
+
+    golfdb = manifest("golfdb-holdout-test", "holdout", range(0, 200), "golfer")
+    calibration = manifest("golfdb-calibration-test", "calibration", range(100, 300), "other")
+    phone = manifest("phone-holdout-test", "phone-holdout", range(1, 151), "phone:p")
+    assert leaks([golfdb, phone]) == []  # clip 5 of each is not the same swing
+    problems = leaks([golfdb, calibration, phone])
+    assert problems == ["golfdb-holdout-test and golfdb-calibration-test share 100 clips"]
+    # A golfer group in both is still a leak, whichever ids the clips carry.
+    same_golfer = manifest("phone-holdout-2", "phone-holdout", range(1, 3), "golfer")
+    assert any("groups" in p for p in leaks([golfdb, same_golfer]))

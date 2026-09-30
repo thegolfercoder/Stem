@@ -262,11 +262,23 @@ def group_resamples(
     return draws
 
 
+def id_space(manifest: Manifest) -> str:
+    """Whose numbering a manifest's clip ids are in: GolfDB's global ids, or a phone
+    set's own 1..N (`scripts/make_phone_test_set.py`)."""
+    return "phone" if manifest.split.startswith("phone") else "golfdb"
+
+
 def leaks(manifests: Sequence[Manifest]) -> list[str]:
-    """Every clip or group that appears in more than one manifest."""
+    """Every clip or group that appears in more than one manifest.
+
+    Clip ids are compared only within one id space: phone swing 5 and GolfDB clip
+    5 are different swings. Groups are compared across every manifest, since a
+    golfer in two sets is a leak whatever their clips are numbered.
+    """
     problems: list[str] = []
     for a, b in combinations(manifests, 2):
-        shared_clips = set(a.clip_ids) & set(b.clip_ids)
+        same_space = id_space(a) == id_space(b)
+        shared_clips = set(a.clip_ids) & set(b.clip_ids) if same_space else set()
         shared_groups = set(a.groups) & set(b.groups)
         if shared_clips:
             problems.append(f"{a.name} and {b.name} share {len(shared_clips)} clips")
