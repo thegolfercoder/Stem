@@ -6,7 +6,10 @@ and how healthy the loop is are decided here, by code with tests, rather than
 re-decided by each agent from prose each run. Standard library only, so it runs
 in a fresh container before anything is installed.
 
-Agents fetch issues with the GitHub tools, save the JSON to a file, and run:
+Agents fetch issues with the GitHub tools and save them to a file. Ranking reads
+only each issue's number, title, labels, state, created_at and the agent-task
+block, so the saved body may be just that block: re-writing whole bodies costs
+tokens for nothing. Then:
 
     python agents/loop.py config                         # check agents/config.toml
     python agents/loop.py validate draft.md              # is this item well formed?
@@ -116,11 +119,16 @@ def parse_fields(body: str) -> dict[str, str]:
 
 def problems(body: str) -> list[str]:
     """Everything wrong with an item body; empty when it is ready to file."""
-    found: list[str] = []
     try:
         fields = parse_fields(body)
     except ItemError as error:
         return [str(error)]
+    return field_problems(fields) + section_problems(body)
+
+
+def field_problems(fields: dict[str, str]) -> list[str]:
+    """What is wrong with the agent-task block's values: all ranking needs."""
+    found: list[str] = []
 
     def choice(key: str, options: tuple[str, ...]) -> None:
         value = fields.get(key)
@@ -148,7 +156,12 @@ def problems(body: str) -> list[str]:
     depends = fields.get("depends-on", "")
     if depends and depends.lower() != "none" and not REFERENCE.search(depends):
         found.append("`depends-on` must list issues as #N, or be none")
+    return found
 
+
+def section_problems(body: str) -> list[str]:
+    """What is missing from the prose a Builder and QA work from."""
+    found: list[str] = []
     sections = {s.strip().lower(): s for s in SECTION.findall(body)}
     for name in REQUIRED_SECTIONS:
         if name.lower() not in sections:
@@ -178,11 +191,12 @@ def _labels(issue: dict[str, Any]) -> frozenset[str]:
 
 
 def to_item(issue: dict[str, Any]) -> Item:
-    body = issue.get("body") or ""
-    trouble = problems(body)
+    """An issue as the ranker sees it. Only the agent-task block is needed, so a
+    saved issue may carry just that block as its body (see `compact`)."""
+    fields = parse_fields(issue.get("body") or "")
+    trouble = field_problems(fields)
     if trouble:
         raise ItemError("; ".join(trouble))
-    fields = parse_fields(body)
     depends = fields.get("depends-on", "")
     state = str(issue.get("state", "open")).lower()
     return Item(

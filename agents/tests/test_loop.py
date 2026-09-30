@@ -180,3 +180,23 @@ def test_the_issue_template_is_valid_once_filled_in() -> None:
         loop.parse_fields(body(**{"depends-on": "#12, #15  # after those"}))["depends-on"]
         == "#12, #15"
     )
+
+
+def test_ranking_needs_only_the_block() -> None:
+    compact = issue(5, ["P1"], priority="P1")
+    compact["body"] = compact["body"].split("## Why")[0]
+    assert [i.number for i in loop.rank([compact], set()).ready] == [5]
+    # Filing still needs the prose.
+    assert any("missing section" in p for p in loop.problems(compact["body"]))
+
+
+def test_github_tool_output_shape() -> None:
+    """As the list-issues tool returns it: labels as strings, state upper case."""
+    saved = {"issues": [{**issue(7, [], priority="P2"), "labels": ["agent-backlog", "P2"],
+                         "state": "OPEN"}], "totalCount": 1}  # fmt: skip
+    path = Path(loop.HERE) / "tests" / "_shape.json"
+    try:
+        path.write_text(json.dumps(saved))
+        assert [i.number for i in loop.rank(loop.load_issues(path), set()).ready] == [7]
+    finally:
+        path.unlink(missing_ok=True)

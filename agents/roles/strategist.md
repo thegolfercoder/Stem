@@ -22,8 +22,9 @@ and one strategy brief per run on the control issue.
    `docs/ml/evaluation-plan.md`, and the experiment write-ups in `docs/ml/`.
 2. What changed since your last brief: `git log --oneline <last brief's sha>..HEAD`
    (your last brief names it), and the journal comments on the control issue.
-3. The backlog: save all open and recently closed `agent-backlog` issues to JSON
-   and run `python3 agents/loop.py health` and `rank --all --have data,swift,browser`.
+3. The backlog: save open and recently closed `agent-backlog` issues to JSON in
+   the compact form the Builder uses (`agents/roles/builder.md` §2) and run
+   `python3 agents/loop.py health` and `rank --all --have data,swift,browser`.
 4. QA findings, reopened items, and the integration PR's CI state.
 
 ## 2. Think hard, then decide

@@ -34,8 +34,10 @@ In this order, and a cycle spent here counts as a cycle:
 
 ## 2. Choose
 
-1. List open issues labelled `agent-backlog` (all fields), save the JSON to
-   `$TMPDIR/issues.json`, run
+1. List open issues labelled `agent-backlog` and save them to
+   `$TMPDIR/issues.json` as `{"issues": [...]}` with, per issue, `number`,
+   `title`, `labels`, `state`, `created_at`, and as `body` only its
+   ```` ```agent-task ```` block (the ranker needs nothing else). Run
    `python agents/loop.py rank $TMPDIR/issues.json --have <resources>`.
    Take `next[0]`. Nothing ready: journal "idle", do not schedule a
    continuation, end.
