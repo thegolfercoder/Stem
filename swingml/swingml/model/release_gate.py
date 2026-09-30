@@ -34,6 +34,13 @@ manifests. The gates, all of which must pass:
 9. **Sensitivity.** The slope of log read tempo on log true tempo does not fall by
    more than 0.05: a model that pulls every golfer toward the middle is a model
    that cannot show a golfer changing.
+10. **Phone swings** (`--phone-manifest`, a `phone-holdout` frozen by
+    `scripts/make_phone_test_set.py`). Reported in a section of their own, never
+    pooled with GolfDB, with intervals that resample golfers. They gate, with the
+    non-inferiority rule of gate 3, only once the set holds `PHONE_MIN_SWINGS`
+    swings from `PHONE_MIN_GOLFERS` golfers. Below that they are reported and
+    not gated, and without the manifest the report says "no phone evidence",
+    which is not a pass.
 
 Exit status: 0 all pass, 1 a gate failed, 2 evidence missing.
 """
@@ -60,6 +67,7 @@ from swingml.analysis import (
     model_fingerprint,
 )
 from swingml.dataset.manifest import (
+    Manifest,
     ManifestError,
     guard_archive,
     holdout_access,
@@ -88,6 +96,10 @@ COVERAGE_SLACK = 0.05
 SUBGROUP_MIN = 30
 SUBGROUP_DROP = 0.05
 SLOPE_DROP = 0.05
+# docs/ml/evaluation-plan.md: 150+ labelled phone swings from 30+ golfers. Fewer
+# golfers make the golfer-resampled interval wider than any margin worth gating on.
+PHONE_MIN_SWINGS = 150
+PHONE_MIN_GOLFERS = 30
 
 
 class MissingEvidenceError(RuntimeError):
@@ -417,6 +429,56 @@ def matching_calibration(model: Any, path: Path | None, which: str) -> ModelCali
     return table
 
 
+def phone_section(
+    manifest: Manifest | None,
+    root: Path,
+    models: tuple[Any, Any],
+    calibrations: tuple[ModelCalibration, ModelCalibration],
+    config: AnalysisConfig,
+    resamples: int,
+) -> dict[str, Any]:
+    """Baseline and candidate on labelled phone swings, kept apart from GolfDB.
+
+    `gating` is true only when the set is large enough to say something. The
+    rule is gate 3's non-inferiority only: a phone set this small cannot show a
+    candidate better, only whether it is clearly worse.
+    """
+    if manifest is None:
+        return {"status": "no phone evidence", "gating": False, "passed": None}
+    clips = read_archive(verify(manifest, root))
+    golfers = len(set(manifest.groups))
+    (baseline, candidate), (base_cal, cand_cal) = models, calibrations
+    base_rows = [score_clip(c, decide(baseline, c.features, config), base_cal) for c in clips]
+    cand_rows = [score_clip(c, decide(candidate, c.features, config), cand_cal) for c in clips]
+    groups = list(manifest.groups)
+    w1 = paired_difference(
+        base_rows, cand_rows, groups, lambda r: r.w1_core, lambda v: float(v.mean()), resamples, 3
+    )
+    tempo = paired_difference(
+        base_rows, cand_rows, groups, lambda r: r.tempo_error, lambda v: float(np.median(v)),
+        resamples, 4,
+    )  # fmt: skip
+    gating = len(clips) >= PHONE_MIN_SWINGS and golfers >= PHONE_MIN_GOLFERS
+    non_inferior = bool(w1[1] > -NON_INFERIORITY_W1 and tempo[2] < NON_INFERIORITY_TEMPO)
+    return {
+        "status": "gating"
+        if gating
+        else (
+            f"reported, not gating: {len(clips)} swings from {golfers} golfers, "
+            f"gating needs {PHONE_MIN_SWINGS} from {PHONE_MIN_GOLFERS}"
+        ),
+        "manifest": manifest.name,
+        "n_swings": len(clips),
+        "n_golfers": golfers,
+        "gating": gating,
+        "passed": non_inferior if gating else None,
+        "baseline_summary": summary(base_rows, float("nan")),
+        "candidate_summary": summary(cand_rows, float("nan")),
+        "within_1_core4_difference": [round(v, 4) for v in w1],
+        "tempo_error_difference": [round(v, 4) for v in tempo],
+    }
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     root = Path(args.root)
     candidate = load_any(args.candidate)
@@ -427,10 +489,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     manifests = [load(args.test_manifest), load(args.calibration_manifest)]
     if args.train_manifest is not None:
         manifests.append(load(args.train_manifest))
+    phone = load(args.phone_manifest) if args.phone_manifest is not None else None
     try:
         test_archive = verify(manifests[0], root)
         for manifest in manifests[1:]:
             verify(manifest, root)
+        if phone is not None:
+            verify(phone, root)
     except (ManifestError, FileNotFoundError) as error:
         raise MissingEvidenceError(str(error)) from error
 
@@ -454,7 +519,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         if missing_sections
         else "all present",
     }
-    problems = leaks(manifests)
+    problems = leaks(manifests + ([phone] if phone is not None else []))
     gates["no_leakage"] = {
         "passed": not problems,
         "detail": problems or "no shared clips or groups",
@@ -536,6 +601,15 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "baseline_slope": base["tempo_slope"],
         "candidate_slope": cand["tempo_slope"],
     }
+    phone_report = phone_section(
+        phone, root, (baseline, candidate), (base_cal, cand_cal), config, args.resamples
+    )
+    if phone_report["gating"]:
+        gates["phone_not_worse"] = {
+            "passed": phone_report["passed"],
+            "within_1_core4_difference": phone_report["within_1_core4_difference"],
+            "tempo_error_difference": phone_report["tempo_error_difference"],
+        }
     return {
         "candidate": {"path": str(args.candidate), "sha256": sha256_of(args.candidate)},
         "baseline": {"path": str(args.baseline), "sha256": sha256_of(args.baseline)},
@@ -543,6 +617,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "baseline_summary": base,
         "candidate_summary": cand,
         "gates": gates,
+        "phone": phone_report,
         "passed": all(g["passed"] for g in gates.values()),
     }
 
@@ -558,6 +633,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--test-manifest", type=Path, required=True)
     parser.add_argument("--calibration-manifest", type=Path, required=True)
     parser.add_argument("--train-manifest", type=Path, default=None)
+    parser.add_argument("--phone-manifest", type=Path, default=None)
     parser.add_argument("--model-card", type=Path, default=None)
     parser.add_argument("--fixture", type=Path, default=Path("tests/fixtures/real_swing_01"))
     parser.add_argument("--root", type=Path, default=Path("."))
@@ -573,6 +649,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
     for name, gate in report["gates"].items():
         print(f"{'PASS' if gate['passed'] else 'FAIL'}  {name}")
+    if not report["phone"]["gating"]:
+        print(f"INFO  phone: {report['phone']['status']}")
     print("RELEASE GATE:", "PASSED" if report["passed"] else "FAILED")
     if args.report is not None:
         args.report.parent.mkdir(parents=True, exist_ok=True)

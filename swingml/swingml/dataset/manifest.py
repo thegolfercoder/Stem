@@ -40,7 +40,10 @@ class Manifest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     name: str
-    split: str = Field(description="train, validation, calibration or holdout.")
+    split: str = Field(
+        description="train, validation, calibration, holdout, or phone-holdout (phone swings "
+        "labelled by golfers, scored by the release gate in a section of their own)."
+    )
     archive: str = Field(description="Path of the archive, relative to the swingml directory.")
     sha256: str
     n_clips: int
@@ -124,6 +127,10 @@ HOLDOUT_RULE = (
 )
 
 
+HOLDOUT_SPLITS = ("holdout", "phone-holdout")
+"""Splits read only through the release gate."""
+
+
 class HoldoutError(ManifestError):
     """Something other than the release gate tried to read the frozen holdout."""
 
@@ -150,7 +157,7 @@ def frozen(split: str | None = None) -> list[Manifest]:
 
 
 def refuse_holdout_manifest(manifest: Manifest) -> None:
-    if manifest.split == "holdout" and not _holdout_access:
+    if manifest.split in HOLDOUT_SPLITS and not _holdout_access:
         raise HoldoutError(f"{manifest.name} is a holdout manifest: {HOLDOUT_RULE}")
 
 
@@ -179,7 +186,7 @@ def guard_archive(path: Path) -> None:
     """
     if _holdout_access:
         return
-    holdouts = frozen("holdout")
+    holdouts = [m for m in frozen() if m.split in HOLDOUT_SPLITS]
     if not holdouts:
         return
     digest = _digest(Path(path))
@@ -189,12 +196,18 @@ def guard_archive(path: Path) -> None:
     with np.load(path) as data:
         if "golfdb_split" not in data.files or "seeds" not in data.files:
             return
-        ids = [int(v) for v in data["seeds"]]
+        # Only GolfDB rows carry GolfDB clip ids: a phone export writes -1 here and
+        # numbers its swings from 1, which would otherwise collide with GolfDB's.
+        golfdb = data["golfdb_split"] >= 0
+        ids = [int(v) for v in data["seeds"][golfdb]]
     refuse_holdout_clips(ids, str(path))
 
 
 def refuse_holdout_clips(ids: Iterable[int], what: str) -> None:
-    """Refuse clip ids that belong to a frozen holdout (GolfDB ids are global)."""
+    """Refuse GolfDB clip ids that belong to a frozen GolfDB holdout (the ids are global).
+
+    Phone holdouts are matched by their bytes only: their swing numbers are local.
+    """
     if _holdout_access:
         return
     wanted = set(ids)

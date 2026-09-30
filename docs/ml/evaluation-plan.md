@@ -30,7 +30,18 @@ exits 0. The gates and their margins are in the module's docstring and
 
 1. **A phone test set.** 150+ labelled phone swings from 30+ golfers across several
    sessions each, split by golfer, frozen before any training uses the rest. Until it
-   exists the gate's real-footage number describes broadcast video.
+   exists the gate's real-footage number describes broadcast video. The path is
+   built (#13):
+   - Each golfer confirms positions in the app and exports them with
+     `scripts/make_labelled_dataset.py`.
+   - `scripts/make_phone_test_set.py` combines the exports, renumbers the swings,
+     groups them by golfer, and freezes a `phone-holdout` manifest.
+   - The release gate reads it with `--phone-manifest` and reports it apart from
+     GolfDB. It gates only at 150 swings from 30 golfers; below that it reports
+     without gating, and without the manifest it says "no phone evidence".
+
+   How the swings are collected, and under what consent, is the owner's decision
+   (#20). Label agreement between two people is a follow-up item.
 2. **Within-golfer repeatability.** Ten swings from each of 20 golfers in one session
    from one camera spot: the spread of each metric within a golfer is the smallest
    change the practice loop can detect, and it is not known.

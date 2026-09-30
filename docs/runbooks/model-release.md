@@ -31,8 +31,14 @@ python -m swingml.model.release_gate \
     --test-manifest swingml/manifests/golfdb-holdout-v1.json \
     --calibration-manifest swingml/manifests/golfdb-calibration-v1.json \
     --train-manifest <the candidate's training manifest> \
-    --model-card <candidate card> --report out/release/report.json
+    --model-card <candidate card> --report out/release/report.json \
+    [--phone-manifest <a frozen phone-holdout manifest>]
 ```
+
+With `--phone-manifest`, the report gains a `phone` section scored apart from
+GolfDB, with intervals that resample golfers. It gates (`phone_not_worse`) only
+from 150 swings by 30 golfers. Without it the report says "no phone evidence":
+that is an absence of evidence, not a pass.
 
 Exit 0: every gate passed. Exit 1: a gate failed; the report says which and by how
 much. Exit 2: evidence is missing; nothing was measured. Do not ship on 1 or 2.
