@@ -59,7 +59,14 @@ from swingml.analysis import (
     load_event_model,
     model_fingerprint,
 )
-from swingml.dataset.manifest import ManifestError, leaks, load, verify
+from swingml.dataset.manifest import (
+    ManifestError,
+    guard_archive,
+    holdout_access,
+    leaks,
+    load,
+    verify,
+)
 from swingml.events import SwingEvent
 from swingml.features import feature_layout
 from swingml.model.calibration import ErrorBand, ModelCalibration, load_calibration
@@ -192,6 +199,7 @@ class Clip(BaseModel):
 
 
 def read_archive(path: Path) -> list[Clip]:
+    guard_archive(path)
     data = dict(np.load(path))
     offsets = np.concatenate(([0], np.cumsum(data["lengths"])))
     slow = data.get("slow", np.zeros(len(data["lengths"])))
@@ -557,7 +565,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--report", type=Path, default=None)
     args = parser.parse_args(argv)
     try:
-        report = run(args)
+        # The one place the holdout may be read (swingml.dataset.manifest.guard_archive).
+        with holdout_access():
+            report = run(args)
     except MissingEvidenceError as error:
         print(f"RELEASE GATE: MISSING EVIDENCE - {error}", file=sys.stderr)
         return 2

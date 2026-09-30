@@ -25,6 +25,7 @@ from swingml.model.rgb import (
     widen_inputs,
 )
 from swingml.model.tcn import SwingEventNet
+from tests.conftest import FrozenSplits
 
 
 def _net(width: int) -> SwingEventNet:
@@ -67,14 +68,18 @@ def _archive(path: Path, ids: list[int], lengths: list[int], width: int) -> Path
     return path
 
 
-def test_fusing_checks_clips_and_rows(tmp_path: Path) -> None:
+def test_fusing_checks_clips_and_rows(tmp_path: Path, frozen_splits: FrozenSplits) -> None:
     archive = _archive(tmp_path / "a.npz", [7, 9], [5, 3], 2)
+    frozen_splits.freeze(archive, "train")
+    basis = tmp_path / "basis.npz"
+    np.savez(basis, fitted_on=str(archive))  # projected with a basis fitted on train
     sidecar = tmp_path / "s.npz"
     np.savez(
         sidecar,
         seeds=np.array([9, 7]),
         lengths=np.array([3, 5]),
         embeddings=np.ones((8, 4), dtype=np.float16),
+        basis=str(basis),
     )
     width = fuse_archive(archive, sidecar, tmp_path / "fused.npz")
     fused = np.load(tmp_path / "fused.npz")

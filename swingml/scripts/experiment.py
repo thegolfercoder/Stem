@@ -542,10 +542,18 @@ def main() -> None:
         type=Path,
         nargs="*",
         default=[],
-        help="clip files scored on their own, never trained on and never split",
+        help=(
+            "no longer supported: the holdout is read only through "
+            "python -m swingml.model.release_gate (agents/CHARTER.md)"
+        ),
     )
     parser.add_argument("--test", action="store_true", help="also score the test split")
     args = parser.parse_args()
+    if args.holdout:
+        raise SystemExit(
+            "--holdout is refused: the holdout is read only through "
+            "`python -m swingml.model.release_gate`, once per candidate (agents/CHARTER.md)"
+        )
 
     setup = Setup(
         name=args.name,
@@ -627,15 +635,6 @@ def main() -> None:
         print(f"\n{setup.name} TEST: {test.summary()}")
         print(test.report())
         scores["test"] = test
-
-    if args.holdout:
-        held = load_samples(args.holdout)
-        if not held:
-            raise SystemExit(f"no clips in {[str(p) for p in args.holdout]}")
-        holdout = evaluate(model, held)
-        print(f"\n{setup.name} HOLDOUT ({len(held)} clips): {holdout.summary()}")
-        print(holdout.report())
-        scores["holdout"] = holdout
 
     record(args.log, setup.name, setup.notes or json.dumps(setup.__dict__, default=str), scores)
     print(

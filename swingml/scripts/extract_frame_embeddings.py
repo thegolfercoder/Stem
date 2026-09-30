@@ -43,6 +43,9 @@ from numpy.typing import NDArray
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from swingml.dataset.manifest import guard_archive, require_split
+from swingml.model.rgb import check_basis
+
 CANONICAL_RATE_HZ = 60.0
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
@@ -134,6 +137,10 @@ def main() -> None:
     )
     parser.add_argument("--dims", type=int, default=64)
     args = parser.parse_args()
+    # Refused before the backbone loads: no holdout clips, and a basis fitted on
+    # the frozen train archive only (`swingml.model.rgb.check_basis`).
+    guard_archive(args.archive)
+    fitted_on = require_split(args.archive, "train") if args.fit_basis else check_basis(args.basis)
     torch.set_num_threads(args.threads)
 
     archive = np.load(args.archive)
@@ -163,6 +170,8 @@ def main() -> None:
         np.savez(
             args.basis,
             fitted_on=np.array(str(args.archive)),
+            fitted_on_sha256=np.array(fitted_on.sha256),
+            fitted_on_manifest=np.array(fitted_on.name),
             mean=basis["mean"],
             components=basis["components"],
             scale=basis["scale"],

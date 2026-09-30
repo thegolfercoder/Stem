@@ -8,6 +8,8 @@ properly.
 1. **Frozen real test set.** `golfdb-holdout-v1` (201 swings, 35 golfer/video
    groups). Every change is scored on it through the application's own decision
    (`swingml.model.release_gate`), never on a split chosen after seeing results.
+   Nothing else can read it: every other loader refuses the holdout's archive,
+   its manifest, or its clips in other bytes (`manifest.guard_archive`).
 2. **Group bootstrap.** Intervals resample golfer/video groups, not clips.
 3. **Metrics.** Within 1 and 2 frames (core four and all eight events); median and
    80th-percentile tempo error; tempo sensitivity (log-log slope); band coverage;

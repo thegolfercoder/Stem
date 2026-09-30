@@ -1,9 +1,12 @@
-"""The production network against simple baselines, on the frozen real holdout.
+"""The production network against simple baselines, on real swings it never saw.
 
 The rule this enforces: if a complicated model does not beat a simple one on
 real held-out footage, the complicated one does not ship. Every method here is
 fitted on the training split only, any choice between variants is made on the
-validation split only, and the holdout is touched once, to report.
+validation split only, and the numbers are reported on a split neither touched
+(calibration by default). The frozen holdout is read only by the release gate;
+`docs/audit/baselines.json` holds this script's one holdout run, made before the
+rule was enforced in code.
 
 Methods, from simplest:
 
@@ -20,7 +23,7 @@ Methods, from simplest:
   which events and how far is chosen on validation.
 
 Metrics are per clip. Intervals resample whole golfer/video groups, taken from
-the frozen manifest whose SHA-256 matches the holdout archive; clips of one
+the frozen manifest whose SHA-256 matches the reported archive; clips of one
 golfer from one video are not independent, and resampling them one by one gives
 intervals narrower than the evidence. An archive no manifest froze falls back to
 resampling clips, and the report says which was done. `tempo_slope` is the
@@ -28,7 +31,7 @@ slope of log predicted tempo on log true tempo: 1.0 means a golfer's tempo moves
 the reading by as much as it moves, and below 1.0 means readings are pulled
 toward the middle, so a real change shows up smaller than it is.
 
-    python scripts/benchmark_baselines.py --out docs/audit/baselines.json
+    python scripts/benchmark_baselines.py --out out/baselines-calibration.json
 """
 
 from __future__ import annotations
@@ -47,7 +50,7 @@ from numpy.typing import NDArray
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from swingml.analysis import load_model
-from swingml.dataset.manifest import group_resamples, groups_for
+from swingml.dataset.manifest import group_resamples, groups_for, guard_archive
 from swingml.events import SwingEvent
 from swingml.features import feature_dimension
 from swingml.model import baselines as bl
@@ -60,6 +63,7 @@ Clip = tuple[NDArray[np.float32], NDArray[np.int64], float]  # features, events,
 
 
 def load(path: Path) -> list[Clip]:
+    guard_archive(path)
     data = dict(np.load(path))
     offsets = np.concatenate(([0], np.cumsum(data["lengths"])))
     slow = data.get("slow", np.zeros(len(data["lengths"])))
@@ -272,19 +276,24 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--train", type=Path, default=Path("out/golfdb/split/train.npz"))
     parser.add_argument("--validation", type=Path, default=Path("out/golfdb/split/validation.npz"))
-    parser.add_argument("--holdout", type=Path, default=Path("out/golfdb/split/holdout.npz"))
+    # Reported on the calibration split, never chosen on. The holdout numbers in
+    # docs/audit/baselines.json came from this script's one run on the holdout,
+    # before the charter; reading the holdout again goes through the release gate
+    # (the loader below refuses it).
+    parser.add_argument("--report", type=Path, default=Path("out/golfdb/split/calibration.npz"))
     parser.add_argument("--model", type=Path, default=Path("swingml/data/swing_event_net.pt"))
     parser.add_argument("--resamples", type=int, default=2000)
     parser.add_argument("--templates", type=int, default=25)
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args()
 
-    train, validation, holdout = load(args.train), load(args.validation), load(args.holdout)
-    print(f"train {len(train)}, validation {len(validation)}, holdout {len(holdout)} real swings")
-    groups = groups_for(args.holdout)
-    if groups is not None and len(groups) != len(holdout):
+    train, validation, reported = load(args.train), load(args.validation), load(args.report)
+    print(f"train {len(train)}, validation {len(validation)}, reported {len(reported)} real swings")
+    groups = groups_for(args.report)
+    if groups is not None and len(groups) != len(reported):
         raise SystemExit(
-            f"the holdout's manifest lists {len(groups)} clips; the archive has {len(holdout)}"
+            f"the reported split's manifest lists {len(groups)} clips; "
+            f"the archive has {len(reported)}"
         )
     resampled_by = (
         f"golfer/video group ({len(set(groups))} groups)"
@@ -309,9 +318,9 @@ def main() -> None:
         return [per_clip(method(f), e) for f, e, _ in clips]
 
     network_val = [network_predict(network, f) for f, _, _ in validation]
-    network_hold = [network_predict(network, f) for f, _, _ in holdout]
+    network_reported = [network_predict(network, f) for f, _, _ in reported]
 
-    # The hybrid's variant is chosen on validation, never on the holdout.
+    # The hybrid's variant is chosen on validation, never on the reported split.
     variants = [
         bl.RefineParams(events=events, window=window, kinematic=kin)
         for events in (
@@ -355,9 +364,9 @@ def main() -> None:
         "splits": {
             "train": str(args.train),
             "validation": str(args.validation),
-            "holdout": str(args.holdout),
+            "reported_on": str(args.report),
         },
-        "note": "fitted on train only, variants chosen on validation only, holdout reported once",
+        "note": "fitted on train only, variants chosen on validation only, reported once",
         "intervals_resample_by": resampled_by,
         "hybrid_choice": {"events": list(best_hybrid.events), "window": best_hybrid.window},
         "kinematic_params": kin.model_dump(),
@@ -367,16 +376,16 @@ def main() -> None:
     rows_by_method: dict[str, list[dict[str, float]]] = {}
     for name, method in methods.items():
         began = time.time()
-        rows_by_method[name] = method(holdout)
+        rows_by_method[name] = method(reported)
         print(f"  {name}: {time.time() - began:.0f}s")
     rows_by_method["network"] = [
-        per_clip(n, e) for (_, e, _), n in zip(holdout, network_hold, strict=True)
+        per_clip(n, e) for (_, e, _), n in zip(reported, network_reported, strict=True)
     ]
     rows_by_method["hybrid"] = [
         per_clip(None if n is None else bl.refine(f, n, best_hybrid), e)
-        for (f, e, _), n in zip(holdout, network_hold, strict=True)
+        for (f, e, _), n in zip(reported, network_reported, strict=True)
     ]
-    slow = np.array([s for _, _, s in holdout]) > 0.5
+    slow = np.array([s for _, _, s in reported]) > 0.5
 
     def rows_where(
         rows: Sequence[dict[str, float]], keep: NDArray[np.bool_]

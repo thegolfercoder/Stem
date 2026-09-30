@@ -41,7 +41,7 @@ from numpy.typing import NDArray
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from swingml.analysis import AnalysisConfig, _implausible_timing
-from swingml.dataset.manifest import load, verify
+from swingml.dataset.manifest import load, refuse_holdout_manifest, verify
 from swingml.events import NUM_EVENTS
 from swingml.model.baselines import ADDRESS, TOP, _rest_before, signals
 from swingml.model.calibration import conformal_quantile, load_calibration
@@ -350,6 +350,8 @@ def _round(value: float) -> float:
 
 def load_split(manifest_path: Path, root: Path) -> tuple[list[Clip], list[str], str]:
     manifest = load(manifest_path)
+    # Before anything is loaded: every subcommand's every manifest comes through here.
+    refuse_holdout_manifest(manifest)
     archive = verify(manifest, root)
     clips = read_archive(archive)
     if len(clips) != len(manifest.groups):

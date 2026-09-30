@@ -510,7 +510,9 @@ python scripts/split_golfdb.py --annotations golfdb/data/golfDB.mat \
 
 python scripts/experiment.py --name real --seed 0 \
     --extra-train out/golfdb/train.npz --extra-events address,top,mid_downswing,impact \
-    --holdout out/golfdb/holdout.npz --out out/exp/real
+    --out out/exp/real
+# The holdout is scored once per candidate, by `python -m swingml.model.release_gate`
+# and nothing else: every other loader refuses a frozen holdout archive or manifest.
 ```
 
 Three things about that are not obvious.

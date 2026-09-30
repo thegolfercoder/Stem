@@ -21,13 +21,58 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from swingml.dataset.manifest import (
+    SWINGML_ROOT,
+    Manifest,
+    ManifestError,
+    frozen,
+    guard_archive,
+    refuse_holdout_clips,
+    require_split,
+)
+
 
 class SidecarError(ValueError):
     """The sidecar does not describe the same clips, row for row, as the archive."""
 
 
+def _located(recorded: str) -> Path:
+    """A path the extraction script recorded: as written, else under swingml/."""
+    path = Path(recorded)
+    return path if path.is_file() or path.is_absolute() else SWINGML_ROOT / path
+
+
+def check_basis(path: Path) -> Manifest:
+    """The frozen train manifest the projection was fitted on, or refuse.
+
+    A basis fitted on validation, calibration or holdout clips would carry what
+    they look like into every image feature, so a model chosen on validation would
+    be chosen with validation already seen. New bases record the train archive's
+    SHA-256; the first one recorded only its path, which must still hash to a
+    frozen train archive.
+    """
+    with np.load(path) as basis:
+        if "fitted_on_sha256" in basis.files:
+            digest = str(basis["fitted_on_sha256"])
+            for manifest in frozen("train"):
+                if manifest.sha256 == digest:
+                    return manifest
+            raise SidecarError(f"{path} was fitted on {digest[:12]}, no frozen train archive")
+        if "fitted_on" in basis.files:
+            fitted_on = _located(str(basis["fitted_on"]))
+            try:
+                return require_split(fitted_on, "train")
+            except (ManifestError, OSError) as error:
+                raise SidecarError(f"{path}: {error}") from error
+    raise SidecarError(f"{path} does not record what it was fitted on")
+
+
 def load_sidecar(path: Path) -> dict[int, NDArray[np.float32]]:
     data = np.load(path)
+    if "basis" not in data.files:
+        raise SidecarError(f"{path} does not name the basis its features were projected with")
+    check_basis(_located(str(data["basis"])))
+    refuse_holdout_clips((int(v) for v in data["seeds"]), str(path))
     offsets = np.concatenate(([0], np.cumsum(data["lengths"])))
     embeddings = data["embeddings"]
     return {
@@ -49,6 +94,7 @@ def fuse(
 
 def fuse_archive(archive: Path, sidecar_path: Path, out: Path) -> int:
     """A copy of `archive` with the image columns appended to every row."""
+    guard_archive(archive)
     data = dict(np.load(archive))
     sidecar = load_sidecar(sidecar_path)
     offsets = np.concatenate(([0], np.cumsum(data["lengths"])))

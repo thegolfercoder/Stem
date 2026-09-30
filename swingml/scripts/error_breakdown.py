@@ -38,6 +38,7 @@ from numpy.typing import NDArray
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from swingml.dataset.manifest import guard_archive
 from swingml.events import SwingEvent
 from swingml.features import feature_layout
 from swingml.skeleton import SWING_LANDMARKS, Landmark
@@ -82,6 +83,7 @@ def tempo_error(predicted: NDArray[np.float64], truth: NDArray[np.int64]) -> flo
 
 def read_conditions(path: Path) -> list[dict[str, float]]:
     """Per-clip capture conditions, from the archive's own columns and features."""
+    guard_archive(path)
     data = dict(np.load(path))  # decompressed once, not once per clip
     layout = feature_layout()
     visibility_start = layout.visibility[0]

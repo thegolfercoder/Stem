@@ -25,7 +25,8 @@ import argparse
 import hashlib
 import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Iterable, Iterator, Sequence
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from itertools import combinations
 from pathlib import Path
@@ -114,6 +115,105 @@ def verify(manifest: Manifest, root: Path) -> Path:
 
 
 MANIFESTS = Path(__file__).resolve().parent.parent / "manifests"
+SWINGML_ROOT = MANIFESTS.parent.parent
+"""Where the manifests' relative archive paths (`out/golfdb/...`) are rooted."""
+
+HOLDOUT_RULE = (
+    "the holdout is read only through `python -m swingml.model.release_gate`, once per "
+    "candidate (agents/CHARTER.md section 3)"
+)
+
+
+class HoldoutError(ManifestError):
+    """Something other than the release gate tried to read the frozen holdout."""
+
+
+_holdout_access = False
+
+
+@contextmanager
+def holdout_access() -> Iterator[None]:
+    """Let the release gate, and only the release gate, read the holdout."""
+    global _holdout_access
+    before = _holdout_access
+    _holdout_access = True
+    try:
+        yield
+    finally:
+        _holdout_access = before
+
+
+def frozen(split: str | None = None) -> list[Manifest]:
+    """Every manifest in the package (read at call time, so tests can repoint it)."""
+    found = [load(path) for path in sorted(MANIFESTS.glob("*.json"))]
+    return [m for m in found if split is None or m.split == split]
+
+
+def refuse_holdout_manifest(manifest: Manifest) -> None:
+    if manifest.split == "holdout" and not _holdout_access:
+        raise HoldoutError(f"{manifest.name} is a holdout manifest: {HOLDOUT_RULE}")
+
+
+_digests: dict[tuple[str, int, int], str] = {}
+
+
+def _digest(path: Path) -> str:
+    stat = path.stat()
+    key = (str(path.resolve()), stat.st_size, stat.st_mtime_ns)
+    if key not in _digests:
+        _digests[key] = sha256_of(path)
+    return _digests[key]
+
+
+def guard_archive(path: Path) -> None:
+    """Refuse to load `path` if it is, or holds clips of, the frozen holdout.
+
+    Called by every loader that trains or scores (`benchmark.load_samples`,
+    `release_gate.read_archive`, the research scripts), so no flag or file name
+    reaches the holdout by accident. Matched two ways: the archive's bytes against
+    each holdout manifest, and, for GolfDB archives (they carry `golfdb_split`),
+    its clip ids against the holdout's, which also catches a copy re-extracted or
+    re-ordered into different bytes. Tools that must see every clip to build or
+    audit the splits (`scripts/split_golfdb.py`, `scripts/audit_corpus.py`) read
+    no labels to score and load archives directly, unguarded.
+    """
+    if _holdout_access:
+        return
+    holdouts = frozen("holdout")
+    if not holdouts:
+        return
+    digest = _digest(Path(path))
+    for manifest in holdouts:
+        if manifest.sha256 == digest:
+            raise HoldoutError(f"{path} is the frozen holdout {manifest.name}: {HOLDOUT_RULE}")
+    with np.load(path) as data:
+        if "golfdb_split" not in data.files or "seeds" not in data.files:
+            return
+        ids = [int(v) for v in data["seeds"]]
+    refuse_holdout_clips(ids, str(path))
+
+
+def refuse_holdout_clips(ids: Iterable[int], what: str) -> None:
+    """Refuse clip ids that belong to a frozen holdout (GolfDB ids are global)."""
+    if _holdout_access:
+        return
+    wanted = set(ids)
+    for manifest in frozen("holdout"):
+        shared = wanted & set(manifest.clip_ids)
+        if shared:
+            raise HoldoutError(
+                f"{what} holds {len(shared)} clips of the frozen holdout {manifest.name} "
+                f"(e.g. {sorted(shared)[:3]}): {HOLDOUT_RULE}"
+            )
+
+
+def require_split(path: Path, split: str) -> Manifest:
+    """The frozen manifest of `split` whose archive is exactly `path`, or refuse."""
+    digest = _digest(Path(path))
+    for manifest in frozen(split):
+        if manifest.sha256 == digest:
+            return manifest
+    raise ManifestError(f"{path} is not the archive of any frozen `{split}` manifest")
 
 
 def groups_for(archive: Path, manifests: Path = MANIFESTS) -> tuple[str, ...] | None:

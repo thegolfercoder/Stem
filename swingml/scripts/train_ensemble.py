@@ -35,6 +35,7 @@ from torch.utils.data import DataLoader
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from swingml.analysis import load_model, save_model
+from swingml.dataset.manifest import guard_archive
 from swingml.features import feature_dimension
 from swingml.model.augment import AugmentConfig
 from swingml.model.benchmark import build_corpus
@@ -54,6 +55,7 @@ def load_detected(paths: list[Path]) -> list[Sample]:
     for path in paths:
         if not path.is_file():
             continue
+        guard_archive(path)
         data = np.load(path)
         # Every member of this archive is pulled out once. Indexing an npz
         # decompresses the whole member on each access, so reading them inside
