@@ -24,9 +24,15 @@ fixed, it moves to the changelog with the measurement that shows it.
 
 7. **One golfer, one swing per stretch.** A second person in shot is not detected;
    long clips are searched for the best candidate swing (browser app).
-8. **Slow motion.** Read by re-timing the clip; tempo assumes the whole swing was
-   slowed evenly, and durations are not shown. The browser and iPhone apps still
-   refuse slow-motion exports.
+8. **Slow motion.** All three apps read a slow-motion export by re-timing it: a
+   clip refused at its recorded speed is read again at 2, 4 and 8 times speed and
+   the most confident read is kept (desktop since `b4f86e0`; browser and iPhone
+   since `64463a1`, held to the desktop's answer by
+   `tests/test_browser_slow_motion.py` and
+   `ParityTests.testASlowMotionClipIsReadAsSlowMotionWithNoDurations`). Tempo
+   assumes the whole swing was slowed evenly, which a phone's slow-motion clip
+   breaks if the swing crosses the speed ramp at its start or end, and no
+   durations are shown because the real speed-up is unknown.
 9. **30 fps.** At 30 fps the hands can be lost through impact, which moves impact and
    the tempo; the app warns and recommends 60 fps or more.
 10. **Camera shake** is not detected.

@@ -4,6 +4,28 @@ An audit of `429fb30`, run from a clean clone on 2026-09-28. The commands and
 their output are in `benchmark-baseline.json`; the failures, with evidence and
 status, in `failure-inventory.md`; the component map in `architecture-map.md`.
 
+## Since the audit (updated 2026-09-30)
+
+The audit below describes `429fb30` and is left as written. These statements in it
+no longer hold:
+
+| Audit statement | Now | Evidence |
+|---|---|---|
+| The browser and iPhone engines refuse slow-motion replays | All three engines read them (retry at 2, 4, 8 times speed; tempo kept, durations withheld) | `b4f86e0` (desktop), `64463a1` (browser, iPhone); `tests/test_browser_slow_motion.py`, `ParityTests.testASlowMotionClipIsReadAsSlowMotionWithNoDurations` |
+| There is no improvement loop | One priority from fixed rules, a drill, a retest and a Welch verdict, on all three apps | `f983356` (desktop), `881462a` (browser, iPhone); `tests/test_browser_practice.py`, `PracticeTests.swift`, `tests/test_ios_practice_golden.py` |
+
+Also since the audit:
+
+- **Tempo compression: four fixes tried, none works.** Sub-frame placement, a
+  kinematic address rule, inverting the compression, and a tempo term in training,
+  all on validation: none reduces the compression without making tempo worse
+  (`f4fcd21`, `7de0548`; `docs/ml/tempo-experiments.md`).
+- **Per-swing uncertainty: the model's confidence does not predict tempo error.**
+  Rank correlation +0.14 [−0.06, +0.33] for the best signal; the single band stays
+  (`40896af`; `docs/ml/uncertainty.md`).
+- **An agent loop** (Strategist, Builder, QA) now maintains the backlog and reviews
+  every change (`bb32b18`; `agents/README.md`).
+
 ## What works
 
 - **A clean checkout installs and runs.** Fresh clone, fresh virtualenv, 136 s to
