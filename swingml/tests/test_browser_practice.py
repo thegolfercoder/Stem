@@ -355,6 +355,47 @@ def test_a_reread_replaces_the_earlier_reading_and_keeps_its_place(tmp_path: Pat
     assert result["change"]["verdict"] != "not_comparable"
 
 
+def _refused(key: str) -> dict[str, Any]:
+    """What the page records for a clip it refused (app.js, recordSwing)."""
+    return {"ok": False, "refusal": "The handedness chosen does not match this swing.",
+            "detection_rate": 0.97, "handedness": None, "camera": None, "metrics": None,
+            "clip_key": key}  # fmt: skip
+
+
+def test_a_refused_reread_keeps_the_analysed_reading(tmp_path: Path) -> None:
+    """QA's reproduction (#26): it used to drop "improved" to "not_enough_swings"."""
+    ops: list[dict[str, Any]] = [
+        {"op": "add", "record": _swing(t, f"b{i}")} for i, t in enumerate((2.7, 2.9, 2.8))
+    ]
+    ops.append({"op": "start", "focus": "tempo_quick", "from": 3})
+    ops += [
+        {"op": "add", "record": _swing(t, f"r{i}"), "forPlan": True}
+        for i, t in enumerate((3.3, 3.4, 3.35))
+    ]
+    before = _ops(ops, tmp_path)
+    assert before["change"]["verdict"] == "improved" and before["change"]["n_after"] == 3
+    # Retest clip r0 run again with the wrong hand set, and refused.
+    after = _ops([*ops, {"op": "add", "record": _refused("r0"), "forPlan": True}], tmp_path)
+
+    def readings(result: dict[str, Any]) -> list[dict[str, Any]]:
+        return [{k: v for k, v in s.items() if k != "at"} for s in result["swings"]]
+
+    assert readings(after) == readings(before)  # swing 4 still holds its 3.3
+    assert after["plan"]["retest"] == before["plan"]["retest"] == [4, 5, 6]
+    assert after["plan"]["baseline"] == before["plan"]["baseline"]
+    assert after["change"]["verdict"] == "improved" and after["change"]["n_after"] == 3
+    # A refused clip analysed later replaces its refusal, and a refused re-read of
+    # a refusal replaces it too: only an analysed reading is protected.
+    ops = [
+        {"op": "add", "record": _refused("x")},
+        {"op": "add", "record": {**_refused("x"), "refusal": "No swing was found."}},
+    ]
+    assert _ops(ops, tmp_path)["swings"][0]["refusal"] == "No swing was found."
+    ops.append({"op": "add", "record": _swing(3.0, "x")})
+    swings = _ops(ops, tmp_path)["swings"]
+    assert len(swings) == 1 and swings[0]["ok"] and swings[0]["metrics"]["tempo_ratio"] == 3.0
+
+
 def test_removing_a_swing_matches_the_iphone(tmp_path: Path) -> None:
     """The scenario of PracticeTests.testACapturePlanCountsCleanRecordingsInARow."""
     ops: list[dict[str, Any]] = [

@@ -366,6 +366,13 @@ export class PracticeLog {
     // into "improved". It keeps its number and its place in any plan.
     const again = record.clip_key
       ? this.data.swings.find((s) => s.clip_key === record.clip_key) : null;
+    if (again && again.ok && !record.ok) {
+      // A refused re-read never replaces an analysed reading of the same clip:
+      // one run with the wrong hand set used to wipe a good retest swing out of
+      // its plan (#26). The earlier reading stands, plans and all; the page
+      // shows this run's refusal and says which reading was kept.
+      return again;
+    }
     let swing;
     if (again) {
       Object.assign(again, record, { id: again.id, at: again.at, reread_at: new Date().toISOString() });

@@ -51,9 +51,10 @@ fixed, it moves to the changelog with the measurement that shows it.
     the desktop, the browser and the iPhone. The iPhone's practice screen builds in CI
     but has not been run on a phone. The same clip analysed twice: the browser
     replaces the earlier reading (it recognises the file by a hash of its name, size
-    and date), but the desktop and the iPhone keep a second swing, which the golfer
-    has to delete by hand; all three drop a deleted swing from its plans. The
-    browser's sample swing is never kept.
+    and date), except that a refused run never replaces an analysed reading of the
+    clip, which is kept and named on the page. The desktop and the iPhone keep a
+    second swing, which the golfer has to delete by hand (#25); all three drop a
+    deleted swing from its plans. The browser's sample swing is never kept.
 
 ## Product
 

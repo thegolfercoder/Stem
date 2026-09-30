@@ -610,3 +610,25 @@ def test_with_storage_blocked_the_page_still_analyses_and_keeps_nothing(
         other.goto(PAGE.resolve().as_uri())
         assert other.evaluate(KEPT) is None
         browser.close()
+
+
+def test_a_refused_rerun_keeps_the_earlier_reading_and_says_so(
+    landmark_json: str, clip: Path
+) -> None:
+    """#26: a run that is refused does not wipe out the clip's analysed reading."""
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(
+            playwright, landmark_json, kept={"next": 3, "swings": _earlier(), "plans": []}
+        )
+        _analyse(page, clip)
+        good = page.evaluate(KEPT)["swings"][2]
+        assert good["ok"] and good["metrics"]["tempo_ratio"] is not None
+        # The same clip again, with no body found in any frame this time.
+        page.evaluate("() => window.__LANDMARKS__.detected.fill(false)")
+        _analyse(page, clip)
+        assert page.locator("#refusal").is_visible(), "the second run was not refused"
+        kept = page.evaluate(KEPT)
+        assert len(kept["swings"]) == 3 and kept["swings"][2] == good
+        assert "swing 3 keeps its earlier reading" in (page.text_content("#practice-data") or "")
+        assert errors == []
+        browser.close()

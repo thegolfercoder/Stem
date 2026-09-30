@@ -2403,6 +2403,11 @@ function recordSwing(record) {
   const key = file ? clipKey(file.name, file.size, file.lastModified) : null;
   const swing = state.log.add({ ...record, club, clip_key: key }, forPlan);
   if (record.ok && state.analysis) state.analysis.logId = swing.id;
+  if (!record.ok && swing.ok) {
+    renderPractice(swing.id, `This run was refused, so swing ${swing.id} keeps its earlier ` +
+      `reading of the same clip (tempo ${reading(swing.metrics && swing.metrics.tempo_ratio)}).`);
+    return;
+  }
   renderPractice(swing.id, swing.reread_at ? `The same clip was analysed before, so swing ${swing.id} ` +
     "was replaced by this reading rather than kept twice." : "");
 }
