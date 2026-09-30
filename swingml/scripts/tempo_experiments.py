@@ -812,6 +812,115 @@ def cmd_bands(args: argparse.Namespace) -> None:
         print(f"wrote {args.out}")
 
 
+# -- #18: is the band honest for quick and slow tempos? ------------------------------
+
+
+def level_cells(
+    rows: Sequence[Row], cuts: dict[str, list[float]], band: float
+) -> dict[str, dict[str, float]]:
+    """Band coverage, false confidence and signed error per tempo tercile.
+
+    `true` terciles group swings by their labelled tempo (what the golfer really
+    did, which only an evaluation knows); `read` terciles by the tempo the app
+    shows (what the app could act on). The answered share is per true tercile
+    only, since a refused swing has no read tempo.
+    """
+    out: dict[str, dict[str, float]] = {}
+    labelled = [r for r in rows if np.isfinite(r.true_tempo) and r.true_tempo > 0]
+    usable = [r for r in labelled if _usable(r)]
+    for by in ("true", "read"):
+        for k in range(len(cuts[by]) + 1):
+
+            def inside(r: Row, k: int = k, by: str = by) -> bool:
+                value = r.true_tempo if by == "true" else r.read_tempo
+                return int(np.searchsorted(cuts[by], value, side="right")) == k
+
+            cell = [r for r in usable if inside(r)]
+            signed = np.array([(r.read_tempo - r.true_tempo) / r.true_tempo for r in cell])
+            outside = np.abs(signed) > band
+            confident = np.array([r.core_confidence >= 0.5 for r in cell], dtype=bool)
+            entry = {
+                "n": float(len(cell)),
+                "coverage": float(np.mean(~outside)) if cell else math.nan,
+                "false_confidence_rate": (
+                    float(np.mean(outside & confident)) if cell else math.nan
+                ),
+                "median_signed_rel_error": float(np.median(signed)) if cell else math.nan,
+            }
+            if by == "true":
+                every = [r for r in labelled if inside(r)]
+                entry["answered"] = (
+                    float(np.mean([r.answered for r in every])) if every else math.nan
+                )
+            out[f"{by}_{k}"] = entry
+    return out
+
+
+def cmd_levels(args: argparse.Namespace) -> None:
+    """#18: coverage of the shipped 80% tempo band by true and by read tempo level.
+
+    Readings are compressed toward the middle (log-log slope 0.44,
+    docs/ml/tempo-experiments.md), so the quickest and slowest swings are the
+    likeliest to fall outside a band fitted to all swings at once. Tercile cut
+    points are fixed on the fitting split (calibration), then applied unchanged
+    to every reported split. The band is the shipped one; nothing is refitted.
+    """
+    fit_clips, _, fit_name = load_split(args.fit_manifest, args.root)
+    model = load_any(args.model)
+    config = AnalysisConfig()
+    band = shipped_band(args.calibration)
+    shipped = Variant("shipped", model, SHIPPED_REFINE, band=band)
+    fit_rows = [score(ClipCache(c), shipped, config) for c in fit_clips]
+    fit_usable = [r for r in fit_rows if _usable(r)]
+    thirds = [1 / 3, 2 / 3]
+    cuts = {
+        "true": [float(q) for q in np.quantile([r.true_tempo for r in fit_usable], thirds)],
+        "read": [float(q) for q in np.quantile([r.read_tempo for r in fit_usable], thirds)],
+    }
+    print(
+        f"band +/-{100 * band:.1f}%; tercile cuts fixed on {fit_name} "
+        f"({len(fit_usable)} answered swings): true {cuts['true']}, read {cuts['read']}"
+    )
+    result: dict[str, Any] = {
+        "band": band,
+        "fit": fit_name,
+        "cuts": cuts,
+        "model": str(args.model),
+        "resamples": args.resamples,
+        "splits": {},
+    }
+    for manifest in args.report:
+        clips, groups, split = load_split(manifest, args.root)
+        rows = [score(ClipCache(c), shipped, config) for c in clips]
+        labels = np.asarray(groups)
+        members = [np.nonzero(labels == g)[0] for g in sorted(set(labels.tolist()))]
+        rng = np.random.default_rng(args.seed)
+        point = level_cells(rows, cuts, band)
+        draws = []
+        for _ in range(args.resamples):
+            chosen = rng.integers(0, len(members), len(members))
+            index = np.concatenate([members[i] for i in chosen])
+            draws.append(level_cells([rows[i] for i in index], cuts, band))
+        table: dict[str, Any] = {}
+        print(f"\n{split}: {len(rows)} swings, {len(members)} groups")
+        for cell, entry in point.items():
+            table[cell] = {}
+            parts = []
+            for key, number in entry.items():
+                values = np.array([d[cell][key] for d in draws], dtype=np.float64)
+                values = values[np.isfinite(values)]
+                low, high = np.percentile(values, [2.5, 97.5]) if len(values) else (math.nan,) * 2
+                table[cell][key] = {"value": _round(number), "ci95": [_round(low), _round(high)]}
+                if key != "n":
+                    parts.append(f"{key} {number:.3f} [{low:.3f}, {high:.3f}]")
+            print(f"  {cell:7s} n={int(entry['n']):3d}  " + "; ".join(parts))
+        result["splits"][split] = table
+    if args.out is not None:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(json.dumps(result, indent=2) + "\n")
+        print(f"wrote {args.out}")
+
+
 def cmd_model(args: argparse.Namespace) -> None:
     clips, groups, split = load_split(args.manifest, args.root)
     if args.rgb is not None:
@@ -867,6 +976,12 @@ def main(argv: Sequence[str] | None = None) -> None:
         default=None,
         help="default: whichever ranks the fitting split's errors best",
     )
+    levels = commands.add_parser("levels", help="#18: band coverage by tempo level")
+    common(levels)
+    levels.add_argument("--fit-manifest", type=Path, required=True)
+    levels.add_argument(
+        "--report", type=Path, nargs="+", required=True, help="manifests to report on"
+    )
     model = commands.add_parser("model", help="experiment 2: candidate weights against shipped")
     common(model)
     model.add_argument("--candidate", type=Path, nargs="+", required=True)
@@ -884,6 +999,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         "decompress": cmd_decompress,
         "model": cmd_model,
         "bands": cmd_bands,
+        "levels": cmd_levels,
     }[args.command](args)
 
 

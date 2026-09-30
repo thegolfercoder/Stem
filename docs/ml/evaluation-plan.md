@@ -36,9 +36,11 @@ exits 0. The gates and their margins are in the module's docstring and
    change the practice loop can detect, and it is not known.
 3. **Camera-position sensitivity.** The same swings filmed from two spots at once, to
    replace the comparability thresholds (currently judgement) with measured ones.
-4. **Tempo calibration by reading level.** Coverage of the tempo band is measured
-   overall; readings far from 3 are the ones compressed most, and their coverage
-   should be measured separately.
+4. **Tempo calibration by reading level.** Measured on broadcast swings (#18,
+   `uncertainty.md`): no tempo tercile's coverage interval lies below 80%, but
+   readings at both ends are pulled toward the middle, by about 9 to 13%, and cells
+   of 35 to 54 swings are too small to rule out a 10-point shortfall. Repeat on the
+   phone test set.
 5. **Annotator agreement.** Two labellers on 100 phone swings, to know how much of
    the address error is the label.
 
