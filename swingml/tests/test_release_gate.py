@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from pydantic import ValidationError
 
 from swingml.analysis import AnalysisConfig, load_model
 from swingml.assets import find_event_model
@@ -169,3 +170,65 @@ def test_the_gate_reads_a_slow_motion_swing_the_way_the_app_does() -> None:
     assert release_gate.tempo_of(with_retry.positions) == pytest.approx(
         release_gate.tempo_of(truth), rel=0.25
     )
+
+
+# -- a decision-rule change on the same weights (#41) -----------------------------
+
+
+def _rows(n: int, seed: int) -> list[release_gate.Scored]:
+    rng = np.random.default_rng(seed)
+    return [
+        release_gate.Scored(
+            answered=True, w1_core=float(rng.choice([0.25, 0.5, 0.75, 1.0])),
+            tempo_error=float(rng.uniform(0.0, 0.4)),
+        )
+        for _ in range(n)
+    ]  # fmt: skip
+
+
+def test_the_same_model_and_rule_is_not_worse_with_differences_of_zero() -> None:
+    rows = _rows(60, 0)
+    groups = [f"g{i // 3}" for i in range(60)]
+    name, gate = release_gate.comparison_gate(rows, rows, groups, same_model=True, resamples=300)
+    assert name == "not_worse_than_baseline_on_frozen_real_test"
+    assert gate["passed"]
+    assert gate["within_1_core4_difference"] == [0.0, 0.0, 0.0]
+    assert gate["tempo_error_difference"] == [0.0, 0.0, 0.0]
+
+
+def test_a_new_model_that_only_ties_still_does_not_beat_the_baseline() -> None:
+    rows = _rows(60, 0)
+    groups = [f"g{i // 3}" for i in range(60)]
+    name, gate = release_gate.comparison_gate(rows, rows, groups, same_model=False, resamples=300)
+    assert name == "beats_baseline_on_frozen_real_test"
+    assert not gate["passed"]
+
+
+def test_a_rule_that_refuses_every_clip_fails() -> None:
+    rows = _rows(60, 0)
+    refused = [release_gate.Scored(answered=False) for _ in rows]
+    groups = [f"g{i // 3}" for i in range(60)]
+    _, gate = release_gate.comparison_gate(rows, refused, groups, same_model=True, resamples=300)
+    assert not gate["passed"]
+    assert "no clip was answered by both" in gate["detail"]
+
+
+def test_a_rule_that_loses_accuracy_fails_non_inferiority() -> None:
+    rows = _rows(60, 0)
+    worse = [r.model_copy(update={"w1_core": max(0.0, r.w1_core - 0.25)}) for r in rows]
+    groups = [f"g{i // 3}" for i in range(60)]
+    _, gate = release_gate.comparison_gate(rows, worse, groups, same_model=True, resamples=300)
+    assert not gate["passed"]
+
+
+def test_a_side_s_rule_is_read_from_json_and_typos_are_refused(tmp_path: Path) -> None:
+    off = tmp_path / "off.json"
+    off.write_text('{"slow_motion_check_backswing_s": null}')
+    config, overrides = release_gate.load_config(off)
+    assert config.slow_motion_check_backswing_s is None
+    assert overrides == {"slow_motion_check_backswing_s": None}
+    assert release_gate.load_config(None)[0] == AnalysisConfig()
+    typo = tmp_path / "typo.json"
+    typo.write_text('{"slow_motion_check_backswing": null}')
+    with pytest.raises(ValidationError):
+        release_gate.load_config(typo)

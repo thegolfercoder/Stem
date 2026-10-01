@@ -221,6 +221,7 @@ class Clip(BaseModel):
     azimuth_deg: float
     slow: bool
     left_handed: bool
+    clip_id: int = -1
 
 
 def read_archive(path: Path) -> list[Clip]:
@@ -235,6 +236,7 @@ def read_archive(path: Path) -> list[Clip]:
             azimuth_deg=float(data["azimuth_deg"][i]),
             slow=bool(slow[i] > 0.5),
             left_handed=bool(data["left_handed"][i] > 0.5),
+            clip_id=int(data["seeds"][i]) if "seeds" in data else i,
         )
         for i in range(len(data["lengths"]))
     ]
@@ -378,7 +380,9 @@ def paired_difference(
 # -- the fixture ------------------------------------------------------------------
 
 
-def fixture_check(model: Any, fixture: Path) -> dict[str, Any]:
+def fixture_check(
+    model: Any, fixture: Path, config: AnalysisConfig | None = None
+) -> dict[str, Any]:
     from swingml.pose.base import PoseSequence
     from swingml.skeleton import Handedness
 
@@ -396,7 +400,8 @@ def fixture_check(model: Any, fixture: Path) -> dict[str, Any]:
         detected=data["detected"],
     )
     truth = json.loads(truth_file.read_text())
-    analysis = analyse_pose_sequence(sequence, model, AnalysisConfig(handedness=Handedness.RIGHT))
+    config = (config or AnalysisConfig()).model_copy(update={"handedness": Handedness.RIGHT})
+    analysis = analyse_pose_sequence(sequence, model, config)
     if isinstance(analysis.events, NoReading):
         return {"passed": False, "refused": analysis.events.reason}
     names = {e.name.lower(): int(e) for e in SwingEvent.ordered()}
@@ -414,6 +419,71 @@ def fixture_check(model: Any, fixture: Path) -> dict[str, Any]:
 
 
 # -- the gate ---------------------------------------------------------------------
+
+
+def load_config(path: Path | None) -> tuple[AnalysisConfig, dict[str, Any]]:
+    """The app's decision with a side's overrides, and the overrides as given.
+
+    A JSON object of `AnalysisConfig` fields; unknown keys are refused, so a typo
+    cannot quietly score the default rule under another name.
+    """
+    if path is None:
+        return AnalysisConfig(), {}
+    overrides = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(overrides, dict):
+        raise SystemExit(f"{path}: expected a JSON object of AnalysisConfig fields")
+    return AnalysisConfig.model_validate(overrides), overrides
+
+
+def comparison_gate(
+    base_rows: Sequence[Scored],
+    cand_rows: Sequence[Scored],
+    groups: Sequence[str],
+    same_model: bool,
+    resamples: int,
+) -> tuple[str, dict[str, Any]]:
+    """Gate 3: the candidate against the baseline on the frozen test set.
+
+    A new model must beat the baseline (non-inferior and better on one measure).
+    A decision-rule change on the same weights need not raise accuracy, since a
+    correctness fix may not, but it must not lower it beyond the non-inferiority
+    margins (#41). With the same model on both sides superiority is impossible by
+    construction, which is why the rule-change verdict is its own gate.
+    """
+    name = (
+        "not_worse_than_baseline_on_frozen_real_test"
+        if same_model
+        else "beats_baseline_on_frozen_real_test"
+    )
+    paired = sum(b.answered and c.answered for b, c in zip(base_rows, cand_rows, strict=True))
+    if paired == 0:
+        return name, {"passed": False, "detail": "no clip was answered by both sides"}
+    w1 = paired_difference(
+        base_rows, cand_rows, groups, lambda r: r.w1_core, lambda v: float(v.mean()), resamples, 1
+    )
+    tempo = paired_difference(
+        base_rows, cand_rows, groups, lambda r: r.tempo_error, lambda v: float(np.median(v)),
+        resamples, 2,
+    )  # fmt: skip
+    non_inferior = w1[1] > -NON_INFERIORITY_W1 and tempo[2] < NON_INFERIORITY_TEMPO
+    superior = w1[1] > 0.0 or tempo[2] < 0.0
+    return name, {
+        "passed": bool(non_inferior if same_model else non_inferior and superior),
+        "rule": "non-inferior" if same_model else "non-inferior and better on one measure",
+        "n_paired": paired,
+        "within_1_core4_difference": [round(v, 4) for v in w1],
+        "tempo_error_difference": [round(v, 4) for v in tempo],
+    }
+
+
+def decision_row(decision: Decision) -> dict[str, Any]:
+    if decision.positions is None:
+        return {"answered": False, "slowed_by": None, "tempo": None}
+    return {
+        "answered": True,
+        "slowed_by": decision.slowed_by,
+        "tempo": round(tempo_of(decision.positions), 4),
+    }
 
 
 def sha256_of(path: Path) -> str:
@@ -447,7 +517,7 @@ def phone_section(
     root: Path,
     models: tuple[Any, Any],
     calibrations: tuple[ModelCalibration, ModelCalibration],
-    config: AnalysisConfig,
+    configs: tuple[AnalysisConfig, AnalysisConfig],
     resamples: int,
 ) -> dict[str, Any]:
     """Baseline and candidate on labelled phone swings, kept apart from GolfDB.
@@ -461,8 +531,9 @@ def phone_section(
     clips = read_archive(verify(manifest, root))
     golfers = len(set(manifest.groups))
     (baseline, candidate), (base_cal, cand_cal) = models, calibrations
-    base_rows = [score_clip(c, decide(baseline, c.features, config), base_cal) for c in clips]
-    cand_rows = [score_clip(c, decide(candidate, c.features, config), cand_cal) for c in clips]
+    base_config, cand_config = configs
+    base_rows = [score_clip(c, decide(baseline, c.features, base_config), base_cal) for c in clips]
+    cand_rows = [score_clip(c, decide(candidate, c.features, cand_config), cand_cal) for c in clips]
     groups = list(manifest.groups)
     w1 = paired_difference(
         base_rows, cand_rows, groups, lambda r: r.w1_core, lambda v: float(v.mean()), resamples, 3
@@ -512,17 +583,22 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     except (ManifestError, FileNotFoundError) as error:
         raise MissingEvidenceError(str(error)) from error
 
-    config = AnalysisConfig()
+    base_config, base_overrides = load_config(args.baseline_config)
+    cand_config, cand_overrides = load_config(args.candidate_config)
+    same_model = sha256_of(args.candidate) == sha256_of(args.baseline)
     clips = read_archive(test_archive)
     negatives = no_swing_stretches(clips)
 
-    def evaluate(model: Any, calibration: ModelCalibration) -> tuple[list[Scored], float]:
-        rows = [score_clip(c, decide(model, c.features, config), calibration) for c in clips]
+    def evaluate(
+        model: Any, calibration: ModelCalibration, config: AnalysisConfig
+    ) -> tuple[list[Decision], list[Scored], float]:
+        decisions = [decide(model, c.features, config) for c in clips]
+        rows = [score_clip(c, d, calibration) for c, d in zip(clips, decisions, strict=True)]
         accepted = [decide(model, f, config).positions is not None for f in negatives]
-        return rows, float(np.mean(accepted)) if accepted else float("nan")
+        return decisions, rows, float(np.mean(accepted)) if accepted else float("nan")
 
-    base_rows, base_neg = evaluate(baseline, base_cal)
-    cand_rows, cand_neg = evaluate(candidate, cand_cal)
+    base_decisions, base_rows, base_neg = evaluate(baseline, base_cal, base_config)
+    cand_decisions, cand_rows, cand_neg = evaluate(candidate, cand_cal, cand_config)
     base, cand = summary(base_rows, base_neg), summary(cand_rows, cand_neg)
 
     gates: dict[str, dict[str, Any]] = {}
@@ -539,32 +615,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     }
 
     groups_of_clip = list(manifests[0].groups)
-    w1 = paired_difference(
-        base_rows,
-        cand_rows,
-        groups_of_clip,
-        lambda r: r.w1_core,
-        lambda v: float(v.mean()),
-        args.resamples,
-        1,
+    name, verdict = comparison_gate(
+        base_rows, cand_rows, groups_of_clip, same_model, args.resamples
     )
-    tempo = paired_difference(
-        base_rows,
-        cand_rows,
-        groups_of_clip,
-        lambda r: r.tempo_error,
-        lambda v: float(np.median(v)),
-        args.resamples,
-        2,
-    )
-    non_inferior = w1[1] > -NON_INFERIORITY_W1 and tempo[2] < NON_INFERIORITY_TEMPO
-    superior = w1[1] > 0.0 or tempo[2] < 0.0
-    gates["beats_baseline_on_frozen_real_test"] = {
-        "passed": bool(non_inferior and superior),
-        "within_1_core4_difference": [round(v, 4) for v in w1],
-        "tempo_error_difference": [round(v, 4) for v in tempo],
-    }
-    fixture = fixture_check(candidate, Path(args.fixture))
+    gates[name] = verdict
+    fixture = fixture_check(candidate, Path(args.fixture), cand_config)
     gates["real_fixture"] = fixture
     gates["uncertainty_coverage"] = {
         "passed": bool(
@@ -615,23 +670,45 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "candidate_slope": cand["tempo_slope"],
     }
     phone_report = phone_section(
-        phone, root, (baseline, candidate), (base_cal, cand_cal), config, args.resamples
-    )
+        phone, root, (baseline, candidate), (base_cal, cand_cal), (base_config, cand_config),
+        args.resamples,
+    )  # fmt: skip
     if phone_report["gating"]:
         gates["phone_not_worse"] = {
             "passed": phone_report["passed"],
             "within_1_core4_difference": phone_report["within_1_core4_difference"],
             "tempo_error_difference": phone_report["tempo_error_difference"],
         }
+    decisions = [
+        {
+            "clip": clip.clip_id,
+            "group": group,
+            "slow_motion_replay": clip.slow,
+            "azimuth_deg": clip.azimuth_deg if np.isfinite(clip.azimuth_deg) else None,
+            "baseline": decision_row(b),
+            "candidate": decision_row(c),
+        }
+        for clip, group, b, c in zip(
+            clips, groups_of_clip, base_decisions, cand_decisions, strict=True
+        )
+    ]
     return {
         "candidate": {"path": str(args.candidate), "sha256": sha256_of(args.candidate)},
         "baseline": {"path": str(args.baseline), "sha256": sha256_of(args.baseline)},
+        "comparison": {
+            "kind": "decision rule (same weights)" if same_model else "model",
+            "baseline_config": base_overrides,
+            "candidate_config": cand_overrides,
+        },
         "test": {"manifest": manifests[0].name, "n_clips": len(clips)},
         "baseline_summary": base,
         "candidate_summary": cand,
         "gates": gates,
         "phone": phone_report,
         "passed": all(g["passed"] for g in gates.values()),
+        # Every clip's decision on both sides, so a reviewer can see which a rule moved.
+        "changed_clips": [d["clip"] for d in decisions if d["baseline"] != d["candidate"]],
+        "decisions": decisions,
     }
 
 
@@ -647,6 +724,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--calibration-manifest", type=Path, required=True)
     parser.add_argument("--train-manifest", type=Path, default=None)
     parser.add_argument("--phone-manifest", type=Path, default=None)
+    parser.add_argument(
+        "--baseline-config",
+        type=Path,
+        default=None,
+        help="JSON of AnalysisConfig fields for the baseline's decision (default: the app's)",
+    )
+    parser.add_argument(
+        "--candidate-config",
+        type=Path,
+        default=None,
+        help="JSON of AnalysisConfig fields for the candidate's decision (default: the app's)",
+    )
     parser.add_argument("--model-card", type=Path, default=None)
     parser.add_argument("--fixture", type=Path, default=Path("tests/fixtures/real_swing_01"))
     parser.add_argument("--root", type=Path, default=Path("."))

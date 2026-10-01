@@ -127,7 +127,12 @@ def _section(frozen: FrozenSplits, manifest: Any) -> dict[str, Any]:
     model = load_model(path)
     calibration = load_calibration(path.with_name("event_calibration.json"))
     return release_gate.phone_section(
-        manifest, frozen.root, (model, model), (calibration, calibration), AnalysisConfig(), 200
+        manifest,
+        frozen.root,
+        (model, model),
+        (calibration, calibration),
+        (AnalysisConfig(), AnalysisConfig()),
+        200,
     )
 
 
