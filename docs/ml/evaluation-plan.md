@@ -53,7 +53,12 @@ exits 0. The gates and their margins are in the module's docstring and
    of 35 to 54 swings are too small to rule out a 10-point shortfall. Repeat on the
    phone test set.
 5. **Annotator agreement.** Two labellers on 100 phone swings, to know how much of
-   the address error is the label.
+   the address error is the label. The tool exists (`scripts/label_agreement.py`,
+   #28). It takes two labellers' exports of the same swings and reports per
+   event the median and 90th-percentile disagreement in frames, the share within
+   1 frame, and the tempo difference. Intervals resample golfers, and it lists
+   any swing only one person labelled. No two-labeller set has been collected
+   yet (#20).
 
 ## What would change the product contract
 
