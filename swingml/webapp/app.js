@@ -11,7 +11,7 @@
 
 import { PoseSequence, resamplePose, extractFeatures, normalisePose,
          BONES, EVENT_NAMES, CLUB_DEFINED, L } from "./engine.js";
-import { SwingEventModel, decodeEvents, errorBand } from "./model.js";
+import { SwingEventModel, bandsVaryWithConfidence, decodeEvents, errorBand } from "./model.js";
 import { computeMetrics, implausible, readAtSpeeds, slowedMetrics, slowedReason } from "./metrics.js";
 import { PracticeLog, cameraSignature, clipKey, formatG3, storedMetrics } from "./practice.js";
 
@@ -1969,14 +1969,18 @@ function showBandNote(calibration, decoded) {
   for (let e = 0; e < 8 && !band; e++) band = errorBand(calibration, e, decoded.confidence[e]);
   show("band-note", Boolean(band));
   if (!band) return;
+  const how = bandsVaryWithConfidence(calibration)
+    ? ` at the confidence the model reported here, so a doubtful event gets a wider ` +
+      `band than a certain one. A band appears only where enough held-out clips ` +
+      `landed at that confidence to measure one.`
+    : `. There is one band per event, measured on ${band.n} clips, so every swing ` +
+      `gets the same band: it does not widen when the model is doubtful or narrow ` +
+      `when it is sure.`;
   note.innerHTML =
     `The &plusmn; figures are measured, not assumed. This model was run over ` +
     `${band.measuredOn}, and the spread of its errors recorded. Each figure is the ` +
-    `distance that contained ${Math.round(band.coverage * 100)}% of those errors at the ` +
-    `confidence the model reported here, so a doubtful event gets a wider band than a ` +
-    `certain one. A band appears only where enough held-out clips landed at that ` +
-    `confidence to measure one, and none of this is a claim about footage of a real ` +
-    `golfer on grass.`;
+    `distance that contained ${Math.round(band.coverage * 100)}% of those errors${how} ` +
+    `None of this is a claim about footage of a real golfer on grass.`;
 }
 
 

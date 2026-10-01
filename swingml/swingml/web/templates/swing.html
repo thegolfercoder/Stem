@@ -130,10 +130,17 @@
     The &plusmn; figures are measured, not assumed. This model was run over
     {{ band_corpus }}, and the spread of its errors recorded. Each figure is the
     distance that contained
+    {% if band_by_confidence %}
     {{ band_coverage }}% of those errors at the confidence the model reported here, so a
     doubtful event gets a wider band than a certain one. A band appears only where
-    enough held-out clips landed at that confidence to measure one. Your own footage -
-    a phone, another angle - may differ from what the bands were measured on.
+    enough held-out clips landed at that confidence to measure one.
+    {% else %}
+    {{ band_coverage }}% of those errors. There is one band per event, measured on
+    {{ band_clips }} clips, so every swing gets the same band: it does not widen when
+    the model is doubtful or narrow when it is sure.
+    {% endif %}
+    Your own footage - a phone, another angle - may differ from what the bands were
+    measured on.
   </p>
   {% endif %}
   <p class="footnote">

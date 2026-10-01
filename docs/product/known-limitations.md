@@ -18,7 +18,10 @@ fixed, it moves to the changelog with the measurement that shows it.
 5. **Toe-up and mid-follow-through are guesses from the body.** They are defined by
    the club, which is not tracked.
 6. **Confidently wrong 14.6% of the time.** That share of answered test swings read
-   a tempo outside its own band while the model was fairly sure.
+   a tempo outside its own band while the model was fairly sure. Bands do not
+   follow the model's confidence: the shipped table has one band per event,
+   measured on 85 clips, so every swing gets the same one (desktop and browser
+   pages say so since #30; the iPhone app shows the ± figures with no note).
 
 ## Capture
 

@@ -189,6 +189,7 @@ class Session:
         self.spread = ""
         self.labels: list[str] = []
         self.bands: list[str] = []
+        self.band_note = ""
         self.refused = False
         self.refusal_title = ""
         self.refusal_reason = ""
@@ -273,6 +274,7 @@ def run_page(
             session.bands = page.eval_on_selector_all(
                 ".frame-band", "nodes => nodes.map(n => n.textContent)"
             )
+            session.band_note = page.text_content("#band-note") or ""
             value = page.eval_on_selector(".metric-value", "node => node.textContent")
             session.tempo = float(value)
             ranges = page.eval_on_selector_all(
@@ -328,6 +330,16 @@ def test_every_position_carries_its_measured_band(analysed: Session) -> None:
     """
     assert len(analysed.bands) == 8
     assert all("ms" in band for band in analysed.bands)
+
+
+def test_the_band_note_says_what_the_shipped_table_does(analysed: Session) -> None:
+    """The page's calibration has one band per event, so it must not say a doubtful
+    event gets a wider band (#30)."""
+    payload = json.loads(PAYLOAD.read_text(encoding="utf-8"))
+    assert not any(payload["calibration"]["events"]["confidence_edges"])
+    assert "measured, not assumed" in analysed.band_note
+    assert "wider band" not in analysed.band_note
+    assert "every swing gets the same band" in analysed.band_note
 
 
 def test_the_page_and_the_python_pipeline_report_the_same_tempo(

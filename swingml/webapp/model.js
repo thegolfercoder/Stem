@@ -269,6 +269,15 @@ export function decodeEvents(logits, n, classes, minMeanConfidence, minCoreConfi
  */
 export const MIN_BIN_COUNT = 40;
 
+/* Whether any event's band depends on the confidence the model reported. A table
+ * with one bin per event gives every swing the same band, and the page must not
+ * then say that a doubtful event gets a wider one. Same rule as
+ * EventCalibration.varies_with_confidence. */
+export function bandsVaryWithConfidence(calibration) {
+  const table = calibration && calibration.events;
+  return Boolean(table) && table.confidence_edges.some((edges) => edges.length > 0);
+}
+
 export function errorBand(calibration, event, confidence) {
   const table = calibration && calibration.events;
   if (!table) return null;

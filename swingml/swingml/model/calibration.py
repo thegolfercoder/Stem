@@ -134,6 +134,15 @@ class EventCalibration(BaseModel):
                 raise ValueError(f"event {event}: confidence edges must ascend, got {edges}")
         return self
 
+    @property
+    def varies_with_confidence(self) -> bool:
+        """Whether any event's band depends on the confidence the model reported.
+
+        A table with one bin per event gives every swing the same band, and a page
+        must not then say that a doubtful event gets a wider one.
+        """
+        return any(len(edges) > 0 for edges in self.confidence_edges)
+
     def band(self, event: SwingEvent, confidence: float) -> ErrorBand | NoReading:
         """The band for one prediction, or a refusal saying why there is none."""
         index = int(event)

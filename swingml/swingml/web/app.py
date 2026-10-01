@@ -451,6 +451,10 @@ def create_app(
             active_plan=swing_store.active_plan(),
             band_corpus=band.measured_on if band else None,
             band_coverage=round(100 * band.coverage) if band else None,
+            band_clips=band.n_calibration if band else None,
+            band_by_confidence=bool(
+                service.calibration and service.calibration.events.varies_with_confidence
+            ),
             swing=stored,
             analysis=analysis,
             sequence=sequence_manifest(swing_id),

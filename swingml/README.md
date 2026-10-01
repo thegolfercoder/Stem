@@ -282,12 +282,14 @@ two do not, and that is what settled it.
 ### Error bands
 
 Every event is reported with a band — `±33 ms`, `±83 ms` — and none of it is
-assumed. The model is run over clips that no part of training touched, the spread
-of its errors is recorded against the confidence it reported, and the band quoted
-for a new clip is the distance that contained the stated share of those held-out
-errors at that confidence. So a doubtful event gets a wider band than a certain
-one, and a band appears only where enough held-out clips landed at that confidence
-to measure one.
+assumed. The model is run over clips that no part of training touched, and the
+band quoted for a new clip is the distance that contained the stated share of
+those held-out errors. The table can split each event's errors by the confidence
+the model reported, so that a doubtful event would get a wider band than a certain
+one, but the shipped table does not: it has one band per event, measured on all 85
+clips, and every swing gets the same band whatever the model's confidence. On those
+clips confidence barely varied and did not predict tempo error
+(`docs/ml/uncertainty.md`). The pages say which kind of table they are showing.
 
 The procedure is cross-validated before any table ships: every held-out event is
 checked against a table built without it. Bands claiming 80% contained **92%** of
@@ -296,12 +298,14 @@ frame errors do to a quantile.
 
 **Tempo carries a band too, and it is the one worth reading.** Tempo is a quotient
 of two durations, one of them short: at thirty frames a second a downswing is nine
-or ten frames, so an event landing one frame out moves the ratio by ten percent. The
-measured spread is **±12% at 80% coverage**, with a median error of 6%. That is not
+or ten frames, so an event landing one frame out moves the ratio by ten percent. On
+rendered footage the earlier model's measured spread was ±12% at 80% coverage; the
+shipped band, measured on 85 real swings, is **±27%** (see above). That is not
 propagated from the event bands — the errors on the top and on impact are correlated
 and propagation would assume they are not — it is measured directly on held-out
-swings, where it comes out at 79.9% against the 80% claimed. A reader comparing two
-sessions needs it: a 5% change in tempo is smaller than the measurement.
+swings. On the 201 real holdout swings the ±27% band contained the truth for 85.4%
+against the 80% claimed. A reader comparing two sessions needs it: a 10% change in
+tempo is smaller than the measurement.
 
 **Bands are tied to the weights they were measured through.** The table records a
 digest of the model, and a model that does not match gets no bands rather than
@@ -311,9 +315,9 @@ mistake keeping the table in its own file was supposed to prevent and did not. T
 because an error bar quoted for a model that has since been retrained is worse than
 no error bar at all; with no table, the analysis reports frames and no band.
 
-The bands are measured on rendered swings. They are not a claim about footage of a
-real golfer on grass, and every band carries the corpus it came from so that nobody
-has to take that on trust.
+The shipped bands are measured on broadcast footage of tour players. They are not a
+claim about phone footage of a golfer on a range, and every band carries the corpus
+it came from so that nobody has to take that on trust.
 
 ## Things that were tried and did not work
 
