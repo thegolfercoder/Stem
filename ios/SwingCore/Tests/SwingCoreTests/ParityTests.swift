@@ -147,12 +147,24 @@ final class ParityTests: XCTestCase {
     /// Slowed only two or three times, the swing passes every gate at playback
     /// speed, and its durations used to be shown as measured (#32). The answered-clip
     /// check reads it as slow motion, as the Python and browser engines do.
-    func testAClipSlowedTwoOrThreeTimesIsReadAsSlowMotion() {
-        XCTAssertNotNil(Self.analyzer.payload.thresholds.slowMotionCheckBackswingS)
+    ///
+    /// The check ships off (it failed the release gate, #41), so this switches it on
+    /// in a copy of the payload, as the Python and browser tests do.
+    func testAClipSlowedTwoOrThreeTimesIsReadAsSlowMotion() throws {
+        XCTAssertNil(Self.analyzer.payload.thresholds.slowMotionCheckBackswingS)
+        var json = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: ModelPayload.bundledData()) as? [String: Any])
+        var thresholds = try XCTUnwrap(json["thresholds"] as? [String: Any])
+        thresholds["slow_motion_check_backswing_s"] = 1.1
+        thresholds["slow_motion_margin"] = 0.01
+        json["thresholds"] = thresholds
+        let payload = try JSONDecoder().decode(
+            ModelPayload.self, from: JSONSerialization.data(withJSONObject: json))
+        let checking = try SwingAnalyzer(payload: payload)
         for factor in [2.0, 3.0] {
             var slowed = sequence
             slowed.times = sequence.times.map { $0 * factor }
-            guard let result = Self.analyzer.analyse(slowed, handedness: .right).result else {
+            guard let result = checking.analyse(slowed, handedness: .right).result else {
                 return XCTFail("slowed \(factor)x refused")
             }
             XCTAssertNotNil(result.metrics.slowedBy, "slowed \(factor)x read as real time")

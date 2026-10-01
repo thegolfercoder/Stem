@@ -176,10 +176,15 @@ public struct ModelPayload: Decodable {
 
     /// The model shipped with this package.
     public static func bundled() throws -> ModelPayload {
+        try JSONDecoder().decode(ModelPayload.self, from: bundledData())
+    }
+
+    /// The shipped payload's bytes, for a caller (or a test) that needs to vary one field.
+    public static func bundledData() throws -> Data {
         guard let url = Bundle.module.url(forResource: "model", withExtension: "json") else {
             throw SwingError.missingResource("model.json")
         }
-        return try load(url)
+        return try Data(contentsOf: url)
     }
 
     public static func load(_ url: URL) throws -> ModelPayload {

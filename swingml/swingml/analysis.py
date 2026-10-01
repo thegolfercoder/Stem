@@ -134,14 +134,16 @@ class AnalysisConfig(BaseModel):
         ),
     )
     slow_motion_check_backswing_s: float | None = Field(
-        default=1.1,
+        default=None,
         description=(
             "A clip answered at recorded speed whose backswing (address to top, whole "
             "frames on the model's grid) is longer than this is also read at each "
             "slow-motion factor. A clip slowed two or three times passes every gate at "
-            "recorded speed, so without this its durations would be reported as "
-            "measured (#32). None checks only refused clips. Chosen on "
-            "golfdb-validation-v2 (docs/ml/slow-motion-rule.md)."
+            "recorded speed, so without this its durations are reported as measured "
+            "(#32). None checks only refused clips. Off: the rule chosen on "
+            "golfdb-validation-v2 (1.1 s, margin 0.01) failed the release gate's "
+            "non-inferiority test on tempo error (#41, docs/ml/slow-motion-rule.md), "
+            "and nothing ships unless the gate passes."
         ),
     )
     slow_motion_margin: float = Field(

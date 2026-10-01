@@ -52,7 +52,12 @@ def fixture_sequence(slowed_by: float) -> PoseSequence:
     )
 
 
-def python_read(sequence: PoseSequence) -> SwingAnalysis:
+# #32's answered-clip check, which ships off (it failed the release gate, #41).
+# The 2x and 3x cases switch it on in both engines, so the code stays in step.
+CHECK = {"slow_motion_check_backswing_s": 1.1, "slow_motion_margin": 0.01}
+
+
+def python_read(sequence: PoseSequence, check: bool = False) -> SwingAnalysis:
     payload = json.loads(PAYLOAD.read_text(encoding="utf-8"))
     sources = [Path(p) for p in payload.get("source_models", [payload["source_model"]])]
     model = (
@@ -62,10 +67,17 @@ def python_read(sequence: PoseSequence) -> SwingAnalysis:
             sources, EnsembleConfig(time_warps=tuple(payload["time_warps"]))
         )
     )
-    return analyse_pose_sequence(sequence, model, AnalysisConfig(handedness=Handedness.RIGHT))
+    config = AnalysisConfig(handedness=Handedness.RIGHT, **(CHECK if check else {}))
+    return analyse_pose_sequence(sequence, model, config)
 
 
-def browser_read(sequence: PoseSequence, workdir: Path) -> dict:
+def browser_read(sequence: PoseSequence, workdir: Path, check: bool = False) -> dict:
+    payload = PAYLOAD
+    if check:
+        changed = json.loads(PAYLOAD.read_text(encoding="utf-8"))
+        changed["thresholds"].update(CHECK)
+        payload = workdir / "payload.json"
+        payload.write_text(json.dumps(changed), encoding="utf-8")
     job = workdir / "job.json"
     job.write_text(
         json.dumps(
@@ -82,7 +94,7 @@ def browser_read(sequence: PoseSequence, workdir: Path) -> dict:
                 "width": sequence.frame_width,
                 "height": sequence.frame_height,
                 "handedness": "right",
-                "payload": str(PAYLOAD),
+                "payload": str(payload),
             }
         ),
         encoding="utf-8",
@@ -95,10 +107,12 @@ def browser_read(sequence: PoseSequence, workdir: Path) -> dict:
     return dict(json.loads(finished.stdout))
 
 
-@pytest.fixture(scope="module", params=[2.0, 3.0, 4.0])
+@pytest.fixture(scope="module", params=[(2.0, True), (3.0, True), (4.0, False)])
 def pair(request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory):  # type: ignore[no-untyped-def]
-    sequence = fixture_sequence(request.param)
-    return python_read(sequence), browser_read(sequence, tmp_path_factory.mktemp("slowmo"))
+    factor, check = request.param
+    sequence = fixture_sequence(factor)
+    workdir = tmp_path_factory.mktemp("slowmo")
+    return python_read(sequence, check), browser_read(sequence, workdir, check)
 
 
 def test_the_payload_carries_the_desktop_factors() -> None:

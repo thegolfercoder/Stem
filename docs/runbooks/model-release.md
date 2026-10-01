@@ -46,6 +46,36 @@ much. Exit 2: evidence is missing; nothing was measured. Do not ship on 1 or 2.
 The last candidate (`g7_s1`, 619 training swings) failed on the phone fixture and on
 false confidence: `docs/audit/release-gate-g7_s1-vs-e7_s0.json`.
 
+## 4a. A decision-rule change on the same weights
+
+A change to what the app decides changes what ships, even when the model does
+not. That covers `AnalysisConfig` thresholds, the timing gate, the slow-motion
+retry and similar. It needs the gate too (#41). Write the rule each side uses as
+a JSON object of `AnalysisConfig` fields (unknown keys are refused) and pass the
+same weights on both sides:
+
+```bash
+python -m swingml.model.release_gate \
+    --candidate swingml/data/swing_event_net.pt --baseline swingml/data/swing_event_net.pt \
+    --candidate-calibration swingml/data/event_calibration.json \
+    --baseline-calibration swingml/data/event_calibration.json \
+    --baseline-config <the rule shipped now>.json --candidate-config <the new rule>.json \
+    --test-manifest swingml/manifests/golfdb-holdout-v1.json \
+    --calibration-manifest swingml/manifests/golfdb-calibration-v1.json \
+    --train-manifest swingml/manifests/golfdb-train-v1.json \
+    --model-card ../docs/ml/model-card.md --report out/release/rule.json
+```
+
+With the same weights on both sides, gate 3 is `not_worse_than_baseline_on_frozen_real_test`:
+- within one frame must not drop by 2 points or more;
+- tempo error must not rise by 1 point or more;
+- both judged at the 95% interval's worst end.
+
+A rule need not improve accuracy to ship, but it must pass. The report lists
+every clip's decision on both sides and the clips the rule moved. Omit a
+`--*-config` to use the app's default rule. The rule is chosen on validation
+first, as for a model; the gate is run once on the rule as chosen.
+
 ## 5. Ship
 
 ```bash

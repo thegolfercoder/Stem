@@ -39,8 +39,10 @@ Also since the audit:
   Measurements that read video through the app's reader were re-run:
   capture sensitivity (#19), the tour body reference (#12) and the slow-motion
   rule (#32).
-- **A clip slowed 2-3x is read as slow motion** rather than shown with
-  durations 2-3x too long (#32, `docs/ml/slow-motion-rule.md`).
+- **The release gate can judge a rule change** on the same weights
+  (`--baseline-config`/`--candidate-config`, non-inferiority; #41). Its first
+  verdict, on #32's check for clips slowed 2-3x, was a fail on tempo error, so
+  that check ships switched off (`docs/ml/slow-motion-rule.md`).
 - **An agent loop** (Strategist, Builder, QA) now maintains the backlog and reviews
   every change (`bb32b18`; `agents/README.md`).
 

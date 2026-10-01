@@ -4,8 +4,16 @@ The slow-motion retry used to run only on a clip refused at recorded speed. A
 clip slowed 2–3× passes every gate at recorded speed, because a doubled
 backswing still fits the 0.30–2.50 s bound. Its durations were then shown two or
 three times too long, as plain measurements. QA reproduced it on the real phone
-fixture (#32). The retry now also checks an *answered* clip whose backswing is
-long, in all three engines and in the release gate's `decide`.
+fixture (#32). All three engines and the release gate's `decide` can now also
+check an *answered* clip whose backswing is long.
+
+**Status: off.** The rule below was chosen on validation, but it failed the
+release gate's non-inferiority test on tempo error once the gate could judge a
+rule change (#41; see the holdout section). Nothing ships unless the gate
+passes, so `slow_motion_check_backswing_s` defaults to `None`. Durations of a
+clip slowed 2–3× are shown as measured again, as before #32
+(`known-limitations.md` item 8). The code and its tests stay, run with the
+check switched on explicitly.
 
 ## The rule
 
@@ -93,35 +101,51 @@ touched.
 
 ## The holdout, through the release gate
 
-The shipped model went through `release_gate` against itself twice: under the new
-rule (`docs/audit/release-gate-slowmo-rule.json`) and with the check off
-(`docs/audit/release-gate-slowmo-rule-before.json`). The check-off run reproduces
-the previously published figures exactly. Both runs only report; the rule was
-fixed on validation before either ran, and nothing was changed after.
+The gate compared the shipped model with itself: baseline with the check off
+(`docs/audit/configs/slow-motion-check-off.json`), candidate with the rule on.
+The holdout was read only by the gate, and the rule was fixed before it ran.
 
-| Holdout, 201 swings | Check off | Check on |
-|---|---|---|
-| Answered | 99.0% | 99.0% |
-| Core four within one frame | 48.7% | 49.0% |
-| Tempo median error | 15.2% | 15.3% |
-| Tempo band coverage (80% claimed) | 85.4% | 84.9% |
-| Event band coverage | 96.5% | 98.2% |
-| Confidently wrong | 14.6% | 15.1% |
+```
+python -m swingml.model.release_gate \
+    --candidate swingml/data/swing_event_net.pt --baseline swingml/data/swing_event_net.pt \
+    --candidate-calibration swingml/data/event_calibration.json \
+    --baseline-calibration swingml/data/event_calibration.json \
+    --baseline-config ../docs/audit/configs/slow-motion-check-off.json \
+    --test-manifest swingml/manifests/golfdb-holdout-v1.json \
+    --calibration-manifest swingml/manifests/golfdb-calibration-v1.json \
+    --train-manifest swingml/manifests/golfdb-train-v1.json \
+    --model-card ../docs/ml/model-card.md --report ../docs/audit/release-gate-slowmo-rule.json
+```
 
-Each change is about one swing in 201, and most of them are in the slow-motion
-replay subgroup (82 clips). There, clips that had answered at recorded speed are
-now read as slow motion. The per-clip changes are not in the report.
+**Exit 1.** `not_worse_than_baseline_on_frozen_real_test` fails; every other gate
+passes.
 
-Every absolute gate passes under both rules:
-- evidence and no leakage;
-- the real fixture;
-- band coverage and false confidence;
-- refusals, subgroups and tempo sensitivity.
+| Holdout, 201 swings | Check off | Check on | Paired difference [95%] |
+|---|---|---|---|
+| Core four within one frame | 48.7% | 49.0% | +0.25 points [0.0, +1.0] |
+| Tempo median error | 15.2% | 15.3% | +0.12 points [−0.29, **+1.56**] |
 
-`beats_baseline_on_frozen_real_test` fails in both runs, by construction. It
-asks a candidate model to beat a baseline model, and here the two are the same
-model, so every difference is exactly zero. The gate has no way to compare two
-decision rules for one model. That is filed as its own item.
+Non-inferiority needs the tempo interval's upper end below +1 point. It reaches
++1.56.
+
+Four clips changed. All four are GolfDB slow-motion replays (clips 213, 451,
+617, 1000) that the old rule answered at recorded speed, showing their durations
+as measured, which is the fault #32 is about. The new rule reads them as slow
+motion at 2×. No real-time swing changed. The rule does what it was chosen to
+do, but reading those four replays at 2× moved their tempo: by −0.55, −0.31,
+−0.05 and +0.15. The test cannot rule out a tempo cost larger than the margin.
+
+What would plausibly pass is to withhold the durations when the check fires,
+keeping the recorded-speed tempo. That leaves every holdout tempo unchanged,
+and it removes the fault #32 is about: durations 2–3× too long shown as
+measured. It is a different rule and needs its own validation run and gate
+verdict (follow-up on #32).
+
+Two earlier runs are superseded by this one. They used a wrapper and could not
+judge a rule change: their "beats baseline" gate fails by construction.
+`release-gate-slowmo-rule-before.json` is kept. The first
+`release-gate-slowmo-rule.json` was overwritten by this report and is in git
+history at `c769abd`.
 
 ## What this does not claim
 
