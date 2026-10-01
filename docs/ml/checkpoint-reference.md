@@ -29,11 +29,17 @@ python scripts/body_reference.py --videos <GolfDB videos_160> --out ../docs/audi
 
 | Measure | Unit | 10th percentile | Median | 90th percentile |
 |---|---|---|---|---|
-| Head movement, address to impact | body lengths | 0.027 [0.017, 0.044] | 0.072 [0.054, 0.092] | 0.141 [0.112, 0.158] |
-| Pelvis sway, address to impact | body lengths | 0.027 [0.016, 0.041] | 0.058 [0.048, 0.074] | 0.095 [0.083, 0.108] |
-| Shoulder turn at the top, as seen face on | degrees | 49.0 [46.6, 50.8] | 58.0 [55.1, 61.5] | 74.1 [69.9, 80.6] |
+| Head movement, address to impact | body lengths | 0.030 [0.017, 0.045] | 0.071 [0.055, 0.093] | 0.140 [0.109, 0.158] |
+| Pelvis sway, address to impact | body lengths | 0.030 [0.015, 0.041] | 0.058 [0.046, 0.074] | 0.093 [0.081, 0.107] |
+| Shoulder turn at the top, as seen face on | degrees | 49.0 [47.3, 51.5] | 58.0 [54.6, 62.0] | 74.6 [70.3, 81.8] |
 
 All three rest on 84 swings from 32 golfer/video groups.
+
+**Re-measured after #40.** The first run read the clips through a `VideoReader`
+that stamped frames one frame early partway through each clip, which can move
+an event by a frame. With the fix (`43c98b7`) every percentile moved by at most
+0.003 body lengths or 0.5°, well inside its interval. The table above is the
+re-run.
 
 ## What these do not claim
 

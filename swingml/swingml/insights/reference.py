@@ -77,20 +77,20 @@ _BODY_SOURCE = (
 
 TOUR_BODY_READINGS: dict[str, BodyReference] = {
     "head_movement": BodyReference(
-        unit="body lengths", p10=0.027, p50=0.072, p90=0.141,
-        p10_ci95=(0.017, 0.044), p50_ci95=(0.054, 0.092), p90_ci95=(0.112, 0.158),
+        unit="body lengths", p10=0.03, p50=0.071, p90=0.14,
+        p10_ci95=(0.017, 0.045), p50_ci95=(0.055, 0.093), p90_ci95=(0.109, 0.158),
         n_swings=84, n_groups=32, source=_BODY_SOURCE,
         model_fingerprint="8c70fac9540d053b6936aca3cb4688fc",
     ),
     "pelvis_sway": BodyReference(
-        unit="body lengths", p10=0.027, p50=0.058, p90=0.095,
-        p10_ci95=(0.016, 0.041), p50_ci95=(0.048, 0.074), p90_ci95=(0.083, 0.108),
+        unit="body lengths", p10=0.03, p50=0.058, p90=0.093,
+        p10_ci95=(0.015, 0.041), p50_ci95=(0.046, 0.074), p90_ci95=(0.081, 0.107),
         n_swings=84, n_groups=32, source=_BODY_SOURCE,
         model_fingerprint="8c70fac9540d053b6936aca3cb4688fc",
     ),
     "shoulder_turn_foreshortened": BodyReference(
-        unit="deg", p10=49.042, p50=57.977, p90=74.054,
-        p10_ci95=(46.596, 50.752), p50_ci95=(55.143, 61.487), p90_ci95=(69.896, 80.617),
+        unit="deg", p10=49.044, p50=57.96, p90=74.574,
+        p10_ci95=(47.334, 51.518), p50_ci95=(54.611, 61.974), p90_ci95=(70.307, 81.842),
         n_swings=84, n_groups=32, source=_BODY_SOURCE,
         model_fingerprint="8c70fac9540d053b6936aca3cb4688fc",
     ),

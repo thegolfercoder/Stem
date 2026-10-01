@@ -48,6 +48,7 @@ from swingml.dataset.manifest import (
     refuse_holdout_manifest,
     verify,
 )
+from swingml.events import SwingEvent
 from swingml.insights.compare import CameraSignature, SwingPoint, comparability
 from swingml.pose.mediapipe_pose import MediaPipePoseEstimator
 from swingml.quantity import NoReading
@@ -191,16 +192,26 @@ def _change(base: dict[str, Any], other: dict[str, Any], measure: str) -> float 
     return float(abs(b - a) / a if MEASURES[measure] == "relative" and a else abs(b - a))
 
 
-def _accuracy(row: dict[str, Any]) -> tuple[float, float] | None:
-    """Within 1 frame (core four, at 60 Hz) and relative tempo error, against the labels."""
+def _offsets(row: dict[str, Any]) -> NDArray[np.float64]:
+    """Read minus labelled, per event, in frames of the 60 Hz grid."""
+    read = (np.asarray(row["event_times_s"], dtype=np.float64) - row["t0"]) * 60.0
+    return np.asarray(read - np.asarray(row["events"], dtype=np.float64), dtype=np.float64)
+
+
+def _accuracy(row: dict[str, Any]) -> tuple[float, float, float] | None:
+    """Against the labels: within 1 frame on the core four as the release gate scores
+    it (read positions rounded to the 60 Hz grid), the same unrounded, and the
+    relative tempo error."""
     if not row["answered"] or row["slow"] or len(row["event_times_s"]) != 8:
         return None
-    truth = np.asarray(row["t0"]) + np.asarray(row["events"], dtype=np.float64) / 60.0
-    read = np.asarray(row["event_times_s"], dtype=np.float64)
-    within = float(np.mean(np.abs(read[list(CORE)] - truth[list(CORE)]) <= 1 / 60 + 1e-6))
-    true_tempo = (truth[3] - truth[0]) / (truth[5] - truth[3])
+    labels = np.asarray(row["events"], dtype=np.float64)
+    read = labels + _offsets(row)
+    core = list(CORE)
+    rounded = float(np.mean(np.abs(np.rint(read[core]) - labels[core]) <= 1))
+    subframe = float(np.mean(np.abs(read[core] - labels[core]) <= 1 + 1e-6))
+    true_tempo = (labels[3] - labels[0]) / (labels[5] - labels[3])
     read_tempo = (read[3] - read[0]) / (read[5] - read[3])
-    return within, abs(read_tempo - true_tempo) / true_tempo
+    return rounded, subframe, abs(read_tempo - true_tempo) / true_tempo
 
 
 def cmd_summarise(args: argparse.Namespace) -> None:
@@ -270,10 +281,10 @@ def cmd_summarise(args: argparse.Namespace) -> None:
     both = [(a, h, g) for a, h, g in paired if a is not None and h is not None]
     groups = [g for _, _, g in both]
     accuracy: dict[str, Any] = {"n": len(both)}
-    for k, key in enumerate(("within_1_core4", "tempo_rel_error")):
+    for k, key in enumerate(("within_1_core4", "within_1_core4_subframe", "tempo_rel_error")):
         full = np.array([a[k] for a, _, _ in both])
         half = np.array([h[k] for _, h, _ in both])
-        stat: Callable[[Any], Any] = np.mean if k == 0 else np.median
+        stat: Callable[[Any], Any] = np.median if key == "tempo_rel_error" else np.mean
 
         def gap(v: NDArray[np.float64], stat: Callable[[Any], Any] = stat) -> float:
             return float(stat(v[:, 1]) - stat(v[:, 0]))
@@ -286,6 +297,21 @@ def cmd_summarise(args: argparse.Namespace) -> None:
                 np.stack([full, half], axis=1), groups, gap, args.resamples, 3 + k
             ),
         }
+    # Where the read events sit against the labels, so an offset can be checked
+    # rather than asserted (#40).
+    for name in ("base", "half_rate"):
+        rows = [r for r in runs[name] if _accuracy(r) is not None]
+        offsets = np.array([_offsets(r) for r in rows])
+        accuracy[f"offset_frames_{name}"] = {
+            event.name.lower(): {
+                "median": round(float(np.median(offsets[:, int(event)])), 3),
+                "ci95": _interval(
+                    offsets[:, int(event)], [r["group"] for r in rows], np.median,
+                    args.resamples, 10 + int(event),
+                ),
+            }
+            for event in SwingEvent.ordered()
+        }  # fmt: skip
     out["half_rate_accuracy"] = accuracy
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
