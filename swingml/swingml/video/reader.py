@@ -124,12 +124,16 @@ class VideoReader:
         last_time = -1.0
         kept = -np.inf
         while True:
-            position_ms = self.capture.get(cv2.CAP_PROP_POS_MSEC)
             ok, frame = self.capture.read()
             if not ok:
                 break
-
-            time_s = position_ms / 1000.0
+            # Asked after the read: OpenCV reports the time of the frame it last
+            # decoded. Asked before, it gave the previous frame's time; the
+            # fallback below covered that for the first few dozen frames, until
+            # rounding let the true previous time through and every later frame
+            # was stamped one frame early. On GolfDB clips that shortened any
+            # duration spanning the jump by a frame (#40).
+            time_s = self.capture.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
             if not np.isfinite(time_s) or time_s <= last_time:
                 time_s = last_time + 1.0 / self.nominal_fps if index else 0.0
             last_time = time_s
