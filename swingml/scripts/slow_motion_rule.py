@@ -40,7 +40,7 @@ from swingml.analysis import (
     load_model,
 )
 from swingml.assets import find_event_model
-from swingml.dataset.manifest import load, refuse_holdout_manifest, verify
+from swingml.dataset.manifest import group_resamples, load, refuse_holdout_manifest, verify
 from swingml.events import SwingEvent
 from swingml.features import extract_features, resample_pose
 from swingml.model.decode import decode_events
@@ -150,9 +150,13 @@ def cmd_probe(args: argparse.Namespace) -> None:
     if path is None:
         raise SystemExit("no shipped event model found")
     model = load_model(path)
-    rows = []
+    rows, missing = [], 0
     for done, clip in enumerate(clips(args.root), start=1):
-        base = read_pose(args.cache / f"{clip['clip']}.npz")
+        pose = args.cache / f"{clip['clip']}.npz"
+        if not pose.exists():
+            missing += 1
+            continue
+        base = read_pose(pose)
         hand = Handedness.LEFT if clip["left"] else Handedness.RIGHT
         config = AnalysisConfig(handedness=hand)
         for slowed in (1.0,) if clip["slow"] else SLOWED:
@@ -181,7 +185,7 @@ def cmd_probe(args: argparse.Namespace) -> None:
             print(f"  {done} clips", flush=True)
     out = args.cache.parent / "probe.json"
     out.write_text(json.dumps(rows) + "\n", encoding="utf-8")
-    print(f"wrote {out}: {len(rows)} rows")
+    print(f"wrote {out}: {len(rows)} rows; {missing} clips had no poses yet")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -203,8 +207,138 @@ def main(argv: list[str] | None = None) -> None:
     {"poses": cmd_poses, "probe": cmd_probe, "summarise": cmd_summarise}[args.command](args)
 
 
-def cmd_summarise(args: argparse.Namespace) -> None:  # filled in once the probe exists
-    raise SystemExit("not yet")
+# The rules compared. `None` for the backswing is today's rule: retry only a clip
+# refused at recorded speed. Otherwise a clip answered at recorded speed whose
+# backswing is longer than `backswing_s` is also read at each factor, and is read
+# as slow motion when the most confident of those beats the recorded-speed core
+# confidence by more than `margin`.
+FACTOR_SETS = {"2,4,8": (2.0, 4.0, 8.0), "2,3,4,8": (2.0, 3.0, 4.0, 8.0)}
+BACKSWINGS = (None, 0.0, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5)
+MARGINS = (0.0, 0.01, 0.02, 0.03, 0.05)
+# Chosen before any result was seen: among rules whose false-slow rate on real-time
+# swings is at most this, the one that reads the most 2x and 3x clips as slow
+# motion; ties go to the larger backswing bound (fewer extra passes), then to the
+# larger margin.
+MAX_FALSE_SLOW = 0.02
+
+
+def answered(read: dict[str, Any]) -> bool:
+    return bool(read.get("decoded") and read["confident"] and read["timing_ok"])
+
+
+def outcome(
+    row: dict[str, Any], factors: tuple[float, ...], backswing: float | None, margin: float
+) -> tuple[str, float | None]:
+    """("real time" | "slow" | "refused", the factor read at)."""  # fmt: skip
+    first = row["reads"]["1.0"]
+    tried = [(row["reads"][str(f)], f) for f in factors]
+    tried = [(r, f) for r, f in tried if answered(r)]
+    best = max(tried, key=lambda t: t[0]["core"], default=None)
+    if not answered(first):
+        return ("slow", best[1]) if best else ("refused", None)
+    if backswing is None or first["backswing_s"] <= backswing or best is None:
+        return "real time", None
+    return ("slow", best[1]) if best[0]["core"] > first["core"] + margin else ("real time", None)
+
+
+def rate(flags: np.ndarray, groups: list[str], resamples: int, seed: int) -> dict[str, Any]:
+    if not len(flags):
+        return {"n": 0}
+    draws = [
+        float(np.mean(flags[i]))
+        for i in group_resamples(groups, resamples, np.random.default_rng(seed))
+    ]
+    low, high = np.percentile(draws, [2.5, 97.5])
+    return {
+        "n": len(flags),
+        "share": round(float(np.mean(flags)), 4),
+        "ci95": [round(float(low), 4), round(float(high), 4)],
+    }
+
+
+def evaluate(rows: list[dict[str, Any]], factors: tuple[float, ...], backswing: float | None,
+             margin: float, resamples: int, seed: int) -> dict[str, Any]:  # fmt: skip
+    got = [outcome(r, factors, backswing, margin) for r in rows]
+    result: dict[str, Any] = {}
+    real = [i for i, r in enumerate(rows) if not r["slow"] and r["slowed"] == 1.0]
+    answered_real = [i for i in real if answered(rows[i]["reads"]["1.0"])]
+    result["false_slow"] = rate(
+        np.array([got[i][0] == "slow" for i in answered_real]),
+        [rows[i]["group"] for i in answered_real], resamples, seed,
+    )  # fmt: skip
+    for k in SLOWED[1:]:
+        idx = [i for i, r in enumerate(rows) if not r["slow"] and r["slowed"] == k]
+        result[f"slowed_{k:g}x"] = {
+            "read_as_slow": rate(
+                np.array([got[i][0] == "slow" for i in idx]),
+                [rows[i]["group"] for i in idx], resamples, seed,
+            ),
+            "reported_as_measured": round(
+                float(np.mean([got[i][0] == "real time" for i in idx])), 4
+            ) if idx else None,
+        }  # fmt: skip
+    replays = [i for i, r in enumerate(rows) if r["slow"]]
+    result["slow_motion_replays"] = {
+        name: round(float(np.mean([got[i][0] == name for i in replays])), 4) if replays else None
+        for name in ("slow", "real time", "refused")
+    }
+    result["n_replays"] = len(replays)
+    return result
+
+
+def cmd_summarise(args: argparse.Namespace) -> None:
+    rows = json.loads((args.cache.parent / "probe.json").read_text(encoding="utf-8"))
+    rules = []
+    for name, factors in FACTOR_SETS.items():
+        for backswing in BACKSWINGS:
+            for margin in MARGINS if backswing is not None else (0.0,):
+                rules.append(
+                    {
+                        "factors": name,
+                        "backswing_s": backswing,
+                        "margin": margin,
+                        **evaluate(rows, factors, backswing, margin, args.resamples, args.seed),
+                    }
+                )
+
+    def caught(rule: dict[str, Any]) -> float:
+        return float(np.mean([rule[f"slowed_{k:g}x"]["read_as_slow"]["share"] for k in (2.0, 3.0)]))
+
+    eligible = [r for r in rules if r["false_slow"]["share"] <= MAX_FALSE_SLOW]
+    chosen = max(
+        eligible,
+        key=lambda r: (
+            caught(r),
+            -1.0 if r["backswing_s"] is None else r["backswing_s"],
+            r["margin"],
+            r["factors"] == "2,4,8",
+        ),
+    )
+    today = next(r for r in rules if r["backswing_s"] is None and r["factors"] == "2,4,8")
+    for rule in [*sorted(rules, key=caught, reverse=True)[:12], today]:
+        print(
+            f"{rule['factors']:8s} back>{rule['backswing_s']!s:5s} margin {rule['margin']:.2f}: "
+            f"false slow {rule['false_slow']['share']:.3f} "
+            f"caught 2x {rule['slowed_2x']['read_as_slow']['share']:.2f} "
+            f"3x {rule['slowed_3x']['read_as_slow']['share']:.2f} "
+            f"1.5x {rule['slowed_1.5x']['read_as_slow']['share']:.2f}"
+        )
+    print("chosen:", {k: chosen[k] for k in ("factors", "backswing_s", "margin")})
+    result = {
+        "source": "golfdb-validation-v2 through the shipped pipeline; holdout not read",
+        "n_clips": len({r["clip"] for r in rows}),
+        "criterion": (
+            f"false-slow share on answered real-time swings at most {MAX_FALSE_SLOW}; then "
+            "the most 2x and 3x clips read as slow motion; ties to the larger backswing "
+            "bound, then the larger margin"
+        ),
+        "today": today,
+        "chosen": chosen,
+        "rules": rules,
+    }
+    if args.out is not None:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
