@@ -6,9 +6,20 @@ Everything is analysed on the phone. A coach's read and a chat about your swings
 come from Ollama running on your own computer, over your Wi-Fi - nothing goes to
 the internet.
 
-## Install it on your iPhone
+## Open it in Xcode straight from the download
 
-You need a Mac with Xcode 15 or later.
+**`SwingStudio.xcodeproj` is committed.** Download the repository (Code → Download
+ZIP), unzip it, double-click `ios/SwingStudio.xcodeproj`, pick an iPhone simulator
+and press **Run**. Nothing to install first; Xcode 15 or later.
+
+That build has no pose tracker. Google ships MediaPipe for iPhone only through
+CocoaPods, so it cannot come with the download. The app runs, says so on the
+Analyse screen, and refuses to analyse a clip instead of guessing. Everything else
+(history, practice, settings, the coach) works.
+
+## Install it with the pose tracker, on your iPhone
+
+You need a Mac with Xcode 15 or later. Once:
 
 ```sh
 brew install xcodegen cocoapods
@@ -16,6 +27,10 @@ cd ios
 ./setup.sh
 open SwingStudio.xcworkspace
 ```
+
+From then on open **`SwingStudio.xcworkspace`**, not the `.xcodeproj`: the
+workspace is what carries MediaPipe. The pose model (about 30 MB) is fetched by
+`setup.sh`, or by the first build if it is missing.
 
 In Xcode, select the **SwingStudio** target, open **Signing & Capabilities** and
 choose your Apple ID as the team (a free account works; the app then needs
@@ -53,6 +68,12 @@ than on a phone. For the coach, Ollama running on the same Mac is
 
 The coach is told what a single camera can and cannot measure, and a guard drops
 any sentence about club face, path, plane, spin or distance before you see it.
+
+## Changing the project
+
+`SwingStudio.xcodeproj` is generated from `project.yml` by XcodeGen. After adding
+a file or changing `project.yml`, run `xcodegen generate` and commit the project;
+`./check_project.sh` (run by CI) fails if an app file is missing from it.
 
 ## How it is built
 

@@ -2,6 +2,31 @@
 
 [![checks](https://github.com/thegolfercoder/launch-monitor-ml/actions/workflows/checks.yml/badge.svg)](https://github.com/thegolfercoder/launch-monitor-ml/actions/workflows/checks.yml)
 
+> ## 📱 Open the iPhone app in Xcode
+>
+> **[`ios/SwingStudio.xcodeproj`](ios/SwingStudio.xcodeproj)** is committed. Download, double-click it, press Run.
+>
+> 1. Download this repository: **Code → Download ZIP** (on the branch with the app:
+>    [download link](https://github.com/thegolfercoder/Stem/archive/refs/heads/claude/prompt-usage-0oy6wa.zip)), and unzip it.
+> 2. Double-click **`ios/SwingStudio.xcodeproj`**. Xcode 15 or later opens it.
+> 3. Choose an iPhone simulator at the top of the window and press **Run** (⌘R).
+>    To run on your own iPhone instead, pick it there and choose your Apple ID under
+>    *SwingStudio target → Signing & Capabilities → Team*.
+>
+> The app opens with history, practice, settings and the coach working. **Analysing a
+> swing needs Google's MediaPipe pose tracker**, which Google ships for iPhone only
+> through CocoaPods, so it cannot be inside a download. Until it is added, the app
+> says so on its first screen and refuses to analyse rather than guess. To add it,
+> once, in Terminal:
+>
+> ```sh
+> brew install xcodegen cocoapods
+> cd ios && ./setup.sh
+> open SwingStudio.xcworkspace     # from now on open this, not the .xcodeproj
+> ```
+>
+> More in [ios/README.md](ios/README.md).
+
 Measuring a golf swing and a golf ball without a launch monitor's price tag. Two
 pieces of work toward that, sharing a set of principles and no code: swing
 analysis from a phone camera, and radar DSP for the ball.

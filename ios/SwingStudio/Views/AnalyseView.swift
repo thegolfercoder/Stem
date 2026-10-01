@@ -44,6 +44,14 @@ struct AnalyseView: View {
                          + "Any phone video works: portrait or landscape, normal or slow motion.")
                         .foregroundStyle(Theme.faint)
 
+                    if !PoseTracker.installed {
+                        Text(PipelineError.noPoseTracker.errorDescription ?? "")
+                            .font(.subheadline)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.warm.opacity(0.15), in: RoundedRectangle(cornerRadius: 10))
+                    }
+
                     PhotosPicker(selection: $picked, matching: .videos, preferredItemEncoding: .current) {
                         Label("Choose a swing from Photos", systemImage: "photo.on.rectangle")
                             .frame(maxWidth: .infinity).padding(.vertical, 14)

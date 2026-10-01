@@ -3,6 +3,7 @@ name: iphone app
 # The Swing Studio iPhone app. The analysis core (ios/SwingCore) is plain Swift
 # and its tests - held to the browser engine's answers on a real swing - run on
 # Linux. The app itself needs Xcode, so it is built for the simulator on macOS,
+# twice: as downloaded (the committed SwingStudio.xcodeproj, no MediaPipe), and
 # with MediaPipe from CocoaPods and the pose model fetched as setup.sh does.
 on:
   workflow_dispatch:
@@ -25,6 +26,9 @@ jobs:
         with:
           swift-version: "6.1"
       - run: swift test
+      - name: the committed Xcode project lists every app file
+        working-directory: ios
+        run: ./check_project.sh
 
   app:
     name: app (xcodebuild, simulator)
@@ -34,6 +38,12 @@ jobs:
         working-directory: ios
     steps:
       - uses: actions/checkout@v5
+      - name: the committed project builds as downloaded (no pods, no model)
+        run: |
+          xcodebuild -project SwingStudio.xcodeproj -scheme SwingStudio \
+            -destination 'generic/platform=iOS Simulator' -configuration Debug \
+            -derivedDataPath build/as-downloaded CODE_SIGNING_ALLOWED=NO build | tail -20
+          test "${PIPESTATUS[0]}" -eq 0
       - name: tools
         run: brew install xcodegen
       - name: pose model

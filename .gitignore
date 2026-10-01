@@ -33,8 +33,9 @@ ios/SwingCore/.build/
 ios/**/*.xcodeproj/xcuserdata/
 ios/Pods/
 
-# iPhone app: generated project, pods and the downloaded pose model.
-ios/SwingStudio.xcodeproj/
+# iPhone app: pods and the downloaded pose model. SwingStudio.xcodeproj is
+# committed on purpose (generated from ios/project.yml) so the download opens in
+# Xcode directly; only its per-user state is ignored.
 ios/SwingStudio.xcworkspace/
 ios/Podfile.lock
 ios/SwingStudio/Resources/pose_landmarker_heavy.task

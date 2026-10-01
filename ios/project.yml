@@ -1,5 +1,7 @@
-# XcodeGen project for the Swing Studio iPhone app. Generate the Xcode project
-# with ./setup.sh (which also fetches the pose model and installs MediaPipe).
+# XcodeGen project for the Swing Studio iPhone app. SwingStudio.xcodeproj is
+# generated from this file and committed, so the download opens straight in
+# Xcode. After changing this file run `xcodegen generate` and commit the result;
+# CI fails if the two disagree. ./setup.sh also installs MediaPipe.
 name: SwingStudio
 options:
   bundleIdPrefix: com.swingml
@@ -14,6 +16,9 @@ targets:
     platform: iOS
     sources:
       - path: SwingStudio
+        # Copied in by the script below, so the committed project is the same
+        # whether or not the 30 MB model has been downloaded yet.
+        excludes: ["Resources/*.task"]
     dependencies:
       - package: SwingCore
     info:
@@ -29,6 +34,28 @@ targets:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
           NSAllowsArbitraryLoads: true
+    scheme: {}
+    postCompileScripts:
+      - name: Pose model
+        basedOnDependencyAnalysis: false
+        script: |
+          # Only a build with MediaPipe (installed by ./setup.sh) can use the model.
+          if [ -z "${PODS_ROOT:-}" ]; then
+            echo "note: MediaPipe is not installed (run ios/setup.sh); building without the pose tracker"
+            exit 0
+          fi
+          MODEL="$SRCROOT/SwingStudio/Resources/pose_landmarker_heavy.task"
+          if [ ! -f "$MODEL" ]; then
+            echo "Fetching the pose model (about 30 MB)..."
+            if ! curl -L --fail -sS -o "$MODEL.part" \
+                https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task; then
+              rm -f "$MODEL.part"
+              echo "warning: could not fetch the pose model; the app will say so until a build can"
+              exit 0
+            fi
+            mv "$MODEL.part" "$MODEL"
+          fi
+          cp "$MODEL" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.swingml.studio

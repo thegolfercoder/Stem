@@ -1,11 +1,16 @@
+#if canImport(MediaPipeTasksVision)
 import MediaPipeTasksVision
+#endif
 import SwingCore
 import UIKit
+
+#if canImport(MediaPipeTasksVision)
 
 /// Google's MediaPipe pose landmarker, heavy model, in video mode: the same
 /// estimator and model the desktop and browser apps use, so the swing model sees
 /// the same kind of landmarks everywhere.
 final class PoseTracker {
+    static let installed = true
     private let landmarker: PoseLandmarker
     /// Video mode refuses any timestamp not after the last one it saw, across its
     /// whole life, so every pass through a clip continues from here.
@@ -58,3 +63,20 @@ final class PoseTracker {
     /// A clock value comfortably after everything seen so far, to start a new pass.
     func nextBase() -> Int { clockMs + 1000 }
 }
+#else
+/// Built without MediaPipe: SwingStudio.xcodeproj was opened straight from the
+/// download, before `./setup.sh` installed it. Everything else in the app works;
+/// analysing a clip is refused with how to add the tracker, never guessed at.
+final class PoseTracker {
+    static let installed = false
+    init() throws { throw PipelineError.noPoseTracker }
+
+    struct Pose {
+        var points: [Point]
+        var visibility: [Double]
+    }
+
+    func detect(_ frame: CGImage, at seconds: Double, base: Int) -> Pose? { nil }
+    func nextBase() -> Int { 0 }
+}
+#endif

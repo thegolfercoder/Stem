@@ -81,13 +81,20 @@ final class FrameReader {
 }
 
 enum PipelineError: LocalizedError {
-    case noVideo, unreadable, noPoseModel, tooShort
+    case noVideo, unreadable, noPoseModel, noPoseTracker, tooShort
 
     var errorDescription: String? {
         switch self {
         case .noVideo: return "That file has no video track."
         case .unreadable: return "This video could not be decoded on this iPhone."
-        case .noPoseModel: return "The pose model is missing from the app. Run setup.sh again before building."
+        case .noPoseModel:
+            return "The pose model is missing from the app. Build once with an internet connection, "
+                + "or run ios/setup.sh, then build again."
+        case .noPoseTracker:
+            return "This build has no pose tracker, so no swing can be analysed yet. Google ships "
+                + "MediaPipe for iPhone through CocoaPods only. On the Mac, in Terminal: "
+                + "brew install xcodegen cocoapods, then cd ios && ./setup.sh, then open "
+                + "SwingStudio.xcworkspace (not .xcodeproj) and press Run."
         case .tooShort: return "The clip is too short to hold a swing."
         }
     }

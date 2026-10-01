@@ -67,6 +67,7 @@ if [ "$QUICK" = 0 ]; then
   if [ -d launchmon-py ]; then
     step "launchmon: checks" bash -c "cd launchmon-py && ruff check . && ruff format --check . && mypy -p launchmon && python -m pytest -q"
   fi
+  step "ios: committed Xcode project" bash ios/check_project.sh
   if command -v swift >/dev/null 2>&1; then
     step "ios: swift test" bash -c "cd ios/SwingCore && swift test --scratch-path \"\${TMPDIR:-/tmp}/stem-swift-build\""
   else
