@@ -31,6 +31,16 @@ Also since the audit:
 - **The holdout is guarded in code,** and a phone test set path exists: phone
   swings are frozen, and the gate scores them apart, gating from 150 swings by
   30 golfers. No phone set has been collected yet (#23, #13, #20).
+- **The desktop app's frame times slipped a frame partway through a clip.**
+  The cause was in `VideoReader`, fixed in `43c98b7` (#40). The app's video path
+  scored 29% within one frame on validation against 67% through the archive;
+  it now reads exactly what the archive reads. Every accuracy figure was
+  measured through the archive, so none of the quoted figures changes.
+  Measurements that read video through the app's reader were re-run:
+  capture sensitivity (#19), the tour body reference (#12) and the slow-motion
+  rule (#32).
+- **A clip slowed 2-3x is read as slow motion** rather than shown with
+  durations 2-3x too long (#32, `docs/ml/slow-motion-rule.md`).
 - **An agent loop** (Strategist, Builder, QA) now maintains the backlog and reviews
   every change (`bb32b18`; `agents/README.md`).
 
