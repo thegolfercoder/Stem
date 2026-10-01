@@ -133,6 +133,24 @@ class AnalysisConfig(BaseModel):
             "at all. Empty turns the retry off."
         ),
     )
+    slow_motion_check_backswing_s: float | None = Field(
+        default=None,
+        description=(
+            "A clip answered at recorded speed whose backswing (address to top, whole "
+            "frames on the model's grid) is longer than this is also read at each "
+            "slow-motion factor. A clip slowed two or three times passes every gate at "
+            "recorded speed, so without this its durations would be reported as "
+            "measured (#32). None checks only refused clips."
+        ),
+    )
+    slow_motion_margin: float = Field(
+        default=0.0,
+        description=(
+            "How much more confident (core geometric mean) the best slow-motion read "
+            "must be than the recorded-speed read before an answered clip is read as "
+            "slow motion instead."
+        ),
+    )
 
 
 class SwingAnalysis(BaseModel):
@@ -521,26 +539,40 @@ def analyse_pose_sequence(
     """
     config = config or AnalysisConfig()
     first = _with_camera(_analyse_at_recorded_speed(sequence, model, config, video), sequence)
-    if not isinstance(first.events, NoReading) or first.events.source != "events":
-        return first
+    if isinstance(first.events, NoReading):
+        if first.events.source != "events":
+            return first
+        to_beat = None
+    else:
+        # Answered at recorded speed. A clip slowed two or three times gets here
+        # too, with every duration two or three times too long (#32), so a long
+        # backswing is checked against the slow-motion reads as well.
+        bound = config.slow_motion_check_backswing_s
+        backswing_s = (
+            first.events.duration_frames(SwingEvent.ADDRESS, SwingEvent.TOP)
+            / config.features.canonical_rate_hz
+        )
+        if bound is None or backswing_s <= bound:
+            return first
+        to_beat = core_confidence(first.events.confidence) + config.slow_motion_margin
     best: tuple[float, float, SwingAnalysis] | None = None
     for factor in config.slow_motion_factors:
         faster = sequence.model_copy(update={"timestamps_s": sequence.timestamps_s / factor})
         attempt = _analyse_at_recorded_speed(faster, model, config, video)
         if isinstance(attempt.events, NoReading):
             continue
-        core = float(
-            np.exp(
-                np.mean(
-                    np.log(np.maximum([attempt.events.confidence[i] for i in (0, 3, 4, 5)], 1e-12))
-                )
-            )
-        )
+        core = core_confidence(attempt.events.confidence)
         if best is None or core > best[0]:
             best = (core, factor, attempt)
-    if best is None:
+    if best is None or (to_beat is not None and best[0] <= to_beat):
         return first
     return _with_camera(_as_slow_motion(best[2], best[1]), sequence)
+
+
+def core_confidence(confidence: Sequence[float]) -> float:
+    """Geometric mean confidence over address, top, mid-downswing and impact."""
+    core = np.maximum([confidence[i] for i in (0, 3, 4, 5)], 1e-12)
+    return float(np.exp(np.mean(np.log(core))))
 
 
 def _with_camera(analysis: SwingAnalysis, sequence: PoseSequence) -> SwingAnalysis:

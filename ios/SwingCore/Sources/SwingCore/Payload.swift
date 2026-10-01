@@ -69,6 +69,13 @@ public struct ModelPayload: Decodable {
         public let plausibleTempo: [Double]
         /// Playback speed-ups a refused clip is retried at, as slow motion.
         public let slowMotionFactors: [Double]
+        /// An answered clip whose backswing (whole frames on the model's grid) is
+        /// longer than this is also read at those speeds (#32). Nil checks only
+        /// refused clips, as payloads from before the check did.
+        public let slowMotionCheckBackswingS: Double?
+        /// How much more confident the best slowed read must be than the
+        /// recorded-speed one before an answered clip is read as slow motion.
+        public let slowMotionMargin: Double
 
         enum CodingKeys: String, CodingKey {
             case minMeanConfidence = "min_mean_confidence"
@@ -78,6 +85,8 @@ public struct ModelPayload: Decodable {
             case plausibleDownswingS = "plausible_downswing_s"
             case plausibleTempo = "plausible_tempo"
             case slowMotionFactors = "slow_motion_factors"
+            case slowMotionCheckBackswingS = "slow_motion_check_backswing_s"
+            case slowMotionMargin = "slow_motion_margin"
         }
 
         public init(from decoder: Decoder) throws {
@@ -91,6 +100,8 @@ public struct ModelPayload: Decodable {
             plausibleTempo = try c.decode([Double].self, forKey: .plausibleTempo)
             // Older exports had no retry; the desktop's factors keep them in step.
             slowMotionFactors = try c.decodeIfPresent([Double].self, forKey: .slowMotionFactors) ?? [2, 4, 8]
+            slowMotionCheckBackswingS = try c.decodeIfPresent(Double.self, forKey: .slowMotionCheckBackswingS)
+            slowMotionMargin = try c.decodeIfPresent(Double.self, forKey: .slowMotionMargin) ?? 0
         }
     }
 

@@ -192,14 +192,44 @@ export function slowedMetrics(metrics, factor) {
   };
 }
 
+const coreConfidence = (c) => Math.exp(
+  CORE_EVENTS.reduce((sum, i) => sum + Math.log(Math.max(c[i], 1e-12)), 0) / CORE_EVENTS.length,
+);
+
 /* `attempt(sequence)` reads one pose sequence at its own timestamps and returns
  * `{ok, refusedBy, decoded, metrics, ...}`, where `refusedBy` is "events" when the
- * decoder or the plausibility gate refused it. Only an events refusal is retried:
- * a clip with no body in it is not a swing at any speed. Of the factors that
- * decode, the one with the most confident core events is kept. */
-export function readAtSpeeds(sequence, attempt, factors) {
+ * decoder or the plausibility gate refused it. An events refusal is retried: a
+ * clip with no body in it is not a swing at any speed. Of the factors that
+ * decode, the one with the most confident core events is kept.
+ *
+ * `check` ({backswingS, margin, rateHz}, from the payload's thresholds) also
+ * retries an answered clip whose backswing, in whole frames on the model's grid,
+ * is longer than `backswingS`: a clip slowed two or three times passes every gate
+ * at recorded speed (#32). It is read as slow motion only if the best slowed read
+ * beats the recorded-speed core confidence by more than `margin`. Same rule as
+ * analyse_pose_sequence. */
+/* The answered-clip check from a payload's thresholds, or null where the payload
+ * predates it (only refused clips are then retried, as before). */
+export function slowMotionCheck(thresholds, features) {
+  if (thresholds.slow_motion_check_backswing_s == null) return null;
+  return {
+    backswingS: thresholds.slow_motion_check_backswing_s,
+    margin: thresholds.slow_motion_margin || 0,
+    rateHz: features.canonical_rate_hz,
+  };
+}
+
+export function readAtSpeeds(sequence, attempt, factors, check = null) {
   const first = attempt(sequence);
-  if (first.ok || first.refusedBy !== "events") return { ...first, slowedBy: null };
+  let toBeat = null;
+  if (first.ok) {
+    if (!check || check.backswingS == null) return { ...first, slowedBy: null };
+    const f = first.decoded.frames;
+    if ((f[3] - f[0]) / check.rateHz <= check.backswingS) return { ...first, slowedBy: null };
+    toBeat = coreConfidence(first.decoded.confidence) + check.margin;
+  } else if (first.refusedBy !== "events") {
+    return { ...first, slowedBy: null };
+  }
   let best = null;
   for (const factor of factors || []) {
     const faster = new PoseSequence(
@@ -208,13 +238,10 @@ export function readAtSpeeds(sequence, attempt, factors) {
     );
     const got = attempt(faster);
     if (!got.ok) continue;
-    const c = got.decoded.confidence;
-    const core = Math.exp(
-      CORE_EVENTS.reduce((sum, i) => sum + Math.log(Math.max(c[i], 1e-12)), 0) / CORE_EVENTS.length,
-    );
+    const core = coreConfidence(got.decoded.confidence);
     if (!best || core > best.core) best = { core, factor, got };
   }
-  if (!best) return { ...first, slowedBy: null };
+  if (!best || (toBeat !== null && best.core <= toBeat)) return { ...first, slowedBy: null };
   return { ...best.got, slowedBy: best.factor, metrics: slowedMetrics(best.got.metrics, best.factor) };
 }
 

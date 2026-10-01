@@ -8,7 +8,7 @@
 import { readFileSync } from "node:fs";
 import { PoseSequence, resamplePose, extractFeatures } from "../../webapp/engine.js";
 import { SwingEventModel, decodeEvents } from "../../webapp/model.js";
-import { computeMetrics, implausible, readAtSpeeds } from "../../webapp/metrics.js";
+import { computeMetrics, implausible, readAtSpeeds, slowMotionCheck } from "../../webapp/metrics.js";
 
 const job = JSON.parse(readFileSync(process.argv[2], "utf8"));
 const payload = JSON.parse(readFileSync(job.payload, "utf8"));
@@ -35,7 +35,9 @@ const attempt = (sequence) => {
 const sequence = new PoseSequence(
   job.xy, job.visibility, job.world, job.detected, job.times, job.width, job.height,
 );
-const read = readAtSpeeds(sequence, attempt, thresholds.slow_motion_factors);
+const read = readAtSpeeds(
+  sequence, attempt, thresholds.slow_motion_factors, slowMotionCheck(thresholds, config),
+);
 const result = { ok: read.ok, slowedBy: read.slowedBy, factors: thresholds.slow_motion_factors };
 if (read.ok) {
   Object.assign(result, {

@@ -63,6 +63,7 @@ from swingml.analysis import (
     AnalysisConfig,
     _implausible_timing,
     analyse_pose_sequence,
+    core_confidence,
     load_event_model,
     model_fingerprint,
 )
@@ -115,6 +116,7 @@ class Decision(BaseModel):
     confidence: tuple[float, ...] | None
     slowed_by: float | None
     reason: str | None
+    backswing_s: float | None = None  # whole frames on the grid, as the app's check uses
 
 
 def load_any(path: Path) -> Any:
@@ -167,24 +169,33 @@ def _decide_once(model: Any, features: NDArray[np.float32], config: AnalysisConf
     if implausible is not None:
         return Decision(positions=None, confidence=None, slowed_by=None, reason=implausible)
     return Decision(
-        positions=positions, confidence=tuple(decoded.confidence), slowed_by=None, reason=None
+        positions=positions,
+        confidence=tuple(decoded.confidence),
+        slowed_by=None,
+        reason=None,
+        backswing_s=decoded.duration_frames(SwingEvent.ADDRESS, SwingEvent.TOP) / rate,
     )
 
 
 def decide(model: Any, features: NDArray[np.float32], config: AnalysisConfig) -> Decision:
     """The application's decision on already-extracted features, slow-motion retry included."""
     first = _decide_once(model, features, config)
+    to_beat = None
     if first.positions is not None:
-        return first
+        # The same check as analyse_pose_sequence: an answered clip with a long
+        # backswing is also read as slow motion (#32).
+        bound = config.slow_motion_check_backswing_s
+        if bound is None or first.backswing_s is None or first.backswing_s <= bound:
+            return first
+        assert first.confidence is not None
+        to_beat = core_confidence(first.confidence) + config.slow_motion_margin
     best: tuple[float, Decision] | None = None
     for factor in config.slow_motion_factors:
         compressed = compress(features, factor)
         attempt = _decide_once(model, compressed, config)
         if attempt.positions is None or attempt.confidence is None:
             continue
-        core = float(
-            np.exp(np.mean(np.log(np.maximum([attempt.confidence[i] for i in CORE], 1e-12))))
-        )
+        core = core_confidence(attempt.confidence)
         stretch = (features.shape[0] - 1) / max(compressed.shape[0] - 1, 1)
         rescaled = Decision(
             positions=attempt.positions * stretch,
@@ -194,7 +205,9 @@ def decide(model: Any, features: NDArray[np.float32], config: AnalysisConfig) ->
         )
         if best is None or core > best[0]:
             best = (core, rescaled)
-    return best[1] if best is not None else first
+    if best is None or (to_beat is not None and best[0] <= to_beat):
+        return first
+    return best[1]
 
 
 # -- data -------------------------------------------------------------------------

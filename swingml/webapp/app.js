@@ -12,7 +12,7 @@
 import { PoseSequence, resamplePose, extractFeatures, normalisePose,
          BONES, EVENT_NAMES, CLUB_DEFINED, L } from "./engine.js";
 import { SwingEventModel, bandsVaryWithConfidence, decodeEvents, errorBand } from "./model.js";
-import { computeMetrics, implausible, readAtSpeeds, slowedMetrics, slowedReason } from "./metrics.js";
+import { computeMetrics, implausible, readAtSpeeds, slowMotionCheck, slowedMetrics, slowedReason } from "./metrics.js";
 import { PracticeLog, cameraSignature, clipKey, formatG3, storedMetrics } from "./practice.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
@@ -1630,7 +1630,8 @@ async function analyse(file, { sample = false } = {}) {
     // A slow-motion export is refused at playback speed; read as if played 2, 4
     // or 8 times faster it is the same swing (see readAtSpeeds in metrics.js).
     const judge = (sequence) =>
-      readAtSpeeds(sequence, attemptAt, thresholds.slow_motion_factors || [2, 4, 8]);
+      readAtSpeeds(sequence, attemptAt, thresholds.slow_motion_factors || [2, 4, 8],
+                   slowMotionCheck(thresholds, config));
 
     // A short clip is tracked whole. A long one is scanned for the stretches that
     // look most like a swing, and each is tracked and put to the model in turn

@@ -348,7 +348,12 @@ def test_a_calibration_measured_for_another_model_is_not_quoted(
     analysis = analyse_pose_sequence(
         sequence,
         untrained,
-        AnalysisConfig(handedness=Handedness.RIGHT, calibration=calibration),
+        # No slow-motion retry: random weights sometimes refuse the clip at its own
+        # speed and answer it slowed, and a slowed read withholds its bands for a
+        # different reason, which made this test fail one run in four.
+        AnalysisConfig(
+            handedness=Handedness.RIGHT, calibration=calibration, slow_motion_factors=()
+        ),
     )
     if isinstance(analysis.events, NoReading):
         # An untrained model may well refuse the clip, which is its own correct

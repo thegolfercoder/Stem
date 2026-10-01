@@ -67,20 +67,36 @@ public final class SwingAnalyzer {
     /// three-second backswing and is refused. Of the speeds that decode, the one
     /// with the most confident core events is kept, and every duration is then
     /// withheld (`SwingMetrics.slowedBy`), because the real speed-up is unknown.
+    ///
+    /// An answered clip whose backswing is longer than the payload's
+    /// `slowMotionCheckBackswingS` is read at those speeds too, and kept as slow
+    /// motion only if the best slowed read beats it by more than
+    /// `slowMotionMargin`: a clip slowed two or three times otherwise passes every
+    /// gate with its durations two or three times too long (#32).
     public func analyse(_ sequence: PoseSequence, handedness: Handedness? = nil) -> Verdict {
+        let thresholds = payload.thresholds
         let (first, eventsRefused) = analyseAtRecordedSpeed(sequence, handedness: handedness)
-        if first.result != nil || !eventsRefused { return first }
+        var toBeat: Double?
+        if let answered = first.result {
+            guard let bound = thresholds.slowMotionCheckBackswingS else { return first }
+            let backswing = Double(answered.frames[3] - answered.frames[0]) / payload.features.canonicalRateHz
+            if backswing <= bound { return first }
+            toBeat = coreConfidence(answered.confidence) + thresholds.slowMotionMargin
+        } else if !eventsRefused {
+            return first
+        }
         var best: (core: Double, factor: Double, result: SwingResult)?
-        for factor in payload.thresholds.slowMotionFactors {
+        for factor in thresholds.slowMotionFactors {
             var faster = sequence
             faster.times = sequence.times.map { $0 / factor }
             guard let result = analyseAtRecordedSpeed(faster, handedness: handedness).verdict.result else {
                 continue
             }
-            let core = exp([0, 3, 4, 5].map { log(max(result.confidence[$0], 1e-12)) }.reduce(0, +) / 4)
+            let core = coreConfidence(result.confidence)
             if best == nil || core > best!.core { best = (core, factor, result) }
         }
         guard let chosen = best else { return first }
+        if let floor = toBeat, chosen.core <= floor { return first }
         var result = chosen.result
         result.metrics.eventTimes = result.metrics.eventTimes.map { $0 * chosen.factor }
         result.metrics.slowedBy = chosen.factor
@@ -150,6 +166,11 @@ public final class SwingAnalyzer {
             handedness: hand, handednessFrom: from, frames: events.frames, subframe: events.subframe,
             confidence: events.confidence, meanConfidence: events.meanConfidence, metrics: metrics,
             detectionRate: detectionRate, grid: resampled.times)), false)
+    }
+
+    /// Geometric mean confidence over address, top, mid-downswing and impact.
+    private func coreConfidence(_ confidence: [Double]) -> Double {
+        exp([0, 3, 4, 5].map { log(max(confidence[$0], 1e-12)) }.reduce(0, +) / 4)
     }
 
     public func band(event: Int, confidence: Double) -> ErrorBand? {

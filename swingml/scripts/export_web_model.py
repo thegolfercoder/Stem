@@ -132,6 +132,10 @@ def main() -> None:
             # The browser retries a refused clip as slow motion at these speeds,
             # as analyse_pose_sequence does (metrics.js readAtSpeeds).
             "slow_motion_factors": list(analysis.slow_motion_factors),
+            # An answered clip with a backswing longer than this is also read at
+            # those speeds (#32); null checks only refused clips.
+            "slow_motion_check_backswing_s": analysis.slow_motion_check_backswing_s,
+            "slow_motion_margin": analysis.slow_motion_margin,
         },
         # The practice loop's drills, reference and tolerances (webapp/practice.js).
         "practice": practice_payload(),
