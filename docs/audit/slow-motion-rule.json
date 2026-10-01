@@ -3,38 +3,38 @@
   "core_gap_best_slowed_minus_recorded": {
     "slowed_1x": {
       "n": 74,
-      "min": -0.5146,
-      "p10": -0.2817,
-      "median": -0.1667,
-      "max": -0.0614
+      "min": -0.503,
+      "p10": -0.2816,
+      "median": -0.1588,
+      "max": -0.0615
     },
     "slowed_1.5x": {
       "n": 81,
-      "min": -0.0587,
-      "p10": -0.0268,
-      "median": 0.002,
-      "max": 0.0771
+      "min": -0.059,
+      "p10": -0.0279,
+      "median": 0.0044,
+      "max": 0.0621
     },
     "slowed_2x": {
       "n": 78,
-      "min": 0.0163,
-      "p10": 0.0439,
-      "median": 0.0752,
-      "max": 0.1861
+      "min": 0.0161,
+      "p10": 0.0435,
+      "median": 0.0749,
+      "max": 0.2172
     },
     "slowed_2.5x": {
-      "n": 67,
-      "min": 0.0322,
-      "p10": 0.0599,
-      "median": 0.0951,
-      "max": 0.2068
+      "n": 69,
+      "min": 0.0373,
+      "p10": 0.0612,
+      "median": 0.0915,
+      "max": 0.2031
     },
     "slowed_3x": {
-      "n": 44,
-      "min": 0.0338,
-      "p10": 0.0669,
-      "median": 0.1066,
-      "max": 0.2022
+      "n": 43,
+      "min": 0.0337,
+      "p10": 0.0642,
+      "median": 0.0996,
+      "max": 0.2032
     }
   },
   "false_slow_zero_count_upper_95": {
@@ -82,24 +82,24 @@
     "slowed_2.5x": {
       "read_as_slow": {
         "n": 81,
-        "share": 0.1728,
+        "share": 0.1481,
         "ci95": [
-          0.061,
-          0.2857
+          0.0357,
+          0.2651
         ]
       },
-      "reported_as_measured": 0.8272
+      "reported_as_measured": 0.8519
     },
     "slowed_3x": {
       "read_as_slow": {
         "n": 81,
-        "share": 0.4568,
+        "share": 0.4691,
         "ci95": [
-          0.2931,
-          0.6111
+          0.3117,
+          0.6203
         ]
       },
-      "reported_as_measured": 0.5432
+      "reported_as_measured": 0.5309
     },
     "slow_motion_replays": {
       "slow": 0.9833,
@@ -123,13 +123,13 @@
     "slowed_1.5x": {
       "read_as_slow": {
         "n": 81,
-        "share": 0.358,
+        "share": 0.3333,
         "ci95": [
-          0.2278,
-          0.4932
+          0.1944,
+          0.4819
         ]
       },
-      "reported_as_measured": 0.642
+      "reported_as_measured": 0.6667
     },
     "slowed_2x": {
       "read_as_slow": {
@@ -209,24 +209,24 @@
       "slowed_2.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1728,
+          "share": 0.1481,
           "ci95": [
-            0.061,
-            0.2857
+            0.0357,
+            0.2651
           ]
         },
-        "reported_as_measured": 0.8272
+        "reported_as_measured": 0.8519
       },
       "slowed_3x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.4568,
+          "share": 0.4691,
           "ci95": [
-            0.2931,
-            0.6111
+            0.3117,
+            0.6203
           ]
         },
-        "reported_as_measured": 0.5432
+        "reported_as_measured": 0.5309
       },
       "slow_motion_replays": {
         "slow": 0.9833,
@@ -250,13 +250,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.5185,
+          "share": 0.5432,
           "ci95": [
-            0.375,
-            0.6548
+            0.3928,
+            0.6854
           ]
         },
-        "reported_as_measured": 0.4815
+        "reported_as_measured": 0.4568
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -301,951 +301,6 @@
     {
       "factors": "2,4,8",
       "backswing_s": 0.0,
-      "margin": 0.01,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.3827,
-          "ci95": [
-            0.2567,
-            0.5094
-          ]
-        },
-        "reported_as_measured": 0.6173
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 0.0,
-      "margin": 0.02,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.2716,
-          "ci95": [
-            0.1429,
-            0.3978
-          ]
-        },
-        "reported_as_measured": 0.7284
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9877,
-          "ci95": [
-            0.9595,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0123
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 0.0,
-      "margin": 0.03,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.1975,
-          "ci95": [
-            0.0843,
-            0.3159
-          ]
-        },
-        "reported_as_measured": 0.8025
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9753,
-          "ci95": [
-            0.9351,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0247
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 0.0,
-      "margin": 0.05,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.037,
-          "ci95": [
-            0.0,
-            0.0909
-          ]
-        },
-        "reported_as_measured": 0.963
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.8395,
-          "ci95": [
-            0.75,
-            0.9109
-          ]
-        },
-        "reported_as_measured": 0.1605
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9383,
-          "ci95": [
-            0.8804,
-            0.979
-          ]
-        },
-        "reported_as_measured": 0.0617
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.963,
-          "ci95": [
-            0.9143,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.037
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 0.9,
-      "margin": 0.0,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.5185,
-          "ci95": [
-            0.375,
-            0.6548
-          ]
-        },
-        "reported_as_measured": 0.4815
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 0.9,
-      "margin": 0.01,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.3827,
-          "ci95": [
-            0.2567,
-            0.5094
-          ]
-        },
-        "reported_as_measured": 0.6173
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 0.9,
-      "margin": 0.02,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.2716,
-          "ci95": [
-            0.1429,
-            0.3978
-          ]
-        },
-        "reported_as_measured": 0.7284
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9877,
-          "ci95": [
-            0.9595,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0123
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 0.9,
-      "margin": 0.03,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.1975,
-          "ci95": [
-            0.0843,
-            0.3159
-          ]
-        },
-        "reported_as_measured": 0.8025
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9753,
-          "ci95": [
-            0.9351,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0247
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 0.9,
-      "margin": 0.05,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.037,
-          "ci95": [
-            0.0,
-            0.0909
-          ]
-        },
-        "reported_as_measured": 0.963
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.8395,
-          "ci95": [
-            0.75,
-            0.9109
-          ]
-        },
-        "reported_as_measured": 0.1605
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9383,
-          "ci95": [
-            0.8804,
-            0.979
-          ]
-        },
-        "reported_as_measured": 0.0617
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.963,
-          "ci95": [
-            0.9143,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.037
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 1.0,
-      "margin": 0.0,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.5062,
-          "ci95": [
-            0.3562,
-            0.6494
-          ]
-        },
-        "reported_as_measured": 0.4938
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 1.0,
-      "margin": 0.01,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.3704,
-          "ci95": [
-            0.241,
-            0.5
-          ]
-        },
-        "reported_as_measured": 0.6296
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 1.0,
-      "margin": 0.02,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.2716,
-          "ci95": [
-            0.1429,
-            0.3978
-          ]
-        },
-        "reported_as_measured": 0.7284
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9877,
-          "ci95": [
-            0.9595,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0123
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 1.0,
-      "margin": 0.03,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.1975,
-          "ci95": [
-            0.0843,
-            0.3159
-          ]
-        },
-        "reported_as_measured": 0.8025
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9753,
-          "ci95": [
-            0.9351,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0247
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 1.0,
-      "margin": 0.05,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.037,
-          "ci95": [
-            0.0,
-            0.0909
-          ]
-        },
-        "reported_as_measured": 0.963
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.8395,
-          "ci95": [
-            0.75,
-            0.9109
-          ]
-        },
-        "reported_as_measured": 0.1605
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9383,
-          "ci95": [
-            0.8804,
-            0.979
-          ]
-        },
-        "reported_as_measured": 0.0617
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.963,
-          "ci95": [
-            0.9143,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.037
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 1.1,
-      "margin": 0.0,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.4938,
-          "ci95": [
-            0.3415,
-            0.6439
-          ]
-        },
-        "reported_as_measured": 0.5062
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 1.1,
       "margin": 0.01,
       "false_slow": {
         "n": 81,
@@ -1260,8 +315,8 @@
           "n": 81,
           "share": 0.358,
           "ci95": [
-            0.2278,
-            0.4932
+            0.2206,
+            0.4945
           ]
         },
         "reported_as_measured": 0.642
@@ -1308,6 +363,951 @@
     },
     {
       "factors": "2,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.321,
+          "ci95": [
+            0.1944,
+            0.4444
+          ]
+        },
+        "reported_as_measured": 0.679
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9595,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2099,
+          "ci95": [
+            0.1,
+            0.3296
+          ]
+        },
+        "reported_as_measured": 0.7901
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0494,
+          "ci95": [
+            0.0,
+            0.1058
+          ]
+        },
+        "reported_as_measured": 0.9506
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9315,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.9143,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.5432,
+          "ci95": [
+            0.3928,
+            0.6854
+          ]
+        },
+        "reported_as_measured": 0.4568
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.358,
+          "ci95": [
+            0.2206,
+            0.4945
+          ]
+        },
+        "reported_as_measured": 0.642
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.321,
+          "ci95": [
+            0.1944,
+            0.4444
+          ]
+        },
+        "reported_as_measured": 0.679
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9595,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2099,
+          "ci95": [
+            0.1,
+            0.3296
+          ]
+        },
+        "reported_as_measured": 0.7901
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0494,
+          "ci95": [
+            0.0,
+            0.1058
+          ]
+        },
+        "reported_as_measured": 0.9506
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9315,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.9143,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.5309,
+          "ci95": [
+            0.375,
+            0.6795
+          ]
+        },
+        "reported_as_measured": 0.4691
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3457,
+          "ci95": [
+            0.2073,
+            0.4891
+          ]
+        },
+        "reported_as_measured": 0.6543
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3086,
+          "ci95": [
+            0.1828,
+            0.4369
+          ]
+        },
+        "reported_as_measured": 0.6914
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9595,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2099,
+          "ci95": [
+            0.1,
+            0.3296
+          ]
+        },
+        "reported_as_measured": 0.7901
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0494,
+          "ci95": [
+            0.0,
+            0.1058
+          ]
+        },
+        "reported_as_measured": 0.9506
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9315,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.9143,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.1,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.5185,
+          "ci95": [
+            0.3614,
+            0.6747
+          ]
+        },
+        "reported_as_measured": 0.4815
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.1,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3333,
+          "ci95": [
+            0.1944,
+            0.4819
+          ]
+        },
+        "reported_as_measured": 0.6667
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
       "backswing_s": 1.1,
       "margin": 0.02,
       "false_slow": {
@@ -1321,13 +1321,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.2593,
+          "share": 0.2963,
           "ci95": [
-            0.1323,
-            0.3903
+            0.1688,
+            0.4304
           ]
         },
-        "reported_as_measured": 0.7407
+        "reported_as_measured": 0.7037
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -1384,13 +1384,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1852,
+          "share": 0.1975,
           "ci95": [
-            0.0769,
-            0.3056
+            0.0909,
+            0.3214
           ]
         },
-        "reported_as_measured": 0.8148
+        "reported_as_measured": 0.8025
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -1447,13 +1447,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.0247,
+          "share": 0.037,
           "ci95": [
             0.0,
-            0.0759
+            0.0953
           ]
         },
-        "reported_as_measured": 0.9753
+        "reported_as_measured": 0.963
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -1469,13 +1469,13 @@
       "slowed_2.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.9383,
+          "share": 0.9753,
           "ci95": [
-            0.8804,
-            0.979
+            0.9315,
+            1.0
           ]
         },
-        "reported_as_measured": 0.0617
+        "reported_as_measured": 0.0247
       },
       "slowed_3x": {
         "read_as_slow": {
@@ -1510,13 +1510,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.3704,
+          "share": 0.3951,
           "ci95": [
-            0.1948,
-            0.5436
+            0.2179,
+            0.5769
           ]
         },
-        "reported_as_measured": 0.6296
+        "reported_as_measured": 0.6049
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -1573,13 +1573,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.2716,
+          "share": 0.2593,
           "ci95": [
-            0.141,
-            0.4124
+            0.1236,
+            0.4097
           ]
         },
-        "reported_as_measured": 0.7284
+        "reported_as_measured": 0.7407
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -1636,262 +1636,10 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1975,
-          "ci95": [
-            0.0864,
-            0.321
-          ]
-        },
-        "reported_as_measured": 0.8025
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9753,
-          "ci95": [
-            0.9351,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0247
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 1.2,
-      "margin": 0.03,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.1481,
-          "ci95": [
-            0.05,
-            0.2683
-          ]
-        },
-        "reported_as_measured": 0.8519
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9753,
-          "ci95": [
-            0.9351,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0247
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 1.2,
-      "margin": 0.05,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.0247,
-          "ci95": [
-            0.0,
-            0.0759
-          ]
-        },
-        "reported_as_measured": 0.9753
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.8395,
-          "ci95": [
-            0.75,
-            0.9109
-          ]
-        },
-        "reported_as_measured": 0.1605
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9383,
-          "ci95": [
-            0.8804,
-            0.979
-          ]
-        },
-        "reported_as_measured": 0.0617
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.963,
-          "ci95": [
-            0.9143,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.037
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 1.3,
-      "margin": 0.0,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.3086,
-          "ci95": [
-            0.1358,
-            0.4881
-          ]
-        },
-        "reported_as_measured": 0.6914
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9753,
-          "ci95": [
-            0.9351,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0247
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,4,8",
-      "backswing_s": 1.3,
-      "margin": 0.01,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
           "share": 0.2346,
           "ci95": [
-            0.1084,
-            0.3715
+            0.1184,
+            0.3646
           ]
         },
         "reported_as_measured": 0.7654
@@ -1938,6 +1686,258 @@
     },
     {
       "factors": "2,4,8",
+      "backswing_s": 1.2,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1605,
+          "ci95": [
+            0.0606,
+            0.2809
+          ]
+        },
+        "reported_as_measured": 0.8395
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.2,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.037,
+          "ci95": [
+            0.0,
+            0.0953
+          ]
+        },
+        "reported_as_measured": 0.963
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9315,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.9143,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.3,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3333,
+          "ci95": [
+            0.1617,
+            0.5138
+          ]
+        },
+        "reported_as_measured": 0.6667
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.3,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2222,
+          "ci95": [
+            0.0952,
+            0.3699
+          ]
+        },
+        "reported_as_measured": 0.7778
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
       "backswing_s": 1.3,
       "margin": 0.02,
       "false_slow": {
@@ -1951,13 +1951,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1728,
+          "share": 0.2099,
           "ci95": [
-            0.0606,
-            0.3
+            0.0952,
+            0.338
           ]
         },
-        "reported_as_measured": 0.8272
+        "reported_as_measured": 0.7901
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -2014,13 +2014,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1235,
+          "share": 0.1358,
           "ci95": [
-            0.0299,
-            0.247
+            0.0411,
+            0.2598
           ]
         },
-        "reported_as_measured": 0.8765
+        "reported_as_measured": 0.8642
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -2077,13 +2077,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.0247,
+          "share": 0.037,
           "ci95": [
             0.0,
-            0.0759
+            0.0953
           ]
         },
-        "reported_as_measured": 0.9753
+        "reported_as_measured": 0.963
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -2099,13 +2099,13 @@
       "slowed_2.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.9383,
+          "share": 0.9753,
           "ci95": [
-            0.8804,
-            0.979
+            0.9315,
+            1.0
           ]
         },
-        "reported_as_measured": 0.0617
+        "reported_as_measured": 0.0247
       },
       "slowed_3x": {
         "read_as_slow": {
@@ -2140,13 +2140,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.2346,
+          "share": 0.2469,
           "ci95": [
             0.0882,
-            0.3896
+            0.4142
           ]
         },
-        "reported_as_measured": 0.7654
+        "reported_as_measured": 0.7531
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -2205,8 +2205,8 @@
           "n": 81,
           "share": 0.1728,
           "ci95": [
-            0.0704,
-            0.2933
+            0.0658,
+            0.2967
           ]
         },
         "reported_as_measured": 0.8272
@@ -2266,13 +2266,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1358,
+          "share": 0.1605,
           "ci95": [
-            0.0488,
-            0.2369
+            0.0658,
+            0.2632
           ]
         },
-        "reported_as_measured": 0.8642
+        "reported_as_measured": 0.8395
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -2329,13 +2329,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1111,
+          "share": 0.1235,
           "ci95": [
-            0.0299,
-            0.2128
+            0.0411,
+            0.2222
           ]
         },
-        "reported_as_measured": 0.8889
+        "reported_as_measured": 0.8765
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -2392,13 +2392,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.0247,
+          "share": 0.037,
           "ci95": [
             0.0,
-            0.0759
+            0.0953
           ]
         },
-        "reported_as_measured": 0.9753
+        "reported_as_measured": 0.963
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -2414,13 +2414,13 @@
       "slowed_2.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.9383,
+          "share": 0.9753,
           "ci95": [
-            0.8804,
-            0.979
+            0.9315,
+            1.0
           ]
         },
-        "reported_as_measured": 0.0617
+        "reported_as_measured": 0.0247
       },
       "slowed_3x": {
         "read_as_slow": {
@@ -2455,24 +2455,24 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.2222,
+          "share": 0.2346,
           "ci95": [
             0.0847,
-            0.3696
+            0.3933
           ]
         },
-        "reported_as_measured": 0.7778
+        "reported_as_measured": 0.7654
       },
       "slowed_2x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.8519,
+          "share": 0.8642,
           "ci95": [
-            0.76,
-            0.9275
+            0.7802,
+            0.9326
           ]
         },
-        "reported_as_measured": 0.1481
+        "reported_as_measured": 0.1358
       },
       "slowed_2.5x": {
         "read_as_slow": {
@@ -2520,8 +2520,8 @@
           "n": 81,
           "share": 0.1605,
           "ci95": [
-            0.0658,
-            0.2632
+            0.0615,
+            0.2838
           ]
         },
         "reported_as_measured": 0.8395
@@ -2529,13 +2529,13 @@
       "slowed_2x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.8519,
+          "share": 0.8642,
           "ci95": [
-            0.76,
-            0.9275
+            0.7802,
+            0.9326
           ]
         },
-        "reported_as_measured": 0.1481
+        "reported_as_measured": 0.1358
       },
       "slowed_2.5x": {
         "read_as_slow": {
@@ -2581,24 +2581,24 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1358,
+          "share": 0.1481,
           "ci95": [
-            0.0488,
-            0.2369
+            0.0615,
+            0.25
           ]
         },
-        "reported_as_measured": 0.8642
+        "reported_as_measured": 0.8519
       },
       "slowed_2x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.8395,
+          "share": 0.8519,
           "ci95": [
-            0.7439,
-            0.9239
+            0.7625,
+            0.931
           ]
         },
-        "reported_as_measured": 0.1605
+        "reported_as_measured": 0.1481
       },
       "slowed_2.5x": {
         "read_as_slow": {
@@ -2644,24 +2644,24 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1111,
+          "share": 0.1235,
           "ci95": [
-            0.0299,
-            0.2128
+            0.0411,
+            0.2222
           ]
         },
-        "reported_as_measured": 0.8889
+        "reported_as_measured": 0.8765
       },
       "slowed_2x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.8395,
+          "share": 0.8519,
           "ci95": [
-            0.7439,
-            0.9239
+            0.7625,
+            0.931
           ]
         },
-        "reported_as_measured": 0.1605
+        "reported_as_measured": 0.1481
       },
       "slowed_2.5x": {
         "read_as_slow": {
@@ -2707,35 +2707,35 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.0247,
+          "share": 0.037,
           "ci95": [
             0.0,
-            0.0759
+            0.0953
           ]
         },
-        "reported_as_measured": 0.9753
+        "reported_as_measured": 0.963
       },
       "slowed_2x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.7284,
+          "share": 0.7407,
           "ci95": [
-            0.6,
-            0.8434
+            0.6104,
+            0.8523
           ]
         },
-        "reported_as_measured": 0.2716
+        "reported_as_measured": 0.2593
       },
       "slowed_2.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.9383,
+          "share": 0.9753,
           "ci95": [
-            0.8804,
-            0.979
+            0.9315,
+            1.0
           ]
         },
-        "reported_as_measured": 0.0617
+        "reported_as_measured": 0.0247
       },
       "slowed_3x": {
         "read_as_slow": {
@@ -2792,24 +2792,24 @@
       "slowed_2.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1728,
+          "share": 0.1481,
           "ci95": [
-            0.061,
-            0.2857
+            0.0357,
+            0.2651
           ]
         },
-        "reported_as_measured": 0.8272
+        "reported_as_measured": 0.8519
       },
       "slowed_3x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.4568,
+          "share": 0.4691,
           "ci95": [
-            0.2931,
-            0.6111
+            0.3117,
+            0.6203
           ]
         },
-        "reported_as_measured": 0.5432
+        "reported_as_measured": 0.5309
       },
       "slow_motion_replays": {
         "slow": 0.9833,
@@ -2833,13 +2833,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.5185,
+          "share": 0.5432,
           "ci95": [
-            0.375,
-            0.6548
+            0.3928,
+            0.6854
           ]
         },
-        "reported_as_measured": 0.4815
+        "reported_as_measured": 0.4568
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -2884,951 +2884,6 @@
     {
       "factors": "2,3,4,8",
       "backswing_s": 0.0,
-      "margin": 0.01,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.3827,
-          "ci95": [
-            0.2567,
-            0.5094
-          ]
-        },
-        "reported_as_measured": 0.6173
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 0.0,
-      "margin": 0.02,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.2716,
-          "ci95": [
-            0.1429,
-            0.3978
-          ]
-        },
-        "reported_as_measured": 0.7284
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9877,
-          "ci95": [
-            0.9595,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0123
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 0.0,
-      "margin": 0.03,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.1975,
-          "ci95": [
-            0.0843,
-            0.3159
-          ]
-        },
-        "reported_as_measured": 0.8025
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9753,
-          "ci95": [
-            0.9351,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0247
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 0.0,
-      "margin": 0.05,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.037,
-          "ci95": [
-            0.0,
-            0.0909
-          ]
-        },
-        "reported_as_measured": 0.963
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.8395,
-          "ci95": [
-            0.75,
-            0.9109
-          ]
-        },
-        "reported_as_measured": 0.1605
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9506,
-          "ci95": [
-            0.8986,
-            0.9884
-          ]
-        },
-        "reported_as_measured": 0.0494
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9877,
-          "ci95": [
-            0.9589,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0123
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 0.9,
-      "margin": 0.0,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.5185,
-          "ci95": [
-            0.375,
-            0.6548
-          ]
-        },
-        "reported_as_measured": 0.4815
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 0.9,
-      "margin": 0.01,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.3827,
-          "ci95": [
-            0.2567,
-            0.5094
-          ]
-        },
-        "reported_as_measured": 0.6173
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 0.9,
-      "margin": 0.02,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.2716,
-          "ci95": [
-            0.1429,
-            0.3978
-          ]
-        },
-        "reported_as_measured": 0.7284
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9877,
-          "ci95": [
-            0.9595,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0123
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 0.9,
-      "margin": 0.03,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.1975,
-          "ci95": [
-            0.0843,
-            0.3159
-          ]
-        },
-        "reported_as_measured": 0.8025
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9753,
-          "ci95": [
-            0.9351,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0247
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 0.9,
-      "margin": 0.05,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.037,
-          "ci95": [
-            0.0,
-            0.0909
-          ]
-        },
-        "reported_as_measured": 0.963
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.8395,
-          "ci95": [
-            0.75,
-            0.9109
-          ]
-        },
-        "reported_as_measured": 0.1605
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9506,
-          "ci95": [
-            0.8986,
-            0.9884
-          ]
-        },
-        "reported_as_measured": 0.0494
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9877,
-          "ci95": [
-            0.9589,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0123
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 1.0,
-      "margin": 0.0,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.5062,
-          "ci95": [
-            0.3562,
-            0.6494
-          ]
-        },
-        "reported_as_measured": 0.4938
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 1.0,
-      "margin": 0.01,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.3704,
-          "ci95": [
-            0.241,
-            0.5
-          ]
-        },
-        "reported_as_measured": 0.6296
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 1.0,
-      "margin": 0.02,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.2716,
-          "ci95": [
-            0.1429,
-            0.3978
-          ]
-        },
-        "reported_as_measured": 0.7284
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9877,
-          "ci95": [
-            0.9595,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0123
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 1.0,
-      "margin": 0.03,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.1975,
-          "ci95": [
-            0.0843,
-            0.3159
-          ]
-        },
-        "reported_as_measured": 0.8025
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9753,
-          "ci95": [
-            0.9351,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0247
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 1.0,
-      "margin": 0.05,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.037,
-          "ci95": [
-            0.0,
-            0.0909
-          ]
-        },
-        "reported_as_measured": 0.963
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.8395,
-          "ci95": [
-            0.75,
-            0.9109
-          ]
-        },
-        "reported_as_measured": 0.1605
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9506,
-          "ci95": [
-            0.8986,
-            0.9884
-          ]
-        },
-        "reported_as_measured": 0.0494
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9877,
-          "ci95": [
-            0.9589,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0123
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 1.1,
-      "margin": 0.0,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.4938,
-          "ci95": [
-            0.3415,
-            0.6439
-          ]
-        },
-        "reported_as_measured": 0.5062
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 1.1,
       "margin": 0.01,
       "false_slow": {
         "n": 81,
@@ -3843,8 +2898,8 @@
           "n": 81,
           "share": 0.358,
           "ci95": [
-            0.2278,
-            0.4932
+            0.2206,
+            0.4945
           ]
         },
         "reported_as_measured": 0.642
@@ -3891,6 +2946,951 @@
     },
     {
       "factors": "2,3,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.321,
+          "ci95": [
+            0.1944,
+            0.4444
+          ]
+        },
+        "reported_as_measured": 0.679
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9595,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2099,
+          "ci95": [
+            0.1,
+            0.3296
+          ]
+        },
+        "reported_as_measured": 0.7901
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0494,
+          "ci95": [
+            0.0,
+            0.1058
+          ]
+        },
+        "reported_as_measured": 0.9506
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9315,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9589,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.5432,
+          "ci95": [
+            0.3928,
+            0.6854
+          ]
+        },
+        "reported_as_measured": 0.4568
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.358,
+          "ci95": [
+            0.2206,
+            0.4945
+          ]
+        },
+        "reported_as_measured": 0.642
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.321,
+          "ci95": [
+            0.1944,
+            0.4444
+          ]
+        },
+        "reported_as_measured": 0.679
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9595,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2099,
+          "ci95": [
+            0.1,
+            0.3296
+          ]
+        },
+        "reported_as_measured": 0.7901
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0494,
+          "ci95": [
+            0.0,
+            0.1058
+          ]
+        },
+        "reported_as_measured": 0.9506
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9315,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9589,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.5309,
+          "ci95": [
+            0.375,
+            0.6795
+          ]
+        },
+        "reported_as_measured": 0.4691
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3457,
+          "ci95": [
+            0.2073,
+            0.4891
+          ]
+        },
+        "reported_as_measured": 0.6543
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3086,
+          "ci95": [
+            0.1828,
+            0.4369
+          ]
+        },
+        "reported_as_measured": 0.6914
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9595,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2099,
+          "ci95": [
+            0.1,
+            0.3296
+          ]
+        },
+        "reported_as_measured": 0.7901
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0494,
+          "ci95": [
+            0.0,
+            0.1058
+          ]
+        },
+        "reported_as_measured": 0.9506
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9315,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9589,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.1,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.5185,
+          "ci95": [
+            0.3614,
+            0.6747
+          ]
+        },
+        "reported_as_measured": 0.4815
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.1,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3333,
+          "ci95": [
+            0.1944,
+            0.4819
+          ]
+        },
+        "reported_as_measured": 0.6667
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
       "backswing_s": 1.1,
       "margin": 0.02,
       "false_slow": {
@@ -3904,13 +3904,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.2593,
+          "share": 0.2963,
           "ci95": [
-            0.1323,
-            0.3903
+            0.1688,
+            0.4304
           ]
         },
-        "reported_as_measured": 0.7407
+        "reported_as_measured": 0.7037
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -3967,13 +3967,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1852,
+          "share": 0.1975,
           "ci95": [
-            0.0769,
-            0.3056
+            0.0909,
+            0.3214
           ]
         },
-        "reported_as_measured": 0.8148
+        "reported_as_measured": 0.8025
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -4030,13 +4030,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.0247,
+          "share": 0.037,
           "ci95": [
             0.0,
-            0.0759
+            0.0953
           ]
         },
-        "reported_as_measured": 0.9753
+        "reported_as_measured": 0.963
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -4052,13 +4052,13 @@
       "slowed_2.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.9506,
+          "share": 0.9753,
           "ci95": [
-            0.8986,
-            0.9884
+            0.9315,
+            1.0
           ]
         },
-        "reported_as_measured": 0.0494
+        "reported_as_measured": 0.0247
       },
       "slowed_3x": {
         "read_as_slow": {
@@ -4093,13 +4093,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.3704,
+          "share": 0.3951,
           "ci95": [
-            0.1948,
-            0.5436
+            0.2179,
+            0.5769
           ]
         },
-        "reported_as_measured": 0.6296
+        "reported_as_measured": 0.6049
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -4156,13 +4156,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.2716,
+          "share": 0.2593,
           "ci95": [
-            0.141,
-            0.4124
+            0.1236,
+            0.4097
           ]
         },
-        "reported_as_measured": 0.7284
+        "reported_as_measured": 0.7407
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -4219,262 +4219,10 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1975,
-          "ci95": [
-            0.0864,
-            0.321
-          ]
-        },
-        "reported_as_measured": 0.8025
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9753,
-          "ci95": [
-            0.9351,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0247
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 1.2,
-      "margin": 0.03,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.1481,
-          "ci95": [
-            0.05,
-            0.2683
-          ]
-        },
-        "reported_as_measured": 0.8519
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9753,
-          "ci95": [
-            0.9351,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0247
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 1.2,
-      "margin": 0.05,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.0247,
-          "ci95": [
-            0.0,
-            0.0759
-          ]
-        },
-        "reported_as_measured": 0.9753
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.8395,
-          "ci95": [
-            0.75,
-            0.9109
-          ]
-        },
-        "reported_as_measured": 0.1605
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9506,
-          "ci95": [
-            0.8986,
-            0.9884
-          ]
-        },
-        "reported_as_measured": 0.0494
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9877,
-          "ci95": [
-            0.9589,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0123
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 1.3,
-      "margin": 0.0,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.3086,
-          "ci95": [
-            0.1358,
-            0.4881
-          ]
-        },
-        "reported_as_measured": 0.6914
-      },
-      "slowed_2x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 0.9753,
-          "ci95": [
-            0.9351,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0247
-      },
-      "slowed_2.5x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slowed_3x": {
-        "read_as_slow": {
-          "n": 81,
-          "share": 1.0,
-          "ci95": [
-            1.0,
-            1.0
-          ]
-        },
-        "reported_as_measured": 0.0
-      },
-      "slow_motion_replays": {
-        "slow": 0.9833,
-        "real time": 0.0167,
-        "refused": 0.0
-      },
-      "n_replays": 60
-    },
-    {
-      "factors": "2,3,4,8",
-      "backswing_s": 1.3,
-      "margin": 0.01,
-      "false_slow": {
-        "n": 81,
-        "share": 0.0,
-        "ci95": [
-          0.0,
-          0.0
-        ]
-      },
-      "slowed_1.5x": {
-        "read_as_slow": {
-          "n": 81,
           "share": 0.2346,
           "ci95": [
-            0.1084,
-            0.3715
+            0.1184,
+            0.3646
           ]
         },
         "reported_as_measured": 0.7654
@@ -4521,6 +4269,258 @@
     },
     {
       "factors": "2,3,4,8",
+      "backswing_s": 1.2,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1605,
+          "ci95": [
+            0.0606,
+            0.2809
+          ]
+        },
+        "reported_as_measured": 0.8395
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.2,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.037,
+          "ci95": [
+            0.0,
+            0.0953
+          ]
+        },
+        "reported_as_measured": 0.963
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9315,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9589,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.3,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3333,
+          "ci95": [
+            0.1617,
+            0.5138
+          ]
+        },
+        "reported_as_measured": 0.6667
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.3,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2222,
+          "ci95": [
+            0.0952,
+            0.3699
+          ]
+        },
+        "reported_as_measured": 0.7778
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
       "backswing_s": 1.3,
       "margin": 0.02,
       "false_slow": {
@@ -4534,13 +4534,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1728,
+          "share": 0.2099,
           "ci95": [
-            0.0606,
-            0.3
+            0.0952,
+            0.338
           ]
         },
-        "reported_as_measured": 0.8272
+        "reported_as_measured": 0.7901
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -4597,13 +4597,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1235,
+          "share": 0.1358,
           "ci95": [
-            0.0299,
-            0.247
+            0.0411,
+            0.2598
           ]
         },
-        "reported_as_measured": 0.8765
+        "reported_as_measured": 0.8642
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -4660,13 +4660,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.0247,
+          "share": 0.037,
           "ci95": [
             0.0,
-            0.0759
+            0.0953
           ]
         },
-        "reported_as_measured": 0.9753
+        "reported_as_measured": 0.963
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -4682,13 +4682,13 @@
       "slowed_2.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.9506,
+          "share": 0.9753,
           "ci95": [
-            0.8986,
-            0.9884
+            0.9315,
+            1.0
           ]
         },
-        "reported_as_measured": 0.0494
+        "reported_as_measured": 0.0247
       },
       "slowed_3x": {
         "read_as_slow": {
@@ -4723,13 +4723,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.2346,
+          "share": 0.2469,
           "ci95": [
             0.0882,
-            0.3896
+            0.4142
           ]
         },
-        "reported_as_measured": 0.7654
+        "reported_as_measured": 0.7531
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -4788,8 +4788,8 @@
           "n": 81,
           "share": 0.1728,
           "ci95": [
-            0.0704,
-            0.2933
+            0.0658,
+            0.2967
           ]
         },
         "reported_as_measured": 0.8272
@@ -4849,13 +4849,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1358,
+          "share": 0.1605,
           "ci95": [
-            0.0488,
-            0.2369
+            0.0658,
+            0.2632
           ]
         },
-        "reported_as_measured": 0.8642
+        "reported_as_measured": 0.8395
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -4912,13 +4912,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1111,
+          "share": 0.1235,
           "ci95": [
-            0.0299,
-            0.2128
+            0.0411,
+            0.2222
           ]
         },
-        "reported_as_measured": 0.8889
+        "reported_as_measured": 0.8765
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -4975,13 +4975,13 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.0247,
+          "share": 0.037,
           "ci95": [
             0.0,
-            0.0759
+            0.0953
           ]
         },
-        "reported_as_measured": 0.9753
+        "reported_as_measured": 0.963
       },
       "slowed_2x": {
         "read_as_slow": {
@@ -4997,13 +4997,13 @@
       "slowed_2.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.9506,
+          "share": 0.9753,
           "ci95": [
-            0.8986,
-            0.9884
+            0.9315,
+            1.0
           ]
         },
-        "reported_as_measured": 0.0494
+        "reported_as_measured": 0.0247
       },
       "slowed_3x": {
         "read_as_slow": {
@@ -5038,24 +5038,24 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.2222,
+          "share": 0.2346,
           "ci95": [
             0.0847,
-            0.3696
+            0.3933
           ]
         },
-        "reported_as_measured": 0.7778
+        "reported_as_measured": 0.7654
       },
       "slowed_2x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.8519,
+          "share": 0.8642,
           "ci95": [
-            0.76,
-            0.9275
+            0.7802,
+            0.9326
           ]
         },
-        "reported_as_measured": 0.1481
+        "reported_as_measured": 0.1358
       },
       "slowed_2.5x": {
         "read_as_slow": {
@@ -5103,8 +5103,8 @@
           "n": 81,
           "share": 0.1605,
           "ci95": [
-            0.0658,
-            0.2632
+            0.0615,
+            0.2838
           ]
         },
         "reported_as_measured": 0.8395
@@ -5112,13 +5112,13 @@
       "slowed_2x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.8519,
+          "share": 0.8642,
           "ci95": [
-            0.76,
-            0.9275
+            0.7802,
+            0.9326
           ]
         },
-        "reported_as_measured": 0.1481
+        "reported_as_measured": 0.1358
       },
       "slowed_2.5x": {
         "read_as_slow": {
@@ -5164,24 +5164,24 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1358,
+          "share": 0.1481,
           "ci95": [
-            0.0488,
-            0.2369
+            0.0615,
+            0.25
           ]
         },
-        "reported_as_measured": 0.8642
+        "reported_as_measured": 0.8519
       },
       "slowed_2x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.8395,
+          "share": 0.8519,
           "ci95": [
-            0.7439,
-            0.9239
+            0.7625,
+            0.931
           ]
         },
-        "reported_as_measured": 0.1605
+        "reported_as_measured": 0.1481
       },
       "slowed_2.5x": {
         "read_as_slow": {
@@ -5227,24 +5227,24 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.1111,
+          "share": 0.1235,
           "ci95": [
-            0.0299,
-            0.2128
+            0.0411,
+            0.2222
           ]
         },
-        "reported_as_measured": 0.8889
+        "reported_as_measured": 0.8765
       },
       "slowed_2x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.8395,
+          "share": 0.8519,
           "ci95": [
-            0.7439,
-            0.9239
+            0.7625,
+            0.931
           ]
         },
-        "reported_as_measured": 0.1605
+        "reported_as_measured": 0.1481
       },
       "slowed_2.5x": {
         "read_as_slow": {
@@ -5290,35 +5290,35 @@
       "slowed_1.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.0247,
+          "share": 0.037,
           "ci95": [
             0.0,
-            0.0759
+            0.0953
           ]
         },
-        "reported_as_measured": 0.9753
+        "reported_as_measured": 0.963
       },
       "slowed_2x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.7284,
+          "share": 0.7407,
           "ci95": [
-            0.6,
-            0.8434
+            0.6104,
+            0.8523
           ]
         },
-        "reported_as_measured": 0.2716
+        "reported_as_measured": 0.2593
       },
       "slowed_2.5x": {
         "read_as_slow": {
           "n": 81,
-          "share": 0.9506,
+          "share": 0.9753,
           "ci95": [
-            0.8986,
-            0.9884
+            0.9315,
+            1.0
           ]
         },
-        "reported_as_measured": 0.0494
+        "reported_as_measured": 0.0247
       },
       "slowed_3x": {
         "read_as_slow": {

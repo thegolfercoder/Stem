@@ -52,9 +52,9 @@ python scripts/slow_motion_rule.py summarise --out ../docs/audit/slow-motion-rul
 |---|---|---|
 | Real-time swings read as slow motion | 0 of 81 | **0 of 81** |
 | 2× clips with durations shown as measured | 96.3% (78 of 81) | **0%** |
-| 2.5× clips with durations shown as measured | 82.7% | **0%** |
-| 3× clips with durations shown as measured | 54.3% [38.9, 70.7] | **0%** |
-| 1.5× clips read as slow motion | 0% | 35.8% |
+| 2.5× clips with durations shown as measured | 85.2% | **0%** |
+| 3× clips with durations shown as measured | 53.1% [38.0, 68.8] | **0%** |
+| 1.5× clips read as slow motion | 0% | 33.3% |
 | GolfDB slow-motion replays read as slow motion | 59 of 60 | 59 of 60 |
 
 - **Zero false slows is not proof of none.** The one-sided 95% upper bound for
@@ -65,24 +65,31 @@ python scripts/slow_motion_rule.py summarise --out ../docs/audit/slow-motion-rul
 
   | Clip | n | min | median | max |
   |---|---|---|---|---|
-  | Real time | 74 | −0.515 | −0.167 | **−0.061** |
-  | Slowed 1.5× | 81 | −0.059 | +0.002 | +0.077 |
-  | Slowed 2× | 78 | **+0.016** | +0.075 | +0.186 |
-  | Slowed 3× | 44 | +0.034 | +0.107 | +0.202 |
+  | Real time | 74 | −0.503 | −0.159 | **−0.062** |
+  | Slowed 1.5× | 81 | −0.059 | +0.004 | +0.062 |
+  | Slowed 2× | 78 | **+0.016** | +0.075 | +0.217 |
+  | Slowed 3× | 43 | +0.034 | +0.100 | +0.203 |
 
   The model is most confident at the speed it was trained on. No real-time
-  swing came within 0.061 of being read slowed. The narrowest 2× clip cleared
+  swing came within 0.062 of being read slowed. The narrowest 2× clip cleared
   the 0.01 margin by only 0.006, so the margin has less headroom on that side.
 - **The backswing bound decides which clips are checked**, not how they are
   read. Every bound up to 1.1 s caught all 2× clips. At 1.2 s one 2× clip
-  slipped through: its recorded-speed backswing was 1.18 s. At 1.5 s, 15% slip
-  through. 9 of the 81 real-time swings have a backswing over 1.1 s, and none
+  slipped through: its recorded-speed backswing was 1.18 s. At 1.5 s, 14% slip
+  through. 10 of the 81 real-time swings have a backswing over 1.1 s, and none
   was read slowed.
 - **1.5× is not resolved.** The core confidences of real time and 1.5× overlap,
   and about a third of 1.5× clips are read as slow motion (at 2×). Either way
   the result is honest about what it knows: read as slow motion, durations are
   withheld. Read as real time, durations are 1.5× too long, which this rule does
   not catch.
+
+**Re-measured after #40.** The first run used poses read through a
+`VideoReader` that stamped frames one frame early partway through each clip.
+With the fix (`43c98b7`), the same rule is chosen, with the same separation and
+the same 0 of 81 false slows. The figures above are from the re-run. The
+holdout runs below go through archived features, which the reader never
+touched.
 
 ## The holdout, through the release gate
 
@@ -124,7 +131,7 @@ decision rules for one model. That is filed as its own item.
   are real slow motion, are read the same as before (59 of 60).
 - **Tour swings.** Club golfers with backswings over 1.1 s are more common than
   in GolfDB. They are checked by the confidence comparison, which did not
-  misfire on any real-time swing here, but the 9 long real-time backswings are
+  misfire on any real-time swing here, but the 10 long real-time backswings are
   little evidence for that population.
 - **The true slow-down is not measured.** A slowed read keeps tempo and
   withholds durations, as before. The factor it reports (2, 4 or 8) is the
