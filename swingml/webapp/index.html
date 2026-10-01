@@ -60,6 +60,40 @@ h1{font-size:34px;letter-spacing:-.02em;margin:18px 0 8px;font-weight:660}
   color:var(--on-accent);padding:10px 20px;border-radius:10px;cursor:pointer;font:inherit;
   font-size:14.5px;font-weight:600;margin-top:14px}
 .btn-primary:hover{filter:brightness(1.08)}
+.summary-card{display:grid;grid-template-columns:minmax(0,140px) minmax(0,1fr);gap:16px;align-items:start;
+  border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);padding:14px;margin:0 0 8px}
+.sum-shot canvas{display:block;width:100%;height:auto;border-radius:8px;background:#000}
+.sum-shot:empty{display:none}
+.sum-body{display:grid;gap:8px;min-width:0}
+.sum-body .eyebrow{margin:0}
+.sum-tempo{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sum-label{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+.sum-value{font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.sum-priority{display:grid;gap:2px;border-top:1px solid var(--line);padding-top:8px}
+.sum-priority b{font-size:16px}
+.sum-drill{color:var(--ink-dim);font-size:14px}
+.sum-link{color:var(--accent);font-size:14px;min-height:44px;display:inline-flex;align-items:center}
+.sum-actions{display:flex;flex-wrap:wrap;gap:8px}
+.sum-actions .btn-primary{margin-top:0}
+details.fold{border-top:1px solid var(--line);margin-top:8px}
+details.fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:44px}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::before{content:"\25B8";color:var(--ink-faint);transition:transform .15s}
+details.fold[open]>summary::before{transform:rotate(90deg)}
+details.fold>summary h2.section{margin:12px 0}
+.btn{min-height:44px}
+.action-bar{display:none}
+@media (max-width:720px){
+  .summary-card{grid-template-columns:minmax(0,96px) minmax(0,1fr);gap:12px}
+  .sum-value{font-size:28px}
+  .action-bar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;gap:8px;
+    padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:var(--panel);
+    border-top:1px solid var(--line)}
+  .action-bar button{flex:1;min-height:44px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--ink);font:inherit;font-weight:600}
+  body{padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+}
+@media (prefers-reduced-motion:reduce){details.fold>summary::before{transition:none}}
 .drop-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:14px}
 .drop-actions .btn-primary{margin-top:0}
 .btn-secondary{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:10px;
@@ -401,22 +435,46 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
   </div>
 
   <div id="results" hidden>
-    <div class="verdict">
-      <p class="verdict-clip" id="summary"></p>
-      <button class="btn" id="again" type="button">Analyse another clip</button>
-    </div>
+    <section class="summary-card" id="summary-card" aria-label="This swing at a glance">
+      <div class="sum-shot" id="sum-shot" aria-hidden="true"></div>
+      <div class="sum-body">
+        <p class="eyebrow">This swing, at impact</p>
+        <div class="sum-tempo">
+          <span class="sum-label">Tempo</span>
+          <b class="sum-value" id="sum-tempo"></b>
+          <span class="prov prov-derived">derived</span>
+        </div>
+        <div class="sum-drill" id="sum-range"></div>
+        <div class="sum-priority" id="sum-priority" hidden>
+          <span class="sum-label">Work on</span>
+          <b id="sum-priority-title"></b>
+          <span class="sum-drill" id="sum-drill"></span>
+          <a href="#practice" class="sum-link">The drill and your plan</a>
+        </div>
+        <div class="sum-actions">
+          <button class="btn btn-primary" id="again-record" type="button" hidden>Record again</button>
+          <button class="btn" id="again" type="button">Analyse another clip</button>
+        </div>
+        <p class="verdict-clip" id="summary"></p>
+      </div>
+    </section>
 
-    <h2 class="section">Tempo</h2>
+    <details class="fold" data-fold="tempo">
+    <summary><h2 class="section">Tempo</h2></summary>
     <p class="section-sub">How long each half took, straight from the frame times. These are
       the strongest numbers here, which is why they come first.</p>
     <div class="metric-grid" id="tempo-cards"></div>
+    </details>
 
-    <h2 class="section">The swing, start to finish</h2>
+    <details class="fold" data-fold="story">
+    <summary><h2 class="section">The swing, start to finish</h2></summary>
     <p class="section-sub">The whole motion to scale, then what happened in each part. Every
       figure is one of the measurements on this page; nothing is added that was not measured.</p>
     <div class="story" id="story"></div>
+    </details>
 
-    <h2 class="section">The eight positions</h2>
+    <details class="fold" data-fold="positions">
+    <summary><h2 class="section">The eight positions</h2></summary>
     <p class="section-sub">Where the model put each one, and how far out it has been measured
       to be. Click any frame to see it full size, then step through them with the arrow keys.</p>
     <div class="strip" id="strip"></div>
@@ -424,6 +482,7 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
     <p class="footnote"><span class="ast">*</span> Toe-up and mid-follow-through are defined
       by the club shaft being horizontal. A body-pose estimator does not see the club, so
       these two are placed from the body's motion rather than observed directly.</p>
+    </details>
 
     <section id="coach-section" hidden>
       <h2 class="section">A coach's read <span class="prov prov-claude">Claude's read</span></h2>
@@ -440,18 +499,22 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
       </div>
     </section>
 
-    <h2 class="section">Rotation at the top</h2>
+    <details class="fold" data-fold="rotation">
+    <summary><h2 class="section">Rotation at the top</h2></summary>
     <p class="section-sub">How far the shoulders and hips had turned away from square to the
       camera, measured from how much they foreshorten. It carries no sign &mdash; turning
       towards the camera and away from it look identical &mdash; and it reads low against
       reality, so compare it with your own swings from the same spot rather than a published
       figure.</p>
     <div class="metric-grid" id="turn-cards"></div>
+    </details>
 
-    <h2 class="section">Stability</h2>
+    <details class="fold" data-fold="stability">
+    <summary><h2 class="section">Stability</h2></summary>
     <p class="section-sub">Movement measured against the ground, in units of your own body
       length, so no calibration is needed.</p>
     <div class="metric-grid" id="stability-cards"></div>
+    </details>
 
     <div class="send-diag" id="send-diag-slot"></div>
     <div class="result-actions">
@@ -488,6 +551,12 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
         <button class="lb-link" id="lb-reset" type="button" hidden>Back to the model's frame</button></p>
     </figure>
   </div>
+
+  <nav class="action-bar" id="action-bar" aria-label="Quick actions">
+    <button type="button" id="bar-analyse">Analyse</button>
+    <button type="button" id="bar-record" hidden>Record</button>
+    <button type="button" id="bar-practice" hidden>Practice</button>
+  </nav>
 
   <video id="scratch-video" class="hidden" playsinline muted></video>
   <canvas id="scratch-canvas" class="hidden"></canvas>

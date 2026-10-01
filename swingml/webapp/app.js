@@ -1771,6 +1771,7 @@ async function analyse(file, { sample = false } = {}) {
  * because correcting a position means showing frames from it again. */
 function releaseClip() {
   show("practice", false);
+  el("bar-practice").hidden = true;
   if (coach.ctl) coach.ctl.abort();
   show("coach-section", false);
   if (state.clip && state.clip.url) URL.revokeObjectURL(state.clip.url);
@@ -1964,10 +1965,75 @@ async function renderFrames(sequence, decoded, metrics, detectionRate, quiet = f
   showBandNote(state.payload.calibration, decoded);
   showMetrics(metrics, decoded, detectionRate, sequence);
   renderStory(metrics);
+  renderSummaryCard(metrics);
   resetCoach();
   if (!quiet) offerDiagnostics("results");
   show("results", true);
   if (!quiet) el("results").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/* The card at the top of the results (#37): the swing at impact, the tempo with
+ * its measured spread, and the practice priority. Every value here is also in the
+ * sections below, with the same provenance; this only puts the one thing to work
+ * on first, so a phone does not have to scroll past everything to find it. */
+function renderSummaryCard(m) {
+  const shot = el("sum-shot");
+  shot.innerHTML = "";
+  const impact = state.frames && state.frames[5];
+  if (impact) {
+    const small = document.createElement("canvas");
+    const scale = Math.min(1, 320 / impact.canvas.height);
+    small.width = Math.round(impact.canvas.width * scale);
+    small.height = Math.round(impact.canvas.height * scale);
+    small.getContext("2d").drawImage(impact.canvas, 0, 0, small.width, small.height);
+    small.setAttribute("aria-label", `The swing at impact, ${impact.time.toFixed(3)} s`);
+    shot.appendChild(small);
+  }
+  el("sum-tempo").textContent = m.tempoRatio.toFixed(2);
+  const band = state.payload.calibration && state.payload.calibration.tempo;
+  const range = el("sum-range");
+  if (band) {
+    const spread = Math.abs(m.tempoRatio) * band.half_width_fraction;
+    range.title = `+/-${Math.round(100 * band.half_width_fraction)}% for ` +
+      `${Math.round(100 * band.coverage)}% of ${band.n_calibration} held-out swings on ` +
+      band.measured_on;
+    range.textContent = `measured spread ${(m.tempoRatio - spread).toFixed(2)} – ` +
+      `${(m.tempoRatio + spread).toFixed(2)} · backswing ÷ downswing` +
+      (m.slowedBy ? ", assuming the whole swing was slowed evenly" : "");
+  } else {
+    range.textContent = "backswing ÷ downswing";
+  }
+  const caveat = leftHandedCaveat(state.payload, state.analysis && state.analysis.handedness);
+  if (caveat) range.textContent += ` · ${caveat}`;
+  el("again-record").hidden = el("record").hidden;
+  summaryPriority(null);
+}
+
+/* The practice priority, in short, on the summary card; the whole of it, with its
+ * evidence and what it cannot tell, stays in the practice section. */
+function summaryPriority(insight, swingId) {
+  show("sum-priority", Boolean(insight));
+  if (!insight) return;
+  el("sum-priority-title").textContent = insight.title;
+  el("sum-drill").textContent = (insight.drill ? `Drill: ${insight.drill.title}. ` : "") +
+    `Priority after swing ${swingId} · confidence: ${insight.confidence}.`;
+}
+
+/* The detail sections fold on a phone and open on a wide screen, unless the
+ * golfer has opened or closed one, which this browser then remembers. */
+const FOLDS_KEY = "swing-folds-v1";
+function wireFolds() {
+  let saved = {};
+  try { saved = JSON.parse(browserStorage().getItem(FOLDS_KEY) || "{}") || {}; } catch (error) { saved = {}; }
+  const wide = window.matchMedia ? window.matchMedia("(min-width: 721px)").matches : true;
+  for (const fold of document.querySelectorAll("details.fold")) {
+    const name = fold.dataset.fold;
+    fold.open = typeof saved[name] === "boolean" ? saved[name] : wide;
+    fold.addEventListener("toggle", () => {
+      saved[name] = fold.open;
+      try { browserStorage().setItem(FOLDS_KEY, JSON.stringify(saved)); } catch (error) { /* not kept */ }
+    });
+  }
 }
 
 /* An event's measured error band, or nothing at all where none was measured.
@@ -2559,7 +2625,9 @@ function renderPractice(swingId, note = "") {
   state.practiceSwing = swingId;
   const plan = log.activePlan();
   el("plan-panel").innerHTML = plan ? planMarkup(plan) : "";
-  el("priority-panel").innerHTML = swingId ? insightMarkup(log.insightFor(rules, swingId), swingId) : "";
+  const insight = swingId ? log.insightFor(rules, swingId) : null;
+  el("priority-panel").innerHTML = insight ? insightMarkup(insight, swingId) : "";
+  summaryPriority(insight, swingId);
   const kept = log.swings.length;
   el("practice-data").innerHTML = log.available
     ? `${note ? `<p class="practice-note">${escapeHtml(note)}</p>` : ""}${kept ? keptMarkup(log) : ""}
@@ -2575,6 +2643,7 @@ function renderPractice(swingId, note = "") {
       "on its own and no plan can be kept. A private window or blocked site data does this.</span>";
   refreshPracticeOptions();
   show("practice", Boolean(swingId || plan));
+  el("bar-practice").hidden = !(swingId || plan);
 }
 
 function refreshPracticeOptions() {
@@ -2661,6 +2730,9 @@ export function boot(payload) {
   el("browse").onclick = (e) => { e.stopPropagation(); pick(); };
   input.onchange = () => { if (input.files[0]) analyse(input.files[0]); input.value = ""; };
   wireRecorder();
+  wireFolds();
+  el("bar-practice").onclick = () =>
+    el("practice").scrollIntoView({ behavior: "smooth", block: "start" });
 
   // Three choices, so three buttons rather than a dropdown: the state is visible
   // without opening anything, and it is one click instead of three.
@@ -2711,7 +2783,7 @@ export function boot(payload) {
       "poses from a clip are sent only if you press the button that says so.";
   }
 
-  for (const id of ["again", "again-bottom"]) {
+  for (const id of ["again", "again-bottom", "bar-analyse"]) {
     el(id).onclick = () => {
       el("drop").scrollIntoView({ behavior: "smooth", block: "center" });
       pick();
@@ -2734,6 +2806,9 @@ function wireRecorder() {
       typeof MediaRecorder === "undefined") return;
   button.hidden = false;
   button.onclick = (event) => { event.stopPropagation(); openRecorder(); };
+  el("bar-record").hidden = false;
+  el("bar-record").onclick = () => openRecorder();
+  el("again-record").onclick = () => openRecorder();
   el("rec-close").onclick = () => closeRecorder();
   el("rec-start").onclick = () => startRecording();
   el("rec-stop").onclick = () => stopRecording();

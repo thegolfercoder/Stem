@@ -767,3 +767,62 @@ def test_a_refused_camera_falls_back_to_choosing_a_video(landmark_json: str, cli
         assert page.locator("#results").is_visible()
         assert errors == []
         browser.close()
+
+
+NO_OVERFLOW = "() => document.documentElement.scrollWidth <= document.documentElement.clientWidth"
+
+
+def test_on_a_phone_the_one_thing_to_practise_comes_first(landmark_json: str, clip: Path) -> None:
+    """#37: at 360 px the summary card leads the results and nothing scrolls sideways."""
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context(viewport={"width": 360, "height": 740}).new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.goto(PAGE.resolve().as_uri())
+        assert page.evaluate(NO_OVERFLOW), "the empty page scrolls sideways at 360 px"
+        assert page.locator("#bar-analyse").is_visible()
+
+        _analyse(page, clip)
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        assert page.evaluate(NO_OVERFLOW), "the results scroll sideways at 360 px"
+        first = page.evaluate(
+            "() => [...document.getElementById('results').children]"
+            ".find((n) => n.offsetParent !== null).id"
+        )
+        assert first == "summary-card"
+
+        # The card repeats what is below; it does not say anything new.
+        tempo = (page.text_content("#sum-tempo") or "").strip()
+        assert tempo and (page.text_content("#tempo-cards .metric-value") or "").startswith(tempo)
+        assert page.locator("#sum-shot canvas").count() == 1
+        assert "measured spread" in (page.text_content("#sum-range") or "")
+        assert page.locator(".summary-card .prov-derived").is_visible()
+        assert page.locator("#sum-priority").is_visible()
+        assert page.text_content("#sum-priority-title") == page.text_content("#priority-panel h3")
+
+        # The detail sections are folded on a phone, all still on the page, and
+        # one opened stays opened in this browser.
+        assert page.locator("details.fold[open]").count() == 0
+        assert page.locator("#tempo-cards .metric").count() >= 3
+        page.click("details.fold[data-fold='tempo'] > summary")
+        assert page.locator("#tempo-cards").is_visible()
+        assert json.loads(page.evaluate("() => localStorage.getItem('swing-folds-v1')")) == {
+            "tempo": True
+        }
+        assert page.evaluate(NO_OVERFLOW)
+        assert page.locator("#bar-practice").is_visible()
+        for button in page.locator(".action-bar button:visible, .summary-card .btn:visible").all():
+            box = button.bounding_box()
+            assert box is not None and box["height"] >= 44, button.text_content()
+
+        page.set_viewport_size({"width": 1280, "height": 800})
+        assert page.locator("#action-bar").is_hidden()
+        assert page.evaluate(NO_OVERFLOW)
+        assert errors == []
+        browser.close()
