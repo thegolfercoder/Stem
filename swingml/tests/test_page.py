@@ -60,6 +60,7 @@ from swingml.pose.base import PoseSequence
 from swingml.quantity import NoReading
 from swingml.skeleton import Handedness
 from tests.browser import chromium_path
+from tests.mirror import mirrored
 
 HERE = Path(__file__).parent
 LANDMARKS = HERE / "fixtures" / "real_swing_01.npz"
@@ -163,6 +164,10 @@ def clip(sequence: PoseSequence, tmp_path_factory: pytest.TempPathFactory) -> Pa
 
 @pytest.fixture(scope="module")
 def landmark_json(sequence: PoseSequence) -> str:
+    return landmarks_of(sequence)
+
+
+def landmarks_of(sequence: PoseSequence) -> str:
     world = (
         sequence.world_xyz
         if sequence.world_xyz is not None
@@ -190,6 +195,7 @@ class Session:
         self.labels: list[str] = []
         self.bands: list[str] = []
         self.band_note = ""
+        self.caveats: list[str] = []
         self.refused = False
         self.refusal_title = ""
         self.refusal_reason = ""
@@ -275,6 +281,9 @@ def run_page(
                 ".frame-band", "nodes => nodes.map(n => n.textContent)"
             )
             session.band_note = page.text_content("#band-note") or ""
+            session.caveats = page.eval_on_selector_all(
+                ".metric-caveat", "nodes => nodes.map(n => n.textContent)"
+            )
             value = page.eval_on_selector(".metric-value", "node => node.textContent")
             session.tempo = float(value)
             ranges = page.eval_on_selector_all(
@@ -340,6 +349,21 @@ def test_the_band_note_says_what_the_shipped_table_does(analysed: Session) -> No
     assert "measured, not assumed" in analysed.band_note
     assert "wider band" not in analysed.band_note
     assert "every swing gets the same band" in analysed.band_note
+
+
+def test_a_right_hander_is_not_told_the_band_is_not_theirs(analysed: Session) -> None:
+    assert analysed.caveats == []
+
+
+def test_a_left_hander_is_told_the_band_was_not_measured_for_them(
+    sequence: PoseSequence, clip: Path
+) -> None:
+    """The fixture mirrored: the page finds a left-hander and says what the band is (#33)."""
+    session = run_page(landmarks_of(mirrored(sequence)), clip)
+    assert not session.refused, session.refusal_reason
+    assert session.spread, "no tempo band shown"
+    payload = json.loads(PAYLOAD.read_text(encoding="utf-8"))
+    assert session.caveats == [payload["notes"]["left_handed_tempo_band"]]
 
 
 def test_the_page_and_the_python_pipeline_report_the_same_tempo(

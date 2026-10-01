@@ -62,6 +62,9 @@ struct SwingDetailView: View {
                 Text(String(format: "measured spread %.2f - %.2f, for 80%% of held-out real swings",
                             tempo * (1 - band), tempo * (1 + band)))
                     .font(.footnote).foregroundStyle(Theme.faint)
+                if let caveat = analyzer?.tempoBandCaveat(for: record.result.handedness) {
+                    Text(caveat).font(.footnote).foregroundStyle(Theme.faint)
+                }
             }
             if let factor = m.slowedBy {
                 // Durations from a guessed playback speed are withheld, never shown.

@@ -9,8 +9,12 @@ to a 2x2 grid so that where in the frame something is survives, and resamples it
 onto exactly the grid `make_golfdb_dataset.py` put the poses on, so row t of this
 file and row t of the pose archive describe the same instant.
 
-Left-handed clips are mirrored before embedding, as their poses are before
-feature extraction, so a lead arm is always on the same side of the picture.
+Left-handed clips are mirrored before embedding, so a lead arm is always on the
+same side of the picture. Their poses are *not* mirrored before feature
+extraction (`features.py` only swaps the lead and trail arm channels), so in
+the fused archives a left-hander's image columns are mirrored relative to its
+pose columns (#33). The image-feature results in docs/ml/image-features.md were
+measured with that mismatch.
 
 Output is a sidecar keyed by GolfDB clip id, never merged into the frozen
 archives, whose SHA-256 the manifests pin. Like everything derived from GolfDB's

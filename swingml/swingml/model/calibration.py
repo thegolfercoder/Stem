@@ -86,6 +86,21 @@ class ErrorBand(BaseModel):
         )
 
 
+LEFT_HANDED_TEMPO_NOTE = (
+    "Not measured for left-handed swings: 8 of the 85 swings this spread was measured "
+    "on were left-handed, too few for a band of their own. On held-out swings, 80% of "
+    "left-handed tempo readings were within 43% (23 swings), against 27% for "
+    "right-handed ones (178)."
+)
+"""Shown with the tempo band on a left-handed swing, in all three apps (#33).
+
+The counts are golfdb-calibration-v1 (where the band was measured) and the
+published holdout breakdown, docs/audit/error-breakdown.json -> handedness.
+The model reads a mirrored swing differently (#33), so the band measured on
+mostly right-handed swings is not evidence about left-handed ones.
+"""
+
+
 class EventCalibration(BaseModel):
     """Measured error bands, per event, indexed by the model's own confidence.
 

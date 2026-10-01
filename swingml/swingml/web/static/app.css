@@ -213,6 +213,7 @@ input[type=text]:focus, select:focus { outline: 2px solid var(--accent); outline
 .metric-hint { color: var(--ink-faint); font-size: 12px; }
 .metric-range { color: var(--ink-faint); font-size: 12px; margin-top: 3px;
                 font-variant-numeric: tabular-nums; cursor: help; }
+.metric-caveat { color: var(--ink-faint); font-size: 12px; margin-top: 4px; line-height: 1.35; }
 .metric-refused { border-style: dashed; }
 .prov { font-size: 10.5px; padding: 2px 7px; border-radius: 999px; letter-spacing: .04em;
         text-transform: uppercase; border: 1px solid var(--line); white-space: nowrap; }

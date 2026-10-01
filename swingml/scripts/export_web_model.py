@@ -28,7 +28,7 @@ from swingml.analysis import AnalysisConfig, load_model, model_fingerprint
 from swingml.assets import find_event_calibrations, find_event_ensemble, find_event_model
 from swingml.features import FeatureConfig, feature_layout
 from swingml.insights.payload import practice_payload
-from swingml.model.calibration import load_calibration
+from swingml.model.calibration import LEFT_HANDED_TEMPO_NOTE, load_calibration
 from swingml.model.ensemble import SERVING_TIME_WARPS, EnsembleConfig, SwingEventEnsemble
 from swingml.model.tcn import SwingEventNet
 
@@ -137,6 +137,8 @@ def main() -> None:
             "slow_motion_check_backswing_s": analysis.slow_motion_check_backswing_s,
             "slow_motion_margin": analysis.slow_motion_margin,
         },
+        # Wording every app shows the same way (#33).
+        "notes": {"left_handed_tempo_band": LEFT_HANDED_TEMPO_NOTE},
         # The practice loop's drills, reference and tolerances (webapp/practice.js).
         "practice": practice_payload(),
         "source_model": str(paths[0]),

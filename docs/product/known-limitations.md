@@ -23,6 +23,16 @@ fixed, it moves to the changelog with the measurement that shows it.
    measured on 85 clips, so every swing gets the same one (desktop and browser
    pages say so since #30; the iPhone app shows the ± figures with no note).
 
+6a. **Left-handed swings read less accurately, and the tempo band is not theirs.**
+   On held-out swings, 80% of left-handed tempo readings were within 43% (23
+   swings), against 27% for right-handed ones (178). Within one frame on the
+   core four: 42.4% against 49.7% (`docs/audit/error-breakdown.json`). The model
+   reads the same swing mirrored about 11% lower in tempo, because left-handers'
+   poses are not mirrored before features are made. The ±27% band was measured
+   on 85 swings, 8 of them left-handed. Every app shows it to a left-hander with
+   a note saying it was not measured for them (#33). Mirroring left-handers is
+   a follow-up experiment (#45).
+
 ## Capture
 
 7. **One golfer, one swing per stretch.** A second person in shot is not detected;

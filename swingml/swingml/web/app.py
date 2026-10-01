@@ -40,7 +40,7 @@ from swingml.labels import (
     save_model_analysis,
     write_positions,
 )
-from swingml.model.calibration import ErrorBand, RelativeBand
+from swingml.model.calibration import LEFT_HANDED_TEMPO_NOTE, ErrorBand, RelativeBand
 from swingml.quantity import NoReading, Quantity
 from swingml.session import summarise_session
 from swingml.skeleton import Handedness
@@ -63,7 +63,11 @@ MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
 
 
 def _reading_to_dict(
-    reading: object, label: str, hint: str = "", band: RelativeBand | None = None
+    reading: object,
+    label: str,
+    hint: str = "",
+    band: RelativeBand | None = None,
+    band_caveat: str | None = None,
 ) -> dict[str, Any]:
     """Flatten a reading for the template, refusals included.
 
@@ -93,6 +97,7 @@ def _reading_to_dict(
             "range_low": low,
             "range_high": high,
             "range_note": str(band) if band else None,
+            "range_caveat": band_caveat if band else None,
         }
     return {"label": label, "ok": False, "reason": "not computed", "hint": hint}
 
@@ -123,6 +128,9 @@ def metric_groups(analysis: SwingAnalysis) -> list[dict[str, Any]]:
                     "Tempo ratio",
                     "backswing ÷ downswing",
                     band=analysis.tempo_uncertainty,
+                    band_caveat=(
+                        LEFT_HANDED_TEMPO_NOTE if analysis.handedness is Handedness.LEFT else None
+                    ),
                 ),
                 _reading_to_dict(metrics.backswing_duration, "Backswing", "address → top"),
                 _reading_to_dict(metrics.downswing_duration, "Downswing", "top → impact"),

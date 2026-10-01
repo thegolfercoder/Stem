@@ -156,10 +156,22 @@ public struct ModelPayload: Decodable {
     public let members: [Member]?
     /// The practice loop's drills, tour reference and tolerances (Practice.swift).
     public let practice: PracticeRules?
+    /// Wording every app shows the same way, from the desktop's export (#33).
+    public let notes: Notes?
+
+    public struct Notes: Decodable {
+        /// Shown with the tempo band on a left-handed swing: the band was measured
+        /// on mostly right-handed swings.
+        public let leftHandedTempoBand: String?
+
+        enum CodingKeys: String, CodingKey {
+            case leftHandedTempoBand = "left_handed_tempo_band"
+        }
+    }
 
     enum CodingKeys: String, CodingKey {
         case architecture, tensors, weightsBase64 = "weights_base64", features, thresholds
-        case calibration, timeWarps = "time_warps", members, practice
+        case calibration, timeWarps = "time_warps", members, practice, notes
     }
 
     /// The model shipped with this package.

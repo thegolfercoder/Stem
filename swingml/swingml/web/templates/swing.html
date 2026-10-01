@@ -252,6 +252,7 @@
         <div class="metric-range" title="{{ m.range_note }}">
           measured spread {{ '%.2f'|format(m.range_low) }} &ndash; {{ '%.2f'|format(m.range_high) }}
         </div>
+        {% if m.range_caveat %}<div class="metric-caveat">{{ m.range_caveat }}</div>{% endif %}
         {% endif %}
         <div class="metric-foot">
           <span class="prov prov-{{ m.provenance }}">{{ m.provenance.replace('_', ' ') }}</span>

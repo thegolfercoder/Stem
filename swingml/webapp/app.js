@@ -1996,7 +1996,7 @@ const card = (label, value, unit, note, provenance, range) => `
 
 /* The measured spread on the tempo ratio, or nothing where none was measured.
  * Never a range of zero: absent and exact are not the same statement. */
-function tempoRange(calibration, tempo) {
+function tempoRange(calibration, tempo, caveat) {
   const band = calibration && calibration.tempo;
   if (!band) return "";
   const spread = Math.abs(tempo) * band.half_width_fraction;
@@ -2004,7 +2004,14 @@ function tempoRange(calibration, tempo) {
     `${Math.round(100 * band.coverage)}% of ${band.n_calibration} held-out swings on ` +
     band.measured_on;
   return `<div class="metric-range" title="${note}">measured spread ` +
-    `${(tempo - spread).toFixed(2)} &ndash; ${(tempo + spread).toFixed(2)}</div>`;
+    `${(tempo - spread).toFixed(2)} &ndash; ${(tempo + spread).toFixed(2)}</div>` +
+    (caveat ? `<div class="metric-caveat">${caveat}</div>` : "");
+}
+
+/* The band was measured on mostly right-handed swings (#33); the payload carries
+ * the wording so every app says the same thing. */
+function leftHandedCaveat(payload, handedness) {
+  return handedness === "left" && payload.notes ? payload.notes.left_handed_tempo_band : "";
 }
 
 /* The swing in order: a timeline to scale, then each part in words.
@@ -2127,7 +2134,8 @@ function showMetrics(m, decoded, detectionRate, sequence) {
     card("Tempo ratio", m.tempoRatio.toFixed(2), "",
          m.slowedBy ? "backswing ÷ downswing; assumes the whole swing was slowed evenly"
                     : "backswing ÷ downswing", "derived",
-         tempoRange(state.payload.calibration, m.tempoRatio)) +
+         tempoRange(state.payload.calibration, m.tempoRatio,
+                    leftHandedCaveat(state.payload, state.analysis && state.analysis.handedness))) +
     duration("Backswing", m.backswingMs, "address → top") +
     duration("Downswing", m.downswingMs, "top → impact") +
     card("Whole swing", "no reading", "", "the finish cannot be placed reliably from one camera", "refused") +

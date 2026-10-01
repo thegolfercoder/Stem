@@ -160,6 +160,16 @@ final class ParityTests: XCTestCase {
         }
     }
 
+    /// The tempo band was measured on mostly right-handed swings; a left-hander is
+    /// told so, in the desktop's words, and a right-hander is not (#33).
+    func testOnlyALeftHanderIsToldTheBandIsNotTheirs() {
+        let note = Self.analyzer.tempoBandCaveat(for: .left)
+        XCTAssertNotNil(note)
+        XCTAssertEqual(note, Self.analyzer.payload.notes?.leftHandedTempoBand)
+        XCTAssertTrue(note?.hasPrefix("Not measured for left-handed swings") ?? false)
+        XCTAssertNil(Self.analyzer.tempoBandCaveat(for: .right))
+    }
+
     func testARealTimeClipIsNotTreatedAsSlowMotion() {
         guard let result = Self.analyzer.analyse(sequence, handedness: .right).result else {
             return XCTFail("the real swing was refused")

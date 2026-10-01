@@ -179,6 +179,13 @@ public final class SwingAnalyzer {
 
     /// The measured 80% spread on the tempo ratio, as a fraction, if measured.
     public var tempoBand: Double? { payload.calibration?.tempo?.halfWidthFraction }
+
+    /// What to say beside the tempo band for this swing: the band was measured on
+    /// mostly right-handed swings, so a left-handed one is told so (#33).
+    public func tempoBandCaveat(for handedness: Handedness) -> String? {
+        guard handedness == .left, tempoBand != nil else { return nil }
+        return payload.notes?.leftHandedTempoBand
+    }
 }
 
 /// One sample of a coarse scan through a long clip.
