@@ -14,6 +14,9 @@ struct PracticeView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    if let notice = practice.unreadableNotice {
+                        Text(notice).font(.footnote).foregroundStyle(Theme.faint)
+                    }
                     if let rules = practice.rules {
                         if let plan = practice.log.activePlan {
                             PlanCard(plan: plan, rules: rules)

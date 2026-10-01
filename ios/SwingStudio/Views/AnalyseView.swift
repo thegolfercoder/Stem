@@ -209,7 +209,3 @@ struct SwingRow: View {
     }
 }
 
-extension SwingRecord: Hashable {
-    static func == (a: SwingRecord, b: SwingRecord) -> Bool { a.id == b.id }
-    func hash(into hasher: inout Hasher) { hasher.combine(id) }
-}

@@ -8,6 +8,10 @@ import SwingCore
 @MainActor
 final class PracticeStore: ObservableObject {
     @Published private(set) var log = PracticeLog()
+    /// Set when practice.json could not be read; shown to the golfer.
+    @Published private(set) var unreadableNotice: String?
+    /// True when an unreadable file could not be moved aside: then nothing is saved.
+    private var saveBlocked = false
     private let file: URL
 
     init() {
@@ -29,14 +33,19 @@ final class PracticeStore: ObservableObject {
     }
 
     private func load() {
-        guard let data = try? Data(contentsOf: file) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        log = (try? decoder.decode(PracticeLog.self, from: data)) ?? PracticeLog()
+        switch StoreFile.load(PracticeLog.self, from: file) {
+        case .missing: log = PracticeLog()
+        case .read(let kept): log = kept
+        case .unreadable(let keptAs):
+            log = PracticeLog()
+            saveBlocked = keptAs == nil
+            unreadableNotice = StoreFile.notice("practice log", keptAs: keptAs)
+        }
     }
 
     private func save() {
-        if let data = try? Self.encoder.encode(log) { try? data.write(to: file, options: .atomic) }
+        guard !saveBlocked else { return }
+        StoreFile.save(log, to: file, pretty: true)
     }
 
     /// Keep one clip; with `forPlan` it is also a retest swing for the active plan.

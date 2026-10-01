@@ -2,35 +2,18 @@ import Foundation
 import SwingCore
 import UIKit
 
-/// A coach's read, kept with the swing it is about.
-struct CoachRead: Codable {
-    var model: String
-    var text: String
-    var sawPictures: Bool
-    var at: Date
-}
-
-/// One analysed swing, as it is kept on this iPhone.
-struct SwingRecord: Codable, Identifiable {
-    var id: UUID
-    var date: Date
-    var club: String?
-    var label: String?
-    var sourceName: String
-    var result: SwingResult
-    /// File names of the eight key frames, in order.
-    var keyFrames: [String]
-    var coach: CoachRead?
-    /// This swing's entry in the practice log (PracticeStore), when it has one.
-    var practiceId: Int?
-
-    var tempo: Double? { result.metrics.tempoRatio }
-}
+// SwingRecord and CoachRead live in SwingCore (StoreFile.swift), so a test can hold
+// the kept format to what earlier builds wrote (#46).
 
 /// Every swing, newest first, in the app's own folder. Nothing leaves the phone.
 @MainActor
 final class HistoryStore: ObservableObject {
     @Published private(set) var records: [SwingRecord] = []
+    /// Set when swings.json could not be read; shown to the golfer.
+    @Published private(set) var unreadableNotice: String?
+    /// True when an unreadable file could not even be moved aside: then nothing is
+    /// saved, so it is never overwritten.
+    private var saveBlocked = false
     private let folder: URL
 
     init() {
@@ -43,16 +26,19 @@ final class HistoryStore: ObservableObject {
     private var index: URL { folder.appendingPathComponent("swings.json") }
 
     private func load() {
-        guard let data = try? Data(contentsOf: index) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        records = (try? decoder.decode([SwingRecord].self, from: data)) ?? []
+        switch StoreFile.load([SwingRecord].self, from: index) {
+        case .missing: records = []
+        case .read(let kept): records = kept
+        case .unreadable(let keptAs):
+            records = []
+            saveBlocked = keptAs == nil
+            unreadableNotice = StoreFile.notice("swings", keptAs: keptAs)
+        }
     }
 
     private func save() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(records) { try? data.write(to: index, options: .atomic) }
+        guard !saveBlocked else { return }
+        StoreFile.save(records, to: index)
     }
 
     @discardableResult

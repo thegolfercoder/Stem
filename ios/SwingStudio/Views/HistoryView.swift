@@ -21,6 +21,9 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             List {
+                if let notice = history.unreadableNotice {
+                    Section { Text(notice).font(.footnote).foregroundStyle(Theme.faint) }
+                }
                 if shown.count >= 2 {
                     Section {
                         Chart(shown.reversed().filter { $0.tempo != nil }) { record in
@@ -56,7 +59,7 @@ struct HistoryView: View {
                 Picker("Club", selection: $club) { ForEach(clubs, id: \.self) { Text($0) } }
             }
             .overlay {
-                if history.records.isEmpty {
+                if history.records.isEmpty && history.unreadableNotice == nil {
                     ContentUnavailableView("No swings yet", systemImage: "figure.golf",
                                            description: Text("Analyse a swing and it will appear here."))
                 }
