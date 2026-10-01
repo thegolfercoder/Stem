@@ -22,6 +22,8 @@ python scripts/body_reference.py --videos <GolfDB videos_160> --out ../docs/audi
 - **Handedness:** GolfDB's label, so a handedness miss is not in the reference.
 - **Intervals:** 95%, resampling the 32 golfer/video groups (2,000 draws).
 - **Refusals:** 1 clip of the 85 gave no reading.
+- **Reproducibility:** a second run of the same command wrote a file
+  byte-identical to `docs/audit/body-reference.json`.
 
 ## Results
 
