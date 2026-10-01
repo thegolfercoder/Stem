@@ -13,6 +13,7 @@ that goes blank without one is not usable there.
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -27,10 +28,19 @@ from flask import (
     url_for,
 )
 
-from swingml.analysis import SwingAnalysis
+from swingml.analysis import SwingAnalysis, analyse_with_positions
 from swingml.assets import find_event_model, home
 from swingml.events import CLUB_DEFINED_EVENTS, SwingEvent
-from swingml.model.calibration import ErrorBand, RelativeBand
+from swingml.labels import (
+    GolferPositions,
+    clear_positions,
+    load_model_analysis,
+    load_pose,
+    read_positions,
+    save_model_analysis,
+    write_positions,
+)
+from swingml.model.calibration import LEFT_HANDED_TEMPO_NOTE, ErrorBand, RelativeBand
 from swingml.quantity import NoReading, Quantity
 from swingml.session import summarise_session
 from swingml.skeleton import Handedness
@@ -38,17 +48,26 @@ from swingml.store import StoredSwing, SwingStore
 from swingml.web.service import (
     AnalysisService,
     event_frame_files,
+    event_pictures_from_strip,
     frames_dir,
     save_upload,
     sequence_manifest,
+    videos_dir,
 )
+from swingml.web.story import swing_story
+
+LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 ALLOWED_SUFFIXES = {".mov", ".mp4", ".m4v", ".avi", ".mkv", ".webm"}
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
 
 
 def _reading_to_dict(
-    reading: object, label: str, hint: str = "", band: RelativeBand | None = None
+    reading: object,
+    label: str,
+    hint: str = "",
+    band: RelativeBand | None = None,
+    band_caveat: str | None = None,
 ) -> dict[str, Any]:
     """Flatten a reading for the template, refusals included.
 
@@ -78,6 +97,7 @@ def _reading_to_dict(
             "range_low": low,
             "range_high": high,
             "range_note": str(band) if band else None,
+            "range_caveat": band_caveat if band else None,
         }
     return {"label": label, "ok": False, "reason": "not computed", "hint": hint}
 
@@ -108,6 +128,9 @@ def metric_groups(analysis: SwingAnalysis) -> list[dict[str, Any]]:
                     "Tempo ratio",
                     "backswing ÷ downswing",
                     band=analysis.tempo_uncertainty,
+                    band_caveat=(
+                        LEFT_HANDED_TEMPO_NOTE if analysis.handedness is Handedness.LEFT else None
+                    ),
                 ),
                 _reading_to_dict(metrics.backswing_duration, "Backswing", "address → top"),
                 _reading_to_dict(metrics.downswing_duration, "Downswing", "top → impact"),
@@ -254,6 +277,40 @@ PRETTY_NAMES: dict[str, str] = {
 }
 
 
+NEVER_MEASURED = (
+    "Club face, club path, swing plane and attack angle: the pose tracker does not see the club.",
+    "Ball speed, spin, launch and carry: nothing here sees the ball.",
+    "Club-head speed: one camera cannot measure it.",
+)
+
+
+def not_known(analysis: SwingAnalysis) -> list[str]:
+    """What this analysis cannot say, most specific first."""
+    items: list[str] = []
+    metrics = analysis.metrics
+    if not isinstance(metrics, NoReading):
+        for name in ("swing_duration", "backswing_duration", "downswing_duration"):
+            reading = getattr(metrics, name)
+            if isinstance(reading, NoReading):
+                items.append(f"{pretty_name(name)}: {reading.reason}.")
+                break
+    if analysis.playback_slowed_by is not None:
+        items.append(
+            "Real timing: this clip read as slow motion (about "
+            f"{analysis.playback_slowed_by:.0f}x), so no duration is given."
+        )
+    if analysis.positions_set_by == "model":
+        items.append(
+            "Toe-up and mid-follow-through are defined by the club and placed from the body."
+        )
+    items.append(
+        "Tempo readings are pulled toward about 3.3; a tempo far from 3 reads closer to 3 "
+        "than it is."
+    )
+    items.extend(NEVER_MEASURED)
+    return items
+
+
 def pretty_name(name: str) -> str:
     """A label a person would use, falling back to the field name made readable."""
     return PRETTY_NAMES.get(name, name.replace("_", " ").capitalize())
@@ -325,14 +382,46 @@ def build_trend(
     }
 
 
-def create_app(store: SwingStore | None = None, model_path: Path | None = None) -> Flask:
+def create_app(
+    store: SwingStore | None = None,
+    model_path: Path | None = None,
+    allow_any_host: bool = False,
+) -> Flask:
+    """The local app. `allow_any_host` is for serving beyond this machine on purpose."""
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
+
+    @app.before_request
+    def only_this_machine() -> Any:
+        """Refuse requests addressed to another host name, or sent by another site.
+
+        The server listens on 127.0.0.1 only, which stops other machines but not
+        other web pages open in the golfer's own browser: a site whose domain is
+        pointed at 127.0.0.1 (DNS rebinding) arrives with its own name in the Host
+        header, and a cross-site form post arrives with its own Origin.
+        """
+        host = (request.host or "").rsplit(":", 1)[0].strip("[]").lower()
+        if not allow_any_host and host not in LOCAL_HOSTS:
+            return jsonify({"error": "this app only answers requests to 127.0.0.1"}), 403
+        origin = request.headers.get("Origin")
+        if request.method not in ("GET", "HEAD", "OPTIONS") and origin:
+            origin_host = origin.split("://", 1)[-1].split("/", 1)[0]
+            if origin_host != request.host:
+                return jsonify({"error": "requests from other sites are refused"}), 403
+        return None
+
     app.config["JSON_SORT_KEYS"] = False
 
     swing_store = store or SwingStore()
     service = AnalysisService(swing_store, model_path=model_path)
     app.extensions["swingml"] = {"store": swing_store, "service": service}
+
+    from swingml.web.coach_routes import create_blueprint
+    from swingml.web.practice import create_blueprint as practice_blueprint
+    from swingml.web.practice import insight_for
+
+    app.register_blueprint(create_blueprint(swing_store))
+    app.register_blueprint(practice_blueprint(swing_store))
 
     # -- pages -------------------------------------------------------------
 
@@ -361,19 +450,31 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
         refusal = analysis.events.reason if isinstance(analysis.events, NoReading) else None
         advice = advice_for(refusal) if refusal else None
         band = next((b for b in analysis.event_uncertainty if isinstance(b, ErrorBand)), None)
+        insight = insight_for(swing_store, swing_id)
+        swing_store.log_event("insight_viewed", kind=insight.kind, swing=swing_id)
         return render_template(
             "swing.html",
+            insight=insight,
+            unknowns=not_known(analysis),
+            active_plan=swing_store.active_plan(),
             band_corpus=band.measured_on if band else None,
             band_coverage=round(100 * band.coverage) if band else None,
+            band_clips=band.n_calibration if band else None,
+            band_by_confidence=bool(
+                service.calibration and service.calibration.events.varies_with_confidence
+            ),
             swing=stored,
             analysis=analysis,
             sequence=sequence_manifest(swing_id),
             events=event_rows(analysis, files),
             groups=metric_groups(analysis),
+            story=swing_story(stored.analysis.get("metrics", {})),
             refusal=refusal,
             advice=advice,
             clubs=swing_store.clubs(),
             format_number=_format_number,
+            positions=read_positions(frames_dir() / str(swing_id)),
+            can_set_positions=(frames_dir() / str(swing_id) / "pose.npz").is_file(),
         )
 
     @app.get("/session")
@@ -421,16 +522,22 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
         if not ready:
             return jsonify({"error": why}), 503
 
-        handedness = (
-            Handedness.LEFT
-            if request.form.get("handedness", "right") == "left"
-            else Handedness.RIGHT
+        chosen = request.form.get("handedness", "auto")
+        handedness: Handedness | None = (
+            Handedness.LEFT if chosen == "left" else Handedness.RIGHT if chosen == "right" else None
         )
         club = (request.form.get("club") or "").strip() or None
         label = (request.form.get("label") or "").strip() or None
 
+        plan_field = (request.form.get("plan") or "").strip()
+        plan_id = int(plan_field) if plan_field.isdigit() else None
+        if plan_id is not None and swing_store.plan(plan_id) is None:
+            return jsonify({"error": "that practice plan does not exist"}), 400
+
         path = save_upload(upload.stream, upload.filename)
-        job = service.submit(path, upload.filename, handedness, club=club, label=label)
+        job = service.submit(
+            path, upload.filename, handedness, club=club, label=label, plan_id=plan_id
+        )
         return jsonify(job.as_dict()), 202
 
     @app.get("/api/jobs/<job_id>")
@@ -458,8 +565,80 @@ def create_app(store: SwingStore | None = None, model_path: Path | None = None) 
 
     @app.delete("/api/swings/<int:swing_id>")
     def api_delete_swing(swing_id: int) -> Any:
-        if not swing_store.delete(swing_id):
+        stored = swing_store.get(swing_id)
+        if stored is None or not swing_store.delete(swing_id):
             return jsonify({"error": "no such swing"}), 404
+        # The row is gone; so are the files that only existed for it.
+        shutil.rmtree(frames_dir() / str(swing_id), ignore_errors=True)
+        if stored.video_path:
+            video = Path(stored.video_path)
+            if video.resolve().parent == videos_dir().resolve():
+                video.unlink(missing_ok=True)
+        return jsonify({"ok": True})
+
+    @app.post("/api/swings/<int:swing_id>/positions")
+    def api_set_positions(swing_id: int) -> Any:
+        """Re-measure the swing from eight positions the golfer chose."""
+        stored = swing_store.get(swing_id)
+        if stored is None:
+            return jsonify({"error": "no such swing"}), 404
+        payload = request.get_json(silent=True) or {}
+        frames = payload.get("frames")
+        if not isinstance(frames, list) or not all(isinstance(f, int) for f in frames):
+            return jsonify({"error": "frames must be a list of eight frame numbers"}), 400
+        directory = frames_dir() / str(swing_id)
+        sequence = load_pose(directory)
+        if sequence is None:
+            return jsonify(
+                {
+                    "error": (
+                        "this swing was analysed before its landmarks were kept; "
+                        "analyse the clip again to set its positions"
+                    )
+                }
+            ), 409
+        current = SwingAnalysis.model_validate(stored.analysis)
+        earlier = read_positions(directory)
+        if earlier is not None:
+            model_frames = earlier.model_frames
+        elif not isinstance(current.events, NoReading):
+            model_frames = current.event_source_frames
+        else:
+            return jsonify({"error": "no positions were found in this clip to move"}), 409
+        try:
+            moved = analyse_with_positions(
+                sequence, frames, current.handedness, video=current.video
+            )
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+        if current.positions_set_by == "model":
+            save_model_analysis(directory, stored.analysis)
+        swing_store.replace_analysis(swing_id, moved)
+        write_positions(
+            directory,
+            GolferPositions(
+                frames=tuple(frames),
+                model_frames=tuple(model_frames),
+                handedness=current.handedness,
+                training_label=bool(payload.get("training_label", False)),
+            ),
+        )
+        event_pictures_from_strip(swing_id, moved.event_source_frames)
+        return jsonify({"ok": True})
+
+    @app.delete("/api/swings/<int:swing_id>/positions")
+    def api_reset_positions(swing_id: int) -> Any:
+        """Put the model's positions and measurements back."""
+        if swing_store.get(swing_id) is None:
+            return jsonify({"error": "no such swing"}), 404
+        directory = frames_dir() / str(swing_id)
+        original = load_model_analysis(directory)
+        if original is None:
+            return jsonify({"error": "the model's positions were never changed"}), 409
+        restored = SwingAnalysis.model_validate(original)
+        swing_store.replace_analysis(swing_id, restored)
+        clear_positions(directory)
+        event_pictures_from_strip(swing_id, restored.event_source_frames)
         return jsonify({"ok": True})
 
     @app.get("/api/swings/<int:swing_id>/analysis")

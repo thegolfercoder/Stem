@@ -1,0 +1,740 @@
+{
+  "splits": {
+    "train": "out/golfdb/split/train.npz",
+    "validation": "out/golfdb/split/validation.npz",
+    "holdout": "out/golfdb/split/holdout.npz"
+  },
+  "note": "fitted on train only, variants chosen on validation only, holdout reported once",
+  "hybrid_choice": {
+    "events": [
+      3
+    ],
+    "window": 0.05
+  },
+  "kinematic_params": {
+    "smoothing": 9,
+    "rest_speed": 0.06,
+    "rest_frames": 2,
+    "fractions": [
+      0.5,
+      0.6902654867256637,
+      0.5555555555555556,
+      0.1111111111111111
+    ],
+    "offsets": [
+      18.0,
+      8.0,
+      5.088495575221259,
+      -1.0,
+      -0.6666666666666856,
+      0.0,
+      1.444444444444457,
+      10.0
+    ]
+  },
+  "results": {
+    "velocity_peak": {
+      "n_clips": 201,
+      "n_answered": 198,
+      "within_1_core4": [
+        0.2626,
+        0.221,
+        0.3018
+      ],
+      "within_2_core4": [
+        0.3523,
+        0.3068,
+        0.399
+      ],
+      "within_1_all8": [
+        0.1793,
+        0.1528,
+        0.2052
+      ],
+      "tempo_median_rel_error": [
+        0.4491,
+        0.395,
+        0.5195
+      ],
+      "median_abs_error_frames": [
+        14.0,
+        8.0,
+        6.0,
+        3.0,
+        4.0,
+        7.0,
+        6.0,
+        29.0
+      ],
+      "tempo_slope": [
+        -0.091,
+        -1.0524,
+        0.8071
+      ],
+      "real_time_only": {
+        "n_clips": 119,
+        "n_answered": 118,
+        "within_1_core4": [
+          0.3941,
+          0.3453,
+          0.4407
+        ],
+        "within_2_core4": [
+          0.5254,
+          0.4725,
+          0.5805
+        ],
+        "within_1_all8": [
+          0.2701,
+          0.2383,
+          0.304
+        ],
+        "tempo_median_rel_error": [
+          0.3445,
+          0.276,
+          0.4053
+        ],
+        "median_abs_error_frames": [
+          10.0,
+          5.0,
+          3.0,
+          1.0,
+          1.0,
+          2.0,
+          4.0,
+          18.5
+        ]
+      },
+      "slow_motion_only": {
+        "n_clips": 82,
+        "n_answered": 80,
+        "within_1_core4": [
+          0.0688,
+          0.0375,
+          0.1062
+        ],
+        "within_2_core4": [
+          0.0969,
+          0.0563,
+          0.1437
+        ],
+        "within_1_all8": [
+          0.0453,
+          0.0266,
+          0.0656
+        ],
+        "tempo_median_rel_error": [
+          0.7578,
+          0.6189,
+          0.889
+        ],
+        "median_abs_error_frames": [
+          78.0,
+          45.5,
+          42.0,
+          8.0,
+          17.0,
+          34.0,
+          28.0,
+          54.0
+        ]
+      },
+      "paired_vs_network": {
+        "w1_core": [
+          -0.2273,
+          -0.2626,
+          -0.1919
+        ],
+        "tempo_err": [
+          0.2988,
+          0.2397,
+          0.3736
+        ]
+      }
+    },
+    "kinematic": {
+      "n_clips": 201,
+      "n_answered": 199,
+      "within_1_core4": [
+        0.3317,
+        0.2915,
+        0.3731
+      ],
+      "within_2_core4": [
+        0.4497,
+        0.4045,
+        0.4962
+      ],
+      "within_1_all8": [
+        0.2261,
+        0.201,
+        0.2525
+      ],
+      "tempo_median_rel_error": [
+        0.3565,
+        0.311,
+        0.438
+      ],
+      "median_abs_error_frames": [
+        13.0,
+        8.0,
+        5.0,
+        2.0,
+        2.0,
+        2.0,
+        4.0,
+        25.0
+      ],
+      "tempo_slope": [
+        0.29,
+        -0.4194,
+        0.991
+      ],
+      "real_time_only": {
+        "n_clips": 119,
+        "n_answered": 118,
+        "within_1_core4": [
+          0.4809,
+          0.4343,
+          0.5297
+        ],
+        "within_2_core4": [
+          0.6377,
+          0.5975,
+          0.6758
+        ],
+        "within_1_all8": [
+          0.3263,
+          0.2966,
+          0.3559
+        ],
+        "tempo_median_rel_error": [
+          0.2798,
+          0.2277,
+          0.3344
+        ],
+        "median_abs_error_frames": [
+          9.0,
+          5.0,
+          3.0,
+          1.0,
+          1.0,
+          1.0,
+          2.5,
+          17.0
+        ]
+      },
+      "slow_motion_only": {
+        "n_clips": 82,
+        "n_answered": 81,
+        "within_1_core4": [
+          0.1142,
+          0.0772,
+          0.1512
+        ],
+        "within_2_core4": [
+          0.1759,
+          0.1327,
+          0.2253
+        ],
+        "within_1_all8": [
+          0.0802,
+          0.0586,
+          0.1049
+        ],
+        "tempo_median_rel_error": [
+          0.6868,
+          0.4785,
+          0.8431
+        ],
+        "median_abs_error_frames": [
+          78.0,
+          52.0,
+          36.0,
+          7.0,
+          8.0,
+          9.0,
+          14.0,
+          54.0
+        ]
+      },
+      "paired_vs_network": {
+        "w1_core": [
+          -0.157,
+          -0.1884,
+          -0.1269
+        ],
+        "tempo_err": [
+          0.206,
+          0.1496,
+          0.2791
+        ]
+      }
+    },
+    "dtw_template": {
+      "n_clips": 201,
+      "n_answered": 201,
+      "within_1_core4": [
+        0.1903,
+        0.1642,
+        0.2164
+      ],
+      "within_2_core4": [
+        0.4254,
+        0.3881,
+        0.4639
+      ],
+      "within_1_all8": [
+        0.1281,
+        0.1119,
+        0.143
+      ],
+      "tempo_median_rel_error": [
+        0.4249,
+        0.3443,
+        0.792
+      ],
+      "median_abs_error_frames": [
+        58.0,
+        18.0,
+        8.0,
+        4.0,
+        2.0,
+        2.0,
+        4.0,
+        28.0
+      ],
+      "tempo_slope": [
+        0.5737,
+        -0.2112,
+        1.3207
+      ],
+      "real_time_only": {
+        "n_clips": 119,
+        "n_answered": 119,
+        "within_1_core4": [
+          0.2227,
+          0.1891,
+          0.2563
+        ],
+        "within_2_core4": [
+          0.4853,
+          0.4327,
+          0.5357
+        ],
+        "within_1_all8": [
+          0.1481,
+          0.1261,
+          0.1702
+        ],
+        "tempo_median_rel_error": [
+          2.12,
+          1.4167,
+          2.7333
+        ],
+        "median_abs_error_frames": [
+          176.0,
+          36.0,
+          8.0,
+          4.0,
+          2.0,
+          2.0,
+          3.0,
+          28.0
+        ]
+      },
+      "slow_motion_only": {
+        "n_clips": 82,
+        "n_answered": 82,
+        "within_1_core4": [
+          0.1433,
+          0.1067,
+          0.1829
+        ],
+        "within_2_core4": [
+          0.3384,
+          0.2835,
+          0.3933
+        ],
+        "within_1_all8": [
+          0.0991,
+          0.0777,
+          0.1189
+        ],
+        "tempo_median_rel_error": [
+          0.1872,
+          0.1302,
+          0.241
+        ],
+        "median_abs_error_frames": [
+          29.0,
+          10.0,
+          8.0,
+          4.0,
+          3.0,
+          4.0,
+          4.0,
+          30.0
+        ]
+      },
+      "paired_vs_network": {
+        "w1_core": [
+          -0.2985,
+          -0.3408,
+          -0.2575
+        ],
+        "tempo_err": [
+          0.2745,
+          0.1978,
+          0.6716
+        ]
+      }
+    },
+    "linear_classifier": {
+      "n_clips": 201,
+      "n_answered": 201,
+      "within_1_core4": [
+        0.4067,
+        0.3669,
+        0.4478
+      ],
+      "within_2_core4": [
+        0.5336,
+        0.4913,
+        0.5784
+      ],
+      "within_1_all8": [
+        0.3346,
+        0.3022,
+        0.3675
+      ],
+      "tempo_median_rel_error": [
+        0.2195,
+        0.1803,
+        0.2796
+      ],
+      "median_abs_error_frames": [
+        10.0,
+        4.0,
+        3.0,
+        2.0,
+        1.0,
+        1.0,
+        2.0,
+        12.0
+      ],
+      "tempo_slope": [
+        0.366,
+        -0.2912,
+        0.9824
+      ],
+      "real_time_only": {
+        "n_clips": 119,
+        "n_answered": 119,
+        "within_1_core4": [
+          0.5504,
+          0.5063,
+          0.5966
+        ],
+        "within_2_core4": [
+          0.6891,
+          0.645,
+          0.729
+        ],
+        "within_1_all8": [
+          0.4601,
+          0.4212,
+          0.4958
+        ],
+        "tempo_median_rel_error": [
+          0.1919,
+          0.159,
+          0.2478
+        ],
+        "median_abs_error_frames": [
+          6.0,
+          2.0,
+          2.0,
+          2.0,
+          1.0,
+          1.0,
+          1.0,
+          7.0
+        ]
+      },
+      "slow_motion_only": {
+        "n_clips": 82,
+        "n_answered": 82,
+        "within_1_core4": [
+          0.1982,
+          0.1585,
+          0.2439
+        ],
+        "within_2_core4": [
+          0.3079,
+          0.247,
+          0.3689
+        ],
+        "within_1_all8": [
+          0.1524,
+          0.1235,
+          0.1845
+        ],
+        "tempo_median_rel_error": [
+          0.2783,
+          0.1841,
+          0.4206
+        ],
+        "median_abs_error_frames": [
+          28.5,
+          13.5,
+          8.0,
+          10.5,
+          2.0,
+          3.0,
+          4.0,
+          35.0
+        ]
+      },
+      "paired_vs_network": {
+        "w1_core": [
+          -0.0821,
+          -0.1157,
+          -0.0472
+        ],
+        "tempo_err": [
+          0.069,
+          0.0214,
+          0.135
+        ]
+      }
+    },
+    "network": {
+      "n_clips": 201,
+      "n_answered": 201,
+      "within_1_core4": [
+        0.4888,
+        0.4478,
+        0.5286
+      ],
+      "within_2_core4": [
+        0.6405,
+        0.602,
+        0.6766
+      ],
+      "within_1_all8": [
+        0.4185,
+        0.3856,
+        0.4509
+      ],
+      "tempo_median_rel_error": [
+        0.1505,
+        0.1319,
+        0.1748
+      ],
+      "median_abs_error_frames": [
+        7.0,
+        2.0,
+        2.0,
+        2.0,
+        1.0,
+        1.0,
+        1.0,
+        29.0
+      ],
+      "tempo_slope": [
+        0.4394,
+        0.1543,
+        0.6995
+      ],
+      "real_time_only": {
+        "n_clips": 119,
+        "n_answered": 119,
+        "within_1_core4": [
+          0.6429,
+          0.6029,
+          0.6828
+        ],
+        "within_2_core4": [
+          0.7878,
+          0.7563,
+          0.8214
+        ],
+        "within_1_all8": [
+          0.5557,
+          0.5242,
+          0.584
+        ],
+        "tempo_median_rel_error": [
+          0.1502,
+          0.1115,
+          0.1782
+        ],
+        "median_abs_error_frames": [
+          4.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          18.0
+        ]
+      },
+      "slow_motion_only": {
+        "n_clips": 82,
+        "n_answered": 82,
+        "within_1_core4": [
+          0.2652,
+          0.2195,
+          0.3111
+        ],
+        "within_2_core4": [
+          0.4268,
+          0.378,
+          0.4817
+        ],
+        "within_1_all8": [
+          0.2195,
+          0.1845,
+          0.2576
+        ],
+        "tempo_median_rel_error": [
+          0.1514,
+          0.1243,
+          0.188
+        ],
+        "median_abs_error_frames": [
+          16.0,
+          7.0,
+          5.0,
+          4.0,
+          2.0,
+          2.0,
+          2.0,
+          94.5
+        ]
+      },
+      "paired_vs_network": null
+    },
+    "hybrid": {
+      "n_clips": 201,
+      "n_answered": 201,
+      "within_1_core4": [
+        0.4652,
+        0.4241,
+        0.5038
+      ],
+      "within_2_core4": [
+        0.6182,
+        0.5821,
+        0.653
+      ],
+      "within_1_all8": [
+        0.4067,
+        0.3756,
+        0.4378
+      ],
+      "tempo_median_rel_error": [
+        0.152,
+        0.1341,
+        0.1776
+      ],
+      "median_abs_error_frames": [
+        7.0,
+        2.0,
+        2.0,
+        2.0,
+        1.0,
+        1.0,
+        1.0,
+        29.0
+      ],
+      "tempo_slope": [
+        0.4566,
+        0.179,
+        0.6919
+      ],
+      "real_time_only": {
+        "n_clips": 119,
+        "n_answered": 119,
+        "within_1_core4": [
+          0.6113,
+          0.5693,
+          0.6534
+        ],
+        "within_2_core4": [
+          0.7605,
+          0.729,
+          0.7941
+        ],
+        "within_1_all8": [
+          0.5399,
+          0.5095,
+          0.5683
+        ],
+        "tempo_median_rel_error": [
+          0.1473,
+          0.1244,
+          0.1769
+        ],
+        "median_abs_error_frames": [
+          4.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          18.0
+        ]
+      },
+      "slow_motion_only": {
+        "n_clips": 82,
+        "n_answered": 82,
+        "within_1_core4": [
+          0.253,
+          0.2104,
+          0.2988
+        ],
+        "within_2_core4": [
+          0.4116,
+          0.3598,
+          0.4665
+        ],
+        "within_1_all8": [
+          0.2134,
+          0.1814,
+          0.2485
+        ],
+        "tempo_median_rel_error": [
+          0.1707,
+          0.1341,
+          0.2188
+        ],
+        "median_abs_error_frames": [
+          16.0,
+          7.0,
+          5.0,
+          6.0,
+          2.0,
+          2.0,
+          2.0,
+          94.5
+        ]
+      },
+      "paired_vs_network": {
+        "w1_core": [
+          -0.0236,
+          -0.0448,
+          -0.0037
+        ],
+        "tempo_err": [
+          0.0015,
+          -0.0226,
+          0.0295
+        ]
+      }
+    }
+  }
+}

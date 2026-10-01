@@ -1,0 +1,754 @@
+{
+  "clips": 47,
+  "groups": 20,
+  "base_answered": 47,
+  "resamples": 2000,
+  "perturbations": {
+    "half_rate": {
+      "answered": 47,
+      "newly_refused": 0,
+      "measures": {
+        "tempo_ratio": {
+          "unit": "relative",
+          "n": 47,
+          "median_change": 0.0657,
+          "median_ci95": [
+            0.0444,
+            0.0804
+          ],
+          "p90_change": 0.1592,
+          "p90_ci95": [
+            0.0978,
+            0.1832
+          ]
+        },
+        "backswing_duration": {
+          "unit": "ms",
+          "n": 30,
+          "median_change": 27.6615,
+          "median_ci95": [
+            15.0649,
+            42.3474
+          ],
+          "p90_change": 115.5926,
+          "p90_ci95": [
+            52.0879,
+            192.4971
+          ]
+        },
+        "downswing_duration": {
+          "unit": "ms",
+          "n": 30,
+          "median_change": 13.7495,
+          "median_ci95": [
+            9.3907,
+            17.0118
+          ],
+          "p90_change": 27.774,
+          "p90_ci95": [
+            17.3836,
+            35.6676
+          ]
+        },
+        "head_movement": {
+          "unit": "body lengths",
+          "n": 47,
+          "median_change": 0.0057,
+          "median_ci95": [
+            0.0035,
+            0.0076
+          ],
+          "p90_change": 0.0147,
+          "p90_ci95": [
+            0.0114,
+            0.0218
+          ]
+        },
+        "pelvis_sway": {
+          "unit": "body lengths",
+          "n": 47,
+          "median_change": 0.0047,
+          "median_ci95": [
+            0.0033,
+            0.0078
+          ],
+          "p90_change": 0.0139,
+          "p90_ci95": [
+            0.0114,
+            0.027
+          ]
+        },
+        "shoulder_turn_foreshortened": {
+          "unit": "deg",
+          "n": 47,
+          "median_change": 1.8852,
+          "median_ci95": [
+            1.5511,
+            2.6174
+          ],
+          "p90_change": 5.3234,
+          "p90_ci95": [
+            4.2275,
+            8.1774
+          ]
+        }
+      },
+      "comparable_share": {
+        "tempo_ratio": {
+          "share": 1.0,
+          "n": 46
+        },
+        "head_movement": {
+          "share": 1.0,
+          "n": 46
+        }
+      }
+    },
+    "jpeg20": {
+      "answered": 32,
+      "newly_refused": 15,
+      "measures": {
+        "tempo_ratio": {
+          "unit": "relative",
+          "n": 24,
+          "median_change": 0.2234,
+          "median_ci95": [
+            0.1404,
+            0.2697
+          ],
+          "p90_change": 0.4197,
+          "p90_ci95": [
+            0.3333,
+            0.5122
+          ]
+        },
+        "backswing_duration": {
+          "unit": "ms",
+          "n": 15,
+          "median_change": 98.2968,
+          "median_ci95": [
+            82.5736,
+            164.6379
+          ],
+          "p90_change": 367.1132,
+          "p90_ci95": [
+            159.3198,
+            1296.0388
+          ]
+        },
+        "downswing_duration": {
+          "unit": "ms",
+          "n": 15,
+          "median_change": 21.7235,
+          "median_ci95": [
+            13.263,
+            29.9087
+          ],
+          "p90_change": 103.3863,
+          "p90_ci95": [
+            28.2717,
+            602.8624
+          ]
+        },
+        "head_movement": {
+          "unit": "body lengths",
+          "n": 23,
+          "median_change": 0.0796,
+          "median_ci95": [
+            0.0213,
+            0.1311
+          ],
+          "p90_change": 0.2262,
+          "p90_ci95": [
+            0.1238,
+            1.0258
+          ]
+        },
+        "pelvis_sway": {
+          "unit": "body lengths",
+          "n": 23,
+          "median_change": 0.0186,
+          "median_ci95": [
+            0.0152,
+            0.0303
+          ],
+          "p90_change": 0.0593,
+          "p90_ci95": [
+            0.0362,
+            0.1408
+          ]
+        },
+        "shoulder_turn_foreshortened": {
+          "unit": "deg",
+          "n": 20,
+          "median_change": 7.5261,
+          "median_ci95": [
+            5.1267,
+            13.5452
+          ],
+          "p90_change": 18.454,
+          "p90_ci95": [
+            12.8169,
+            39.2717
+          ]
+        }
+      },
+      "comparable_share": {
+        "tempo_ratio": {
+          "share": 1.0,
+          "n": 25
+        },
+        "head_movement": {
+          "share": 0.96,
+          "n": 25
+        }
+      }
+    },
+    "scale80": {
+      "answered": 47,
+      "newly_refused": 0,
+      "measures": {
+        "tempo_ratio": {
+          "unit": "relative",
+          "n": 47,
+          "median_change": 0.0529,
+          "median_ci95": [
+            0.0394,
+            0.0712
+          ],
+          "p90_change": 0.158,
+          "p90_ci95": [
+            0.1281,
+            0.2628
+          ]
+        },
+        "backswing_duration": {
+          "unit": "ms",
+          "n": 30,
+          "median_change": 19.1361,
+          "median_ci95": [
+            16.6687,
+            46.4041
+          ],
+          "p90_change": 181.4818,
+          "p90_ci95": [
+            48.8059,
+            211.3357
+          ]
+        },
+        "downswing_duration": {
+          "unit": "ms",
+          "n": 30,
+          "median_change": 11.5703,
+          "median_ci95": [
+            2.4977,
+            13.3229
+          ],
+          "p90_change": 32.0818,
+          "p90_ci95": [
+            15.41,
+            38.0976
+          ]
+        },
+        "head_movement": {
+          "unit": "body lengths",
+          "n": 47,
+          "median_change": 0.0101,
+          "median_ci95": [
+            0.0055,
+            0.0132
+          ],
+          "p90_change": 0.0408,
+          "p90_ci95": [
+            0.0206,
+            0.639
+          ]
+        },
+        "pelvis_sway": {
+          "unit": "body lengths",
+          "n": 47,
+          "median_change": 0.0073,
+          "median_ci95": [
+            0.004,
+            0.0109
+          ],
+          "p90_change": 0.0219,
+          "p90_ci95": [
+            0.0129,
+            0.0346
+          ]
+        },
+        "shoulder_turn_foreshortened": {
+          "unit": "deg",
+          "n": 46,
+          "median_change": 4.0549,
+          "median_ci95": [
+            2.5709,
+            5.1721
+          ],
+          "p90_change": 8.2633,
+          "p90_ci95": [
+            7.1252,
+            12.5599
+          ]
+        }
+      },
+      "comparable_share": {
+        "tempo_ratio": {
+          "share": 1.0,
+          "n": 44
+        },
+        "head_movement": {
+          "share": 1.0,
+          "n": 44
+        }
+      }
+    },
+    "scale120": {
+      "answered": 47,
+      "newly_refused": 0,
+      "measures": {
+        "tempo_ratio": {
+          "unit": "relative",
+          "n": 47,
+          "median_change": 0.0683,
+          "median_ci95": [
+            0.051,
+            0.1004
+          ],
+          "p90_change": 0.188,
+          "p90_ci95": [
+            0.1521,
+            0.319
+          ]
+        },
+        "backswing_duration": {
+          "unit": "ms",
+          "n": 30,
+          "median_change": 34.1272,
+          "median_ci95": [
+            17.782,
+            56.593
+          ],
+          "p90_change": 148.8042,
+          "p90_ci95": [
+            102.187,
+            204.2482
+          ]
+        },
+        "downswing_duration": {
+          "unit": "ms",
+          "n": 30,
+          "median_change": 13.2016,
+          "median_ci95": [
+            3.4143,
+            18.6632
+          ],
+          "p90_change": 29.1747,
+          "p90_ci95": [
+            18.6632,
+            44.581
+          ]
+        },
+        "head_movement": {
+          "unit": "body lengths",
+          "n": 47,
+          "median_change": 0.0081,
+          "median_ci95": [
+            0.0068,
+            0.0101
+          ],
+          "p90_change": 0.0256,
+          "p90_ci95": [
+            0.0205,
+            0.1181
+          ]
+        },
+        "pelvis_sway": {
+          "unit": "body lengths",
+          "n": 47,
+          "median_change": 0.0057,
+          "median_ci95": [
+            0.0052,
+            0.0079
+          ],
+          "p90_change": 0.0145,
+          "p90_ci95": [
+            0.0102,
+            0.021
+          ]
+        },
+        "shoulder_turn_foreshortened": {
+          "unit": "deg",
+          "n": 47,
+          "median_change": 4.0944,
+          "median_ci95": [
+            1.9448,
+            5.3105
+          ],
+          "p90_change": 9.6968,
+          "p90_ci95": [
+            6.6017,
+            13.6342
+          ]
+        }
+      },
+      "comparable_share": {
+        "tempo_ratio": {
+          "share": 1.0,
+          "n": 44
+        },
+        "head_movement": {
+          "share": 1.0,
+          "n": 44
+        }
+      }
+    },
+    "shift10": {
+      "answered": 47,
+      "newly_refused": 0,
+      "measures": {
+        "tempo_ratio": {
+          "unit": "relative",
+          "n": 47,
+          "median_change": 0.0369,
+          "median_ci95": [
+            0.0169,
+            0.0597
+          ],
+          "p90_change": 0.1088,
+          "p90_ci95": [
+            0.0831,
+            0.1757
+          ]
+        },
+        "backswing_duration": {
+          "unit": "ms",
+          "n": 30,
+          "median_change": 7.4493,
+          "median_ci95": [
+            0.7314,
+            20.0426
+          ],
+          "p90_change": 86.8281,
+          "p90_ci95": [
+            36.4565,
+            133.1279
+          ]
+        },
+        "downswing_duration": {
+          "unit": "ms",
+          "n": 30,
+          "median_change": 1.7608,
+          "median_ci95": [
+            0.894,
+            10.8051
+          ],
+          "p90_change": 15.8599,
+          "p90_ci95": [
+            13.5394,
+            27.164
+          ]
+        },
+        "head_movement": {
+          "unit": "body lengths",
+          "n": 47,
+          "median_change": 0.0035,
+          "median_ci95": [
+            0.0012,
+            0.0047
+          ],
+          "p90_change": 0.0154,
+          "p90_ci95": [
+            0.0108,
+            0.0196
+          ]
+        },
+        "pelvis_sway": {
+          "unit": "body lengths",
+          "n": 47,
+          "median_change": 0.0014,
+          "median_ci95": [
+            0.0011,
+            0.002
+          ],
+          "p90_change": 0.0142,
+          "p90_ci95": [
+            0.0046,
+            0.0498
+          ]
+        },
+        "shoulder_turn_foreshortened": {
+          "unit": "deg",
+          "n": 46,
+          "median_change": 1.2184,
+          "median_ci95": [
+            0.8538,
+            2.0788
+          ],
+          "p90_change": 4.6081,
+          "p90_ci95": [
+            2.8003,
+            5.0928
+          ]
+        }
+      },
+      "comparable_share": {
+        "tempo_ratio": {
+          "share": 1.0,
+          "n": 46
+        },
+        "head_movement": {
+          "share": 1.0,
+          "n": 46
+        }
+      }
+    },
+    "shift20": {
+      "answered": 47,
+      "newly_refused": 0,
+      "measures": {
+        "tempo_ratio": {
+          "unit": "relative",
+          "n": 47,
+          "median_change": 0.0407,
+          "median_ci95": [
+            0.0137,
+            0.0725
+          ],
+          "p90_change": 0.1039,
+          "p90_ci95": [
+            0.076,
+            0.1287
+          ]
+        },
+        "backswing_duration": {
+          "unit": "ms",
+          "n": 30,
+          "median_change": 16.4026,
+          "median_ci95": [
+            14.3108,
+            32.3339
+          ],
+          "p90_change": 87.8006,
+          "p90_ci95": [
+            46.7769,
+            114.9392
+          ]
+        },
+        "downswing_duration": {
+          "unit": "ms",
+          "n": 30,
+          "median_change": 2.5427,
+          "median_ci95": [
+            1.5067,
+            13.3452
+          ],
+          "p90_change": 16.8618,
+          "p90_ci95": [
+            13.2508,
+            27.3897
+          ]
+        },
+        "head_movement": {
+          "unit": "body lengths",
+          "n": 47,
+          "median_change": 0.0032,
+          "median_ci95": [
+            0.0018,
+            0.0044
+          ],
+          "p90_change": 0.017,
+          "p90_ci95": [
+            0.0107,
+            0.0221
+          ]
+        },
+        "pelvis_sway": {
+          "unit": "body lengths",
+          "n": 47,
+          "median_change": 0.0022,
+          "median_ci95": [
+            0.0017,
+            0.0032
+          ],
+          "p90_change": 0.0097,
+          "p90_ci95": [
+            0.0058,
+            0.014
+          ]
+        },
+        "shoulder_turn_foreshortened": {
+          "unit": "deg",
+          "n": 47,
+          "median_change": 1.218,
+          "median_ci95": [
+            0.6798,
+            1.9544
+          ],
+          "p90_change": 4.1442,
+          "p90_ci95": [
+            2.5227,
+            12.7477
+          ]
+        }
+      },
+      "comparable_share": {
+        "tempo_ratio": {
+          "share": 1.0,
+          "n": 46
+        },
+        "head_movement": {
+          "share": 0.5217,
+          "n": 46
+        }
+      }
+    }
+  },
+  "half_rate_accuracy": {
+    "n": 30,
+    "within_1_core4": {
+      "base": 0.6667,
+      "half_rate": 0.6417,
+      "difference": -0.025,
+      "difference_ci95": [
+        -0.1129,
+        0.0556
+      ]
+    },
+    "within_1_core4_subframe": {
+      "base": 0.5417,
+      "half_rate": 0.55,
+      "difference": 0.0083,
+      "difference_ci95": [
+        -0.0667,
+        0.087
+      ]
+    },
+    "tempo_rel_error": {
+      "base": 0.1441,
+      "half_rate": 0.1054,
+      "difference": -0.0387,
+      "difference_ci95": [
+        -0.0786,
+        0.0435
+      ]
+    },
+    "offset_frames_base": {
+      "address": {
+        "median": 2.48,
+        "ci95": [
+          -0.0183,
+          6.0243
+        ]
+      },
+      "toe_up": {
+        "median": 0.46,
+        "ci95": [
+          -0.0488,
+          0.982
+        ]
+      },
+      "mid_backswing": {
+        "median": -0.957,
+        "ci95": [
+          -1.4564,
+          0.0026
+        ]
+      },
+      "top": {
+        "median": 0.965,
+        "ci95": [
+          0.8101,
+          1.1152
+        ]
+      },
+      "mid_downswing": {
+        "median": 0.078,
+        "ci95": [
+          0.0058,
+          0.1549
+        ]
+      },
+      "impact": {
+        "median": -0.127,
+        "ci95": [
+          -0.8561,
+          0.0601
+        ]
+      },
+      "mid_follow_through": {
+        "median": 0.714,
+        "ci95": [
+          -0.1235,
+          0.9305
+        ]
+      },
+      "finish": {
+        "median": -20.905,
+        "ci95": [
+          -25.3658,
+          -14.9598
+        ]
+      }
+    },
+    "offset_frames_half_rate": {
+      "address": {
+        "median": 4.982,
+        "ci95": [
+          -0.0094,
+          7.9935
+        ]
+      },
+      "toe_up": {
+        "median": 0.017,
+        "ci95": [
+          -0.5558,
+          1.0025
+        ]
+      },
+      "mid_backswing": {
+        "median": -0.023,
+        "ci95": [
+          -0.9682,
+          0.5212
+        ]
+      },
+      "top": {
+        "median": 0.962,
+        "ci95": [
+          0.0364,
+          1.3923
+        ]
+      },
+      "mid_downswing": {
+        "median": 0.004,
+        "ci95": [
+          -0.106,
+          0.0967
+        ]
+      },
+      "impact": {
+        "median": -0.085,
+        "ci95": [
+          -0.8485,
+          0.0718
+        ]
+      },
+      "mid_follow_through": {
+        "median": 0.804,
+        "ci95": [
+          0.0257,
+          1.0502
+        ]
+      },
+      "finish": {
+        "median": -19.884,
+        "ci95": [
+          -24.8985,
+          -15.0862
+        ]
+      }
+    }
+  }
+}

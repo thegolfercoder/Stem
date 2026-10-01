@@ -25,9 +25,11 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from swingml.analysis import AnalysisConfig, load_model, model_fingerprint
-from swingml.assets import find_event_calibrations, find_event_model
+from swingml.assets import find_event_calibrations, find_event_ensemble, find_event_model
 from swingml.features import FeatureConfig, feature_layout
-from swingml.model.calibration import load_calibration
+from swingml.insights.payload import practice_payload
+from swingml.model.calibration import LEFT_HANDED_TEMPO_NOTE, load_calibration
+from swingml.model.ensemble import SERVING_TIME_WARPS, EnsembleConfig, SwingEventEnsemble
 from swingml.model.tcn import SwingEventNet
 
 
@@ -53,17 +55,33 @@ def pack(model: SwingEventNet) -> tuple[bytes, list[dict[str, object]]]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", type=Path, default=None)
+    parser.add_argument(
+        "--model",
+        type=Path,
+        nargs="+",
+        default=None,
+        help="one checkpoint, or every member of an ensemble; default: what this "
+        "installation would run (an installed ensemble before a single model)",
+    )
     parser.add_argument("--out", type=Path, default=Path("out/web/model.json"))
     parser.add_argument("--calibration", type=Path, default=None)
     args = parser.parse_args()
 
-    path = args.model or find_event_model()
-    if path is None:
+    if args.model:
+        paths = list(args.model)
+    else:
+        members = find_event_ensemble()
+        single = find_event_model()
+        paths = list(members) if members else ([single] if single else [])
+    if not paths:
         raise SystemExit("no trained model found")
-
-    model = load_model(path)
-    raw, manifest = pack(model)
+    nets = [load_model(path) for path in paths]
+    model = nets[0]
+    packed = [pack(net) for net in nets]
+    raw, manifest = packed[0]
+    # An ensemble answers at the serving speeds, as it does in Python; one model
+    # answers once, exactly as it always has.
+    warps = SERVING_TIME_WARPS if len(nets) > 1 else (1.0,)
     layout = feature_layout()
     analysis = AnalysisConfig()
     features = FeatureConfig()
@@ -106,13 +124,31 @@ def main() -> None:
         },
         "thresholds": {
             "min_mean_confidence": analysis.min_mean_confidence,
+            "min_core_confidence": analysis.min_core_confidence,
             "min_detection_rate": analysis.min_detection_rate,
             "plausible_backswing_s": list(analysis.plausible_backswing_s),
             "plausible_downswing_s": list(analysis.plausible_downswing_s),
             "plausible_tempo": list(analysis.plausible_tempo),
+            # The browser retries a refused clip as slow motion at these speeds,
+            # as analyse_pose_sequence does (metrics.js readAtSpeeds).
+            "slow_motion_factors": list(analysis.slow_motion_factors),
+            # An answered clip with a backswing longer than this is also read at
+            # those speeds (#32); null checks only refused clips.
+            "slow_motion_check_backswing_s": analysis.slow_motion_check_backswing_s,
+            "slow_motion_margin": analysis.slow_motion_margin,
         },
-        "source_model": str(path),
+        # Wording every app shows the same way (#33).
+        "notes": {"left_handed_tempo_band": LEFT_HANDED_TEMPO_NOTE},
+        # The practice loop's drills, reference and tolerances (webapp/practice.js).
+        "practice": practice_payload(),
+        "source_model": str(paths[0]),
+        "source_models": [str(path) for path in paths],
+        "time_warps": list(warps),
     }
+    if len(nets) > 1:
+        payload["members"] = [
+            {"tensors": m, "weights_base64": base64.b64encode(r).decode("ascii")} for r, m in packed
+        ]
 
     # The page runs this one exported network, so it may only carry bands that
     # were measured through this one exported network. The desktop app usually
@@ -121,7 +157,9 @@ def main() -> None:
     # print error bars the page cannot keep. Checked rather than trusted, because
     # the tables are found by searching a path and nothing about finding one says
     # it belongs to what is being exported.
-    digest = model_fingerprint(model)
+    digest = model_fingerprint(
+        SwingEventEnsemble(nets, EnsembleConfig(time_warps=warps)) if len(nets) > 1 else model
+    )
     candidates = [args.calibration] if args.calibration else find_event_calibrations()
     for candidate_path in candidates:
         candidate = load_calibration(candidate_path)
@@ -135,7 +173,7 @@ def main() -> None:
                 f"none of the {len(candidates)} calibration table(s) on this machine were "
                 "measured through these weights, so the page will report no error bands. "
                 "Measure one with scripts/calibrate_events.py --checkpoint "
-                f"{path}",
+                + " ".join(str(path) for path in paths),
                 file=sys.stderr,
             )
         else:

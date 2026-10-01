@@ -32,6 +32,8 @@
     data.append('handedness', document.getElementById('handedness').value);
     data.append('club', document.getElementById('club').value);
     data.append('label', document.getElementById('label').value);
+    const plan = document.getElementById('plan');
+    if (plan && plan.value) data.append('plan', plan.value);
 
     const card = addCard(file.name);
     card.querySelector('.job-state').textContent = 'uploading';

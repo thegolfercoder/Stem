@@ -1,0 +1,95 @@
+# Known limitations
+
+Stated to users, in the product and here. Each links to its evidence. When one is
+fixed, it moves to the changelog with the measurement that shows it.
+
+## Accuracy
+
+1. **Measured on the wrong footage.** Every accuracy figure is on broadcast and range
+   video of tour players (GolfDB). One phone swing has been checked by hand, and its
+   tempo read 3.20 against a true 2.10.
+2. **Tempo is compressed toward 3.3.** A golfer's distance from typical, and a
+   golfer's change, show at about 0.44 of their real size (95% CI 0.15-0.70). A quick
+   tempo can read as normal. `docs/audit/benchmark-baseline.json`.
+3. **Positions within one frame about half the time.** 48.9% for address, top,
+   mid-downswing and impact on held-out real swings; address is the worst (median 7
+   frames at 60 Hz).
+4. **The finish is not measured.** It appears on the timeline, but no duration ends there.
+5. **Toe-up and mid-follow-through are guesses from the body.** They are defined by
+   the club, which is not tracked.
+6. **Confidently wrong 14.6% of the time.** That share of answered test swings read
+   a tempo outside its own band while the model was fairly sure. Bands do not
+   follow the model's confidence: the shipped table has one band per event,
+   measured on 85 clips, so every swing gets the same one (desktop and browser
+   pages say so since #30; the iPhone app shows the ± figures with no note).
+
+6a. **Left-handed swings read less accurately, and the tempo band is not theirs.**
+   On held-out swings, 80% of left-handed tempo readings were within 43% (23
+   swings), against 27% for right-handed ones (178). Within one frame on the
+   core four: 42.4% against 49.7% (`docs/audit/error-breakdown.json`). The model
+   reads the same swing mirrored about 11% lower in tempo, because left-handers'
+   poses are not mirrored before features are made. The ±27% band was measured
+   on 85 swings, 8 of them left-handed. Every app shows it to a left-hander with
+   a note saying it was not measured for them (#33). Mirroring left-handers is
+   a follow-up experiment (#45).
+
+## Capture
+
+7. **One golfer, one swing per stretch.** A second person in shot is not detected;
+   long clips are searched for the best candidate swing (browser app).
+8. **Slow motion.** All three apps read a slow-motion export by re-timing it: a
+   clip refused at its recorded speed is read again at 2, 4 and 8 times speed and
+   the most confident read is kept (desktop since `b4f86e0`; browser and iPhone
+   since `64463a1`, held to the desktop's answer by
+   `tests/test_browser_slow_motion.py` and
+   `ParityTests.testASlowMotionClipIsReadAsSlowMotionWithNoDurations`). Tempo
+   assumes the whole swing was slowed evenly, which a phone's slow-motion clip
+   breaks if the swing crosses the speed ramp at its start or end, and no
+   durations are shown because the real speed-up is unknown. **A clip slowed
+   only 2-3x is not caught:** it passes every gate at recorded speed, and its
+   durations are shown 2-3x too long as if measured. The check that catches it
+   (#32) works on validation, catching every 2x and 3x clip with 0 of 81
+   real-time swings misread. But it failed the release gate's non-inferiority
+   test on tempo error (#41), so it ships switched off
+   (`docs/ml/slow-motion-rule.md`).
+9. **30 fps.** At 30 fps the hands can be lost through impact, which moves impact and
+   the tempo; the app warns and recommends 60 fps or more.
+10. **Camera shake** is not detected.
+
+10a. **Recording in the app is browser-only.** The browser page can record a swing
+   with the camera (#34): a live framing check, a level indicator and a 3 s
+   countdown, then 6 s of recording that goes straight into the analysis and
+   never leaves the device. The desktop app and the iPhone app still only import
+   clips; iPhone recording is #42. Browsers often grant 30 fps, which the page
+   reports with the 30 fps caution above. The framing band (body 45-85% of the
+   frame's height, centred) is judgement, not measured. The analysis's own
+   refusals remain the real test.
+
+## Practice loop
+
+11. **Comparability is judged, not measured.** How far a phone can move before a
+    picture-based measurement stops being comparable has not been measured; the
+    thresholds are stated in `insights/compare.py`.
+12. **The smallest detectable change is unknown in general.** Each verdict states
+    what its own swings could resolve; no study of within-golfer repeatability exists.
+13. **Priorities are limited to what has a reference.** Only tempo has one (tour
+    readings); for everything else the golfer chooses the focus and the app measures it.
+14. **The browser keeps its practice log in the browser.** Clearing site data, a
+    private window, or another browser starts from nothing, and nothing moves between
+    the desktop, the browser and the iPhone. The iPhone's practice screen builds in CI
+    but has not been run on a phone. The same clip analysed twice: the browser
+    replaces the earlier reading (it recognises the file by a hash of its name, size
+    and date), except that a refused run never replaces an analysed reading of the
+    clip, which is kept and named on the page. The desktop (#25) and the iPhone
+    (#29) do the same, recognising the clip by a SHA-256 of the file. The
+    iPhone's Practice tab lists refused clips so they can be removed. All three
+    drop a deleted swing from its plans. The browser's sample swing is never
+    kept. The iPhone's side of this is tested in SwingCore; the app itself is
+    only built in CI and has not been run on a phone (item 16).
+
+## Product
+
+15. **Single user, one computer.** No accounts, sync, sharing or coach access.
+16. **The iPhone app has not been run on a phone**; it builds for the simulator in CI.
+17. **Commercial use of the model is unresolved**: it is fine-tuned on GolfDB, whose
+    annotations are licensed for non-commercial use (`docs/legal/freedom-to-operate-questions.md`).
