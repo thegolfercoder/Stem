@@ -158,7 +158,7 @@ def cmd_score(args: argparse.Namespace) -> None:
                           for k, v in reads.items()},
             }
         )  # fmt: skip
-    result = {
+    result: dict[str, Any] = {
         "source": "real-time clips of golfdb-validation-v2; holdout not read",
         "model_fingerprint": None,
         "all_real_time": summarise(rows, args.resamples, args.seed),
