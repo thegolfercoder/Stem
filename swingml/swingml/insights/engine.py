@@ -33,6 +33,7 @@ from pydantic import BaseModel, ConfigDict
 from swingml.insights.compare import MIN_SWINGS, SwingPoint, comparability
 from swingml.insights.drills import BY_FOCUS, Drill
 from swingml.insights.reference import TEMPO_MISS_EXAMPLE, TOUR_TEMPO_READINGS
+from swingml.model.calibration import LEFT_HANDED_TEMPO_NOTE
 
 Kind = Literal["capture", "not_enough", "tempo_quick", "tempo_slow", "choose"]
 
@@ -89,6 +90,18 @@ TEMPO_LIMITS = (
     "the more it is under-read. " + TEMPO_MISS_EXAMPLE,
     "Measured on broadcast and range video of tour players; one phone swing was checked.",
 )
+
+
+TEMPO_LIMITS_LEFT_HANDED = (LEFT_HANDED_TEMPO_NOTE, *TEMPO_LIMITS[1:])
+"""The same limits for left-handed swings, whose band was not measured (#33)."""
+
+ONE_SWING = {
+    "right": "One swing's tempo is uncertain by about ±27%, so a single reading cannot "
+    "say what to work on.",
+    "left": "One swing's tempo is uncertain by about ±27% on mostly right-handed swings, "
+    "and that band was not measured for left-handed ones, so a single reading cannot say "
+    "what to work on.",
+}
 
 
 def choose(recent: Sequence[RecentSwing]) -> Insight:
@@ -151,14 +164,18 @@ def choose(recent: Sequence[RecentSwing]) -> Insight:
                 comparable.append(swing)
             if len(comparable) == 5:
                 break
+    # Comparable swings share a hand (compare.comparability refuses mixed hands), so
+    # the newest swing's hand is the hand of every reading the priority rests on.
+    left = newest is not None and newest.point is not None and newest.point.handedness == "left"
+    limits = TEMPO_LIMITS_LEFT_HANDED if left else TEMPO_LIMITS
     if len(comparable) < MIN_SWINGS:
         return Insight(
             kind="not_enough",
             title=f"Record {MIN_SWINGS - len(comparable)} more swing(s) from the same spot",
             summary=(
                 f"A priority needs at least {MIN_SWINGS} analysed swings filmed from the same "
-                f"place with the same club; there are {len(comparable)}. One swing's tempo is "
-                "uncertain by about ±27%, so a single reading cannot say what to work on."
+                f"place with the same club; there are {len(comparable)}. "
+                + ONE_SWING["left" if left else "right"]
             ),
             evidence=tuple(
                 Evidence(
@@ -170,7 +187,7 @@ def choose(recent: Sequence[RecentSwing]) -> Insight:
                 for s in comparable
             ),
             confidence="none",
-            limitations=TEMPO_LIMITS,
+            limitations=limits,
             drill=None,
             retest=f"Record {MIN_SWINGS - len(comparable)} more swing(s) without moving the phone.",
             success=f"{MIN_SWINGS} comparable swings analysed.",
@@ -217,7 +234,7 @@ def choose(recent: Sequence[RecentSwing]) -> Insight:
             ),
             evidence=evidence,
             confidence="moderate" if all_outside else "low",
-            limitations=TEMPO_LIMITS,
+            limitations=limits,
             drill=drill,
             retest=(
                 "Practise the drill, then record 5 swings from the same spot with the same club."
@@ -235,7 +252,7 @@ def choose(recent: Sequence[RecentSwing]) -> Insight:
         ),
         evidence=evidence,
         confidence="low",
-        limitations=TEMPO_LIMITS,
+        limitations=limits,
         drill=None,
         retest="Choose a focus, practise its drill, then record 5 swings from the same spot.",
         success="The chosen measurement moves in the drill's direction by more than the "

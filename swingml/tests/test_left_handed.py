@@ -123,3 +123,48 @@ def test_the_browser_and_iphone_get_the_same_words() -> None:
     assert payload["notes"]["left_handed_tempo_band"] == LEFT_HANDED_TEMPO_NOTE
     ios = HERE.parents[1] / "ios" / "SwingCore" / "Sources" / "SwingCore" / "Resources"
     assert json.loads((ios / "model.json").read_text())["notes"] == payload["notes"]
+
+
+def _history(hand: str, tempos: tuple[float, ...]) -> list:  # type: ignore[type-arg]
+    from swingml.insights.compare import CameraSignature, SwingPoint
+    from swingml.insights.engine import RecentSwing
+
+    camera = CameraSignature(
+        orientation="portrait", body_height=0.6, centre_x=0.5, shoulder_ratio=0.95,
+        frame_rate=60.0,
+    )  # fmt: skip
+    return [
+        RecentSwing(
+            swing_id=i + 1,
+            refused=False,
+            detection_rate=1.0,
+            tempo=t,
+            point=SwingPoint(
+                swing_id=i + 1, value=t, handedness=hand, club="7 iron", camera=camera
+            ),
+        )
+        for i, t in enumerate(tempos)
+    ][::-1]
+
+
+def test_the_practice_priority_tells_a_left_hander_the_band_is_not_theirs() -> None:
+    """QA's repro on #33: three left-handed swings at 2.5, 2.6 and 2.4."""
+    from swingml.insights.engine import TEMPO_LIMITS, choose
+
+    left = choose(_history("left", (2.5, 2.6, 2.4)))
+    right = choose(_history("right", (2.5, 2.6, 2.4)))
+    assert left.kind == right.kind == "tempo_quick"
+    assert left.limitations[0] == LEFT_HANDED_TEMPO_NOTE
+    assert not any("±27%" in line and "left" not in line for line in left.limitations)
+    assert right.limitations == TEMPO_LIMITS
+
+
+def test_too_few_left_handed_swings_says_the_band_was_not_measured() -> None:
+    from swingml.insights.engine import choose
+
+    left = choose(_history("left", (2.5,)))
+    right = choose(_history("right", (2.5,)))
+    assert left.kind == right.kind == "not_enough"
+    assert "not measured for left-handed" in left.summary
+    assert "left-handed" not in right.summary
+    assert left.limitations[0] == LEFT_HANDED_TEMPO_NOTE

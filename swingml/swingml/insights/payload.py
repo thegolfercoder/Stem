@@ -28,4 +28,6 @@ def practice_payload() -> dict[str, Any]:
         "trackable": [list(choice) for choice in engine.TRACKABLE],
         "tour_tempo": TOUR_TEMPO_READINGS.model_dump(mode="json"),
         "tempo_limits": list(engine.TEMPO_LIMITS),
+        "tempo_limits_left_handed": list(engine.TEMPO_LIMITS_LEFT_HANDED),
+        "one_swing": dict(engine.ONE_SWING),
     }

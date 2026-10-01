@@ -232,6 +232,12 @@ export function choosePriority(rules, recent) {
       if (comparable.length === 5) break;
     }
   }
+  // Comparable swings share a hand, so the newest swing's hand is every reading's (#33).
+  const left = analysed.length > 0 && analysed[0].point.handedness === "left";
+  const limits = left && rules.tempo_limits_left_handed ? rules.tempo_limits_left_handed : rules.tempo_limits;
+  const oneSwing = rules.one_swing
+    ? rules.one_swing[left ? "left" : "right"]
+    : "One swing's tempo is uncertain by about ±27%, so a single reading cannot say what to work on.";
   const tempoEvidence = (s) => ({ label: `Swing ${s.swing_id}`, value: `tempo ${fixed(s.tempo, 2)}`,
                                   provenance: "derived", swing_id: s.swing_id });
   if (comparable.length < least) {
@@ -240,10 +246,9 @@ export function choosePriority(rules, recent) {
       kind: "not_enough",
       title: `Record ${more} more swing(s) from the same spot`,
       summary: `A priority needs at least ${least} analysed swings filmed from the same ` +
-        `place with the same club; there are ${comparable.length}. One swing's tempo is ` +
-        "uncertain by about ±27%, so a single reading cannot say what to work on.",
+        `place with the same club; there are ${comparable.length}. ` + oneSwing,
       evidence: comparable.map(tempoEvidence),
-      confidence: "none", limitations: rules.tempo_limits, drill: null,
+      confidence: "none", limitations: limits, drill: null,
       retest: `Record ${more} more swing(s) without moving the phone.`,
       success: `${least} comparable swings analysed.`,
     });
@@ -270,7 +275,7 @@ export function choosePriority(rules, recent) {
         `${fixed(average, 2)}, ${quick ? "below" : "above"} the range the same analysis reads ` +
         `for 80% of tour swings (${fixed(reference.p10, 2)} to ${fixed(reference.p90, 2)}). ` +
         "Tempo is a ratio of two durations and does not depend on where the camera stood.",
-      evidence, confidence: allOutside ? "moderate" : "low", limitations: rules.tempo_limits, drill,
+      evidence, confidence: allOutside ? "moderate" : "low", limitations: limits, drill,
       retest: "Practise the drill, then record 5 swings from the same spot with the same club.",
       success: drill.what_counts,
     });
@@ -282,7 +287,7 @@ export function choosePriority(rules, recent) {
       "inside the range the analysis reads for tour swings. The other measurements have no " +
       "reference the app can defend, so rather than guess at a fault it will measure " +
       "whatever you choose to practise, against your own swings.",
-    evidence, confidence: "low", limitations: rules.tempo_limits, drill: null,
+    evidence, confidence: "low", limitations: limits, drill: null,
     retest: "Choose a focus, practise its drill, then record 5 swings from the same spot.",
     success: "The chosen measurement moves in the drill's direction by more than the " +
       "spread between your swings can explain.",

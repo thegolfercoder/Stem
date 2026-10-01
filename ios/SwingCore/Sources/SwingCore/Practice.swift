@@ -35,12 +35,18 @@ public struct PracticeRules: Codable {
     public let trackable: [[String]]
     public let tourTempo: TourTempo
     public let tempoLimits: [String]
+    /// The same limits for left-handed swings, whose band was not measured (#33).
+    /// Absent in older payloads, where the right-handed limits stand in.
+    public let tempoLimitsLeftHanded: [String]?
+    /// "One swing's tempo is uncertain…", by hand ("right", "left").
+    public let oneSwing: [String: String]?
 
     enum CodingKeys: String, CodingKey {
         case minSwings = "min_swings", shoulderRatioTolerance = "shoulder_ratio_tolerance"
         case bodyHeightTolerance = "body_height_tolerance", centreTolerance = "centre_tolerance"
         case scaleFreeMetrics = "scale_free_metrics", t95, drills, trackable
         case tourTempo = "tour_tempo", tempoLimits = "tempo_limits"
+        case tempoLimitsLeftHanded = "tempo_limits_left_handed", oneSwing = "one_swing"
     }
 
     public func drill(focus: String) -> Drill? { drills.first { $0.focus == focus } }
@@ -376,6 +382,11 @@ public func choosePriority(_ rules: PracticeRules, _ recent: [RecentSwing]) -> I
             if comparable.count == 5 { break }
         }
     }
+    // Comparable swings share a hand, so the newest swing's hand is every reading's (#33).
+    let left = analysed.first?.point?.handedness == "left"
+    let limits = left ? (rules.tempoLimitsLeftHanded ?? rules.tempoLimits) : rules.tempoLimits
+    let oneSwing = rules.oneSwing?[left ? "left" : "right"]
+        ?? "One swing's tempo is uncertain by about ±27%, so a single reading cannot say what to work on."
     let tempoEvidence = { (s: RecentSwing) in
         Evidence(label: "Swing \(s.swingId)", value: "tempo \(fixed(s.tempo!, 2))", provenance: "derived",
                  swingId: s.swingId)
@@ -385,9 +396,8 @@ public func choosePriority(_ rules: PracticeRules, _ recent: [RecentSwing]) -> I
         return Insight(
             kind: "not_enough", title: "Record \(more) more swing(s) from the same spot",
             summary: "A priority needs at least \(least) analysed swings filmed from the same "
-                + "place with the same club; there are \(comparable.count). One swing's tempo is "
-                + "uncertain by about ±27%, so a single reading cannot say what to work on.",
-            evidence: comparable.map(tempoEvidence), confidence: "none", limitations: rules.tempoLimits,
+                + "place with the same club; there are \(comparable.count). " + oneSwing,
+            evidence: comparable.map(tempoEvidence), confidence: "none", limitations: limits,
             drill: nil, retest: "Record \(more) more swing(s) without moving the phone.",
             success: "\(least) comparable swings analysed.", choices: [])
     }
@@ -412,7 +422,7 @@ public func choosePriority(_ rules: PracticeRules, _ recent: [RecentSwing]) -> I
                 + "\(fixed(average, 2)), \(quick ? "below" : "above") the range the same analysis reads "
                 + "for 80% of tour swings (\(fixed(reference.p10, 2)) to \(fixed(reference.p90, 2))). "
                 + "Tempo is a ratio of two durations and does not depend on where the camera stood.",
-            evidence: evidence, confidence: allOutside ? "moderate" : "low", limitations: rules.tempoLimits,
+            evidence: evidence, confidence: allOutside ? "moderate" : "low", limitations: limits,
             drill: drill, retest: "Practise the drill, then record 5 swings from the same spot with the same club.",
             success: drill.whatCounts, choices: [])
     }
@@ -422,7 +432,7 @@ public func choosePriority(_ rules: PracticeRules, _ recent: [RecentSwing]) -> I
             + "inside the range the analysis reads for tour swings. The other measurements have no "
             + "reference the app can defend, so rather than guess at a fault it will measure "
             + "whatever you choose to practise, against your own swings.",
-        evidence: evidence, confidence: "low", limitations: rules.tempoLimits, drill: nil,
+        evidence: evidence, confidence: "low", limitations: limits, drill: nil,
         retest: "Choose a focus, practise its drill, then record 5 swings from the same spot.",
         success: "The chosen measurement moves in the drill's direction by more than the "
             + "spread between your swings can explain.",
