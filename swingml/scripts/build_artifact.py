@@ -29,7 +29,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from build_web_app import MODULES, bundle, mp4box
+from build_web_app import MODULES, TOKENS, bundle, mp4box
 
 from swingml.pose.mediapipe_pose import resolve_model_path
 
@@ -159,7 +159,7 @@ def main() -> None:
 
     html = (args.source / "index.html").read_text(encoding="utf-8")
     for token, name in zip(
-        ("/*__ENGINE__*/", "/*__MODEL__*/", "/*__METRICS__*/", "/*__PRACTICE__*/", "/*__APP__*/"),
+        TOKENS,
         MODULES,
         strict=True,
     ):

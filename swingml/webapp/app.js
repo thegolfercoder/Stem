@@ -14,6 +14,7 @@ import { PoseSequence, resamplePose, extractFeatures, normalisePose,
 import { SwingEventModel, bandsVaryWithConfidence, decodeEvents, errorBand } from "./model.js";
 import { computeMetrics, implausible, readAtSpeeds, slowMotionCheck, slowedMetrics, slowedReason } from "./metrics.js";
 import { PracticeLog, cameraSignature, clipKey, formatG3, storedMetrics } from "./practice.js";
+import { cameraConstraints, extensionFor, frameRateNote, framingVerdict, levelVerdict, recordingType } from "./capture.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 const POSE_MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/" +
@@ -773,6 +774,7 @@ async function openVideo(file, codec) {
     URL.revokeObjectURL(url);
     throw new Error(unreadable);
   }
+  if (video.duration === Infinity) await learnDuration(video);
   if (!(video.duration > 0) || !isFinite(video.duration)) {
     URL.revokeObjectURL(url);
     throw new Error(
@@ -780,6 +782,23 @@ async function openVideo(file, codec) {
       "by frame. Re-exporting it from Photos usually fixes it.");
   }
   return { video, url };
+}
+
+/* A WebM written by MediaRecorder (this page's own recordings, in Chrome) carries
+ * no duration until its end has been read. Asking for a time past the end makes
+ * the browser read it; then back to the start. Left as it is if that fails, and
+ * the caller refuses the clip as before. */
+async function learnDuration(video) {
+  try {
+    for (let i = 0; i < 4 && !isFinite(video.duration); i++) {
+      const changed = waitFor(video, "durationchange", { timeout: 10000, what: "no duration" });
+      if (i === 0) video.currentTime = 1e7;
+      await changed;
+    }
+    const back = waitFor(video, "seeked", { timeout: 8000, what: "seek stalled" });
+    video.currentTime = 0;
+    await back;
+  } catch { /* the duration check after this refuses it */ }
 }
 
 async function seekTo(video, time) {
@@ -2641,6 +2660,7 @@ export function boot(payload) {
   const pick = () => input.click();
   el("browse").onclick = (e) => { e.stopPropagation(); pick(); };
   input.onchange = () => { if (input.files[0]) analyse(input.files[0]); input.value = ""; };
+  wireRecorder();
 
   // Three choices, so three buttons rather than a dropdown: the state is visible
   // without opening anything, and it is one click instead of three.
@@ -2697,4 +2717,199 @@ export function boot(payload) {
       pick();
     };
   }
+}
+
+
+/* Recording in the page (#34): the camera with a framing band, a live check that
+ * the whole body is in shot, a level indicator, then a 3 s countdown and 6 s of
+ * recording. The recording becomes a File and goes to `analyse` like any picked
+ * clip; it is never sent anywhere. Where the camera is refused or missing, the
+ * panel says so and points back to choosing a video. */
+const rec = { stream: null, recorder: null, chunks: [], type: "", check: null, timers: [],
+              tilt: null, canvas: null };
+
+function wireRecorder() {
+  const button = el("record");
+  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function" ||
+      typeof MediaRecorder === "undefined") return;
+  button.hidden = false;
+  button.onclick = (event) => { event.stopPropagation(); openRecorder(); };
+  el("rec-close").onclick = () => closeRecorder();
+  el("rec-start").onclick = () => startRecording();
+  el("rec-stop").onclick = () => stopRecording();
+}
+
+function recMessage(text) { el("rec-message").textContent = text; }
+
+function recControls(visible) {
+  for (const id of ["rec-stage", "rec-start"]) el(id).hidden = !visible;
+  el("rec-framing").hidden = !visible;
+  el("rec-rate").hidden = !visible;
+}
+
+async function openRecorder() {
+  if (state.busy) return;
+  show("recorder", true);
+  recControls(true);
+  el("rec-stop").hidden = true;
+  el("rec-start").disabled = false;
+  el("rec-rate-note").hidden = true;
+  el("recorder").scrollIntoView({ behavior: "smooth", block: "start" });
+  recMessage("Asking for the camera…");
+  try {
+    rec.stream = await navigator.mediaDevices.getUserMedia(cameraConstraints());
+  } catch (error) {
+    cameraUnavailable(error);
+    return;
+  }
+  const video = el("rec-preview");
+  video.srcObject = rec.stream;
+  try { await video.play(); } catch { /* autoplay muted normally succeeds */ }
+  recMessage("");
+  const track = rec.stream.getVideoTracks()[0];
+  const settings = track && track.getSettings ? track.getSettings() : {};
+  const note = frameRateNote(settings.frameRate);
+  el("rec-rate").textContent = settings.frameRate ? `${Math.round(settings.frameRate)} fps` : "fps unknown";
+  el("rec-rate").className = "rec-chip " + (note.low ? "warn" : "ok");
+  el("rec-rate-note").textContent = note.text;
+  el("rec-rate-note").hidden = !note.low;
+  watchTilt();
+  // The estimator loads in the background; the framing check starts using it as
+  // soon as it is there. Recording does not wait for it.
+  ready().catch(() => { el("rec-framing").textContent = "Framing check unavailable"; });
+  rec.check = setInterval(checkFraming, 400);
+}
+
+function cameraUnavailable(error) {
+  stopStream();
+  recControls(false);
+  el("rec-stop").hidden = true;
+  const denied = error && (error.name === "NotAllowedError" || error.name === "SecurityError");
+  recMessage(denied
+    ? "The camera was not allowed, so nothing can be recorded here. Choose a video you " +
+      "recorded instead: the analysis is the same."
+    : "No camera could be opened on this device. Choose a video you recorded instead: " +
+      "the analysis is the same.");
+}
+
+function watchTilt() {
+  const onTilt = (event) => {
+    const landscape = window.matchMedia && window.matchMedia("(orientation: landscape)").matches;
+    const verdict = levelVerdict(event.beta, event.gamma, landscape);
+    const chip = el("rec-level");
+    if (!verdict) { chip.hidden = true; return; }
+    chip.hidden = false;
+    chip.textContent = verdict.text;
+    chip.className = "rec-chip " + (verdict.level ? "ok" : "warn");
+  };
+  const start = () => { window.addEventListener("deviceorientation", onTilt); rec.tilt = onTilt; };
+  // iOS asks for motion access, and only from a tap; this runs inside one.
+  if (typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function") {
+    DeviceOrientationEvent.requestPermission().then((answer) => {
+      if (answer === "granted") start();
+    }).catch(() => {});
+  } else if (typeof DeviceOrientationEvent !== "undefined") {
+    start();
+  }
+}
+
+function checkFraming() {
+  const video = el("rec-preview");
+  if (!state.landmarker || !video.videoWidth || state.busy) return;
+  if (!rec.canvas) rec.canvas = document.createElement("canvas");
+  const scale = Math.min(1, 256 / Math.max(video.videoWidth, video.videoHeight));
+  rec.canvas.width = Math.round(video.videoWidth * scale);
+  rec.canvas.height = Math.round(video.videoHeight * scale);
+  rec.canvas.getContext("2d").drawImage(video, 0, 0, rec.canvas.width, rec.canvas.height);
+  // The estimator's clock only moves forward, over its whole life.
+  let stamp = Math.round(performance.now());
+  if (stamp <= state.clockMs) stamp = state.clockMs + 1;
+  state.clockMs = stamp;
+  let result = null;
+  try { result = state.landmarker.detectForVideo(rec.canvas, stamp); } catch { result = null; }
+  const landmarks = result && result.landmarks && result.landmarks[0];
+  const verdict = framingVerdict(landmarks);
+  const chip = el("rec-framing");
+  chip.textContent = verdict.message;
+  chip.className = "rec-chip " + (verdict.ok ? "ok" : "warn");
+  el("rec-band").classList.toggle("ok", verdict.ok);
+}
+
+function startRecording() {
+  if (!rec.stream || (rec.recorder && rec.recorder.state === "recording")) return;
+  el("rec-start").disabled = true;
+  const countdown = globalThis.__recordCountdown ?? 3;
+  const seconds = globalThis.__recordSeconds ?? 6;
+  const count = el("rec-count");
+  const tick = (n) => {
+    if (n > 0) {
+      count.textContent = String(n);
+      rec.timers.push(setTimeout(() => tick(n - 1), 1000));
+      return;
+    }
+    count.textContent = "";
+    // The framing check has done its job; recording needs the processor more.
+    if (rec.check) { clearInterval(rec.check); rec.check = null; }
+    rec.type = recordingType((t) => MediaRecorder.isTypeSupported(t));
+    rec.chunks = [];
+    try {
+      rec.recorder = new MediaRecorder(rec.stream, rec.type ? { mimeType: rec.type } : undefined);
+    } catch (error) {
+      recMessage(`This browser could not record (${error.message}). Choose a video instead.`);
+      el("rec-start").disabled = false;
+      return;
+    }
+    rec.recorder.ondataavailable = (event) => { if (event.data && event.data.size) rec.chunks.push(event.data); };
+    rec.recorder.onstop = finishRecording;
+    rec.recorder.start(250);
+    el("rec-stop").hidden = false;
+    recMessage(`Recording… stops by itself after ${seconds} s.`);
+    rec.timers.push(setTimeout(stopRecording, seconds * 1000));
+  };
+  tick(countdown);
+}
+
+function stopRecording() {
+  for (const timer of rec.timers) clearTimeout(timer);
+  rec.timers = [];
+  if (rec.recorder && rec.recorder.state === "recording") rec.recorder.stop();
+}
+
+function finishRecording() {
+  const type = (rec.recorder && rec.recorder.mimeType) || rec.type || "video/webm";
+  const blob = new Blob(rec.chunks, { type });
+  rec.chunks = [];
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  const file = new File([blob], `swing-${stamp}.${extensionFor(type)}`, { type });
+  closeRecorder();
+  if (blob.size === 0) {
+    failed(new Error("The recording came out empty. Try again, or choose a video you recorded."));
+    return;
+  }
+  analyse(file);
+}
+
+function stopStream() {
+  if (rec.stream) for (const track of rec.stream.getTracks()) track.stop();
+  rec.stream = null;
+  const video = el("rec-preview");
+  video.srcObject = null;
+}
+
+function closeRecorder() {
+  for (const timer of rec.timers) clearTimeout(timer);
+  rec.timers = [];
+  if (rec.check) clearInterval(rec.check);
+  rec.check = null;
+  if (rec.tilt) window.removeEventListener("deviceorientation", rec.tilt);
+  rec.tilt = null;
+  if (rec.recorder && rec.recorder.state === "recording") {
+    rec.recorder.onstop = null;
+    rec.recorder.stop();
+  }
+  rec.recorder = null;
+  stopStream();
+  el("rec-count").textContent = "";
+  show("recorder", false);
 }

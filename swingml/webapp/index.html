@@ -60,6 +60,33 @@ h1{font-size:34px;letter-spacing:-.02em;margin:18px 0 8px;font-weight:660}
   color:var(--on-accent);padding:10px 20px;border-radius:10px;cursor:pointer;font:inherit;
   font-size:14.5px;font-weight:600;margin-top:14px}
 .btn-primary:hover{filter:brightness(1.08)}
+.drop-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:14px}
+.drop-actions .btn-primary{margin-top:0}
+.btn-secondary{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:10px;
+  padding:10px 18px;font:inherit;font-weight:600;cursor:pointer;min-height:44px}
+.btn-secondary:hover{border-color:var(--accent)}
+.recorder{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);padding:16px;
+  margin:16px 0;display:grid;gap:12px}
+.rec-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.rec-head h2{margin:0;font-size:18px}
+.rec-note{margin:0;color:var(--ink-dim);font-size:13px;max-width:62ch}
+.rec-note:empty{display:none}
+.rec-stage{position:relative;background:#000;border-radius:10px;overflow:hidden;max-height:70vh;
+  width:fit-content;max-width:100%;margin:0 auto}
+.rec-stage video{display:block;max-width:100%;max-height:70vh}
+.rec-band{position:absolute;left:12%;right:12%;top:7.5%;bottom:7.5%;border:2px dashed var(--warn);
+  border-radius:8px;pointer-events:none}
+.rec-band.ok{border-color:var(--good);border-style:solid}
+.rec-centre{position:absolute;top:0;bottom:0;left:50%;border-left:1px dashed rgba(255,255,255,.35);pointer-events:none}
+.rec-count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:min(30vw,140px);font-weight:700;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.6);pointer-events:none}
+.rec-count:empty{display:none}
+.rec-status{display:flex;flex-wrap:wrap;gap:8px}
+.rec-chip{font:500 12px/1.2 var(--mono);padding:6px 10px;border-radius:999px;background:var(--panel-2);
+  color:var(--ink-dim)}
+.rec-chip.ok{color:var(--good)} .rec-chip.warn{color:var(--warn)}
+.rec-actions{display:flex;flex-wrap:wrap;gap:10px}
+.rec-actions button{min-height:44px}
 .btn-link{background:none;border:0;color:var(--accent);font:inherit;font-size:13.5px;
   cursor:pointer;padding:6px 4px;margin-top:6px;text-decoration:underline;text-underline-offset:3px}
 .btn-link:focus-visible,.btn-primary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -280,9 +307,38 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
     </svg>
     <p class="drop-main" id="drop-main">Drag a video here</p>
     <p class="drop-sub" id="drop-sub">.mov .mp4 .m4v &middot; portrait or landscape &middot; any frame rate, slow motion included</p>
-    <button type="button" id="browse" class="btn-primary">Choose a video</button>
+    <div class="drop-actions">
+      <button type="button" id="browse" class="btn-primary">Choose a video</button>
+      <button type="button" id="record" class="btn-secondary" hidden>Record with camera</button>
+    </div>
     <div><button type="button" id="sample" class="btn-link" hidden>or try it on a sample swing</button></div>
   </div>
+
+  <section class="recorder" id="recorder" hidden aria-labelledby="rec-title">
+    <div class="rec-head">
+      <h2 id="rec-title">Record a swing</h2>
+      <button type="button" id="rec-close" class="btn-link">Close camera</button>
+    </div>
+    <p class="rec-note" id="rec-message" role="status"></p>
+    <div class="rec-stage" id="rec-stage">
+      <video id="rec-preview" playsinline muted autoplay></video>
+      <div class="rec-band" id="rec-band" aria-hidden="true"></div>
+      <div class="rec-centre" aria-hidden="true"></div>
+      <div class="rec-count" id="rec-count" aria-live="assertive"></div>
+    </div>
+    <div class="rec-status">
+      <span class="rec-chip" id="rec-framing">Checking the framing&hellip;</span>
+      <span class="rec-chip" id="rec-level" hidden></span>
+      <span class="rec-chip" id="rec-rate"></span>
+    </div>
+    <p class="rec-note" id="rec-rate-note" hidden></p>
+    <div class="rec-actions">
+      <button type="button" id="rec-start" class="btn-primary">Start: 3 s countdown, then 6 s</button>
+      <button type="button" id="rec-stop" class="btn-secondary" hidden>Stop and analyse</button>
+    </div>
+    <p class="rec-note">Stand the phone side-on to the target, about 3&ndash;4 m away, so your whole body
+      fills the band. The recording stays on this device and goes straight into the analysis.</p>
+  </section>
 
   <div class="options">
     <span class="options-label">Golfer is</span>
@@ -446,6 +502,7 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
 /*__MODEL__*/
 /*__METRICS__*/
 /*__PRACTICE__*/
+/*__CAPTURE__*/
 /*__APP__*/
 boot(/*__PAYLOAD__*/);
 </script>

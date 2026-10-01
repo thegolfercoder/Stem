@@ -668,3 +668,102 @@ def test_a_refused_rerun_keeps_the_earlier_reading_and_says_so(
         assert "swing 3 keeps its earlier reading" in (page.text_content("#practice-data") or "")
         assert errors == []
         browser.close()
+
+
+# -- recording in the page (#34) -----------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def fake_camera(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """A Y4M file Chromium plays as the camera: 30 fps, portrait, moving bars."""
+    width, height, frames = 240, 428, 30
+    path = tmp_path_factory.mktemp("camera") / "camera.y4m"
+    with path.open("wb") as out:
+        out.write(f"YUV4MPEG2 W{width} H{height} F30:1 Ip A1:1 C420jpeg\n".encode())
+        for f in range(frames):
+            luma = np.full((height, width), 60, dtype=np.uint8)
+            luma[:, (f * 8) % width : (f * 8) % width + 20] = 200
+            chroma = np.full((height // 2, width // 2), 128, dtype=np.uint8)
+            out.write(b"FRAME\n" + luma.tobytes() + chroma.tobytes() + chroma.tobytes())
+    return path
+
+
+def _camera_page(playwright: Any, landmark_json: str, camera: Path | None) -> Any:
+    args = ["--use-fake-device-for-media-stream"]
+    if camera is not None:
+        args += ["--use-fake-ui-for-media-stream", f"--use-file-for-fake-video-capture={camera}"]
+    else:
+        args += ["--deny-permission-prompts"]
+    browser = playwright.chromium.launch(executable_path=CHROMIUM, args=args)
+    page = browser.new_context(viewport={"width": 390, "height": 844}).new_page()
+    errors: list[str] = []
+    requests: list[tuple[str, str, int]] = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.on(
+        "request",
+        lambda r: requests.append((r.method, r.url, len(r.post_data_buffer or b""))),
+    )
+    page.route(
+        "**/vision_bundle.mjs",
+        lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+    )
+    page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+    # A short countdown and a recording as long as the fixture, so the test is quick.
+    page.add_init_script("window.__recordCountdown = 0; window.__recordSeconds = 7;")
+    page.goto(PAGE.resolve().as_uri())
+    return browser, page, errors, requests
+
+
+def test_a_swing_recorded_in_the_page_is_analysed_and_never_sent(
+    landmark_json: str, fake_camera: Path
+) -> None:
+    with sync_playwright() as playwright:
+        browser, page, errors, requests = _camera_page(playwright, landmark_json, fake_camera)
+        page.wait_for_selector("#record", state="visible")
+        page.click("#record")
+        page.wait_for_function(
+            "() => document.getElementById('rec-preview').videoWidth > 0", timeout=20_000
+        )
+        rate = page.text_content("#rec-rate") or ""
+        assert "fps" in rate
+        if int(rate.split()[0]) < 50:
+            assert page.locator("#rec-rate-note").is_visible()
+            assert "At 30 fps" in (page.text_content("#rec-rate-note") or "")
+        page.click("#rec-start")
+        page.evaluate("() => window.__resetLandmarks && window.__resetLandmarks()")
+        page.wait_for_selector("#rec-stop", state="visible", timeout=10_000)
+        page.wait_for_function(
+            "() => document.getElementById('working').classList.contains('hidden')"
+            " && (document.getElementById('results').offsetParent !== null"
+            " || document.getElementById('refusal').offsetParent !== null)",
+            timeout=300_000,
+        )
+        assert page.locator("#recorder").is_hidden(), "the camera panel stayed open"
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        assert (page.text_content("#drop-main") or "").startswith("swing-")
+        assert errors == []
+        # Nothing left the page: no request carried a body, and none went off this machine.
+        assert all(size == 0 for _, _, size in requests), requests
+        assert all(
+            url.startswith(("file:", "data:", "blob:")) or url.endswith("vision_bundle.mjs")
+            for _, url, _ in requests
+        ), [u for _, u, _ in requests]
+        browser.close()
+
+
+def test_a_refused_camera_falls_back_to_choosing_a_video(landmark_json: str, clip: Path) -> None:
+    with sync_playwright() as playwright:
+        browser, page, errors, _ = _camera_page(playwright, landmark_json, None)
+        page.wait_for_selector("#record", state="visible")
+        page.click("#record")
+        page.wait_for_function(
+            "() => /Choose a video/.test(document.getElementById('rec-message').textContent)",
+            timeout=20_000,
+        )
+        assert page.locator("#rec-start").is_hidden()
+        assert page.locator("#rec-stage").is_hidden()
+        # The upload path still works.
+        _analyse(page, clip)
+        assert page.locator("#results").is_visible()
+        assert errors == []
+        browser.close()

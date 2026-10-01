@@ -56,6 +56,15 @@ fixed, it moves to the changelog with the measurement that shows it.
    the tempo; the app warns and recommends 60 fps or more.
 10. **Camera shake** is not detected.
 
+10a. **Recording in the app is browser-only.** The browser page can record a swing
+   with the camera (#34): a live framing check, a level indicator and a 3 s
+   countdown, then 6 s of recording that goes straight into the analysis and
+   never leaves the device. The desktop app and the iPhone app still only import
+   clips; iPhone recording is #42. Browsers often grant 30 fps, which the page
+   reports with the 30 fps caution above. The framing band (body 45-85% of the
+   frame's height, centred) is judgement, not measured. The analysis's own
+   refusals remain the real test.
+
 ## Practice loop
 
 11. **Comparability is judged, not measured.** How far a phone can move before a

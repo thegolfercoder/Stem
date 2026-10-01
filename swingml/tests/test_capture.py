@@ -1,104 +1,104 @@
-"""The quick look before analysis: stop what cannot be measured, warn about the rest."""
+"""The decisions behind recording in the browser page (#34), without a camera.
+
+webapp/capture.js decides what to ask the camera for, which container to record,
+whether the golfer is framed, whether the phone is level and whether the frame
+rate is enough. These run it in node on made-up poses whose answers are known.
+"""
 
 from __future__ import annotations
 
+import json
+import shutil
+import subprocess
 from pathlib import Path
+from typing import Any
 
-import cv2
-import numpy as np
 import pytest
 
-from swingml.capture import judge, preflight
-from swingml.pose.base import PoseSequence
-from swingml.skeleton import Landmark
+CAPTURE = Path(__file__).resolve().parent.parent / "webapp" / "capture.js"
 
-FIXTURE = Path(__file__).parent / "fixtures" / "real_swing_01.mov"
-META = {"frames": 180.0, "fps": 60.0, "duration_s": 3.0, "width": 720.0, "height": 1280.0}
+pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
 
 
-def poses(detected: float, feet: bool = True, height: float = 0.6) -> PoseSequence:
-    n = 10
-    xy = np.full((n, 33, 2), 0.5, dtype=np.float32)
-    xy[:, int(Landmark.NOSE), 1] = 0.5 - height / 2
-    xy[:, int(Landmark.LEFT_ANKLE), 1] = 0.5 + height / 2
-    xy[:, int(Landmark.RIGHT_ANKLE), 1] = 0.5 + height / 2
-    visibility = np.ones((n, 33), dtype=np.float32)
-    if not feet:
-        visibility[:, [int(Landmark.LEFT_ANKLE), int(Landmark.RIGHT_ANKLE)]] = 0.1
-    return PoseSequence(
-        xy=xy, visibility=visibility, timestamps_s=np.arange(n) / 6.0, frame_width=720,
-        frame_height=1280, detected=np.arange(n) < round(detected * n),
+def call(expression: str) -> Any:
+    script = (
+        f"import * as c from {json.dumps(CAPTURE.as_uri())};"
+        f"console.log(JSON.stringify(({expression})));"
+    )
+    done = subprocess.run(
+        ["node", "--input-type=module", "-e", script],
+        capture_output=True, text=True, timeout=60, check=True,
     )  # fmt: skip
+    return json.loads(done.stdout)
 
 
-def frames(luma: int) -> list[np.ndarray]:
-    return [np.full((64, 36, 3), luma, dtype=np.uint8)] * 10
+def body(top: float, bottom: float, centre: float = 0.5, feet: bool = True) -> list[dict]:
+    """33 landmarks of a standing golfer between `top` and `bottom` of the frame."""
+    points = []
+    for i in range(33):
+        if i <= 10:
+            y = top + 0.02 * (i % 3)
+        elif i >= 27:
+            y = bottom - 0.01 * (i % 2)
+        else:
+            y = top + (bottom - top) * (0.2 + 0.5 * ((i - 11) / 16))
+        x = centre + (0.05 if i % 2 else -0.05)
+        visible = 0.0 if (i >= 27 and not feet) else 0.95
+        points.append({"x": x, "y": y, "visibility": visible})
+    return points
 
 
-def failed(result) -> set[str]:  # type: ignore[no-untyped-def]
-    return {c.name for c in result.checks if not c.passed}
+def verdict(points: list[dict] | None) -> dict:
+    return call(f"c.framingVerdict({json.dumps(points)})")
 
 
-def test_a_good_clip_passes_every_check() -> None:
-    result = judge(META, frames(120), poses(1.0))
-    assert not failed(result)
-
-
-def test_nobody_in_shot_blocks_before_any_tracking() -> None:
-    result = judge(META, frames(120), poses(0.2))
-    assert [c.name for c in result.blocking] == ["golfer in shot"]
-
-
-def test_a_clip_too_short_for_a_swing_blocks() -> None:
-    result = judge({**META, "duration_s": 0.8}, frames(120), poses(1.0))
-    assert "length" in {c.name for c in result.blocking}
+def test_a_golfer_filling_the_band_is_framed() -> None:
+    result = verdict(body(0.15, 0.85))
+    assert result["ok"] and result["message"] == "Whole body in frame"
 
 
 @pytest.mark.parametrize(
-    ("meta", "images", "tracked", "expected"),
+    ("points", "says"),
     [
-        (META, frames(20), poses(1.0), "light"),
-        ({**META, "fps": 15.0}, frames(120), poses(1.0), "frame rate"),
-        ({**META, "width": 240.0}, frames(120), poses(1.0), "resolution"),
-        (META, frames(120), poses(1.0, feet=False), "whole body"),
-        (META, frames(120), poses(1.0, height=0.15), "golfer size"),
+        (None, "Step into the frame"),
+        (body(0.15, 0.85, feet=False), "feet"),
+        (body(0.05, 0.99), "feet"),
+        (body(0.01, 0.80), "head"),
+        (body(0.06, 0.95), "Step back a little"),
+        (body(0.40, 0.70), "Move closer"),
+        (body(0.15, 0.85, centre=0.15), "middle"),
     ],
 )
-def test_filming_problems_warn_without_blocking(meta, images, tracked, expected: str) -> None:  # type: ignore[no-untyped-def]
-    result = judge(meta, images, tracked)
-    assert failed(result) == {expected}
-    assert not result.blocking
-    assert all(c.advice for c in result.warnings)
+def test_each_framing_fault_gets_its_own_instruction(points: list[dict] | None, says: str) -> None:
+    result = verdict(points)
+    assert not result["ok"]
+    assert says in result["message"]
 
 
-def _estimator():  # type: ignore[no-untyped-def]
-    """A working pose estimator, or a skip saying why this machine has none.
-
-    Two things can be missing: the pose model (downloaded on first use) and the
-    native runtime MediaPipe loads when a landmarker is created, which needs
-    libEGL on Linux. Creating one is the only reliable test for the second.
-    """
-    from swingml.pose.mediapipe_pose import MediaPipePoseEstimator
-
-    try:
-        estimator = MediaPipePoseEstimator()
-        estimator.estimate_stream(iter([(np.zeros((64, 64, 3), dtype=np.uint8), 0.0)]))
-    except Exception as error:
-        pytest.skip(f"pose estimator unavailable on this machine: {error}")
-    return estimator
+def test_the_phone_is_level_within_three_degrees() -> None:
+    assert call("c.levelVerdict(80, 2, false)")["level"] is True
+    tilted = call("c.levelVerdict(80, -7.4, false)")
+    assert tilted["level"] is False and "7" in tilted["text"]
+    assert call("c.levelVerdict(5, 80, true)")["level"] is False
+    assert call("c.levelVerdict(null, null, false)") is None
 
 
-def test_the_real_phone_fixture_passes(tmp_path: Path) -> None:
-    assert not preflight(FIXTURE, _estimator()).blocking
+def test_below_fifty_fps_the_camera_rate_is_a_warning() -> None:
+    assert call("c.frameRateNote(30)")["low"] is True
+    assert "30 fps" in call("c.frameRateNote(30)")["text"]
+    assert call("c.frameRateNote(60)")["low"] is False
+    assert call("c.frameRateNote(undefined)")["low"] is False
 
 
-def test_a_black_clip_is_stopped(tmp_path: Path) -> None:
-    path = tmp_path / "black.mp4"
-    writer = cv2.VideoWriter(str(path), cv2.VideoWriter.fourcc(*"mp4v"), 30, (360, 640))
-    if not writer.isOpened():
-        pytest.skip("this OpenCV build cannot write mp4")
-    for _ in range(90):
-        writer.write(np.zeros((640, 360, 3), dtype=np.uint8))
-    writer.release()
-    result = preflight(path, _estimator())
-    assert "golfer in shot" in {c.name for c in result.blocking}
+def test_mp4_is_preferred_where_the_browser_records_it() -> None:
+    assert call("c.recordingType((t) => t.startsWith('video/mp4'))") == "video/mp4;codecs=avc1"
+    assert call("c.recordingType((t) => t === 'video/webm;codecs=vp8')") == "video/webm;codecs=vp8"
+    assert call("c.recordingType(() => false)") == ""
+    assert call("c.extensionFor('video/webm;codecs=vp8')") == "webm"
+
+
+def test_the_camera_asked_for_is_the_rear_one_at_sixty_and_no_sound() -> None:
+    constraints = call("c.cameraConstraints()")
+    assert constraints["audio"] is False
+    assert constraints["video"]["facingMode"] == {"ideal": "environment"}
+    assert constraints["video"]["frameRate"] == {"ideal": 60}
