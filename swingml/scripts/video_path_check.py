@@ -10,7 +10,8 @@ about 48% through the archive. This measures the paths on the same clips:
   how the quoted figures are scored;
 - `video_before`: the app path as it was before #40. The poses were tracked with
   the timestamps `VideoReader` gave then, which slipped a frame partway through
-  the clip; they are cached by `scripts/slow_motion_rule.py poses`;
+  the clip; `scripts/slow_motion_rule.py poses` cached them before the fix, kept as
+  `out/slowmo/poses_before_40`;
 - `video_retimed`: the same cached poses with only the timestamps replaced by
   the fixed reader's. Any change from `video_before` is the timestamps alone;
 - `video`: the app path now, end to end: the fixed reader, MediaPipe, then
@@ -247,7 +248,7 @@ def main(argv: list[str] | None = None) -> None:
             p.add_argument("--videos", type=Path, required=True)
             p.add_argument("--part", default="0/1", help="this worker's share, k/n")
         else:
-            p.add_argument("--before", type=Path, default=Path("out/slowmo/poses"))
+            p.add_argument("--before", type=Path, default=Path("out/slowmo/poses_before_40"))
             p.add_argument("--out", type=Path, default=None)
             p.add_argument("--resamples", type=int, default=2000)
             p.add_argument("--seed", type=int, default=0)
