@@ -54,6 +54,17 @@ def _video_frame_shown(image_path: Path) -> int:
     return round(float(image.mean()) / STEP)
 
 
+def _content_at(path: Path) -> dict[float, int]:
+    """Which written frame the reader shows at each of its times, read in full.
+
+    Not simply time x rate: OpenCV's mp4v writer delays content by a frame (the
+    first frame decodes twice), so the picture analysed at a time is whatever
+    the decoder shows then, and that is what the app must show back (#40).
+    """
+    with VideoReader(path) as reader:
+        return {round(t, 6): round(float(f.mean()) / STEP) for f, t in reader.frames()}
+
+
 @pytest.fixture(scope="module")
 def clip(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, PoseSequence]:
     path = tmp_path_factory.mktemp("slowmo") / "clip.mp4"
@@ -72,7 +83,7 @@ def test_event_pictures_show_the_tracked_frames(
     written = extract_event_frames(path, sequence, chosen, tmp_path)
     assert len(written) == 8
     for index, name in enumerate(written.values()):
-        expected = round(float(sequence.timestamps_s[chosen[index]]) * RATE)
+        expected = _content_at(path)[round(float(sequence.timestamps_s[chosen[index]]), 6)]
         assert _video_frame_shown(tmp_path / name) == expected
 
 
@@ -83,5 +94,5 @@ def test_scrubber_pictures_show_the_tracked_frames(
     manifest = extract_sequence_frames(path, sequence, 2, 15, tmp_path)
     assert manifest
     for item in manifest:
-        expected = round(float(sequence.timestamps_s[int(item["frame"])]) * RATE)
+        expected = _content_at(path)[round(float(sequence.timestamps_s[int(item["frame"])]), 6)]
         assert _video_frame_shown(tmp_path / str(item["name"])) == expected
