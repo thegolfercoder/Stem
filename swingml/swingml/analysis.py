@@ -134,17 +134,18 @@ class AnalysisConfig(BaseModel):
         ),
     )
     slow_motion_check_backswing_s: float | None = Field(
-        default=None,
+        default=1.1,
         description=(
             "A clip answered at recorded speed whose backswing (address to top, whole "
             "frames on the model's grid) is longer than this is also read at each "
             "slow-motion factor. A clip slowed two or three times passes every gate at "
             "recorded speed, so without this its durations would be reported as "
-            "measured (#32). None checks only refused clips."
+            "measured (#32). None checks only refused clips. Chosen on "
+            "golfdb-validation-v2 (docs/ml/slow-motion-rule.md)."
         ),
     )
     slow_motion_margin: float = Field(
-        default=0.0,
+        default=0.01,
         description=(
             "How much more confident (core geometric mean) the best slow-motion read "
             "must be than the recorded-speed read before an answered clip is read as "

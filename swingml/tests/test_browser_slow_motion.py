@@ -95,7 +95,7 @@ def browser_read(sequence: PoseSequence, workdir: Path) -> dict:
     return dict(json.loads(finished.stdout))
 
 
-@pytest.fixture(scope="module", params=[4.0])
+@pytest.fixture(scope="module", params=[2.0, 3.0, 4.0])
 def pair(request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory):  # type: ignore[no-untyped-def]
     sequence = fixture_sequence(request.param)
     return python_read(sequence), browser_read(sequence, tmp_path_factory.mktemp("slowmo"))
@@ -103,9 +103,10 @@ def pair(request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactor
 
 def test_the_payload_carries_the_desktop_factors() -> None:
     payload = json.loads(PAYLOAD.read_text(encoding="utf-8"))
-    assert (
-        tuple(payload["thresholds"]["slow_motion_factors"]) == AnalysisConfig().slow_motion_factors
-    )
+    thresholds, config = payload["thresholds"], AnalysisConfig()
+    assert tuple(thresholds["slow_motion_factors"]) == config.slow_motion_factors
+    assert thresholds["slow_motion_check_backswing_s"] == config.slow_motion_check_backswing_s
+    assert thresholds["slow_motion_margin"] == config.slow_motion_margin
 
 
 def test_both_read_the_slowed_swing_at_the_same_factor(pair) -> None:  # type: ignore[no-untyped-def]

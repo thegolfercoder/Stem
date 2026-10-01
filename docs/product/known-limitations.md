@@ -35,7 +35,12 @@ fixed, it moves to the changelog with the measurement that shows it.
    `ParityTests.testASlowMotionClipIsReadAsSlowMotionWithNoDurations`). Tempo
    assumes the whole swing was slowed evenly, which a phone's slow-motion clip
    breaks if the swing crosses the speed ramp at its start or end, and no
-   durations are shown because the real speed-up is unknown.
+   durations are shown because the real speed-up is unknown. Since #32 an
+   answered clip with a backswing over 1.1 s is also checked, so a clip slowed
+   2-3x is read as slow motion rather than shown with durations 2-3x too long
+   (validation: 0 of 81 real-time swings misread, every 2x and 3x clip caught;
+   `docs/ml/slow-motion-rule.md`). A clip slowed only 1.5x is caught about a
+   third of the time, and otherwise its durations are 1.5x too long.
 9. **30 fps.** At 30 fps the hands can be lost through impact, which moves impact and
    the tempo; the app warns and recommends 60 fps or more.
 10. **Camera shake** is not detected.

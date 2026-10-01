@@ -324,8 +324,36 @@ def cmd_summarise(args: argparse.Namespace) -> None:
             f"1.5x {rule['slowed_1.5x']['read_as_slow']['share']:.2f}"
         )
     print("chosen:", {k: chosen[k] for k in ("factors", "backswing_s", "margin")})
+
+    def gap(row: dict[str, Any]) -> float | None:
+        """Best slowed core confidence (2, 4, 8) minus the recorded-speed one."""
+        first = row["reads"]["1.0"]
+        slowed = [row["reads"][str(f)]["core"] for f in (2.0, 4.0, 8.0)]
+        slowed = [c for c, f in zip(slowed, (2.0, 4.0, 8.0), strict=True)
+                  if answered(row["reads"][str(f)])]  # fmt: skip
+        return max(slowed) - first["core"] if slowed and answered(first) else None
+
+    separation: dict[str, Any] = {}
+    for k in SLOWED:
+        gaps = [g for r in rows if not r["slow"] and r["slowed"] == k if (g := gap(r)) is not None]
+        separation[f"slowed_{k:g}x"] = {
+            "n": len(gaps),
+            "min": round(min(gaps), 4),
+            "p10": round(float(np.percentile(gaps, 10)), 4),
+            "median": round(float(np.median(gaps)), 4),
+            "max": round(max(gaps), 4),
+        }
+    real = [r for r in rows if not r["slow"] and r["slowed"] == 1.0]
+    n_groups = len({r["group"] for r in real})
     result = {
         "source": "golfdb-validation-v2 through the shipped pipeline; holdout not read",
+        "core_gap_best_slowed_minus_recorded": separation,
+        "false_slow_zero_count_upper_95": {
+            "swings_independent": round(3 / len(real), 4),
+            "groups_as_units": round(3 / n_groups, 4),
+            "n_swings": len(real),
+            "n_groups": n_groups,
+        },
         "n_clips": len({r["clip"] for r in rows}),
         "criterion": (
             f"false-slow share on answered real-time swings at most {MAX_FALSE_SLOW}; then "

@@ -1,0 +1,5342 @@
+{
+  "source": "golfdb-validation-v2 through the shipped pipeline; holdout not read",
+  "core_gap_best_slowed_minus_recorded": {
+    "slowed_1x": {
+      "n": 74,
+      "min": -0.5146,
+      "p10": -0.2817,
+      "median": -0.1667,
+      "max": -0.0614
+    },
+    "slowed_1.5x": {
+      "n": 81,
+      "min": -0.0587,
+      "p10": -0.0268,
+      "median": 0.002,
+      "max": 0.0771
+    },
+    "slowed_2x": {
+      "n": 78,
+      "min": 0.0163,
+      "p10": 0.0439,
+      "median": 0.0752,
+      "max": 0.1861
+    },
+    "slowed_2.5x": {
+      "n": 67,
+      "min": 0.0322,
+      "p10": 0.0599,
+      "median": 0.0951,
+      "max": 0.2068
+    },
+    "slowed_3x": {
+      "n": 44,
+      "min": 0.0338,
+      "p10": 0.0669,
+      "median": 0.1066,
+      "max": 0.2022
+    }
+  },
+  "false_slow_zero_count_upper_95": {
+    "swings_independent": 0.037,
+    "groups_as_units": 0.1034,
+    "n_swings": 81,
+    "n_groups": 29
+  },
+  "n_clips": 141,
+  "criterion": "false-slow share on answered real-time swings at most 0.02; then the most 2x and 3x clips read as slow motion; ties to the larger backswing bound, then the larger margin",
+  "today": {
+    "factors": "2,4,8",
+    "backswing_s": null,
+    "margin": 0.0,
+    "false_slow": {
+      "n": 81,
+      "share": 0.0,
+      "ci95": [
+        0.0,
+        0.0
+      ]
+    },
+    "slowed_1.5x": {
+      "read_as_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "reported_as_measured": 1.0
+    },
+    "slowed_2x": {
+      "read_as_slow": {
+        "n": 81,
+        "share": 0.037,
+        "ci95": [
+          0.0,
+          0.0886
+        ]
+      },
+      "reported_as_measured": 0.963
+    },
+    "slowed_2.5x": {
+      "read_as_slow": {
+        "n": 81,
+        "share": 0.1728,
+        "ci95": [
+          0.061,
+          0.2857
+        ]
+      },
+      "reported_as_measured": 0.8272
+    },
+    "slowed_3x": {
+      "read_as_slow": {
+        "n": 81,
+        "share": 0.4568,
+        "ci95": [
+          0.2931,
+          0.6111
+        ]
+      },
+      "reported_as_measured": 0.5432
+    },
+    "slow_motion_replays": {
+      "slow": 0.9833,
+      "real time": 0.0167,
+      "refused": 0.0
+    },
+    "n_replays": 60
+  },
+  "chosen": {
+    "factors": "2,4,8",
+    "backswing_s": 1.1,
+    "margin": 0.01,
+    "false_slow": {
+      "n": 81,
+      "share": 0.0,
+      "ci95": [
+        0.0,
+        0.0
+      ]
+    },
+    "slowed_1.5x": {
+      "read_as_slow": {
+        "n": 81,
+        "share": 0.358,
+        "ci95": [
+          0.2278,
+          0.4932
+        ]
+      },
+      "reported_as_measured": 0.642
+    },
+    "slowed_2x": {
+      "read_as_slow": {
+        "n": 81,
+        "share": 1.0,
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "reported_as_measured": 0.0
+    },
+    "slowed_2.5x": {
+      "read_as_slow": {
+        "n": 81,
+        "share": 1.0,
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "reported_as_measured": 0.0
+    },
+    "slowed_3x": {
+      "read_as_slow": {
+        "n": 81,
+        "share": 1.0,
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "reported_as_measured": 0.0
+    },
+    "slow_motion_replays": {
+      "slow": 0.9833,
+      "real time": 0.0167,
+      "refused": 0.0
+    },
+    "n_replays": 60
+  },
+  "rules": [
+    {
+      "factors": "2,4,8",
+      "backswing_s": null,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "reported_as_measured": 1.0
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.037,
+          "ci95": [
+            0.0,
+            0.0886
+          ]
+        },
+        "reported_as_measured": 0.963
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1728,
+          "ci95": [
+            0.061,
+            0.2857
+          ]
+        },
+        "reported_as_measured": 0.8272
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.4568,
+          "ci95": [
+            0.2931,
+            0.6111
+          ]
+        },
+        "reported_as_measured": 0.5432
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.5185,
+          "ci95": [
+            0.375,
+            0.6548
+          ]
+        },
+        "reported_as_measured": 0.4815
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3827,
+          "ci95": [
+            0.2567,
+            0.5094
+          ]
+        },
+        "reported_as_measured": 0.6173
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2716,
+          "ci95": [
+            0.1429,
+            0.3978
+          ]
+        },
+        "reported_as_measured": 0.7284
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9595,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1975,
+          "ci95": [
+            0.0843,
+            0.3159
+          ]
+        },
+        "reported_as_measured": 0.8025
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.037,
+          "ci95": [
+            0.0,
+            0.0909
+          ]
+        },
+        "reported_as_measured": 0.963
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9383,
+          "ci95": [
+            0.8804,
+            0.979
+          ]
+        },
+        "reported_as_measured": 0.0617
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.9143,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.5185,
+          "ci95": [
+            0.375,
+            0.6548
+          ]
+        },
+        "reported_as_measured": 0.4815
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3827,
+          "ci95": [
+            0.2567,
+            0.5094
+          ]
+        },
+        "reported_as_measured": 0.6173
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2716,
+          "ci95": [
+            0.1429,
+            0.3978
+          ]
+        },
+        "reported_as_measured": 0.7284
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9595,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1975,
+          "ci95": [
+            0.0843,
+            0.3159
+          ]
+        },
+        "reported_as_measured": 0.8025
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.037,
+          "ci95": [
+            0.0,
+            0.0909
+          ]
+        },
+        "reported_as_measured": 0.963
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9383,
+          "ci95": [
+            0.8804,
+            0.979
+          ]
+        },
+        "reported_as_measured": 0.0617
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.9143,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.5062,
+          "ci95": [
+            0.3562,
+            0.6494
+          ]
+        },
+        "reported_as_measured": 0.4938
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3704,
+          "ci95": [
+            0.241,
+            0.5
+          ]
+        },
+        "reported_as_measured": 0.6296
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2716,
+          "ci95": [
+            0.1429,
+            0.3978
+          ]
+        },
+        "reported_as_measured": 0.7284
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9595,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1975,
+          "ci95": [
+            0.0843,
+            0.3159
+          ]
+        },
+        "reported_as_measured": 0.8025
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.037,
+          "ci95": [
+            0.0,
+            0.0909
+          ]
+        },
+        "reported_as_measured": 0.963
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9383,
+          "ci95": [
+            0.8804,
+            0.979
+          ]
+        },
+        "reported_as_measured": 0.0617
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.9143,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.1,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.4938,
+          "ci95": [
+            0.3415,
+            0.6439
+          ]
+        },
+        "reported_as_measured": 0.5062
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.1,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.358,
+          "ci95": [
+            0.2278,
+            0.4932
+          ]
+        },
+        "reported_as_measured": 0.642
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.1,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2593,
+          "ci95": [
+            0.1323,
+            0.3903
+          ]
+        },
+        "reported_as_measured": 0.7407
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9595,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.1,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1852,
+          "ci95": [
+            0.0769,
+            0.3056
+          ]
+        },
+        "reported_as_measured": 0.8148
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.1,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0247,
+          "ci95": [
+            0.0,
+            0.0759
+          ]
+        },
+        "reported_as_measured": 0.9753
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9383,
+          "ci95": [
+            0.8804,
+            0.979
+          ]
+        },
+        "reported_as_measured": 0.0617
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.9143,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.2,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3704,
+          "ci95": [
+            0.1948,
+            0.5436
+          ]
+        },
+        "reported_as_measured": 0.6296
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9545,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.2,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2716,
+          "ci95": [
+            0.141,
+            0.4124
+          ]
+        },
+        "reported_as_measured": 0.7284
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9545,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.2,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1975,
+          "ci95": [
+            0.0864,
+            0.321
+          ]
+        },
+        "reported_as_measured": 0.8025
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.2,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1481,
+          "ci95": [
+            0.05,
+            0.2683
+          ]
+        },
+        "reported_as_measured": 0.8519
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.2,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0247,
+          "ci95": [
+            0.0,
+            0.0759
+          ]
+        },
+        "reported_as_measured": 0.9753
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9383,
+          "ci95": [
+            0.8804,
+            0.979
+          ]
+        },
+        "reported_as_measured": 0.0617
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.9143,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.3,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3086,
+          "ci95": [
+            0.1358,
+            0.4881
+          ]
+        },
+        "reported_as_measured": 0.6914
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.3,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2346,
+          "ci95": [
+            0.1084,
+            0.3715
+          ]
+        },
+        "reported_as_measured": 0.7654
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.3,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1728,
+          "ci95": [
+            0.0606,
+            0.3
+          ]
+        },
+        "reported_as_measured": 0.8272
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.8987,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.3,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1235,
+          "ci95": [
+            0.0299,
+            0.247
+          ]
+        },
+        "reported_as_measured": 0.8765
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.8987,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.3,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0247,
+          "ci95": [
+            0.0,
+            0.0759
+          ]
+        },
+        "reported_as_measured": 0.9753
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8272,
+          "ci95": [
+            0.7195,
+            0.9091
+          ]
+        },
+        "reported_as_measured": 0.1728
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9383,
+          "ci95": [
+            0.8804,
+            0.979
+          ]
+        },
+        "reported_as_measured": 0.0617
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.9143,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.4,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2346,
+          "ci95": [
+            0.0882,
+            0.3896
+          ]
+        },
+        "reported_as_measured": 0.7654
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9506,
+          "ci95": [
+            0.8923,
+            0.9891
+          ]
+        },
+        "reported_as_measured": 0.0494
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.4,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1728,
+          "ci95": [
+            0.0704,
+            0.2933
+          ]
+        },
+        "reported_as_measured": 0.8272
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9506,
+          "ci95": [
+            0.8923,
+            0.9891
+          ]
+        },
+        "reported_as_measured": 0.0494
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.4,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1358,
+          "ci95": [
+            0.0488,
+            0.2369
+          ]
+        },
+        "reported_as_measured": 0.8642
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9383,
+          "ci95": [
+            0.8615,
+            0.9888
+          ]
+        },
+        "reported_as_measured": 0.0617
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.4,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1111,
+          "ci95": [
+            0.0299,
+            0.2128
+          ]
+        },
+        "reported_as_measured": 0.8889
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9383,
+          "ci95": [
+            0.8615,
+            0.9888
+          ]
+        },
+        "reported_as_measured": 0.0617
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.4,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0247,
+          "ci95": [
+            0.0,
+            0.0759
+          ]
+        },
+        "reported_as_measured": 0.9753
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8148,
+          "ci95": [
+            0.6999,
+            0.9022
+          ]
+        },
+        "reported_as_measured": 0.1852
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9383,
+          "ci95": [
+            0.8804,
+            0.979
+          ]
+        },
+        "reported_as_measured": 0.0617
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.9143,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.5,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2222,
+          "ci95": [
+            0.0847,
+            0.3696
+          ]
+        },
+        "reported_as_measured": 0.7778
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8519,
+          "ci95": [
+            0.76,
+            0.9275
+          ]
+        },
+        "reported_as_measured": 0.1481
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9545,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.5,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1605,
+          "ci95": [
+            0.0658,
+            0.2632
+          ]
+        },
+        "reported_as_measured": 0.8395
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8519,
+          "ci95": [
+            0.76,
+            0.9275
+          ]
+        },
+        "reported_as_measured": 0.1481
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9545,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.5,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1358,
+          "ci95": [
+            0.0488,
+            0.2369
+          ]
+        },
+        "reported_as_measured": 0.8642
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.7439,
+            0.9239
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9545,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.5,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1111,
+          "ci95": [
+            0.0299,
+            0.2128
+          ]
+        },
+        "reported_as_measured": 0.8889
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.7439,
+            0.9239
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9545,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,4,8",
+      "backswing_s": 1.5,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0247,
+          "ci95": [
+            0.0,
+            0.0759
+          ]
+        },
+        "reported_as_measured": 0.9753
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.7284,
+          "ci95": [
+            0.6,
+            0.8434
+          ]
+        },
+        "reported_as_measured": 0.2716
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9383,
+          "ci95": [
+            0.8804,
+            0.979
+          ]
+        },
+        "reported_as_measured": 0.0617
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.9143,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": null,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "reported_as_measured": 1.0
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.037,
+          "ci95": [
+            0.0,
+            0.0886
+          ]
+        },
+        "reported_as_measured": 0.963
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1728,
+          "ci95": [
+            0.061,
+            0.2857
+          ]
+        },
+        "reported_as_measured": 0.8272
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.4568,
+          "ci95": [
+            0.2931,
+            0.6111
+          ]
+        },
+        "reported_as_measured": 0.5432
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.5185,
+          "ci95": [
+            0.375,
+            0.6548
+          ]
+        },
+        "reported_as_measured": 0.4815
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3827,
+          "ci95": [
+            0.2567,
+            0.5094
+          ]
+        },
+        "reported_as_measured": 0.6173
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2716,
+          "ci95": [
+            0.1429,
+            0.3978
+          ]
+        },
+        "reported_as_measured": 0.7284
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9595,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1975,
+          "ci95": [
+            0.0843,
+            0.3159
+          ]
+        },
+        "reported_as_measured": 0.8025
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.0,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.037,
+          "ci95": [
+            0.0,
+            0.0909
+          ]
+        },
+        "reported_as_measured": 0.963
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9506,
+          "ci95": [
+            0.8986,
+            0.9884
+          ]
+        },
+        "reported_as_measured": 0.0494
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9589,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.5185,
+          "ci95": [
+            0.375,
+            0.6548
+          ]
+        },
+        "reported_as_measured": 0.4815
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3827,
+          "ci95": [
+            0.2567,
+            0.5094
+          ]
+        },
+        "reported_as_measured": 0.6173
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2716,
+          "ci95": [
+            0.1429,
+            0.3978
+          ]
+        },
+        "reported_as_measured": 0.7284
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9595,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1975,
+          "ci95": [
+            0.0843,
+            0.3159
+          ]
+        },
+        "reported_as_measured": 0.8025
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 0.9,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.037,
+          "ci95": [
+            0.0,
+            0.0909
+          ]
+        },
+        "reported_as_measured": 0.963
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9506,
+          "ci95": [
+            0.8986,
+            0.9884
+          ]
+        },
+        "reported_as_measured": 0.0494
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9589,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.5062,
+          "ci95": [
+            0.3562,
+            0.6494
+          ]
+        },
+        "reported_as_measured": 0.4938
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3704,
+          "ci95": [
+            0.241,
+            0.5
+          ]
+        },
+        "reported_as_measured": 0.6296
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2716,
+          "ci95": [
+            0.1429,
+            0.3978
+          ]
+        },
+        "reported_as_measured": 0.7284
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9595,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1975,
+          "ci95": [
+            0.0843,
+            0.3159
+          ]
+        },
+        "reported_as_measured": 0.8025
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.0,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.037,
+          "ci95": [
+            0.0,
+            0.0909
+          ]
+        },
+        "reported_as_measured": 0.963
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9506,
+          "ci95": [
+            0.8986,
+            0.9884
+          ]
+        },
+        "reported_as_measured": 0.0494
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9589,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.1,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.4938,
+          "ci95": [
+            0.3415,
+            0.6439
+          ]
+        },
+        "reported_as_measured": 0.5062
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.1,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.358,
+          "ci95": [
+            0.2278,
+            0.4932
+          ]
+        },
+        "reported_as_measured": 0.642
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.1,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2593,
+          "ci95": [
+            0.1323,
+            0.3903
+          ]
+        },
+        "reported_as_measured": 0.7407
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9595,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.1,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1852,
+          "ci95": [
+            0.0769,
+            0.3056
+          ]
+        },
+        "reported_as_measured": 0.8148
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.1,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0247,
+          "ci95": [
+            0.0,
+            0.0759
+          ]
+        },
+        "reported_as_measured": 0.9753
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9506,
+          "ci95": [
+            0.8986,
+            0.9884
+          ]
+        },
+        "reported_as_measured": 0.0494
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9589,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.2,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3704,
+          "ci95": [
+            0.1948,
+            0.5436
+          ]
+        },
+        "reported_as_measured": 0.6296
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9545,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.2,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2716,
+          "ci95": [
+            0.141,
+            0.4124
+          ]
+        },
+        "reported_as_measured": 0.7284
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9545,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.2,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1975,
+          "ci95": [
+            0.0864,
+            0.321
+          ]
+        },
+        "reported_as_measured": 0.8025
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.2,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1481,
+          "ci95": [
+            0.05,
+            0.2683
+          ]
+        },
+        "reported_as_measured": 0.8519
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.2,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0247,
+          "ci95": [
+            0.0,
+            0.0759
+          ]
+        },
+        "reported_as_measured": 0.9753
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.75,
+            0.9109
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9506,
+          "ci95": [
+            0.8986,
+            0.9884
+          ]
+        },
+        "reported_as_measured": 0.0494
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9589,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.3,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.3086,
+          "ci95": [
+            0.1358,
+            0.4881
+          ]
+        },
+        "reported_as_measured": 0.6914
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.3,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2346,
+          "ci95": [
+            0.1084,
+            0.3715
+          ]
+        },
+        "reported_as_measured": 0.7654
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9753,
+          "ci95": [
+            0.9351,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0247
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.3,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1728,
+          "ci95": [
+            0.0606,
+            0.3
+          ]
+        },
+        "reported_as_measured": 0.8272
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.8987,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.3,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1235,
+          "ci95": [
+            0.0299,
+            0.247
+          ]
+        },
+        "reported_as_measured": 0.8765
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.963,
+          "ci95": [
+            0.8987,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.037
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.3,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0247,
+          "ci95": [
+            0.0,
+            0.0759
+          ]
+        },
+        "reported_as_measured": 0.9753
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8272,
+          "ci95": [
+            0.7195,
+            0.9091
+          ]
+        },
+        "reported_as_measured": 0.1728
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9506,
+          "ci95": [
+            0.8986,
+            0.9884
+          ]
+        },
+        "reported_as_measured": 0.0494
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9589,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.4,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2346,
+          "ci95": [
+            0.0882,
+            0.3896
+          ]
+        },
+        "reported_as_measured": 0.7654
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9506,
+          "ci95": [
+            0.8923,
+            0.9891
+          ]
+        },
+        "reported_as_measured": 0.0494
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.4,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1728,
+          "ci95": [
+            0.0704,
+            0.2933
+          ]
+        },
+        "reported_as_measured": 0.8272
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9506,
+          "ci95": [
+            0.8923,
+            0.9891
+          ]
+        },
+        "reported_as_measured": 0.0494
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.4,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1358,
+          "ci95": [
+            0.0488,
+            0.2369
+          ]
+        },
+        "reported_as_measured": 0.8642
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9383,
+          "ci95": [
+            0.8615,
+            0.9888
+          ]
+        },
+        "reported_as_measured": 0.0617
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.4,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1111,
+          "ci95": [
+            0.0299,
+            0.2128
+          ]
+        },
+        "reported_as_measured": 0.8889
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9383,
+          "ci95": [
+            0.8615,
+            0.9888
+          ]
+        },
+        "reported_as_measured": 0.0617
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.4,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0247,
+          "ci95": [
+            0.0,
+            0.0759
+          ]
+        },
+        "reported_as_measured": 0.9753
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8148,
+          "ci95": [
+            0.6999,
+            0.9022
+          ]
+        },
+        "reported_as_measured": 0.1852
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9506,
+          "ci95": [
+            0.8986,
+            0.9884
+          ]
+        },
+        "reported_as_measured": 0.0494
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9589,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.5,
+      "margin": 0.0,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.2222,
+          "ci95": [
+            0.0847,
+            0.3696
+          ]
+        },
+        "reported_as_measured": 0.7778
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8519,
+          "ci95": [
+            0.76,
+            0.9275
+          ]
+        },
+        "reported_as_measured": 0.1481
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9545,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.5,
+      "margin": 0.01,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1605,
+          "ci95": [
+            0.0658,
+            0.2632
+          ]
+        },
+        "reported_as_measured": 0.8395
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8519,
+          "ci95": [
+            0.76,
+            0.9275
+          ]
+        },
+        "reported_as_measured": 0.1481
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9545,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.5,
+      "margin": 0.02,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1358,
+          "ci95": [
+            0.0488,
+            0.2369
+          ]
+        },
+        "reported_as_measured": 0.8642
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.7439,
+            0.9239
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9545,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.5,
+      "margin": 0.03,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.1111,
+          "ci95": [
+            0.0299,
+            0.2128
+          ]
+        },
+        "reported_as_measured": 0.8889
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.8395,
+          "ci95": [
+            0.7439,
+            0.9239
+          ]
+        },
+        "reported_as_measured": 0.1605
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9545,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    },
+    {
+      "factors": "2,3,4,8",
+      "backswing_s": 1.5,
+      "margin": 0.05,
+      "false_slow": {
+        "n": 81,
+        "share": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "slowed_1.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.0247,
+          "ci95": [
+            0.0,
+            0.0759
+          ]
+        },
+        "reported_as_measured": 0.9753
+      },
+      "slowed_2x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.7284,
+          "ci95": [
+            0.6,
+            0.8434
+          ]
+        },
+        "reported_as_measured": 0.2716
+      },
+      "slowed_2.5x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9506,
+          "ci95": [
+            0.8986,
+            0.9884
+          ]
+        },
+        "reported_as_measured": 0.0494
+      },
+      "slowed_3x": {
+        "read_as_slow": {
+          "n": 81,
+          "share": 0.9877,
+          "ci95": [
+            0.9589,
+            1.0
+          ]
+        },
+        "reported_as_measured": 0.0123
+      },
+      "slow_motion_replays": {
+        "slow": 0.9833,
+        "real time": 0.0167,
+        "refused": 0.0
+      },
+      "n_replays": 60
+    }
+  ]
+}

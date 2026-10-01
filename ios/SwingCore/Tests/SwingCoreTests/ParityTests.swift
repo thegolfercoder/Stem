@@ -144,6 +144,22 @@ final class ParityTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(result.metrics.eventTimes[0], slowed.times[0] - 1e-6)
     }
 
+    /// Slowed only two or three times, the swing passes every gate at playback
+    /// speed, and its durations used to be shown as measured (#32). The answered-clip
+    /// check reads it as slow motion, as the Python and browser engines do.
+    func testAClipSlowedTwoOrThreeTimesIsReadAsSlowMotion() {
+        XCTAssertNotNil(Self.analyzer.payload.thresholds.slowMotionCheckBackswingS)
+        for factor in [2.0, 3.0] {
+            var slowed = sequence
+            slowed.times = sequence.times.map { $0 * factor }
+            guard let result = Self.analyzer.analyse(slowed, handedness: .right).result else {
+                return XCTFail("slowed \(factor)x refused")
+            }
+            XCTAssertNotNil(result.metrics.slowedBy, "slowed \(factor)x read as real time")
+            XCTAssertFalse(result.metrics.hasDurations)
+        }
+    }
+
     func testARealTimeClipIsNotTreatedAsSlowMotion() {
         guard let result = Self.analyzer.analyse(sequence, handedness: .right).result else {
             return XCTFail("the real swing was refused")
