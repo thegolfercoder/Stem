@@ -43,10 +43,17 @@ code without a reason tied to an item) is not improvement and is not done.
 - **The holdout.** `golfdb-holdout-*` is read only through
   `python -m swingml.model.release_gate`, once per candidate. Never train, tune,
   select or threshold on it. Never change a split, a manifest, or a frozen
-  archive. Never leak a clip between splits. The code enforces it: every loader
-  calls `swingml.dataset.manifest.guard_archive` (a manifest,
+  archive. Never leak a clip between splits. The code enforces "only through the
+  gate": every loader calls `swingml.dataset.manifest.guard_archive` (a manifest,
   `refuse_holdout_manifest`), which only the gate's `holdout_access()` lifts; a
-  new loader is guarded too (`swingml/tests/test_holdout_guard.py`).
+  new loader is guarded too (`swingml/tests/test_holdout_guard.py`). It enforces
+  "once per candidate" for weights: the gate logs every run in
+  `docs/audit/holdout-reads.jsonl` and refuses (exit 2), before reading, weights
+  already scored on that holdout, rule changes on them included. Only the owner
+  allows another read, with a recorded decision passed as
+  `--owner-approved-reread`; no agent passes it otherwise. What the code does not
+  stop: an edited log, or new weights trained to probe the holdout. Gate reports
+  on a holdout carry aggregates only, never a clip's id or reading.
 - **Shipping a model** requires the release gate to exit 0 on the frozen
   manifests. Its report is committed with the change.
 - **Never output** spin rate or axis, club-face angle, club path, attack angle,

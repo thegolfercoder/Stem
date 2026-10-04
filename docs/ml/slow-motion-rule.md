@@ -181,9 +181,12 @@ The same is held in all three engines by `tests/test_slow_motion_check.py`,
 
 **The holdout for this question.** `golfdb-holdout-v1` was read three times for
 #32 through the release gate (`c769abd` before and after, `3619cb1`), and the
-gate report names four of its slow-motion replays (213, 451, 617, 1000) and their
+gate report named four of its slow-motion replays (213, 451, 617, 1000) and their
 tempo shifts. Those four have been inspected for this question. No further gate
-run on the holdout for a #32 variant is made without a recorded owner decision.
+run on the holdout for a #32 variant is made without a recorded owner decision,
+and since #55 the gate refuses one: the shipped weights are in
+`docs/audit/holdout-reads.jsonl`. The committed report now carries the count of
+moved clips only; the per-clip rows remain in git history at `3619cb1`.
 
 ## What this does not claim
 

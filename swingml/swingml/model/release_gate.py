@@ -42,7 +42,19 @@ manifests. The gates, all of which must pass:
     not gated, and without the manifest the report says "no phone evidence",
     which is not a pass.
 
-Exit status: 0 all pass, 1 a gate failed, 2 evidence missing.
+Once per candidate. Every run that names a holdout manifest (`golfdb-holdout-*`,
+`phone-holdout-*`) appends a record to `docs/audit/holdout-reads.jsonl`: the
+candidate's and baseline's weights and rule overrides, a hash of the decision
+code, the commit, the outcome, and which holdouts were actually read. A run whose
+candidate weights were already scored on one of its holdouts exits 2 before
+reading anything, unless `--owner-approved-reread` names the owner's recorded
+decision. Keyed on the weights rather than the whole rule, so a sweep over
+`--candidate-config` thresholds on one set of weights is refused too. It does not
+stop someone editing the log; the log is committed, so that shows in review.
+Reports on a holdout carry aggregates only, never a clip's id or reading, so a
+gate failure cannot become design input.
+
+Exit status: 0 all pass, 1 a gate failed, 2 evidence missing or a re-read refused.
 """
 
 from __future__ import annotations
@@ -50,8 +62,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import subprocess
 import sys
 from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -68,6 +82,7 @@ from swingml.analysis import (
     model_fingerprint,
 )
 from swingml.dataset.manifest import (
+    HOLDOUT_SPLITS,
     Manifest,
     ManifestError,
     guard_archive,
@@ -101,6 +116,8 @@ SLOPE_DROP = 0.05
 # golfers make the golfer-resampled interval wider than any margin worth gating on.
 PHONE_MIN_SWINGS = 150
 PHONE_MIN_GOLFERS = 30
+READ_LOG = Path(__file__).resolve().parents[3] / "docs" / "audit" / "holdout-reads.jsonl"
+"""Every release-gate run on a holdout, appended to, never rewritten (#55)."""
 
 
 class MissingEvidenceError(RuntimeError):
@@ -568,7 +585,76 @@ def phone_section(
     }
 
 
-def run(args: argparse.Namespace) -> dict[str, Any]:
+# -- once per candidate (#55) ---------------------------------------------------------
+
+
+def code_sha256() -> str:
+    """A hash of the swingml package's Python sources: the decision code that ran."""
+    package = Path(__file__).resolve().parents[1]
+    digest = hashlib.sha256()
+    for path in sorted(package.rglob("*.py")):
+        digest.update(path.relative_to(package).as_posix().encode() + b"\0")
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def git_commit() -> str | None:
+    try:
+        done = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10,
+            cwd=Path(__file__).resolve().parent, check=True,
+        )  # fmt: skip
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return done.stdout.strip() or None
+
+
+def holdouts_named(args: argparse.Namespace) -> list[str]:
+    """The holdout manifests this run would read, by name."""
+    paths = [args.test_manifest] + ([args.phone_manifest] if args.phone_manifest else [])
+    try:
+        manifests = [load(Path(path)) for path in paths]
+    except (OSError, ValueError) as error:
+        raise MissingEvidenceError(f"a manifest cannot be read: {error}") from error
+    return [m.name for m in manifests if m.split in HOLDOUT_SPLITS]
+
+
+def read_log(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        return []
+    lines = path.read_text(encoding="utf-8").splitlines()
+    return [json.loads(line) for line in lines if line.strip()]
+
+
+def earlier_reads(
+    log: Sequence[dict[str, Any]], candidate_sha: str, holdout: str
+) -> list[dict[str, Any]]:
+    """Runs that read `holdout` with these candidate weights."""
+    return [
+        e for e in log if holdout in e.get("read", []) and e["candidate"]["sha256"] == candidate_sha
+    ]
+
+
+def append_read(path: Path, entry: dict[str, Any]) -> None:
+    with path.open("a", encoding="utf-8") as log:
+        log.write(json.dumps(entry, sort_keys=True) + "\n")
+
+
+def clip_detail(decisions: Sequence[dict[str, Any]], on_holdout: bool) -> dict[str, Any]:
+    """What a report says clip by clip: on a holdout, a count only (#49, #55).
+
+    Off the holdout, every clip's decision on both sides, to see which a rule moved.
+    On it, a clip's id or reading would be design input for the next candidate.
+    """
+    changed = [d["clip"] for d in decisions if d["baseline"] != d["candidate"]]
+    if on_holdout:
+        return {"n_changed_clips": len(changed)}
+    return {"n_changed_clips": len(changed), "changed_clips": changed, "decisions": list(decisions)}
+
+
+def run(args: argparse.Namespace, read: list[str] | None = None) -> dict[str, Any]:
+    """The report. `read` collects the holdout manifests this run actually read."""
+    read = [] if read is None else read
     root = Path(args.root)
     candidate = load_any(args.candidate)
     baseline = load_any(args.baseline)
@@ -591,6 +677,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     base_config, base_overrides = load_config(args.baseline_config)
     cand_config, cand_overrides = load_config(args.candidate_config)
     same_model = sha256_of(args.candidate) == sha256_of(args.baseline)
+    on_holdout = manifests[0].split in HOLDOUT_SPLITS
+    if on_holdout:
+        read.append(manifests[0].name)
     clips = read_archive(test_archive)
     negatives = no_swing_stretches(clips)
 
@@ -674,6 +763,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "baseline_slope": base["tempo_slope"],
         "candidate_slope": cand["tempo_slope"],
     }
+    if phone is not None and phone.split in HOLDOUT_SPLITS:
+        read.append(phone.name)
     phone_report = phone_section(
         phone, root, (baseline, candidate), (base_cal, cand_cal), (base_config, cand_config),
         args.resamples,
@@ -711,9 +802,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "gates": gates,
         "phone": phone_report,
         "passed": all(g["passed"] for g in gates.values()),
-        # Every clip's decision on both sides, so a reviewer can see which a rule moved.
-        "changed_clips": [d["clip"] for d in decisions if d["baseline"] != d["candidate"]],
-        "decisions": decisions,
+        **clip_detail(decisions, on_holdout),
     }
 
 
@@ -746,14 +835,75 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, default=Path("."))
     parser.add_argument("--resamples", type=int, default=2000)
     parser.add_argument("--report", type=Path, default=None)
+    parser.add_argument("--read-log", type=Path, default=READ_LOG)
+    parser.add_argument(
+        "--owner-approved-reread",
+        default=None,
+        metavar="LINK",
+        help="the owner's recorded decision allowing these weights another holdout read",
+    )
     args = parser.parse_args(argv)
     try:
-        # The one place the holdout may be read (swingml.dataset.manifest.guard_archive).
         with holdout_access():
-            report = run(args)
+            holdouts = holdouts_named(args)
     except MissingEvidenceError as error:
         print(f"RELEASE GATE: MISSING EVIDENCE - {error}", file=sys.stderr)
         return 2
+    entry: dict[str, Any] | None = None
+    if holdouts:
+        if not args.read_log.parent.is_dir():
+            print(
+                f"RELEASE GATE: MISSING EVIDENCE - no read log at {args.read_log}", file=sys.stderr
+            )
+            return 2
+        try:
+            candidate_sha, baseline_sha = sha256_of(args.candidate), sha256_of(args.baseline)
+        except OSError as error:
+            print(f"RELEASE GATE: MISSING EVIDENCE - {error}", file=sys.stderr)
+            return 2
+        log = read_log(args.read_log)
+        entry = {
+            "date": datetime.now(UTC).isoformat(timespec="seconds"),
+            "holdouts": holdouts,
+            "candidate": {"path": str(args.candidate), "sha256": candidate_sha,
+                          "config": load_config(args.candidate_config)[1]},
+            "baseline": {"path": str(args.baseline), "sha256": baseline_sha,
+                         "config": load_config(args.baseline_config)[1]},
+            "code_sha256": code_sha256(),
+            "commit": git_commit(),
+            "owner_approved_reread": args.owner_approved_reread,
+            "read": [],
+        }  # fmt: skip
+        before = {h: earlier_reads(log, candidate_sha, h) for h in holdouts}
+        for holdout in holdouts:
+            total = sum(holdout in e.get("read", []) for e in log)
+            print(f"HOLDOUT  {holdout}: read {total} time(s) before, "
+                  f"{len(before[holdout])} with these candidate weights")  # fmt: skip
+        if any(before.values()) and not args.owner_approved_reread:
+            entry["outcome"] = "refused: these weights were already read on this holdout"
+            append_read(args.read_log, entry)
+            print(
+                "RELEASE GATE: REFUSED - the holdout is read once per candidate "
+                "(agents/CHARTER.md section 3); these weights were already scored on it. "
+                "Another read needs --owner-approved-reread with the owner's decision.",
+                file=sys.stderr,
+            )
+            return 2
+    read: list[str] = []
+    outcome = "error"
+    try:
+        # The one place the holdout may be read (swingml.dataset.manifest.guard_archive).
+        with holdout_access():
+            report = run(args, read)
+        outcome = "passed" if report["passed"] else "failed"
+    except MissingEvidenceError as error:
+        outcome = f"missing evidence: {error}"
+        print(f"RELEASE GATE: MISSING EVIDENCE - {error}", file=sys.stderr)
+        return 2
+    finally:
+        if entry is not None:
+            entry.update(outcome=outcome, read=read)
+            append_read(args.read_log, entry)
     for name, gate in report["gates"].items():
         print(f"{'PASS' if gate['passed'] else 'FAIL'}  {name}")
     if not report["phone"]["gating"]:

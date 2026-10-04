@@ -8,6 +8,7 @@ the application would read and a naive evaluation would call a refusal.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -232,3 +233,125 @@ def test_a_side_s_rule_is_read_from_json_and_typos_are_refused(tmp_path: Path) -
     typo.write_text('{"slow_motion_check_backswing": null}')
     with pytest.raises(ValidationError):
         release_gate.load_config(typo)
+
+
+# -- once per candidate (#55) ------------------------------------------------------
+
+
+def _holdout_run(tmp_path: Path, weights: bytes = b"candidate weights") -> tuple[list[str], Path]:
+    manifest = freeze(_archive(tmp_path / "h.npz", [1, 2]), "tiny-holdout", "holdout",
+                      {1: "a", 2: "b"}, "", tmp_path)  # fmt: skip
+    (tmp_path / "tiny-holdout.json").write_text(manifest.model_dump_json())
+    (tmp_path / "candidate.pt").write_bytes(weights)
+    (tmp_path / "baseline.pt").write_bytes(b"baseline weights")
+    log = tmp_path / "reads.jsonl"
+    argv = [
+        "--candidate", str(tmp_path / "candidate.pt"), "--baseline", str(tmp_path / "baseline.pt"),
+        "--test-manifest", str(tmp_path / "tiny-holdout.json"),
+        "--calibration-manifest", str(tmp_path / "tiny-holdout.json"),
+        "--read-log", str(log),
+    ]  # fmt: skip
+    return argv, log
+
+
+def _reads(log: Path) -> list[dict]:
+    return release_gate.read_log(log)
+
+
+def _stub_run(passed: bool = True):  # type: ignore[no-untyped-def]
+    def run(args, read):  # type: ignore[no-untyped-def]
+        read.append("tiny-holdout")
+        return {"gates": {}, "phone": {"gating": False, "status": "-"}, "passed": passed}
+
+    return run
+
+
+def test_a_second_read_of_the_same_weights_is_refused_before_the_holdout_is_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    argv, log = _holdout_run(tmp_path)
+    monkeypatch.setattr(release_gate, "run", _stub_run(passed=False))
+    assert release_gate.main(argv) == 1
+    first = _reads(log)
+    assert [e["outcome"] for e in first] == ["failed"] and first[0]["read"] == ["tiny-holdout"]
+    assert first[0]["code_sha256"] == release_gate.code_sha256()
+
+    def must_not_run(*_: object) -> None:
+        raise AssertionError("the holdout was read")
+
+    monkeypatch.setattr(release_gate, "run", must_not_run)
+    monkeypatch.setattr(release_gate, "read_archive", must_not_run)
+    # A different rule on the same weights is the same candidate's weights: refused too.
+    rule = tmp_path / "rule.json"
+    rule.write_text('{"slow_motion_margin": 0.02}')
+    assert release_gate.main([*argv, "--candidate-config", str(rule)]) == 2
+    refused = _reads(log)[-1]
+    assert refused["outcome"].startswith("refused") and refused["read"] == []
+    assert refused["candidate"]["config"] == {"slow_motion_margin": 0.02}
+
+
+def test_new_weights_and_an_owner_approved_reread_are_read_and_logged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    argv, log = _holdout_run(tmp_path)
+    monkeypatch.setattr(release_gate, "run", _stub_run())
+    assert release_gate.main(argv) == 0
+    (tmp_path / "candidate.pt").write_bytes(b"retrained weights")
+    assert release_gate.main(argv) == 0
+    (tmp_path / "candidate.pt").write_bytes(b"candidate weights")
+    assert release_gate.main(argv) == 2
+    assert release_gate.main([*argv, "--owner-approved-reread", "https://example/decision"]) == 0
+    outcomes = [(e["outcome"], e["owner_approved_reread"]) for e in _reads(log)]
+    assert outcomes == [
+        ("passed", None), ("passed", None),
+        ("refused: these weights were already read on this holdout", None),
+        ("passed", "https://example/decision"),
+    ]  # fmt: skip
+
+
+def test_a_run_that_breaks_is_logged_with_what_it_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    argv, log = _holdout_run(tmp_path)
+
+    def missing(args, read):  # type: ignore[no-untyped-def]
+        raise release_gate.MissingEvidenceError("no calibration")
+
+    def crash(args, read):  # type: ignore[no-untyped-def]
+        read.append("tiny-holdout")
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(release_gate, "run", missing)
+    assert release_gate.main(argv) == 2
+    monkeypatch.setattr(release_gate, "run", crash)
+    with pytest.raises(RuntimeError):
+        release_gate.main(argv)
+    entries = _reads(log)
+    assert entries[0]["outcome"].startswith("missing evidence") and entries[0]["read"] == []
+    assert entries[1]["outcome"] == "error" and entries[1]["read"] == ["tiny-holdout"]
+
+
+def test_a_holdout_report_names_no_clip() -> None:
+    decisions = [
+        {"clip": 7, "baseline": {"tempo": 3.1}, "candidate": {"tempo": 3.2}},
+        {"clip": 8, "baseline": {"tempo": 2.9}, "candidate": {"tempo": 2.9}},
+    ]
+    assert release_gate.clip_detail(decisions, on_holdout=True) == {"n_changed_clips": 1}
+    off = release_gate.clip_detail(decisions, on_holdout=False)
+    assert off["changed_clips"] == [7] and off["decisions"] == decisions
+
+
+AUDIT = Path(__file__).resolve().parents[2] / "docs" / "audit"
+
+
+def test_committed_holdout_reports_carry_aggregates_only_and_are_in_the_read_log() -> None:
+    reports = sorted(AUDIT.glob("release-gate-*.json"))
+    assert reports
+    log = release_gate.read_log(release_gate.READ_LOG)
+    for path in reports:
+        report = json.loads(path.read_text(encoding="utf-8"))
+        assert "decisions" not in report and "changed_clips" not in report, path.name
+        manifest = report["test"]["manifest"]
+        assert any(
+            e.get("report") == f"docs/audit/{path.name}" and manifest in e["read"] for e in log
+        ), f"{path.name} is not in {release_gate.READ_LOG.name}"

@@ -10,6 +10,20 @@ properly.
    (`swingml.model.release_gate`), never on a split chosen after seeing results.
    Nothing else can read it: every other loader refuses the holdout's archive,
    its manifest, or its clips in other bytes (`manifest.guard_archive`).
+
+   **Reads so far** (`docs/audit/holdout-reads.jsonl`, reconstructed in #55 from the
+   committed reports): `golfdb-holdout-v1` has been read five times. Once by the
+   2026-09-28 audit's scripts, before the guard existed, and four times through the
+   gate: one model candidate (`g7_s1`, failed) and three runs on the shipped weights
+   for #32's slow-motion rule (all failed). The shipped weights have therefore had
+   their read; another rule on them needs the owner's decision
+   (`--owner-approved-reread`). The gate prints the count on every run.
+
+   **When to move to v2.** `golfdb-holdout-v2` (320 swings) contains all 201 of v1's
+   swings and 119 that no run has read. It is not a fresh set. Use it for the next
+   model candidate trained on `golfdb-train-v2`, whose split it was frozen with;
+   a set with no swing ever read needs new labelled footage, which is the phone
+   test set below.
 2. **Group bootstrap.** Intervals resample golfer/video groups, not clips.
 3. **Metrics.** Within 1 and 2 frames (core four and all eight events); median and
    80th-percentile tempo error; tempo sensitivity (log-log slope); band coverage;

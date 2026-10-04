@@ -41,7 +41,15 @@ from 150 swings by 30 golfers. Without it the report says "no phone evidence":
 that is an absence of evidence, not a pass.
 
 Exit 0: every gate passed. Exit 1: a gate failed; the report says which and by how
-much. Exit 2: evidence is missing; nothing was measured. Do not ship on 1 or 2.
+much. Exit 2: evidence is missing, or these weights were already read on this
+holdout; nothing was measured. Do not ship on 1 or 2.
+
+Every run on a holdout is appended to `docs/audit/holdout-reads.jsonl` (weights,
+rule overrides, a hash of the decision code, the commit, the outcome, and what was
+read), whatever its outcome; commit it with the report. The gate prints how often
+each holdout has been read. Weights already scored on a holdout are refused before
+anything is read; another read takes `--owner-approved-reread <link to the
+owner's decision>`.
 
 The last candidate (`g7_s1`, 619 training swings) failed on the phone fixture and on
 false confidence: `docs/audit/release-gate-g7_s1-vs-e7_s0.json`.
@@ -71,8 +79,11 @@ With the same weights on both sides, gate 3 is `not_worse_than_baseline_on_froze
 - tempo error must not rise by 1 point or more;
 - both judged at the 95% interval's worst end.
 
-A rule need not improve accuracy to ship, but it must pass. The report lists
-every clip's decision on both sides and the clips the rule moved. Omit a
+A rule need not improve accuracy to ship, but it must pass. On a holdout the
+report gives only how many clips the rule moved (`n_changed_clips`), never which:
+a holdout clip's id or reading would be design input for the next try (#49, #55).
+Off the holdout (a validation manifest) it lists every clip's decision on both
+sides. Omit a
 `--*-config` to use the app's default rule. The rule is chosen on validation
 first, as for a model; the gate is run once on the rule as chosen.
 
