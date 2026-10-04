@@ -73,9 +73,13 @@ METRICS = {
 }  # fmt: skip
 
 
+FACE_ON = {"shoulder_ratio": 0.8}
+
+
 def read(metrics: dict[str, Any] | None = None, *, hand: str = "right",
          recent: list[dict[str, Any]] | None = None, user_set: tuple[int, ...] = (),
-         no_priority: str | None = None) -> dict[str, Any]:  # fmt: skip
+         no_priority: str | None = None,
+         camera: dict[str, Any] | None = FACE_ON) -> dict[str, Any]:  # fmt: skip
     """The read and, where a history is given, the priority practice.js chose from it."""
     data = payload()
     rules = data["practice"]
@@ -85,7 +89,7 @@ def read(metrics: dict[str, Any] | None = None, *, hand: str = "right",
         f" return {{ insight, read: r.stemRead({{ metrics: {json.dumps(metrics or METRICS)},"
         f" handedness: {json.dumps(hand)}, band: {json.dumps(data['calibration']['tempo'])},"
         f" rules, userSet: {json.dumps(list(user_set))}, insight,"
-        f" noPriority: {json.dumps(no_priority)} }}) }}; }})()"
+        f" noPriority: {json.dumps(no_priority)}, camera: {json.dumps(camera)} }}) }}; }})()"
     )
 
 
@@ -111,10 +115,28 @@ def test_the_tempo_sentence_quotes_the_page_and_the_tour_reference() -> None:
     assert any("compressed toward" in c for c in tempo["caveats"])
 
 
-@pytest.mark.parametrize(("value", "where"), [(2.4, "below"), (5.0, "above")])
-def test_a_tempo_outside_the_tour_range_says_which_side(value: float, where: str) -> None:
+@pytest.mark.parametrize(("value", "where"), [(2.0, "below"), (6.5, "above")])
+def test_a_tempo_whose_whole_spread_is_outside_says_which_side(value: float, where: str) -> None:
     tempo = by_key(read({**METRICS, "tempoRatio": value}))["tempo"]
-    assert f"{value:.2f}" in tempo["text"] and f", {where} the" in tempo["text"]
+    assert f"{value:.2f}" in tempo["text"] and f", all {where} the" in tempo["text"]
+    assert ("quick" if where == "below" else "long") in tempo["text"]
+
+
+@pytest.mark.parametrize("value", [2.7, 4.9])
+def test_a_spread_overlapping_the_tour_range_judges_nothing(value: float) -> None:
+    """QA on #52: 2.70 reads 1.96-3.44, which reaches into 2.89-4.59."""
+    tempo = by_key(read({**METRICS, "tempoRatio": value}))["tempo"]
+    assert ", which overlaps the" in tempo["text"]
+    assert not re.search(r"\b(below|above|quick|long)\b", tempo["text"])
+
+
+@pytest.mark.parametrize("case", ["hand-placed", "left-handed"])
+def test_without_a_spread_that_applies_the_range_is_quoted_not_judged(case: str) -> None:
+    metrics = {**METRICS, "tempoRatio": 2.0}
+    result = read(metrics, user_set=(5,)) if case == "hand-placed" else read(metrics, hand="left")
+    tempo = by_key(result)["tempo"]["text"]
+    assert "; tour swings read" in tempo
+    assert not re.search(r"\b(below|above|quick|long|inside|overlaps)\b", tempo)
 
 
 def test_a_left_hander_is_told_the_band_was_not_measured_for_them() -> None:
@@ -205,3 +227,31 @@ def test_the_payload_carries_the_tour_body_readings_unchanged() -> None:
     shipped = payload()["practice"]["tour_body"]
     assert shipped == practice_payload()["tour_body"]
     assert set(shipped) == set(TOUR_BODY_READINGS)
+
+
+@pytest.mark.parametrize(
+    ("ratio", "said"), [(0.2, "does not look face on"), (None, "could not be read")]
+)
+def test_body_is_not_compared_unless_the_camera_looks_face_on(
+    ratio: float | None, said: str
+) -> None:
+    """QA on #52: the tour body readings are face on only; the page knows the view."""
+    camera = None if ratio is None else {"shoulder_ratio": ratio}
+    body = by_key(read({**METRICS, "headMovement": 0.2}, camera=camera))["body"]
+    assert body["provenance"] == "refused" and said in body["text"]
+    assert "0.200" not in body["text"]
+    if ratio is not None:
+        assert "0.20 of the torso length" in body["text"]
+        assert (
+            f"read {payload()['practice']['face_on_min_shoulder_ratio']:.2f} or more"
+            in body["text"]
+        )
+
+
+def test_the_face_on_threshold_lies_between_the_views_on_validation() -> None:
+    audit = json.loads(
+        (HERE.parents[1] / "docs" / "audit" / "face-on-shoulder-ratio.json").read_text()
+    )
+    cut = payload()["practice"]["face_on_min_shoulder_ratio"]
+    assert audit["threshold"] == cut
+    assert audit["summary"]["face on"]["min"] >= cut > audit["summary"]["down the line"]["max"]

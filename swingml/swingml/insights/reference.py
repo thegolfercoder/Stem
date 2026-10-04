@@ -101,3 +101,13 @@ Face on only, broadcast footage, tour players. Not used by any priority rule:
 the practice loop still waits for the golfer to choose these focuses
 (docs/ml/checkpoint-reference.md says why, and what these do not claim).
 """
+
+FACE_ON_MIN_SHOULDER_RATIO = 0.60
+"""Below this shoulder ratio at address a clip is not compared with TOUR_BODY_READINGS.
+
+Those readings are face on only. On the real-time clips of golfdb-validation-v2,
+the 29 face-on clips read 0.632 to 0.909 (median 0.764) and the 36 down-the-line
+clips 0.006 to 0.346 (and 1 of 15 clips filmed from other angles reads above it);
+0.60 sits just below the lowest face-on clip
+(scripts/face_on_ratio.py, docs/audit/face-on-shoulder-ratio.json).
+"""

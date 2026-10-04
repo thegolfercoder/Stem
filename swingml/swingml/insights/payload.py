@@ -13,7 +13,11 @@ from typing import Any
 
 from swingml.insights import compare, engine
 from swingml.insights.drills import DRILLS
-from swingml.insights.reference import TOUR_BODY_READINGS, TOUR_TEMPO_READINGS
+from swingml.insights.reference import (
+    FACE_ON_MIN_SHOULDER_RATIO,
+    TOUR_BODY_READINGS,
+    TOUR_TEMPO_READINGS,
+)
 
 
 def practice_payload() -> dict[str, Any]:
@@ -32,6 +36,7 @@ def practice_payload() -> dict[str, Any]:
         "tour_body": {
             name: reading.model_dump(mode="json") for name, reading in TOUR_BODY_READINGS.items()
         },
+        "face_on_min_shoulder_ratio": FACE_ON_MIN_SHOULDER_RATIO,
         "tempo_limits": list(engine.TEMPO_LIMITS),
         "tempo_limits_left_handed": list(engine.TEMPO_LIMITS_LEFT_HANDED),
         "one_swing": dict(engine.ONE_SWING),

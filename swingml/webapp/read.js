@@ -28,6 +28,7 @@ const range = (ref, digits) => `${ref.p10.toFixed(digits)}–${ref.p90.toFixed(d
  *   userSet     event indices the golfer placed by hand
  *   insight     the practice engine's priority for this swing, or null
  *   noPriority  what to say when there is no priority for this swing
+ *   camera      the swing's camera signature (practice.js cameraSignature), or null
  * Returns [{ key, text, provenance, caveats }]. */
 export function stemRead(input) {
   const { metrics: m, handedness, band, rules } = input;
@@ -49,11 +50,28 @@ export function stemRead(input) {
     }
     const tour = rules && rules.tour_tempo;
     if (tour) {
-      const where = tempo < tour.p10 ? "below" : tempo > tour.p90 ? "above" : "inside";
-      text += `, ${where} the ${range(tour, 2)} that tour swings read through the same analysis ` +
+      const reference = `the ${range(tour, 2)} that tour swings read through the same analysis ` +
         `(the middle 80% of ${tour.n_swings})`;
-      if (where === "below") text += ": a quick backswing for your downswing";
-      if (where === "above") text += ": a long backswing for your downswing";
+      // Below or above only when the whole measured spread is: one reading inside
+      // its own spread of the range cannot say the backswing is quick or long (QA,
+      // #52). Without a spread that applies (no band, positions placed by hand, a
+      // left-hander's band not measured) the range is quoted and nothing judged.
+      const judged = band && !handPlaced.length && !left;
+      if (judged) {
+        const spread = Math.abs(tempo) * band.half_width_fraction;
+        if (tempo + spread < tour.p10) {
+          text += `, all below ${reference}: a quick backswing for your downswing`;
+        } else if (tempo - spread > tour.p90) {
+          text += `, all above ${reference}: a long backswing for your downswing`;
+        } else if (tempo >= tour.p10 && tempo <= tour.p90) {
+          text += `, inside ${reference}`;
+        } else {
+          text += `, which overlaps ${reference}`;
+        }
+      } else {
+        text += `; tour swings read ${range(tour, 2)} through the same analysis ` +
+          `(the middle 80% of ${tour.n_swings})`;
+      }
     }
     text += ".";
     const caveats = [];
@@ -72,8 +90,18 @@ export function stemRead(input) {
   }
 
   // 2. Head, sway and turn, against tour swings filmed face on. A difference, not a fault.
+  // Only for a clip that looks face on: those readings are face on only (QA, #52).
   const body = rules && rules.tour_body;
-  if (body) {
+  const minRatio = rules && rules.face_on_min_shoulder_ratio;
+  const ratio = input.camera ? input.camera.shoulder_ratio : null;
+  if (body && finite(minRatio) && !(finite(ratio) && ratio >= minRatio)) {
+    out.push({ key: "body", provenance: "refused", caveats: [],
+               text: "Head, sway and turn are not compared with tour swings, which were filmed face on: " +
+                 (finite(ratio)
+                   ? `this camera does not look face on (the shoulders measure ${ratio.toFixed(2)} of the ` +
+                     `torso length at address; face-on clips read ${minRatio.toFixed(2)} or more).`
+                   : "the camera's angle could not be read at address.") });
+  } else if (body) {
     const seen = [];
     const differs = [];
     if (m.feetInShot && finite(m.headMovement) && body.head_movement) {

@@ -225,6 +225,7 @@ function renderStemRead() {
     metrics: m, handedness: a.handedness,
     band: state.payload.calibration && state.payload.calibration.tempo,
     rules, userSet: [...a.userSet], insight: state.readInsight,
+    camera: cameraSignature(a.sequence, nearestFrame(a.sequence, m.eventTimes[0])),
     noPriority: state.readNote ||
       (rules && rules.one_swing ? rules.one_swing[left ? "left" : "right"] : null),
   });

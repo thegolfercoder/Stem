@@ -81,9 +81,13 @@ fixed, it moves to the changelog with the measurement that shows it.
     sentences after each analysis from the numbers already on the page: tempo against
     the tour readings, head, sway and turn against the face-on tour readings of #12,
     and the practice engine's priority. It is made on the device, with no network and
-    no Claude, and adds nothing that was not measured. The body comparison assumes a
-    face-on camera, which the app cannot check, and a reading outside the tour range
-    is a difference from those tour swings, not a fault; no priority rule uses it.
+    no Claude, and adds nothing that was not measured. The body comparison is made
+    only when the camera looks face on (shoulder ratio at address 0.60 or more: every
+    face-on validation clip passes and no down-the-line one does, but 1 of 15 clips
+    from other angles passes too, `docs/audit/face-on-shoulder-ratio.json`), and a
+    reading outside the tour range is a difference from those tour swings, not a
+    fault; no priority rule uses it. One swing's tempo is called quick or long only
+    when its whole measured spread lies outside the tour range.
     The desktop keeps its optional local Ollama coach instead, and the iPhone app has
     the Ollama coach but not this read: the iPhone is a step behind the browser here.
 14. **The browser keeps its practice log in the browser.** Clearing site data, a
