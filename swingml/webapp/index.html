@@ -225,13 +225,12 @@ h2.section{font-size:19px;margin:28px 0 4px;letter-spacing:-.01em}
 .prov-derived{color:var(--accent)}
 .prov-projected{color:var(--accent-warm)}
 .prov-refused{color:var(--ink-dim)}
-.prov-claude{color:var(--ink-dim);vertical-align:3px;margin-left:8px}
-.coach{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-  padding:18px;display:grid;gap:14px}
-.coach-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.coach-status{color:var(--ink-dim);font-size:13.5px}
-.coach-text{white-space:pre-wrap;max-width:72ch;line-height:1.55}
-.coach-text:empty{display:none}
+.stem-read{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 18px;margin:0;list-style:none;display:grid;gap:14px}
+.stem-read li{display:grid;gap:4px;max-width:72ch}
+.stem-read p{margin:0;line-height:1.55}
+.stem-read .prov{margin-left:6px;vertical-align:1px}
+.read-caveat{color:var(--ink-dim);font-size:13px;line-height:1.45}
 .send-diag{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px}
 .send-diag-note{color:var(--ink-dim);font-size:13px;max-width:62ch}
 .prov-set_by_you{color:var(--ink);border-color:var(--accent);align-self:flex-start;margin-top:2px}
@@ -484,19 +483,12 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
       these two are placed from the body's motion rather than observed directly.</p>
     </details>
 
-    <section id="coach-section" hidden>
-      <h2 class="section">A coach's read <span class="prov prov-claude">Claude's read</span></h2>
-      <p class="section-sub">Claude looks at the frames and the measurements and says what it
-        would work on. This is an opinion from pictures, not a measurement. It uses your
-        Claude usage and runs only when you ask.</p>
-      <div class="coach">
-        <div class="coach-actions">
-          <button class="btn btn-primary" id="coach-ask" type="button">Ask Claude to read this swing</button>
-          <button class="btn" id="coach-stop" type="button" hidden>Stop</button>
-          <span class="coach-status" id="coach-status" role="status"></span>
-        </div>
-        <div class="coach-text" id="coach-text" aria-live="polite"></div>
-      </div>
+    <section id="read-section" hidden>
+      <h2 class="section">Stem's read, from your measurements</h2>
+      <p class="section-sub">Written on this device from the numbers on this page, each with
+        how it was obtained. Nothing is sent anywhere and nothing is added that was not
+        measured.</p>
+      <ol class="stem-read" id="stem-read" aria-live="polite"></ol>
     </section>
 
     <details class="fold" data-fold="rotation">
@@ -572,6 +564,7 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
 /*__METRICS__*/
 /*__PRACTICE__*/
 /*__CAPTURE__*/
+/*__READ__*/
 /*__APP__*/
 boot(/*__PAYLOAD__*/);
 </script>

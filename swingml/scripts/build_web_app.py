@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-MODULES = ("engine.js", "model.js", "metrics.js", "practice.js", "capture.js", "app.js")
+MODULES = ("engine.js", "model.js", "metrics.js", "practice.js", "capture.js", "read.js", "app.js")
 # Where each module goes in index.html, in the same order.
 TOKENS = tuple(f"/*__{name.removesuffix('.js').upper()}__*/" for name in MODULES)
 

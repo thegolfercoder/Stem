@@ -13,7 +13,7 @@ from typing import Any
 
 from swingml.insights import compare, engine
 from swingml.insights.drills import DRILLS
-from swingml.insights.reference import TOUR_TEMPO_READINGS
+from swingml.insights.reference import TOUR_BODY_READINGS, TOUR_TEMPO_READINGS
 
 
 def practice_payload() -> dict[str, Any]:
@@ -27,6 +27,11 @@ def practice_payload() -> dict[str, Any]:
         "drills": [drill.model_dump(mode="json") for drill in DRILLS],
         "trackable": [list(choice) for choice in engine.TRACKABLE],
         "tour_tempo": TOUR_TEMPO_READINGS.model_dump(mode="json"),
+        # Not used by any priority rule (docs/ml/checkpoint-reference.md); the
+        # browser's read quotes them as a difference from tour swings, never a fault.
+        "tour_body": {
+            name: reading.model_dump(mode="json") for name, reading in TOUR_BODY_READINGS.items()
+        },
         "tempo_limits": list(engine.TEMPO_LIMITS),
         "tempo_limits_left_handed": list(engine.TEMPO_LIMITS_LEFT_HANDED),
         "one_swing": dict(engine.ONE_SWING),

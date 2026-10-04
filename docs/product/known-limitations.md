@@ -74,6 +74,15 @@ fixed, it moves to the changelog with the measurement that shows it.
     what its own swings could resolve; no study of within-golfer repeatability exists.
 13. **Priorities are limited to what has a reference.** Only tempo has one (tour
     readings); for everything else the golfer chooses the focus and the app measures it.
+13a. **Stem's read is a summary, not a coach (#52).** The browser page writes a few
+    sentences after each analysis from the numbers already on the page: tempo against
+    the tour readings, head, sway and turn against the face-on tour readings of #12,
+    and the practice engine's priority. It is made on the device, with no network and
+    no Claude, and adds nothing that was not measured. The body comparison assumes a
+    face-on camera, which the app cannot check, and a reading outside the tour range
+    is a difference from those tour swings, not a fault; no priority rule uses it.
+    The desktop keeps its optional local Ollama coach instead, and the iPhone app has
+    the Ollama coach but not this read: the iPhone is a step behind the browser here.
 14. **The browser keeps its practice log in the browser.** Clearing site data, a
     private window, or another browser starts from nothing, and nothing moves between
     the desktop, the browser and the iPhone. The iPhone's practice screen builds in CI

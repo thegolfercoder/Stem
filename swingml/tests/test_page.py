@@ -826,3 +826,36 @@ def test_on_a_phone_the_one_thing_to_practise_comes_first(landmark_json: str, cl
         assert page.evaluate(NO_OVERFLOW)
         assert errors == []
         browser.close()
+
+
+def test_stems_read_is_written_in_the_page_and_sends_nothing(
+    landmark_json: str, clip: Path
+) -> None:
+    """#52: the read appears after analysis, from the page's numbers, with no Claude."""
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(playwright, landmark_json)
+        requests: list[tuple[str, str, int]] = []
+        page.on(
+            "request",
+            lambda r: requests.append((r.method, r.url, len(r.post_data_buffer or b""))),
+        )
+        assert page.evaluate("() => typeof window.claude") == "undefined"
+        _analyse(page, clip)
+        assert page.locator("#read-section").is_visible()
+        sentences = page.locator("#stem-read li")
+        assert sentences.count() >= 2
+        tempo = (page.text_content("#stem-read li[data-key='tempo']") or "").strip()
+        card = (page.text_content("#tempo-cards .metric-value") or "").strip()
+        assert f"Your tempo reads {card}" in tempo
+        assert "measured spread" in tempo and "tour swings" in tempo
+        priority = page.text_content("#stem-read li[data-key='priority']") or ""
+        assert (page.text_content("#priority-panel h3") or "").strip().lower() in priority.lower()
+        section = page.text_content("#read-section") or ""
+        assert "Claude" not in section
+        assert all(size == 0 for _, _, size in requests), requests
+        assert all(
+            url.startswith(("file:", "data:", "blob:")) or url.endswith("vision_bundle.mjs")
+            for _, url, _ in requests
+        ), [u for _, u, _ in requests]
+        assert errors == []
+        browser.close()
