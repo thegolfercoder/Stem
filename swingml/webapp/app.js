@@ -14,7 +14,8 @@ import { PoseSequence, resamplePose, extractFeatures, normalisePose,
 import { SwingEventModel, bandsVaryWithConfidence, decodeEvents, errorBand } from "./model.js";
 import { computeMetrics, implausible, readAtSpeeds, slowMotionCheck, slowedMetrics } from "./metrics.js";
 import { PracticeLog, cameraSignature, clipKey, formatG3, storedMetrics } from "./practice.js";
-import { cameraConstraints, extensionFor, frameRateNote, framingVerdict, levelVerdict, recordingType } from "./capture.js";
+import { SwingWatcher, cameraConstraints, extensionFor, frameRateNote, framingVerdict, levelVerdict,
+  recordingType } from "./capture.js";
 import { stemRead } from "./read.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
@@ -425,6 +426,11 @@ async function ready() {
       }), 180000, NO_ESTIMATOR);
     state.delegate = "CPU";
   }
+  // A second estimator with the same settings, for a range session's live camera
+  // (#56): in video mode an estimator follows the body from one frame to the next,
+  // so the camera and a clip being analysed cannot share one.
+  state.makeLandmarker = () => vision.PoseLandmarker.createFromOptions(files, {
+    ...options, baseOptions: { ...source(), delegate: state.delegate } });
 }
 
 function fromBase64(text) {
@@ -1680,7 +1686,8 @@ function refuse(reason, advice, title) {
   show("refusal-diagnostics", Boolean(title));
   el("refusal-diagnostics").textContent = title ? diagnostics() : "";
   offerDiagnostics("refusal");
-  el("refusal").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  // In a range session the golfer is watching the camera, not the results.
+  if (!session.active) el("refusal").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 /* A failure of the tool rather than a judgement about the swing. */
@@ -1812,7 +1819,7 @@ async function renderFrames(sequence, decoded, metrics, detectionRate, quiet = f
   renderStemRead();
   if (!quiet) offerDiagnostics("results");
   show("results", true);
-  if (!quiet) el("results").scrollIntoView({ behavior: "smooth", block: "start" });
+  if (!quiet && !session.active) el("results").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 /* The card at the top of the results (#37): the swing at impact, the tempo with
@@ -2338,6 +2345,7 @@ function analysedRecord() {
 }
 
 function recordSwing(record) {
+  state.lastRecord = record;
   if (!state.log) return;
   if (state.fromSample) {
     // A demonstration, not the golfer's swing: show their own log unchanged.
@@ -2664,12 +2672,18 @@ function wireRecorder() {
   el("rec-close").onclick = () => closeRecorder();
   el("rec-start").onclick = () => startRecording();
   el("rec-stop").onclick = () => stopRecording();
+  el("rec-session").onclick = () => startSession();
+  el("rec-session-stop").onclick = () => stopSession();
+  document.addEventListener("visibilitychange", () => {
+    // A wake lock is released whenever the page is hidden; take it again on return.
+    if (session.active && document.visibilityState === "visible") keepAwake();
+  });
 }
 
 function recMessage(text) { el("rec-message").textContent = text; }
 
 function recControls(visible) {
-  for (const id of ["rec-stage", "rec-start"]) el(id).hidden = !visible;
+  for (const id of ["rec-stage", "rec-start", "rec-session"]) el(id).hidden = !visible;
   el("rec-framing").hidden = !visible;
   el("rec-rate").hidden = !visible;
 }
@@ -2825,6 +2839,7 @@ function stopStream() {
 }
 
 function closeRecorder() {
+  stopSession();
   for (const timer of rec.timers) clearTimeout(timer);
   rec.timers = [];
   if (rec.check) clearInterval(rec.check);
@@ -2839,4 +2854,194 @@ function closeRecorder() {
   stopStream();
   el("rec-count").textContent = "";
   show("recorder", false);
+}
+
+
+/* A range session (#56): the camera stays on and every swing is recorded by itself.
+ * capture.js `SwingWatcher` decides from the estimator's landmarks, sampled five
+ * times a second, when the golfer is at address (start) and when the finish has
+ * settled (stop). Each clip is analysed while the next is recorded, one at a time,
+ * through the same `analyse` and practice log as any clip, so the one-clip-one-swing
+ * rules hold. A clip the analysis refuses is counted as not read, and a recording
+ * with no swing in it is counted too: nothing is dropped without a word. Nothing
+ * leaves the device. */
+const session = { active: false, watcher: null, sampler: null, recorder: null, canvas: null,
+                  live: null, liveClockMs: 0,
+                  queue: [], working: false, index: 0, recorded: 0, read: 0, refused: 0,
+                  noSwing: 0, lastTempo: null, lastTempoOf: 0, wake: null, note: "" };
+
+function startSession() {
+  if (!rec.stream || session.active || state.busy || session.working || session.queue.length) return;
+  if (rec.check) { clearInterval(rec.check); rec.check = null; }
+  Object.assign(session, { active: true, watcher: new SwingWatcher(), recorder: null, index: 0,
+                           recorded: 0, read: 0, refused: 0, noSwing: 0, lastTempo: null, note: "" });
+  for (const id of ["rec-start", "rec-session"]) el(id).hidden = true;
+  el("rec-session-stop").hidden = false;
+  el("session-board").hidden = false;
+  // The bar at the foot of a phone's screen would cover the board.
+  el("action-bar").hidden = true;
+  recMessage("");
+  renderSession("Waiting for you at address");
+  keepAwake();
+  ready().then(async () => {
+    if (!session.live) {
+      try { session.live = await state.makeLandmarker(); } catch { session.live = null; }
+    }
+    if (session.active && !session.sampler) session.sampler = setInterval(sampleSession, 200);
+  }).catch(() => renderSession("The pose estimator could not load, so swings cannot be found"));
+}
+
+function stopSession() {
+  if (!session.active) return;
+  session.active = false;
+  if (session.sampler) clearInterval(session.sampler);
+  session.sampler = null;
+  // A swing cut off by the stop is not a swing: dropped, and said so.
+  if (session.recorder && session.recorder.state === "recording") {
+    session.note = "The recording in progress when you stopped was not kept.";
+  }
+  cutClip(false);
+  if (session.wake) session.wake.release().catch(() => {});
+  session.wake = null;
+  el("rec-session-stop").hidden = true;
+  el("action-bar").hidden = false;
+  for (const id of ["rec-start", "rec-session"]) el(id).hidden = !rec.stream;
+  if (rec.stream && !rec.check) rec.check = setInterval(checkFraming, 400);
+  renderSession(session.queue.length || session.working ? "Session stopped; finishing the analysis"
+    : "Session stopped");
+}
+
+async function keepAwake() {
+  if (!navigator.wakeLock || typeof navigator.wakeLock.request !== "function") {
+    recMessage("This browser cannot keep the screen on: turn auto-lock off yourself for the session.");
+    return;
+  }
+  try { session.wake = await navigator.wakeLock.request("screen"); } catch { session.wake = null; }
+}
+
+function sampleSession() {
+  const video = el("rec-preview");
+  if (!session.active || !state.landmarker || !video.videoWidth) return;
+  // Without an estimator of its own the camera waits while a clip is analysed.
+  const estimator = session.live || state.landmarker;
+  if (!session.live && state.busy) {
+    if (!session.recorder) renderSession("Analysing the last swing: wait a moment before the next");
+    return;
+  }
+  // Its own canvas: the analysis running alongside draws on the scratch canvas.
+  if (!session.canvas) session.canvas = document.createElement("canvas");
+  const canvas = session.canvas;
+  const scale = Math.min(1, 256 / Math.max(video.videoWidth, video.videoHeight));
+  canvas.width = Math.round(video.videoWidth * scale);
+  canvas.height = Math.round(video.videoHeight * scale);
+  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+  // Each estimator's clock only moves forward, over its whole life.
+  const last = session.live ? session.liveClockMs : state.clockMs;
+  const stamp = Math.max(Math.round(performance.now()), last + 1);
+  if (session.live) session.liveClockMs = stamp; else state.clockMs = stamp;
+  let result = null;
+  try { result = estimator.detectForVideo(canvas, stamp); } catch { result = null; }
+  const landmarks = result && result.landmarks && result.landmarks[0];
+  const framing = framingVerdict(landmarks);
+  const chip = el("rec-framing");
+  chip.textContent = framing.message;
+  chip.className = "rec-chip " + (framing.ok ? "ok" : "warn");
+  el("rec-band").classList.toggle("ok", framing.ok);
+  // Wall-clock time: the estimator's stamp can run ahead of it while a clip is analysed.
+  const event = session.watcher.push(performance.now() / 1000, landmarks || null, framing.ok);
+  if (!event) return;
+  if (event.type === "start") {
+    beginClip();
+  } else if (event.type === "cancel") {
+    cutClip(false);
+    renderSession("Waiting for you at address");
+  } else if (event.swing) {
+    cutClip(true);
+  } else {
+    cutClip(false);
+    session.noSwing += 1;
+    renderSession("No swing in that one; waiting for you at address");
+  }
+}
+
+function beginClip() {
+  const type = recordingType((t) => MediaRecorder.isTypeSupported(t));
+  const chunks = [];
+  let recorder;
+  try {
+    recorder = new MediaRecorder(rec.stream, type ? { mimeType: type } : undefined);
+  } catch (error) {
+    session.note = `This browser could not record (${error.message}).`;
+    stopSession();
+    return;
+  }
+  recorder.ondataavailable = (event) => { if (event.data && event.data.size) chunks.push(event.data); };
+  recorder.chunks = chunks;
+  recorder.start(250);
+  session.recorder = recorder;
+  renderSession("Recording", true);
+}
+
+function cutClip(keep) {
+  const recorder = session.recorder;
+  session.recorder = null;
+  if (!recorder || recorder.state !== "recording") return;
+  recorder.onstop = keep ? () => queueClip(recorder.chunks, recorder.mimeType) : null;
+  recorder.stop();
+}
+
+function queueClip(chunks, mimeType) {
+  const type = mimeType || "video/webm";
+  const blob = new Blob(chunks, { type });
+  session.index += 1;
+  session.recorded += 1;
+  // A name of its own per swing, so the practice log never takes two swings for one clip.
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  const file = new File([blob], `swing-${stamp}-${session.index}.${extensionFor(type)}`, { type });
+  session.queue.push({ file, index: session.index });
+  renderSession(session.active ? "Waiting for you at address" : "Session stopped; finishing the analysis");
+  drainSession();
+}
+
+async function drainSession() {
+  if (session.working || !session.queue.length) return;
+  if (state.busy) { setTimeout(drainSession, 500); return; }
+  session.working = true;
+  const { file, index } = session.queue.shift();
+  renderSession();
+  state.lastRecord = null;
+  await analyse(file);
+  const record = state.lastRecord;
+  if (record && record.ok) {
+    session.read += 1;
+    const tempo = record.metrics && record.metrics.tempo_ratio;
+    if (tempo !== null && tempo !== undefined) { session.lastTempo = tempo; session.lastTempoOf = index; }
+  } else {
+    session.refused += 1;
+  }
+  session.working = false;
+  renderSession(session.active ? undefined : (session.queue.length ? "Session stopped; finishing the analysis"
+    : "Session stopped"));
+  drainSession();
+}
+
+function renderSession(stateText, recording = false) {
+  if (stateText !== undefined) {
+    el("session-state").textContent = stateText;
+    el("session-state").classList.toggle("recording", recording);
+  }
+  el("session-count").textContent = session.recorded ? `Swing ${session.recorded}` : "No swings yet";
+  // The last tempo the analysis read, which may be an earlier swing's while this one is analysed.
+  el("session-tempo").hidden = session.lastTempo === null;
+  el("session-tempo").textContent = session.lastTempo === null ? "" : `tempo ${session.lastTempo.toFixed(2)}`;
+  if (session.lastTempo !== null && session.lastTempoOf !== session.recorded) {
+    const of = document.createElement("small");
+    of.textContent = ` swing ${session.lastTempoOf}`;
+    el("session-tempo").append(of);
+  }
+  const pending = session.queue.length + (session.working ? 1 : 0);
+  const parts = [`${session.read} read`, `${session.refused} not read`];
+  if (session.noSwing) parts.push(`${session.noSwing} recording${session.noSwing === 1 ? "" : "s"} with no swing`);
+  if (pending) parts.push(`${pending} being analysed`);
+  el("session-tally").textContent = parts.join(" \u00b7 ") + (session.note ? `. ${session.note}` : "");
 }

@@ -83,6 +83,7 @@ details.fold[open]>summary::before{transform:rotate(90deg)}
 details.fold>summary h2.section{margin:12px 0}
 .btn{min-height:44px}
 .action-bar{display:none}
+.action-bar[hidden]{display:none!important}
 @media (max-width:720px){
   .summary-card{grid-template-columns:minmax(0,96px) minmax(0,1fr);gap:12px}
   .sum-value{font-size:28px}
@@ -121,6 +122,15 @@ details.fold>summary h2.section{margin:12px 0}
 .rec-chip.ok{color:var(--good)} .rec-chip.warn{color:var(--warn)}
 .rec-actions{display:flex;flex-wrap:wrap;gap:10px}
 .rec-actions button{min-height:44px}
+.session-board{display:grid;gap:4px;padding:14px 16px;border-radius:10px;background:var(--panel-2);text-align:center}
+.session-board[hidden]{display:none}
+.session-count{font-weight:700;font-size:clamp(40px,12vw,72px);line-height:1.05;letter-spacing:-.01em}
+.session-tempo{font-weight:600;font-size:clamp(28px,9vw,48px);line-height:1.1;font-variant-numeric:tabular-nums}
+.session-tempo[hidden]{display:none}
+.session-tempo small{font-size:.45em;font-weight:500;color:var(--ink-dim)}
+.session-state{font-weight:600;font-size:clamp(18px,5vw,26px);line-height:1.2;color:var(--ink-dim)}
+.session-state.recording{color:var(--warn)}
+.session-tally{font:500 13px/1.4 var(--mono);color:var(--ink-dim)}
 .btn-link{background:none;border:0;color:var(--accent);font:inherit;font-size:13.5px;
   cursor:pointer;padding:6px 4px;margin-top:6px;text-decoration:underline;text-underline-offset:3px}
 .btn-link:focus-visible,.btn-primary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -353,6 +363,12 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
       <button type="button" id="rec-close" class="btn-link">Close camera</button>
     </div>
     <p class="rec-note" id="rec-message" role="status"></p>
+    <div class="session-board" id="session-board" hidden aria-live="polite">
+      <div class="session-count" id="session-count">No swings yet</div>
+      <div class="session-tempo" id="session-tempo" hidden></div>
+      <div class="session-state" id="session-state">Waiting for you at address</div>
+      <div class="session-tally" id="session-tally"></div>
+    </div>
     <div class="rec-stage" id="rec-stage">
       <video id="rec-preview" playsinline muted autoplay></video>
       <div class="rec-band" id="rec-band" aria-hidden="true"></div>
@@ -367,10 +383,15 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
     <p class="rec-note" id="rec-rate-note" hidden></p>
     <div class="rec-actions">
       <button type="button" id="rec-start" class="btn-primary">Start: 3 s countdown, then 6 s</button>
+      <button type="button" id="rec-session" class="btn-secondary">Range session: every swing, hands-free</button>
       <button type="button" id="rec-stop" class="btn-secondary" hidden>Stop and analyse</button>
+      <button type="button" id="rec-session-stop" class="btn-primary" hidden>Stop the session</button>
     </div>
     <p class="rec-note">Stand the phone side-on to the target, about 3&ndash;4 m away, so your whole body
       fills the band. The recording stays on this device and goes straight into the analysis.</p>
+    <p class="rec-note">In a range session the camera stays on: each time you are still at address for a
+      second, recording starts, and it stops once your finish has settled. Each swing is analysed while
+      you hit the next and kept in your practice log.</p>
   </section>
 
   <div class="options">

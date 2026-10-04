@@ -861,3 +861,113 @@ def test_stems_read_is_written_in_the_page_and_sends_nothing(
         ), [u for _, u, _ in requests]
         assert errors == []
         browser.close()
+
+
+# -- a range session (#56) ------------------------------------------------------------
+
+# The estimator for a session. The live camera sampler (any canvas but the
+# analysis's scratch canvas) sees the fixture swing SESSION_SWINGS times, each
+# followed by SESSION_GAP_S of the golfer standing still, from the moment the test
+# sets __liveStart; before that and after the last swing, the golfer stands still,
+# then leaves. Each recorded clip's analysis is shown the fixture from frame
+# SESSION_OFFSET on (where the watcher starts recording: tests/test_browser_session.py),
+# and the second clip's analysis finds no body, so its refusal must be counted.
+SESSION_SWINGS, SESSION_GAP_S, SESSION_OFFSET = 3, 3.0, 70
+SESSION_STUB = (
+    """
+export const FilesetResolver = { forVisionTasks: async () => ({}) };
+export const PoseLandmarker = { createFromOptions: async () => {
+  const data = window.__LANDMARKS__;
+  const n = data.detected.length, gap = Math.round(GAP * 30), loop = n + gap;
+  const none = { landmarks: [], worldLandmarks: [] };
+  const pose = (f) => (f === null || !data.detected[f]) ? none : {
+    landmarks: [data.xy[f].map((p, k) => (
+      { x: p[0], y: p[1], visibility: data.visibility[f][k] }))],
+    worldLandmarks: [data.world[f].map((p) => ({ x: p[0], y: p[1], z: p[2] }))],
+  };
+  let clip = 0, lastTime = Infinity;
+  const me = (window.__estimators = (window.__estimators || 0) + 1);
+  return { detectForVideo(canvas) {
+    if (canvas.id === "scratch-canvas") {
+      const time = globalThis.__swingFrameTime || 0;
+      if (time < lastTime - 0.5) clip += 1;
+      lastTime = time;
+      if (clip === 2) return pose(null);
+      return pose(Math.min(n - 1, OFFSET + Math.round(time * 30)));
+    }
+    if (window.__liveStart === undefined) return pose(0);
+    // The camera has an estimator of its own once a session runs (#56).
+    if (me === 1) window.__sharedLive = true;
+    const k = Math.floor((performance.now() - window.__liveStart) / 1000 * 30);
+    if (k >= SWINGS * loop) return k < SWINGS * loop + 30 ? pose(0) : pose(null);
+    const f = k % loop;
+    return pose(f < n ? f : 0);
+  } };
+} };
+""".replace("GAP", str(SESSION_GAP_S))
+    .replace("OFFSET", str(SESSION_OFFSET))
+    .replace("SWINGS", str(SESSION_SWINGS))
+)
+
+
+def test_a_range_session_records_and_reads_every_swing_and_counts_the_refused(
+    landmark_json: str, fake_camera: Path
+) -> None:
+    with sync_playwright() as playwright:
+        browser, page, errors, requests = _camera_page(playwright, landmark_json, fake_camera)
+        page.unroute("**/vision_bundle.mjs")
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(
+                status=200, content_type="text/javascript", body=SESSION_STUB
+            ),
+        )
+        page.reload()
+        page.wait_for_selector("#record", state="visible")
+        page.click("#record")
+        page.wait_for_function(
+            "() => document.getElementById('rec-preview').videoWidth > 0", timeout=20_000
+        )
+        page.click("#rec-session")
+        page.evaluate("() => { window.__liveStart = performance.now(); }")
+        assert page.locator("#session-board").is_visible()
+        assert page.locator("#rec-session-stop").is_visible()
+        assert page.locator("#rec-start").is_hidden()
+        page.wait_for_function(
+            "() => /Recording/.test(document.getElementById('session-state').textContent)",
+            timeout=30_000,
+        )
+        page.wait_for_function(
+            f"() => /^{SESSION_SWINGS} read|\\b{SESSION_SWINGS - 1} read \\u00b7 1 not read/"
+            ".test(document.getElementById('session-tally').textContent)"
+            " && !/being analysed/.test(document.getElementById('session-tally').textContent)",
+            timeout=300_000,
+        )
+        # The golfer has left: no further clip appears.
+        page.wait_for_timeout(3_000)
+        tally = page.text_content("#session-tally") or ""
+        count = page.text_content("#session-count") or ""
+        assert tally.startswith(f"{SESSION_SWINGS - 1} read · 1 not read"), tally
+        assert count == f"Swing {SESSION_SWINGS}", count
+        assert (page.text_content("#session-tempo") or "").startswith("tempo "), count
+        assert page.locator("#action-bar").is_hidden()
+        kept = page.evaluate(KEPT)
+        assert [s["ok"] for s in kept["swings"]] == [True, False, True], kept["swings"]
+        assert page.evaluate("() => [window.__estimators, window.__sharedLive]") == [2, None]
+        assert len({s["clip_key"] for s in kept["swings"]}) == SESSION_SWINGS
+        # Analysing did not pull the page away from the camera.
+        assert page.evaluate(
+            "() => { const r = document.getElementById('session-board').getBoundingClientRect();"
+            " return r.bottom > 0 && r.top < window.innerHeight; }"
+        )
+        page.click("#rec-session-stop")
+        assert (page.text_content("#session-state") or "").startswith("Session stopped")
+        assert page.locator("#rec-session").is_visible()
+        assert page.evaluate("() => !document.getElementById('action-bar').hidden")
+        assert errors == []
+        assert all(size == 0 for _, _, size in requests), requests
+        assert all(
+            url.startswith(("file:", "data:", "blob:")) or url.endswith("vision_bundle.mjs")
+            for _, url, _ in requests
+        ), [u for _, u, _ in requests]
+        browser.close()

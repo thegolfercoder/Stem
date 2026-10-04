@@ -68,6 +68,22 @@ fixed, it moves to the changelog with the measurement that shows it.
    frame's height, centred) is judgement, not measured. The analysis's own
    refusals remain the real test.
 
+10b. **Range sessions are browser-only, and their swing finder is tuned on one
+   swing (#56).** In a range session the page keeps the camera on and records
+   each swing by itself: still at address for 1 s starts a recording, and it stops
+   1.5 s after the last swing-speed movement (8 s at most). Each clip is analysed
+   while the next is recorded and kept in the practice log; refused clips and
+   recordings with no swing are counted on screen. The thresholds were set on the
+   one real phone swing in the tests (`capture.js` `SESSION`); a golfer who
+   waggles for over a second, or holds very still after a short swing, may be
+   cut early or missed, and that has not been measured on range footage. The
+   screen is kept awake only where the browser offers the Wake Lock API. The
+   camera uses a second copy of the pose estimator, so a session needs memory for
+   two; where the second cannot be made, the camera waits while each swing is
+   analysed and the page says so. Tested with Chromium's fake camera and a stand-in
+   estimator, not yet on a phone at a range. The desktop app and the iPhone app
+   have no session mode.
+
 ## Practice loop
 
 11. **Comparability is judged, not measured.** How far a phone can move before a
