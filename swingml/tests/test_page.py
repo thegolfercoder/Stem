@@ -812,6 +812,8 @@ def test_on_a_phone_the_one_thing_to_practise_comes_first(landmark_json: str, cl
         assert page.locator("#tempo-cards .metric").count() >= 3
         page.click("details.fold[data-fold='tempo'] > summary")
         assert page.locator("#tempo-cards").is_visible()
+        # A details element's toggle event is queued, not fired during the click.
+        page.wait_for_function("() => localStorage.getItem('swing-folds-v1') !== null")
         assert json.loads(page.evaluate("() => localStorage.getItem('swing-folds-v1')")) == {
             "tempo": True
         }
