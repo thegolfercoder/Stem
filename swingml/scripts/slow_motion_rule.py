@@ -19,6 +19,12 @@ actually sees:
     python scripts/slow_motion_rule.py poses --videos <GolfDB videos_160>
     python scripts/slow_motion_rule.py probe
     python scripts/slow_motion_rule.py summarise --out ../docs/audit/slow-motion-rule.json
+    python scripts/slow_motion_rule.py withhold --out ../docs/audit/slow-motion-withhold.json
+
+`withhold` (#49) checks what ships, on the same clips: the check keeps the
+recorded-speed read and withholds durations, so every clip's events, times and
+tempo must equal the read with the check off, and durations must be withheld
+exactly where the check fires.
 """
 
 from __future__ import annotations
@@ -188,23 +194,100 @@ def cmd_probe(args: argparse.Namespace) -> None:
     print(f"wrote {out}: {len(rows)} rows; {missing} clips had no poses yet")
 
 
+def tempo_of(metrics: Any) -> float | None:
+    if isinstance(metrics, NoReading):
+        return None
+    return getattr(metrics.tempo_ratio, "value", None)
+
+
+def cmd_withhold(args: argparse.Namespace) -> None:
+    path = find_event_model()
+    if path is None:
+        raise SystemExit("no shipped model")
+    model = load_model(path)
+    reads = []
+    for clip in clips(args.root):
+        sequence = read_pose(args.cache / f"{clip['clip']}.npz")
+        hand = Handedness.LEFT if clip["left"] else Handedness.RIGHT
+        shipped = AnalysisConfig(handedness=hand)
+        off = AnalysisConfig(handedness=hand, slow_motion_check_backswing_s=None)
+        for by in (1.0,) if clip["slow"] else SLOWED:
+            slowed = sequence.model_copy(update={"timestamps_s": sequence.timestamps_s * by})
+            a = analyse_pose_sequence(slowed, model, shipped)
+            b = analyse_pose_sequence(slowed, model, off)
+            answered = not isinstance(a.events, NoReading)
+            row: dict[str, Any] = {
+                "clip": clip["clip"], "group": clip["group"], "replay": clip["slow"],
+                "slowed_by": by, "answered": answered,
+                "same_answer": answered == (not isinstance(b.events, NoReading)),
+            }  # fmt: skip
+            if not isinstance(a.events, NoReading) and not isinstance(b.events, NoReading):
+                fired = a.playback_slowed_by is not None and b.playback_slowed_by is None
+                ma, mb = a.metrics, b.metrics
+                # A refused measurement (both None) is the same answer.
+                same_tempo = tempo_of(ma) == tempo_of(mb)
+                # No duration is shown when the metrics themselves were refused.
+                withheld = isinstance(ma, NoReading) or isinstance(ma.backswing_duration, NoReading)
+                row |= {
+                    "same_events": a.events.frames == b.events.frames,
+                    "same_times": a.event_times_s == b.event_times_s,
+                    "same_tempo": bool(same_tempo),
+                    "check_fired": fired,
+                    "durations_withheld": withheld,
+                    "withheld_only_where_slowed": withheld == (a.playback_slowed_by is not None),
+                }  # fmt: skip
+            reads.append(row)
+    both = [r for r in reads if "same_events" in r]
+
+    def count(rows: list[dict[str, Any]], key: str) -> int:
+        return sum(1 for r in rows if r.get(key))
+
+    summary: dict[str, Any] = {
+        "reads": len(reads),
+        "answered_by_both": len(both),
+        "same_answer_or_refusal": count(reads, "same_answer"),
+        "same_events": count(both, "same_events"),
+        "same_event_times": count(both, "same_times"),
+        "same_tempo": count(both, "same_tempo"),
+        "durations_withheld_only_where_slowed": count(both, "withheld_only_where_slowed"),
+        "check_fired": {},
+    }
+    for label, replay in (("real time", False), ("replays", True)):
+        rows = [r for r in both if r["replay"] is replay and r["slowed_by"] == 1.0]
+        summary["check_fired"][label] = {"n": len(rows), "fired": count(rows, "check_fired")}
+    for by in SLOWED[1:]:
+        rows = [r for r in both if not r["replay"] and r["slowed_by"] == by]
+        summary["check_fired"][f"slowed {by:g}x"] = {
+            "n": len(rows), "durations_withheld": count(rows, "durations_withheld"),
+        }  # fmt: skip
+    out = {
+        "manifest": str(MANIFEST), "model": path.name,
+        "holdout_read": False, "summary": summary, "reads": reads,
+    }  # fmt: skip
+    text = json.dumps(out, indent=2) + "\n"
+    if args.out:
+        args.out.write_text(text, encoding="utf-8")
+    print(json.dumps(summary, indent=2))
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("poses", "probe", "summarise"):
+    for name in ("poses", "probe", "summarise", "withhold"):
         p = sub.add_parser(name)
         p.add_argument("--root", type=Path, default=Path("."))
         p.add_argument("--cache", type=Path, default=Path("out/slowmo/poses"))
         if name == "poses":
             p.add_argument("--videos", type=Path, required=True)
-        if name == "summarise":
+        if name in ("summarise", "withhold"):
             p.add_argument("--out", type=Path, default=None)
             p.add_argument("--resamples", type=int, default=2000)
             p.add_argument("--seed", type=int, default=0)
     args = parser.parse_args(argv)
-    {"poses": cmd_poses, "probe": cmd_probe, "summarise": cmd_summarise}[args.command](args)
+    {"poses": cmd_poses, "probe": cmd_probe, "summarise": cmd_summarise,
+     "withhold": cmd_withhold}[args.command](args)  # fmt: skip
 
 
 # The rules compared. `None` for the backswing is today's rule: retry only a clip

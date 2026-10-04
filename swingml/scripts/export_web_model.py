@@ -136,6 +136,7 @@ def main() -> None:
             # those speeds (#32); null checks only refused clips.
             "slow_motion_check_backswing_s": analysis.slow_motion_check_backswing_s,
             "slow_motion_margin": analysis.slow_motion_margin,
+            "slow_motion_check_rereads": analysis.slow_motion_check_rereads,
         },
         # Wording every app shows the same way (#33).
         "notes": {"left_handed_tempo_band": LEFT_HANDED_TEMPO_NOTE},

@@ -7,13 +7,14 @@ three times too long, as plain measurements. QA reproduced it on the real phone
 fixture (#32). All three engines and the release gate's `decide` can now also
 check an *answered* clip whose backswing is long.
 
-**Status: off.** The rule below was chosen on validation, but it failed the
-release gate's non-inferiority test on tempo error once the gate could judge a
-rule change (#41; see the holdout section). Nothing ships unless the gate
-passes, so `slow_motion_check_backswing_s` defaults to `None`. Durations of a
-clip slowed 2–3× are shown as measured again, as before #32
-(`known-limitations.md` item 8). The code and its tests stay, run with the
-check switched on explicitly.
+**Status: the check ships; re-reading does not (#49).** The rule below was
+chosen on validation. Re-reading a clip it catches at the slowed speed failed the
+release gate's non-inferiority test on tempo error (#41; see the holdout
+section), so `slow_motion_check_rereads` is off. What ships instead keeps the
+recorded-speed read, events, times and tempo, and withholds only what an unknown
+playback speed makes wrong: the durations and the millisecond error bands. See
+"What ships" below. The re-reading code and its tests stay, run with it switched
+on explicitly.
 
 ## The rule
 
@@ -135,17 +136,54 @@ motion at 2×. No real-time swing changed. The rule does what it was chosen to
 do, but reading those four replays at 2× moved their tempo: by −0.55, −0.31,
 −0.05 and +0.15. The test cannot rule out a tempo cost larger than the margin.
 
-What would plausibly pass is to withhold the durations when the check fires,
-keeping the recorded-speed tempo. That leaves every holdout tempo unchanged,
-and it removes the fault #32 is about: durations 2–3× too long shown as
-measured. It is a different rule and needs its own validation run and gate
-verdict (follow-up on #32).
+An earlier version of this section proposed the variant that now ships on the
+grounds that it "leaves every holdout tempo unchanged". That reasoning came from
+the clips above, so it is withdrawn as a rationale (#49): the variant is
+justified on validation below, and the holdout was not read again for it.
 
 Two earlier runs are superseded by this one. They used a wrapper and could not
 judge a rule change: their "beats baseline" gate fails by construction.
 `release-gate-slowmo-rule-before.json` is kept. The first
 `release-gate-slowmo-rule.json` was overwritten by this report and is in git
 history at `c769abd`.
+
+## What ships (#49)
+
+When the check fires on a clip answered at recorded speed, the clip keeps its
+recorded-speed events, event times and tempo. Its backswing, downswing, whole
+swing and hand-speed timing are refused with the reason, as are the millisecond
+error bands, and the tempo carries the slow-motion assumption. Durations are
+what a guessed playback speed makes wrong; events on the clip's own timeline
+and the tempo ratio are not. The release gate's `decide` returns the
+recorded-speed decision for such a clip, so every gated quantity is the
+decision with the check off, by construction (`test_the_gate_sees_the_unchecked_decision_for_what_ships`).
+
+```
+python scripts/slow_motion_rule.py withhold --out ../docs/audit/slow-motion-withhold.json
+```
+
+On all 141 clips of `golfdb-validation-v2` (465 reads: the 81 real-time clips
+as recorded and slowed 1.5, 2, 2.5 and 3 times, and the 60 replays as recorded),
+the shipped decision against the decision with the check off:
+
+| | Result |
+|---|---|
+| Same answer or refusal | 465 of 465 |
+| Same events, event times and tempo | 465 of 465 |
+| Durations withheld exactly where the clip is read as slowed | 465 of 465 |
+| Check fired on a real-time swing | 0 of 81 |
+| Durations withheld, slowed 2× / 2.5× / 3× | 81 / 81 / 81 of 81 |
+| Durations withheld, slowed 1.5× | 27 of 81 (the other 54 still show durations 1.5× too long) |
+
+The same is held in all three engines by `tests/test_slow_motion_check.py`,
+`tests/test_browser_slow_motion.py` and
+`ParityTests.testWhatShipsWithholdsDurationsAndMovesNoEvent`.
+
+**The holdout for this question.** `golfdb-holdout-v1` was read three times for
+#32 through the release gate (`c769abd` before and after, `3619cb1`), and the
+gate report names four of its slow-motion replays (213, 451, 617, 1000) and their
+tempo shifts. Those four have been inspected for this question. No further gate
+run on the holdout for a #32 variant is made without a recorded owner decision.
 
 ## What this does not claim
 

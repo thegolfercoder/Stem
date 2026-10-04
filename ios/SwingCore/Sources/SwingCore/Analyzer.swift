@@ -97,6 +97,12 @@ public final class SwingAnalyzer {
         }
         guard let chosen = best else { return first }
         if let floor = toBeat, chosen.core <= floor { return first }
+        if toBeat != nil, !thresholds.slowMotionCheckRereads, var kept = first.result {
+            // The clip may be slowed: keep the recorded-speed read, events, times and
+            // tempo, and withhold only the durations (#49).
+            kept.metrics.slowedBy = chosen.factor
+            return .swing(kept)
+        }
         var result = chosen.result
         result.metrics.eventTimes = result.metrics.eventTimes.map { $0 * chosen.factor }
         result.metrics.slowedBy = chosen.factor

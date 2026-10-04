@@ -178,17 +178,19 @@ export const slowedReason = (factor) =>
 const CORE_EVENTS = [0, 3, 4, 5];
 
 /* Metrics read at a guessed speed, with everything that depends on the guess refused.
- * Event times go back onto the clip's own timeline. */
-export function slowedMetrics(metrics, factor) {
+ * Event times go back onto the clip's own timeline; a recorded-speed read
+ * (`retimed` false, #49) is already on it. */
+export function slowedMetrics(metrics, factor, retimed = true) {
   return {
     ...metrics,
-    eventTimes: metrics.eventTimes.map((t) => t * factor),
+    eventTimes: retimed ? metrics.eventTimes.map((t) => t * factor) : metrics.eventTimes.slice(),
     backswingMs: null,
     downswingMs: null,
     wholeMs: null,
     peakHandSpeedMs: null,
     tempoAssumptions: [SLOWED_ASSUMPTION],
     slowedBy: factor,
+    slowedRetimed: retimed,
   };
 }
 
@@ -216,6 +218,9 @@ export function slowMotionCheck(thresholds, features) {
     backswingS: thresholds.slow_motion_check_backswing_s,
     margin: thresholds.slow_motion_margin || 0,
     rateHz: features.canonical_rate_hz,
+    // What a fired check does: keep the recorded-speed read and withhold durations
+    // (#49), or re-read at the slowed speed (#32's rule). Older payloads re-read.
+    rereads: thresholds.slow_motion_check_rereads ?? true,
   };
 }
 
@@ -242,7 +247,12 @@ export function readAtSpeeds(sequence, attempt, factors, check = null) {
     if (!best || core > best.core) best = { core, factor, got };
   }
   if (!best || (toBeat !== null && best.core <= toBeat)) return { ...first, slowedBy: null };
-  return { ...best.got, slowedBy: best.factor, metrics: slowedMetrics(best.got.metrics, best.factor) };
+  if (toBeat !== null && !check.rereads) {
+    return { ...first, slowedBy: best.factor, retimed: false,
+             metrics: slowedMetrics(first.metrics, best.factor, false) };
+  }
+  return { ...best.got, slowedBy: best.factor, retimed: true,
+           metrics: slowedMetrics(best.got.metrics, best.factor) };
 }
 
 /* Whether what was found is shaped like a golf swing at all.

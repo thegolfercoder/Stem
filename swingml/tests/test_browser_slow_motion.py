@@ -52,9 +52,11 @@ def fixture_sequence(slowed_by: float) -> PoseSequence:
     )
 
 
-# #32's answered-clip check, which ships off (it failed the release gate, #41).
-# The 2x and 3x cases switch it on in both engines, so the code stays in step.
-CHECK = {"slow_motion_check_backswing_s": 1.1, "slow_motion_margin": 0.01}
+# #32's re-reading rule failed the release gate (#41); what ships keeps the
+# recorded-speed read and withholds durations (#49). The re-read cases switch the
+# old rule on in both engines, so that code stays in step too.
+CHECK = {"slow_motion_check_backswing_s": 1.1, "slow_motion_margin": 0.01,
+         "slow_motion_check_rereads": True}  # fmt: skip
 
 
 def python_read(sequence: PoseSequence, check: bool = False) -> SwingAnalysis:
@@ -107,7 +109,8 @@ def browser_read(sequence: PoseSequence, workdir: Path, check: bool = False) -> 
     return dict(json.loads(finished.stdout))
 
 
-@pytest.fixture(scope="module", params=[(2.0, True), (3.0, True), (4.0, False)])
+@pytest.fixture(scope="module", params=[(2.0, True), (3.0, True), (4.0, False), (2.0, False),
+                                        (3.0, False)])  # fmt: skip
 def pair(request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory):  # type: ignore[no-untyped-def]
     factor, check = request.param
     sequence = fixture_sequence(factor)
@@ -121,6 +124,7 @@ def test_the_payload_carries_the_desktop_factors() -> None:
     assert tuple(thresholds["slow_motion_factors"]) == config.slow_motion_factors
     assert thresholds["slow_motion_check_backswing_s"] == config.slow_motion_check_backswing_s
     assert thresholds["slow_motion_margin"] == config.slow_motion_margin
+    assert thresholds["slow_motion_check_rereads"] is config.slow_motion_check_rereads is False
 
 
 def test_both_read_the_slowed_swing_at_the_same_factor(pair) -> None:  # type: ignore[no-untyped-def]
@@ -157,3 +161,35 @@ def test_a_real_time_clip_is_not_treated_as_slow_motion(tmp_path: Path) -> None:
     assert browser["ok"]
     assert browser["slowedBy"] is None
     assert browser["backswingMs"] is not None
+
+
+@pytest.mark.parametrize("factor", [2.0, 3.0])
+def test_what_ships_withholds_durations_and_keeps_the_recorded_speed_read(
+    factor: float, tmp_path: Path
+) -> None:
+    """#49: the shipped check moves no event and no tempo, in either engine."""
+    sequence = fixture_sequence(factor)
+    off = AnalysisConfig(handedness=Handedness.RIGHT, slow_motion_check_backswing_s=None)
+    payload = json.loads(PAYLOAD.read_text(encoding="utf-8"))
+    sources = [Path(p) for p in payload.get("source_models", [payload["source_model"]])]
+    model = (
+        load_model(sources[0])
+        if len(sources) == 1
+        else SwingEventEnsemble.load(
+            sources, EnsembleConfig(time_warps=tuple(payload["time_warps"]))
+        )
+    )
+    unchecked = analyse_pose_sequence(sequence, model, off)
+    shipped = python_read(sequence)
+    browser = browser_read(sequence, tmp_path)
+    assert not isinstance(unchecked.events, NoReading) and not isinstance(shipped.events, NoReading)
+    assert shipped.playback_slowed_by is not None, "the check did not fire"
+    assert shipped.events.frames == unchecked.events.frames
+    assert shipped.event_times_s == unchecked.event_times_s
+    assert not isinstance(shipped.metrics, NoReading) and not isinstance(
+        unchecked.metrics, NoReading
+    )
+    assert shipped.metrics.tempo_ratio.value == unchecked.metrics.tempo_ratio.value  # type: ignore[union-attr]
+    assert isinstance(shipped.metrics.backswing_duration, NoReading)
+    assert browser["slowedBy"] == shipped.playback_slowed_by
+    assert browser["frames"] == list(unchecked.events.frames)

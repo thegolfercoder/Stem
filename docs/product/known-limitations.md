@@ -46,12 +46,15 @@ fixed, it moves to the changelog with the measurement that shows it.
    assumes the whole swing was slowed evenly, which a phone's slow-motion clip
    breaks if the swing crosses the speed ramp at its start or end, and no
    durations are shown because the real speed-up is unknown. **A clip slowed
-   only 2-3x is not caught:** it passes every gate at recorded speed, and its
-   durations are shown 2-3x too long as if measured. The check that catches it
-   (#32) works on validation, catching every 2x and 3x clip with 0 of 81
-   real-time swings misread. But it failed the release gate's non-inferiority
-   test on tempo error (#41), so it ships switched off
-   (`docs/ml/slow-motion-rule.md`).
+   only 2-3x** passes every gate at recorded speed. Since #49, an answered clip
+   whose backswing is over 1.1 s and which reads clearly more confidently as
+   slow motion keeps its recorded-speed events and tempo, and its durations and
+   millisecond bands are withheld. On `golfdb-validation-v2` that withholds them
+   for every clip slowed 2x, 2.5x and 3x, and for 27 of 81 slowed 1.5x; the other
+   54 still show durations 1.5x too long. It fired on none of the 81 real-time
+   swings, and moved no event and no tempo on any of 465 reads
+   (`docs/audit/slow-motion-withhold.json`). Re-reading such a clip at the slowed
+   speed instead failed the release gate on tempo (#41) and stays off.
 9. **30 fps.** At 30 fps the hands can be lost through impact, which moves impact and
    the tempo; the app warns and recommends 60 fps or more.
 10. **Camera shake** is not detected.

@@ -187,6 +187,11 @@ def decide(model: Any, features: NDArray[np.float32], config: AnalysisConfig) ->
         bound = config.slow_motion_check_backswing_s
         if bound is None or first.backswing_s is None or first.backswing_s <= bound:
             return first
+        if not config.slow_motion_check_rereads:
+            # A fired check keeps the recorded-speed events and tempo and withholds
+            # only durations and bands (#49), none of which the gate reads from a
+            # decision: the decision is the recorded-speed one, by construction.
+            return first
         assert first.confidence is not None
         to_beat = core_confidence(first.confidence) + config.slow_motion_margin
     best: tuple[float, Decision] | None = None

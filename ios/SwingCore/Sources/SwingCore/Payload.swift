@@ -76,6 +76,10 @@ public struct ModelPayload: Decodable {
         /// How much more confident the best slowed read must be than the
         /// recorded-speed one before an answered clip is read as slow motion.
         public let slowMotionMargin: Double
+        /// What a fired check does: re-read the clip at the slowed speed (#32's
+        /// rule), or keep the recorded-speed read and withhold only durations (#49).
+        /// Absent in older payloads, which re-read.
+        public let slowMotionCheckRereads: Bool
 
         enum CodingKeys: String, CodingKey {
             case minMeanConfidence = "min_mean_confidence"
@@ -87,6 +91,7 @@ public struct ModelPayload: Decodable {
             case slowMotionFactors = "slow_motion_factors"
             case slowMotionCheckBackswingS = "slow_motion_check_backswing_s"
             case slowMotionMargin = "slow_motion_margin"
+            case slowMotionCheckRereads = "slow_motion_check_rereads"
         }
 
         public init(from decoder: Decoder) throws {
@@ -102,6 +107,7 @@ public struct ModelPayload: Decodable {
             slowMotionFactors = try c.decodeIfPresent([Double].self, forKey: .slowMotionFactors) ?? [2, 4, 8]
             slowMotionCheckBackswingS = try c.decodeIfPresent(Double.self, forKey: .slowMotionCheckBackswingS)
             slowMotionMargin = try c.decodeIfPresent(Double.self, forKey: .slowMotionMargin) ?? 0
+            slowMotionCheckRereads = try c.decodeIfPresent(Bool.self, forKey: .slowMotionCheckRereads) ?? true
         }
     }
 

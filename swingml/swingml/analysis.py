@@ -134,16 +134,24 @@ class AnalysisConfig(BaseModel):
         ),
     )
     slow_motion_check_backswing_s: float | None = Field(
-        default=None,
+        default=1.1,
         description=(
             "A clip answered at recorded speed whose backswing (address to top, whole "
             "frames on the model's grid) is longer than this is also read at each "
             "slow-motion factor. A clip slowed two or three times passes every gate at "
             "recorded speed, so without this its durations are reported as measured "
-            "(#32). None checks only refused clips. Off: the rule chosen on "
-            "golfdb-validation-v2 (1.1 s, margin 0.01) failed the release gate's "
-            "non-inferiority test on tempo error (#41, docs/ml/slow-motion-rule.md), "
-            "and nothing ships unless the gate passes."
+            "(#32). None checks only refused clips. 1.1 s and the margin were chosen on "
+            "golfdb-validation-v2 (docs/ml/slow-motion-rule.md)."
+        ),
+    )
+    slow_motion_check_rereads: bool = Field(
+        default=False,
+        description=(
+            "What a fired check does. False (#49): keep the recorded-speed events, tempo "
+            "and everything else, and withhold only what a guessed playback speed would "
+            "make wrong: the durations, and the millisecond error bands. True: re-read "
+            "the clip at the slowed speed, which moves its events and tempo; that rule "
+            "failed the release gate's non-inferiority test on tempo (#41)."
         ),
     )
     slow_motion_margin: float = Field(
@@ -569,6 +577,10 @@ def analyse_pose_sequence(
             best = (core, factor, attempt)
     if best is None or (to_beat is not None and best[0] <= to_beat):
         return first
+    if to_beat is not None and not config.slow_motion_check_rereads:
+        # The clip may be slowed: keep the recorded-speed reading and withhold only
+        # what the unknown speed would make wrong (#49).
+        return _as_slow_motion(first, best[1], retimed=False)
     return _with_camera(_as_slow_motion(best[2], best[1]), sequence)
 
 
@@ -591,6 +603,12 @@ SLOWED_REASON = (
     "{factor:.0f} times slower, and how much slower it really was cannot be known "
     "from the video, so no duration is reported. Film at normal speed for timings"
 )
+MAYBE_SLOWED_REASON = (
+    "the clip reads more confidently as slow motion played back about {factor:.0f} "
+    "times slower than at the speed it was recorded, and how much slower it really "
+    "was cannot be known from the video, so no duration is reported. Film at normal "
+    "speed for timings"
+)
 SLOWED_ASSUMPTION = (
     "slow motion: assumes the whole swing was slowed by the same factor. A phone's "
     "slow-motion clip ramps speed at its start and end; if the swing crosses a ramp "
@@ -598,13 +616,14 @@ SLOWED_ASSUMPTION = (
 )
 
 
-def _as_slow_motion(analysis: SwingAnalysis, factor: float) -> SwingAnalysis:
+def _as_slow_motion(analysis: SwingAnalysis, factor: float, retimed: bool = True) -> SwingAnalysis:
     """An analysis made at a guessed speed, with everything that depends on the guess refused.
 
     Frame numbers are unchanged (every timestamp was scaled alike, so the nearest
-    frame is the same frame); times go back onto the clip's own timeline.
+    frame is the same frame); times go back onto the clip's own timeline. A
+    recorded-speed analysis (`retimed=False`) is already on that timeline.
     """
-    reason = SLOWED_REASON.format(factor=factor)
+    reason = (SLOWED_REASON if retimed else MAYBE_SLOWED_REASON).format(factor=factor)
     refused = NoReading(reason=reason, source="timestamps")
     metrics = analysis.metrics
     if not isinstance(metrics, NoReading):
@@ -635,7 +654,7 @@ def _as_slow_motion(analysis: SwingAnalysis, factor: float) -> SwingAnalysis:
     return analysis.model_copy(
         update={
             "metrics": metrics,
-            "event_times_s": tuple(t * factor for t in analysis.event_times_s),
+            "event_times_s": tuple(t * factor if retimed else t for t in analysis.event_times_s),
             "event_uncertainty": bands,
             "playback_slowed_by": factor,
         }

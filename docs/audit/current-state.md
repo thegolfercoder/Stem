@@ -42,7 +42,10 @@ Also since the audit:
 - **The release gate can judge a rule change** on the same weights
   (`--baseline-config`/`--candidate-config`, non-inferiority; #41). Its first
   verdict, on #32's check for clips slowed 2-3x, was a fail on tempo error, so
-  that check ships switched off (`docs/ml/slow-motion-rule.md`).
+  re-reading such a clip stays off. What ships instead (#49) keeps the
+  recorded-speed read and withholds only durations and millisecond bands; on
+  validation it moves no event and no tempo, and the holdout was not read again
+  (`docs/ml/slow-motion-rule.md`).
 - **An agent loop** (Strategist, Builder, QA) now maintains the backlog and reviews
   every change (`bb32b18`; `agents/README.md`).
 

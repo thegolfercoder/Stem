@@ -148,19 +148,11 @@ final class ParityTests: XCTestCase {
     /// speed, and its durations used to be shown as measured (#32). The answered-clip
     /// check reads it as slow motion, as the Python and browser engines do.
     ///
-    /// The check ships off (it failed the release gate, #41), so this switches it on
-    /// in a copy of the payload, as the Python and browser tests do.
+    /// Re-reading at the slowed speed failed the release gate (#41), so this switches
+    /// it on in a copy of the payload, as the Python and browser tests do; what ships
+    /// is tested below.
     func testAClipSlowedTwoOrThreeTimesIsReadAsSlowMotion() throws {
-        XCTAssertNil(Self.analyzer.payload.thresholds.slowMotionCheckBackswingS)
-        var json = try XCTUnwrap(
-            try JSONSerialization.jsonObject(with: ModelPayload.bundledData()) as? [String: Any])
-        var thresholds = try XCTUnwrap(json["thresholds"] as? [String: Any])
-        thresholds["slow_motion_check_backswing_s"] = 1.1
-        thresholds["slow_motion_margin"] = 0.01
-        json["thresholds"] = thresholds
-        let payload = try JSONDecoder().decode(
-            ModelPayload.self, from: JSONSerialization.data(withJSONObject: json))
-        let checking = try SwingAnalyzer(payload: payload)
+        let checking = try SwingAnalyzer(payload: Self.payload(rereads: true))
         for factor in [2.0, 3.0] {
             var slowed = sequence
             slowed.times = sequence.times.map { $0 * factor }
@@ -170,6 +162,38 @@ final class ParityTests: XCTestCase {
             XCTAssertNotNil(result.metrics.slowedBy, "slowed \(factor)x read as real time")
             XCTAssertFalse(result.metrics.hasDurations)
         }
+    }
+
+    /// What ships (#49): the check fires on a clip slowed two or three times, and
+    /// withholds its durations without moving an event or the tempo.
+    func testWhatShipsWithholdsDurationsAndMovesNoEvent() throws {
+        let thresholds = Self.analyzer.payload.thresholds
+        XCTAssertEqual(thresholds.slowMotionCheckBackswingS, 1.1)
+        XCTAssertFalse(thresholds.slowMotionCheckRereads)
+        let unchecked = try SwingAnalyzer(payload: Self.payload(checkOff: true))
+        for factor in [1.0, 2.0, 3.0] {
+            var slowed = sequence
+            slowed.times = sequence.times.map { $0 * factor }
+            guard let shipped = Self.analyzer.analyse(slowed, handedness: .right).result,
+                  let plain = unchecked.analyse(slowed, handedness: .right).result else {
+                return XCTFail("slowed \(factor)x refused")
+            }
+            XCTAssertEqual(shipped.frames, plain.frames)
+            XCTAssertEqual(shipped.metrics.eventTimes, plain.metrics.eventTimes)
+            XCTAssertEqual(shipped.metrics.tempoRatio, plain.metrics.tempoRatio)
+            XCTAssertEqual(shipped.metrics.hasDurations, factor == 1.0)
+        }
+    }
+
+    static func payload(rereads: Bool = false, checkOff: Bool = false) throws -> ModelPayload {
+        var json = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: ModelPayload.bundledData()) as? [String: Any])
+        var thresholds = try XCTUnwrap(json["thresholds"] as? [String: Any])
+        thresholds["slow_motion_check_backswing_s"] = checkOff ? NSNull() : 1.1
+        thresholds["slow_motion_margin"] = 0.01
+        thresholds["slow_motion_check_rereads"] = rereads
+        json["thresholds"] = thresholds
+        return try JSONDecoder().decode(ModelPayload.self, from: JSONSerialization.data(withJSONObject: json))
     }
 
     /// The tempo band was measured on mostly right-handed swings; a left-hander is

@@ -1579,12 +1579,12 @@ async function analyse(file, { sample = false } = {}) {
                     handedness: null, camera: null, metrics: null, slowed_by: null });
       return refuse(verdict.reason, verdict.advice);
     }
-    const { resampled, grid, decoded, handedness, metrics, detectionRate, slowedBy } = verdict;
+    const { resampled, grid, decoded, handedness, metrics, detectionRate, slowedBy, retimed } = verdict;
     if (slowedBy) run.note({ slowedBy });
 
     state.analysis = { sequence, resampled, grid, decoded, metrics, detectionRate,
                        handedness, config, model: decoded, userSet: new Set(),
-                       slowedBy: slowedBy || null };
+                       slowedBy: slowedBy || null, retimed: retimed !== false };
     progress(0.92);
     stage(3);
     status("Drawing the key frames", "");
@@ -1984,8 +1984,12 @@ function renderStory(m) {
     // Only the ratio survives a guessed playback speed; say so rather than
     // printing durations measured against a clock the clip does not have.
     beats.push(["Address to impact",
-      `This clip only reads as a swing when treated as slow motion, played about ` +
-      `<b>${m.slowedBy.toFixed(0)} times</b> slower than it happened, so no durations are ` +
+      (m.slowedRetimed === false
+        ? `This clip reads more confidently as slow motion, played about ` +
+          `<b>${m.slowedBy.toFixed(0)} times</b> slower than it happened, than at the speed it was ` +
+          `recorded, so no durations are `
+        : `This clip only reads as a swing when treated as slow motion, played about ` +
+          `<b>${m.slowedBy.toFixed(0)} times</b> slower than it happened, so no durations are `) +
       `given. Backswing over downswing gives a tempo of ` +
       `<b>${ratio === null ? "no reading" : ratio.toFixed(2) + " : 1"}</b>, which assumes the ` +
       `whole swing was slowed evenly; a phone's slow motion ramps speed at its ends.`,
@@ -2055,7 +2059,9 @@ function showMetrics(m, decoded, detectionRate, sequence) {
     : card(label, Math.round(ms), "ms", note, "measured");
   if (m.slowedBy) {
     el("summary").textContent +=
-      ` · read as slow motion played about ${m.slowedBy.toFixed(0)} times slower`;
+      (m.slowedRetimed === false
+        ? ` · may be slow motion played about ${m.slowedBy.toFixed(0)} times slower: durations withheld`
+        : ` · read as slow motion played about ${m.slowedBy.toFixed(0)} times slower`);
   }
   el("tempo-cards").innerHTML =
     card("Tempo ratio", m.tempoRatio.toFixed(2), "",
@@ -2194,7 +2200,7 @@ async function setPosition(e, time) {
   const { resampled, grid, sequence } = analysis;
   const rate = analysis.config.canonical_rate_hz;
   // A slow-motion read lives on the sped-up timeline; the clip time goes onto it.
-  const onGrid = analysis.slowedBy ? time / analysis.slowedBy : time;
+  const onGrid = analysis.slowedBy && analysis.retimed ? time / analysis.slowedBy : time;
   const position = Math.max(0, Math.min(resampled.n - 1, (onGrid - grid[0]) * rate));
   const decoded = analysis.decoded;
   for (let other = 0; other < 8; other++) {
@@ -2220,7 +2226,7 @@ async function apply(next, e) {
   analysis.decoded = next;
   const measure = (events) => {
     const m = computeMetrics(analysis.resampled, events, analysis.handedness, analysis.config);
-    return analysis.slowedBy ? slowedMetrics(m, analysis.slowedBy) : m;
+    return analysis.slowedBy ? slowedMetrics(m, analysis.slowedBy, analysis.retimed) : m;
   };
   analysis.metrics = measure(next);
   const byModel = measure(analysis.model);

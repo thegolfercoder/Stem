@@ -4,10 +4,11 @@ Before, the slow-motion retry ran only on a clip refused at recorded speed. The
 real phone swing slowed 2x or 3x passes every gate at recorded speed (a doubled
 backswing still fits 0.30-2.50 s), so its durations were shown two or three
 times too long as plain measurements. Now an answered clip with a long backswing
-is also read at the slow-motion factors and kept as slow motion when a slowed
-read is clearly more confident. The rule's values were chosen on
-golfdb-validation-v2 (`scripts/slow_motion_rule.py`, `docs/ml/slow-motion-rule.md`)
-but failed the release gate (#41), so it ships off; these tests run it explicitly.
+is also read at the slow-motion factors. The rule's values were chosen on
+golfdb-validation-v2 (`scripts/slow_motion_rule.py`, `docs/ml/slow-motion-rule.md`).
+Re-reading the clip at the slowed speed failed the release gate (#41); what ships
+(#49) keeps the recorded-speed read and withholds only the durations, so no event
+and no tempo moves. Both are tested here.
 """
 
 from __future__ import annotations
@@ -53,19 +54,23 @@ def model():  # type: ignore[no-untyped-def]
     return load_model(path)
 
 
-# The rule chosen on validation. It failed the release gate (#41), so the app
-# ships with the check off; these tests keep the rule working for when one passes.
+# The re-reading rule chosen on validation. It failed the release gate (#41); these
+# tests keep it working. What ships is SHIPPED, the same check with re-reading off.
 CHECK_ON = AnalysisConfig(
-    handedness=Handedness.RIGHT, slow_motion_check_backswing_s=1.1, slow_motion_margin=0.01
-)
+    handedness=Handedness.RIGHT, slow_motion_check_backswing_s=1.1, slow_motion_margin=0.01,
+    slow_motion_check_rereads=True,
+)  # fmt: skip
+SHIPPED = AnalysisConfig(handedness=Handedness.RIGHT)
+CHECK_OFF = AnalysisConfig(handedness=Handedness.RIGHT, slow_motion_check_backswing_s=None)
 
 
 def read(model, by: float, config: AnalysisConfig | None = None) -> SwingAnalysis:  # type: ignore[no-untyped-def]
     return analyse_pose_sequence(slowed(by), model, config or CHECK_ON)
 
 
-def test_the_check_is_off_until_a_rule_passes_the_gate() -> None:
-    assert AnalysisConfig().slow_motion_check_backswing_s is None
+def test_what_ships_checks_but_does_not_re_read() -> None:
+    assert AnalysisConfig().slow_motion_check_backswing_s == 1.1
+    assert AnalysisConfig().slow_motion_check_rereads is False
 
 
 @pytest.mark.parametrize("by", [2.0, 3.0])
@@ -79,7 +84,7 @@ def test_a_clip_slowed_two_or_three_times_is_read_as_slow_motion(model, by: floa
 
 def test_without_the_check_the_two_times_clip_passes_as_real_time(model) -> None:  # type: ignore[no-untyped-def]
     """The failure #32 reported, kept reproducible: it is the check that catches it."""
-    analysis = read(model, 2.0, AnalysisConfig(handedness=Handedness.RIGHT))
+    analysis = read(model, 2.0, CHECK_OFF)
     assert analysis.playback_slowed_by is None
     assert not isinstance(analysis.metrics, NoReading)
     assert not isinstance(analysis.metrics.backswing_duration, NoReading)
@@ -99,3 +104,38 @@ def test_the_release_gate_applies_the_same_check(model, by: float) -> None:  # t
     decision = release_gate.decide(model, extract_features(resampled, Handedness.RIGHT), config)
     assert decision.positions is not None
     assert (decision.slowed_by is not None) == (by > 1.0)
+
+
+@pytest.mark.parametrize("by", [1.0, 2.0, 3.0])
+def test_what_ships_moves_no_event_and_no_tempo(model, by: float) -> None:  # type: ignore[no-untyped-def]
+    """#49: a fired check withholds durations and bands; everything else is the unchecked read."""
+    shipped = read(model, by, SHIPPED)
+    unchecked = read(model, by, CHECK_OFF)
+    assert not isinstance(shipped.events, NoReading) and not isinstance(unchecked.events, NoReading)
+    assert shipped.events.frames == unchecked.events.frames
+    assert shipped.event_times_s == unchecked.event_times_s
+    assert not isinstance(shipped.metrics, NoReading) and not isinstance(
+        unchecked.metrics, NoReading
+    )
+    assert shipped.metrics.tempo_ratio.value == unchecked.metrics.tempo_ratio.value  # type: ignore[union-attr]
+    if by == 1.0:
+        assert shipped.playback_slowed_by is None
+        assert not isinstance(shipped.metrics.backswing_duration, NoReading)
+    else:
+        assert shipped.playback_slowed_by is not None, "durations reported as measured"
+        for refused in (shipped.metrics.backswing_duration, shipped.metrics.downswing_duration,
+                        shipped.metrics.time_to_peak_hand_speed):  # fmt: skip
+            assert isinstance(refused, NoReading)
+            assert "more confidently as slow motion" in refused.reason
+
+
+@pytest.mark.parametrize("by", [1.0, 2.0, 3.0])
+def test_the_gate_sees_the_unchecked_decision_for_what_ships(model, by: float) -> None:  # type: ignore[no-untyped-def]
+    resampled, _ = resample_pose(slowed(by), SHIPPED.features.canonical_rate_hz)
+    features = extract_features(resampled, Handedness.RIGHT)
+    shipped = release_gate.decide(model, features, SHIPPED)
+    unchecked = release_gate.decide(model, features, CHECK_OFF)
+    assert shipped.slowed_by is None
+    assert shipped.positions is not None and unchecked.positions is not None
+    assert np.array_equal(shipped.positions, unchecked.positions)
+    assert shipped.confidence == unchecked.confidence
