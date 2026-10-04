@@ -13,6 +13,12 @@ as "no detectable change", never as "no change"; and tempo moves at roughly 0.44
 of the real change on held-out swings, so a real change in tempo shows up smaller
 than it is.
 
+No floor is put on the spread. Instead, when the readings on either side are all
+identical, the spread cannot be estimated from them and no direction is claimed
+(#54): identical readings are not a noiseless measurement, because positions fall
+on whole frames and the same ratio of frame counts recurs, and a side with no
+spread would otherwise give an interval narrower than the measurement supports.
+
 The comparability thresholds are judgements, not measurements: nothing yet says
 how far a phone can move before a projected angle stops being comparable. They
 are stated here so they can be tested and replaced when that is measured.
@@ -232,6 +238,20 @@ def _common(
     }
 
 
+def _flat_explanation(flat: Sequence[str]) -> str:
+    which = (
+        "The swings before, and the swings after, each read"
+        if len(flat) == 2
+        else f"The swings {flat[0]} read"
+    )
+    return (
+        f"{which} exactly the same every time, so the spread between swings, which a change "
+        "is measured against, cannot be estimated from them. Identical readings do not mean "
+        "the measurement has no noise: positions fall on whole frames, so the same reading "
+        "recurs. Record more swings on each side, each its own recording."
+    )
+
+
 def compare(
     before: Sequence[SwingPoint], after: Sequence[SwingPoint], metric: str, direction: Direction
 ) -> Change:
@@ -252,6 +272,14 @@ def compare(
             **_common(metric, direction, before, after, check),
             verdict="not_comparable",
             explanation="These swings cannot be compared: " + "; ".join(check.blocking) + ".",
+        )
+    flat = [name for name, side in (("before", before), ("after", after))
+            if max(p.value for p in side) == min(p.value for p in side)]  # fmt: skip
+    if flat:
+        return Change(
+            **_common(metric, direction, before, after, check),
+            verdict="no_detectable_change",
+            explanation=_flat_explanation(flat),
         )
     mean_before = float(np.mean([p.value for p in before]))
     mean_after = float(np.mean([p.value for p in after]))

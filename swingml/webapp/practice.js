@@ -171,6 +171,20 @@ export function compareSwings(rules, before, after, metric, direction) {
              explanation: "These swings cannot be compared: " + check.blocking.join("; ") + "." };
   }
   const a = before.map((p) => p.value), b = after.map((p) => p.value);
+  // A side whose readings are all identical has no spread to measure a change
+  // against; no direction is claimed (#54). compare.py `_flat_explanation`.
+  const flat = [["before", a], ["after", b]]
+    .filter(([, v]) => Math.max(...v) === Math.min(...v)).map(([name]) => name);
+  if (flat.length) {
+    const which = flat.length === 2 ? "The swings before, and the swings after, each read"
+      : `The swings ${flat[0]} read`;
+    return { ...common, verdict: "no_detectable_change",
+             explanation: `${which} exactly the same every time, so the spread between swings, ` +
+               "which a change is measured against, cannot be estimated from them. Identical " +
+               "readings do not mean the measurement has no noise: positions fall on whole " +
+               "frames, so the same reading recurs. Record more swings on each side, each its " +
+               "own recording." };
+  }
   const [difference, se, df] = welch(a, b);
   const half = t95(rules, df) * se;
   const interval = [difference - half, difference + half];

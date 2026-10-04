@@ -152,6 +152,39 @@ def test_a_change_the_spread_can_explain_is_not_called_a_change() -> None:
     assert "not the same as no change" in change.explanation
 
 
+@pytest.mark.parametrize(
+    ("before", "after", "said"),
+    [
+        ((3.0, 3.0, 3.0), (3.1, 3.1, 3.1), "The swings before, and the swings after, each read"),
+        ((3.0, 3.0, 3.0), (3.4, 3.6, 3.5), "The swings before read"),
+        ((2.8, 3.0, 2.9), (3.1, 3.1, 3.1), "The swings after read"),
+    ],
+)
+def test_identical_readings_are_not_a_spread_of_zero(
+    before: tuple[float, ...], after: tuple[float, ...], said: str
+) -> None:
+    """QA's case (#54): 3.0 x3 against 3.1 x3 read "improved" over (0.1, 0.1)."""
+    change = compare(
+        [point(i, v) for i, v in enumerate(before)],
+        [point(10 + i, v) for i, v in enumerate(after)],
+        "tempo_ratio", "increase",
+    )  # fmt: skip
+    assert change.verdict == "no_detectable_change"
+    assert change.interval is None and change.smallest_detectable is None
+    assert change.explanation.startswith(said) and "cannot be estimated" in change.explanation
+
+
+def test_a_reported_smallest_change_is_never_zero() -> None:
+    rng = random.Random(54)
+    for _ in range(500):
+        sides = [[point(i, round(rng.choice((3.0, 3.0, 3.2, 2.9)) + rng.choice((0, 0, 0.1)), 1))
+                  for i in range(rng.randint(3, 5))] for _ in range(2)]  # fmt: skip
+        change = compare(*sides, "tempo_ratio", "increase")
+        assert change.smallest_detectable is None or change.smallest_detectable > 0
+        if change.interval is not None:
+            assert change.interval[1] > change.interval[0]
+
+
 def test_the_wrong_way_is_reported_as_the_wrong_way() -> None:
     before = [point(i, v) for i, v in enumerate([0.05, 0.06, 0.055])]
     after = [point(10 + i, v) for i, v in enumerate([0.09, 0.10, 0.095])]

@@ -39,7 +39,9 @@ the desktop's by tests; they have no capture preflight, event log or feedback fo
    - *improved*: the change exceeds what the spread between swings explains, in the
      drill's direction;
    - *worsened*: the same, in the other direction;
-   - *no detectable change*: with the smallest change these swings could have shown;
+   - *no detectable change*: with the smallest change these swings could have shown,
+     or, when one side's readings are all identical, saying the spread cannot be
+     estimated from them and claiming no direction (#54);
    - *not comparable*: says what differed (club, angle, orientation, phone moved);
    - *not enough swings*.
 4. The golfer rates usefulness (1-5) and notes how it felt. Finish or stop the plan;

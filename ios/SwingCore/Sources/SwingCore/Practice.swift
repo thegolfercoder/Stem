@@ -279,6 +279,19 @@ public func compareSwings(_ rules: PracticeRules, _ before: [SwingPoint], _ afte
         return change
     }
     let a = before.map(\.value), b = after.map(\.value)
+    // A side whose readings are all identical has no spread to measure a change
+    // against; no direction is claimed (#54). compare.py `_flat_explanation`.
+    let flat = [("before", a), ("after", b)].filter { $0.1.max() == $0.1.min() }.map(\.0)
+    if !flat.isEmpty {
+        let which = flat.count == 2 ? "The swings before, and the swings after, each read"
+            : "The swings \(flat[0]) read"
+        change.verdict = "no_detectable_change"
+        change.explanation = "\(which) exactly the same every time, so the spread between swings, "
+            + "which a change is measured against, cannot be estimated from them. Identical readings "
+            + "do not mean the measurement has no noise: positions fall on whole frames, so the same "
+            + "reading recurs. Record more swings on each side, each its own recording."
+        return change
+    }
     let va = variance(a) / Double(a.count), vb = variance(b) / Double(b.count)
     let se = (va + vb).squareRoot()
     let difference = mean(b) - mean(a)
