@@ -1842,7 +1842,11 @@ function renderSummaryCard(m) {
   el("sum-tempo").textContent = m.tempoRatio.toFixed(2);
   const band = state.payload.calibration && state.payload.calibration.tempo;
   const range = el("sum-range");
-  if (band) {
+  const byHand = tempoSetByHand();
+  range.title = "";
+  if (byHand) {
+    range.textContent = `backswing ÷ downswing · ${byHand}`;
+  } else if (band) {
     const spread = Math.abs(m.tempoRatio) * band.half_width_fraction;
     range.title = `+/-${Math.round(100 * band.half_width_fraction)}% for ` +
       `${Math.round(100 * band.coverage)}% of ${band.n_calibration} held-out swings on ` +
@@ -1853,8 +1857,9 @@ function renderSummaryCard(m) {
   } else {
     range.textContent = "backswing ÷ downswing";
   }
+  // The left-handed note is about the band, so it goes with it.
   const caveat = leftHandedCaveat(state.payload, state.analysis && state.analysis.handedness);
-  if (caveat) range.textContent += ` · ${caveat}`;
+  if (caveat && !byHand) range.textContent += ` · ${caveat}`;
   el("again-record").hidden = el("record").hidden;
   summaryPriority(null);
 }
@@ -1929,9 +1934,21 @@ const card = (label, value, unit, note, provenance, range) => `
       ${note ? `<span class="metric-hint">${note}</span>` : ""}</div>
   </div>`;
 
+/* Address, top or impact the golfer placed by hand (#50). The tempo is then
+ * measured from their frames, and the model's band, which describes where the
+ * model puts positions, says nothing about it. The desktop's wording (swing.html). */
+function tempoSetByHand() {
+  const set = state.analysis ? state.analysis.userSet : new Set();
+  const names = [0, 3, 5].filter((e) => set.has(e)).map((e) => EVENT_NAMES[e]);
+  return names.length ? `${names.join(", ")} set by you: measured from your frames; the model's ` +
+    "error bands describe the model, so they are not shown" : "";
+}
+
 /* The measured spread on the tempo ratio, or nothing where none was measured.
  * Never a range of zero: absent and exact are not the same statement. */
 function tempoRange(calibration, tempo, caveat) {
+  const byHand = tempoSetByHand();
+  if (byHand) return `<div class="metric-caveat">${byHand}.</div>`;
   const band = calibration && calibration.tempo;
   if (!band) return "";
   const spread = Math.abs(tempo) * band.half_width_fraction;

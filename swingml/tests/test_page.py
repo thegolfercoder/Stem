@@ -971,3 +971,41 @@ def test_a_range_session_records_and_reads_every_swing_and_counts_the_refused(
             for _, url, _ in requests
         ), [u for _, u, _ in requests]
         browser.close()
+
+
+def test_a_tempo_from_positions_moved_by_hand_shows_no_model_band(
+    landmark_json: str, clip: Path
+) -> None:
+    """#50: the model's tempo band describes the model, not the golfer's frames."""
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context(viewport={"width": 1280, "height": 900}).new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.goto(PAGE.resolve().as_uri())
+        _analyse(page, clip)
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        assert "measured spread" in (page.text_content("#tempo-cards") or "")
+        assert "measured spread" in (page.text_content("#sum-range") or "")
+
+        # Move the top one frame later, as the lightbox does.
+        page.locator("#strip figure.frame").nth(3).click()
+        page.wait_for_selector("#lightbox", state="visible")
+        page.click("#lb-fwd")
+        page.click("#lb-use")
+        page.wait_for_function(
+            "() => /set by you/.test(document.getElementById('tempo-cards').textContent)"
+        )
+        page.click("#lb-close")
+        for where in ("#tempo-cards", "#sum-range"):
+            text = page.text_content(where) or ""
+            assert "measured spread" not in text, (where, text)
+            assert "error bands describe the model, so they are not shown" in text, (where, text)
+            assert "top set by you" in text.lower(), (where, text)
+        assert errors == []
+        browser.close()
