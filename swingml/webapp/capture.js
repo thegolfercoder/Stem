@@ -121,3 +121,130 @@ export function levelVerdict(beta, gamma, landscape, tolerance = 3) {
   if (degrees <= tolerance) return { level: true, text: "Phone level" };
   return { level: false, text: `Tilted ${degrees}°: straighten the phone` };
 }
+
+/* A range session (#56): the camera stays live and each swing is recorded by
+ * itself. The page samples the estimator a few times a second and hands each
+ * sample here; this decides when to start and stop recording.
+ *
+ * Motion is how fast the visible body moves between samples: the mean
+ * displacement of the landmarks seen in both, over the time between them, in body
+ * heights per second. The wrists alone will not do: they are hidden behind the
+ * body at the finish, where a face-on estimator gives them visibility under 0.1.
+ *
+ *   start  the golfer has been framed and still for `addressSeconds`: at address.
+ *   swing  motion reaches `swingSpeed` after the start.
+ *   stop   `settleSeconds` after the last swing-speed sample (the finish has
+ *          settled), or `capSeconds` after the start. A stop with no swing seen is
+ *          reported as such, so the page can say so rather than analyse nothing.
+ *   cancel before any swing, `setupSeconds` of motion that never reaches swing
+ *          speed: the golfer stood still and then walked or set up, which is not
+ *          a takeaway (one reaches swing speed within about 0.3 s). The clip is
+ *          discarded and the watcher waits for the real address, so a long
+ *          pre-shot routine cannot use up the cap before the swing.
+ *
+ * After a stop the golfer must move again before a new address counts, so holding
+ * the finish, or standing still between balls, does not start an empty clip.
+ *
+ * The thresholds are judgement, set on the phone fixture (real_swing_01) sampled
+ * at 5 Hz: address reads 0.03-0.06, the swing 0.26-1.6, the settled finish under
+ * 0.07, walking off 0.3 (tests/test_browser_session.py). The analysis's own
+ * refusals remain the test of each clip. */
+export const SESSION = {
+  stillSpeed: 0.10,
+  swingSpeed: 0.5,
+  addressSeconds: 1.0,
+  setupSeconds: 1.0,
+  settleSeconds: 1.5,
+  capSeconds: 8,
+  minVisibility: 0.5,
+  minShared: 8,
+  minGap: 0.05,
+};
+
+export class SwingWatcher {
+  constructor(rules = SESSION) {
+    this.rules = rules;
+    this.state = "waiting";   // "waiting" | "recording" | "rearming"
+    this.previous = null;     // { t, landmarks }
+    this.heights = [];
+    this.stillSince = null;
+    this.startedAt = null;
+    this.lastSwingAt = null;
+    this.movingSince = null;
+  }
+
+  /* One live sample at time `t` (seconds): the estimator's landmarks or null, and
+   * whether the framing check passes. Returns null, or { type: "start", t }, or
+   * { type: "stop", t, swing, capped }, or { type: "cancel", t }. */
+  push(t, landmarks, framed = true) {
+    const r = this.rules;
+    const motion = this.motion(t, landmarks);
+    if (motion === undefined) return null;   // too soon after the last sample
+    if (this.state === "recording") {
+      if (motion !== null && motion >= r.swingSpeed) this.lastSwingAt = t;
+      if (this.lastSwingAt === null) {
+        const moving = motion !== null && motion >= r.stillSpeed;
+        if (!moving) this.movingSince = null;
+        else if (this.movingSince === null) this.movingSince = this.previousT;
+        if (this.movingSince !== null && t - this.movingSince >= r.setupSeconds) {
+          this.state = "waiting";
+          this.stillSince = null;
+          this.startedAt = null;
+          this.movingSince = null;
+          return { type: "cancel", t };
+        }
+      }
+      const capped = t - this.startedAt >= r.capSeconds;
+      const settled = this.lastSwingAt !== null && t - this.lastSwingAt >= r.settleSeconds;
+      if (!capped && !settled) return null;
+      const event = { type: "stop", t, swing: this.lastSwingAt !== null, capped: capped && !settled };
+      this.state = "rearming";
+      this.stillSince = null;
+      this.startedAt = null;
+      this.lastSwingAt = null;
+      this.movingSince = null;
+      return event;
+    }
+    const still = motion !== null && motion < r.stillSpeed && framed;
+    if (this.state === "rearming") {
+      if (motion !== null && motion >= r.stillSpeed) this.state = "waiting";
+      return null;
+    }
+    if (!still) { this.stillSince = null; return null; }
+    if (this.stillSince === null) this.stillSince = this.previousT;
+    if (t - this.stillSince < r.addressSeconds) return null;
+    this.state = "recording";
+    this.startedAt = t;
+    this.lastSwingAt = null;
+    return { type: "start", t };
+  }
+
+  /* Body heights per second since the last sample; null when it cannot be read,
+   * undefined when this sample is too soon to use. */
+  motion(t, landmarks) {
+    const r = this.rules;
+    const previous = this.previous;
+    if (previous && t - previous.t < r.minGap) return undefined;
+    this.previousT = previous ? previous.t : t;
+    this.previous = { t, landmarks };
+    const seen = (p) => p && (p.visibility ?? 1) >= r.minVisibility;
+    if (!landmarks || landmarks.length < 33) return null;
+    const ys = landmarks.filter(seen).map((p) => p.y);
+    if (ys.length >= r.minShared) {
+      this.heights.push(Math.max(...ys) - Math.min(...ys));
+      if (this.heights.length > 9) this.heights.shift();
+    }
+    if (!previous || !previous.landmarks || previous.landmarks.length < 33 || !this.heights.length) return null;
+    // A median body height: one sample with the feet lost must not double the motion.
+    const height = [...this.heights].sort((a, b) => a - b)[Math.floor(this.heights.length / 2)];
+    let sum = 0, n = 0;
+    for (let i = 0; i < 33; i++) {
+      const a = previous.landmarks[i], b = landmarks[i];
+      if (!seen(a) || !seen(b)) continue;
+      sum += Math.hypot(b.x - a.x, b.y - a.y);
+      n += 1;
+    }
+    if (n < r.minShared || !(height > 0)) return null;
+    return sum / n / (t - previous.t) / height;
+  }
+}
