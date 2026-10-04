@@ -174,6 +174,20 @@ public struct Comparability: Codable, Equatable {
     public var warnings: [String]
 }
 
+/// Which of `points` (newest first) form one comparable set: their indices. Grown
+/// from the newest, each kept only if the whole set still passes, because the camera
+/// checks are ranges over the set (#53). compare.py `comparable_set`.
+public func comparableSet(_ rules: PracticeRules, _ points: [SwingPoint], metric: String,
+                          limit: Int = 5) -> [Int] {
+    var chosen: [Int] = []
+    for (i, point) in points.enumerated() where chosen.count < limit {
+        if comparability(rules, chosen.map { points[$0] } + [point], [], metric: metric).comparable {
+            chosen.append(i)
+        }
+    }
+    return chosen
+}
+
 /// Whether two sets of swings can be compared at all. compare.py `comparability`.
 public func comparability(_ rules: PracticeRules, _ before: [SwingPoint], _ after: [SwingPoint],
                           metric: String) -> Comparability {
@@ -373,15 +387,8 @@ public func choosePriority(_ rules: PracticeRules, _ recent: [RecentSwing]) -> I
     }
 
     let analysed = recent.filter { !$0.refused && $0.tempo != nil && $0.point != nil }
-    var comparable: [RecentSwing] = []
-    if let newest = analysed.first?.point {
-        for swing in analysed.prefix(10) {
-            if comparability(rules, [newest], [swing.point!], metric: "tempo_ratio").comparable {
-                comparable.append(swing)
-            }
-            if comparable.count == 5 { break }
-        }
-    }
+    let window = Array(analysed.prefix(10))
+    let comparable = comparableSet(rules, window.map { $0.point! }, metric: "tempo_ratio").map { window[$0] }
     // Comparable swings share a hand, so the newest swing's hand is every reading's (#33).
     let left = analysed.first?.point?.handedness == "left"
     let limits = left ? (rules.tempoLimitsLeftHanded ?? rules.tempoLimits) : rules.tempoLimits
@@ -600,9 +607,8 @@ public struct PracticeLog: Codable, Equatable {
     public func baseline(_ rules: PracticeRules, drill: Drill, upTo id: Int?) -> (ids: [Int], club: String?) {
         let usable = recent(upTo: id).filter(\.ok).compactMap { s in point(s, metric: drill.metric).map { (s, $0) } }
         guard let newest = usable.first else { return ([], nil) }
-        let ids = usable.filter { comparability(rules, [newest.1], [$0.1], metric: drill.metric).comparable }
-            .map { $0.0.id }
-        return (Array(ids.prefix(5)), newest.0.club)
+        let ids = comparableSet(rules, usable.map(\.1), metric: drill.metric).map { usable[$0].0.id }
+        return (ids, newest.0.club)
     }
 
     /// Start practising one thing; any plan still active is abandoned first.

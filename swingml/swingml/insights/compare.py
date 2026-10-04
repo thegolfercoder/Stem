@@ -165,6 +165,23 @@ def comparability(
     )
 
 
+def comparable_set(points: Sequence[SwingPoint], metric: str, limit: int = 5) -> list[int]:
+    """Which of `points` (newest first) form one comparable set: their indices.
+
+    Grown from the newest swing, each swing kept only if the whole set still passes
+    `comparability`, because the camera checks are ranges over the set: swings each
+    within tolerance of the newest can span twice the tolerance together, and
+    `compare` would then refuse the baseline it was given (#53).
+    """
+    chosen: list[int] = []
+    for i, point in enumerate(points):
+        if comparability([*(points[j] for j in chosen), point], [], metric).comparable:
+            chosen.append(i)
+            if len(chosen) == limit:
+                break
+    return chosen
+
+
 Verdict = Literal[
     "improved", "worsened", "no_detectable_change", "not_comparable", "not_enough_swings"
 ]

@@ -25,16 +25,15 @@ sys.path.insert(0, str(REPO / "swingml" / "tests"))
 
 import numpy as np  # noqa: E402
 
-from swingml.insights.compare import SwingPoint, camera_signature, compare  # noqa: E402
+from swingml.insights.compare import camera_signature, compare  # noqa: E402
 from swingml.insights.engine import choose  # noqa: E402
 from swingml.pose.base import PoseSequence  # noqa: E402
 from swingml.web import practice as desktop  # noqa: E402
 from test_browser_practice import (  # noqa: E402
-    CAMERAS,
     FakeStore,
-    browser_swing,
     desktop_row,
     dump,
+    plan_swings,
     random_history,
     random_sets,
 )
@@ -62,17 +61,8 @@ def camera_case() -> dict[str, Any]:
     }
 
 
-def plan_case(focus: str) -> dict[str, Any]:
-    rng = random.Random(7)
-    before, after = [], []
-    for i in range(6):
-        point = SwingPoint(swing_id=i + 1, value=rng.gauss(2.5, 0.1), handedness="right",
-                           club="7 iron", camera=CAMERAS[i % 2])  # fmt: skip
-        before.append(browser_swing(point, rng.gauss(0.10, 0.01)))
-    for i in range(5):
-        point = SwingPoint(swing_id=i + 7, value=rng.gauss(3.1, 0.1), handedness="right",
-                           club="7 iron", camera=CAMERAS[i % 2])  # fmt: skip
-        after.append(browser_swing(point, rng.gauss(0.09, 0.01)))
+def plan_case(focus: str, spread: bool = False) -> dict[str, Any]:
+    before, after = plan_swings(spread)
     store = FakeStore([desktop_row(i + 1, s) for i, s in enumerate(before)])
     insight = desktop.insight_for(store, 6).model_dump(mode="json")  # type: ignore[arg-type]
     drill = desktop.BY_FOCUS[focus]
@@ -117,7 +107,11 @@ def build() -> dict[str, Any]:
         ],
         "g3": [[x, f"{x:.3g}"] for x in (0.1234567, 12.3456, 1234.5, 0.000123456, 1e-5, 2.0, 0.5)],
         "camera": camera_case(),
-        "plans": [plan_case("tempo_quick"), plan_case("head_stability")],
+        "plans": [
+            plan_case("tempo_quick"),
+            plan_case("head_stability"),
+            plan_case("tempo_quick", spread=True),
+        ],
     }
 
 

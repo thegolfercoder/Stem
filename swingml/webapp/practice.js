@@ -82,6 +82,17 @@ export function cameraSignature(sequence, addressFrame) {
   };
 }
 
+/* Which of `points` (newest first) form one comparable set: their indices. Grown
+ * from the newest, each kept only if the whole set still passes, because the camera
+ * checks are ranges over the set (#53). compare.py `comparable_set`. */
+export function comparableSet(rules, points, metric, limit = 5) {
+  const chosen = [];
+  for (let i = 0; i < points.length && chosen.length < limit; i++) {
+    if (comparability(rules, [...chosen.map((j) => points[j]), points[i]], [], metric).comparable) chosen.push(i);
+  }
+  return chosen;
+}
+
 /* Whether two sets of swings can be compared at all. compare.py `comparability`. */
 export function comparability(rules, before, after, metric) {
   const blocking = [], warnings = [];
@@ -224,14 +235,8 @@ export function choosePriority(rules, recent) {
   }
 
   const analysed = recent.filter((s) => !s.refused && finite(s.tempo) && s.point);
-  const comparable = [];
-  if (analysed.length) {
-    const newest = analysed[0];
-    for (const swing of analysed.slice(0, 10)) {
-      if (comparability(rules, [newest.point], [swing.point], "tempo_ratio").comparable) comparable.push(swing);
-      if (comparable.length === 5) break;
-    }
-  }
+  const window = analysed.slice(0, 10);
+  const comparable = comparableSet(rules, window.map((s) => s.point), "tempo_ratio").map((i) => window[i]);
   // Comparable swings share a hand, so the newest swing's hand is every reading's (#33).
   const left = analysed.length > 0 && analysed[0].point.handedness === "left";
   const limits = left && rules.tempo_limits_left_handed ? rules.tempo_limits_left_handed : rules.tempo_limits;
@@ -449,9 +454,7 @@ export class PracticeLog {
     const usable = this.recentUpTo(upTo).filter((s) => s.ok)
       .map((s) => [s, this.pointOf(s, drill.metric)]).filter(([, p]) => p);
     if (!usable.length) return { baseline: [], club: null };
-    const newest = usable[0][1];
-    const baseline = usable.filter(([, p]) => comparability(rules, [newest], [p], drill.metric).comparable)
-      .map(([s]) => s.id).slice(0, 5);
+    const baseline = comparableSet(rules, usable.map(([, p]) => p), drill.metric).map((i) => usable[i][0].id);
     return { baseline, club: usable[0][0].club || null };
   }
 

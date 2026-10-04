@@ -19,7 +19,13 @@ from typing import Any
 
 from flask import Blueprint, Response, abort, jsonify, redirect, render_template, request, url_for
 
-from swingml.insights.compare import CameraSignature, Change, SwingPoint, comparability, compare
+from swingml.insights.compare import (
+    CameraSignature,
+    Change,
+    SwingPoint,
+    comparable_set,
+    compare,
+)
 from swingml.insights.drills import BY_FOCUS, BY_ID, Drill
 from swingml.insights.engine import TRACKABLE, Insight, RecentSwing, choose
 from swingml.store import StoredSwing, SwingStore
@@ -83,11 +89,8 @@ def baseline_for(
     usable = [(row, p) for row, p in points if p is not None]
     if not usable:
         return [], None
-    newest = usable[0][1]
-    chosen = [row.id for row, p in usable if comparability([newest], [p], drill.metric).comparable][
-        :5
-    ]
-    return chosen, usable[0][0].club
+    chosen = comparable_set([p for _, p in usable], drill.metric)
+    return [usable[i][0].id for i in chosen], usable[0][0].club
 
 
 def plan_change(store: SwingStore, plan: dict[str, Any]) -> Change | None:

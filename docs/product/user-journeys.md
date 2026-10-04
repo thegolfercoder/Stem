@@ -30,8 +30,9 @@ the desktop's by tests; they have no capture preflight, event log or feedback fo
 
 ## 3. Practising and retesting
 
-1. **Start practising this** creates a plan. The most recent comparable swings become
-   the baseline.
+1. **Start practising this** creates a plan. The most recent swings that are comparable
+   with each other as one set (same hand, club and camera, up to 5) become the
+   baseline, so the retest is compared with a baseline the comparison accepts (#53).
 2. The Practice page shows the drill. **Record retest swings** opens the upload page
    tied to the plan.
 3. After 3 retest swings the verdict appears:

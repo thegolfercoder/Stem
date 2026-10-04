@@ -8,12 +8,20 @@ invent a fault when nothing measured stands out.
 
 from __future__ import annotations
 
+import random
 from pathlib import Path
 
 import pytest
 
 from swingml.analysis import SwingAnalysis, analyse_with_positions
-from swingml.insights.compare import CameraSignature, SwingPoint, compare, t95
+from swingml.insights.compare import (
+    CameraSignature,
+    SwingPoint,
+    comparability,
+    comparable_set,
+    compare,
+    t95,
+)
 from swingml.insights.engine import RecentSwing, choose
 from swingml.insights.reference import TOUR_TEMPO_READINGS
 from swingml.labels import save_pose
@@ -82,6 +90,41 @@ def test_swings_from_another_camera_angle_do_not_count_towards_a_priority() -> N
     low = TOUR_TEMPO_READINGS.p10 - 0.5
     swings = [recent(3, low), recent(2, low, DOWN_THE_LINE), recent(1, low, DOWN_THE_LINE)]
     assert choose(swings).kind == "not_enough"
+
+
+def angled(ratio: float) -> CameraSignature:
+    return FACE_ON.model_copy(update={"shoulder_ratio": ratio})
+
+
+def test_a_priority_rests_only_on_swings_comparable_as_one_set() -> None:
+    """QA's case (#53): 0.25 and 0.75 are each within tolerance of the newest 0.50,
+    but not of each other, so the three cannot all count."""
+    low = TOUR_TEMPO_READINGS.p10 - 0.5
+    swings = [recent(3, low, angled(0.50)), recent(2, low, angled(0.25)),
+              recent(1, low, angled(0.75))]  # fmt: skip
+    assert choose(swings).kind == "not_enough"
+    four = [recent(4, low, angled(0.55)), *swings]
+    chosen = choose(four)
+    assert chosen.kind == "tempo_quick"
+    used = [e.swing_id for e in chosen.evidence if e.swing_id is not None]
+    assert 2 not in used and set(used) == {4, 3, 1}
+
+
+def test_a_comparable_set_always_passes_as_a_whole() -> None:
+    rng = random.Random(53)
+    for _ in range(300):
+        points = [point(i, 3.0, angled(rng.uniform(0.2, 1.0)).model_copy(
+                      update={"body_height": rng.uniform(0.4, 0.9),
+                              "centre_x": rng.uniform(0.3, 0.7)}))
+                  for i in range(rng.randint(1, 10))]  # fmt: skip
+        for metric in ("tempo_ratio", "head_movement"):
+            chosen = comparable_set(points, metric)
+            assert chosen[0] == 0 and chosen == sorted(chosen) and len(chosen) <= 5
+            assert comparability([points[i] for i in chosen], [], metric).comparable
+            # Greedy from the newest: every swing left out would break the set.
+            for j in set(range(min(len(points), chosen[-1] + 1))) - set(chosen):
+                kept = [points[i] for i in chosen if i < j]
+                assert not comparability([*kept, points[j]], [], metric).comparable
 
 
 def test_the_same_swings_always_give_the_same_priority() -> None:

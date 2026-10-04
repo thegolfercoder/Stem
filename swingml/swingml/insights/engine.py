@@ -30,7 +30,7 @@ from typing import Literal
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from swingml.insights.compare import MIN_SWINGS, SwingPoint, comparability
+from swingml.insights.compare import MIN_SWINGS, SwingPoint, comparable_set
 from swingml.insights.drills import BY_FOCUS, Drill
 from swingml.insights.reference import TEMPO_MISS_EXAMPLE, TOUR_TEMPO_READINGS
 from swingml.model.calibration import LEFT_HANDED_TEMPO_NOTE
@@ -156,14 +156,9 @@ def choose(recent: Sequence[RecentSwing]) -> Insight:
 
     analysed = [s for s in recent if not s.refused and s.tempo is not None and s.point is not None]
     newest = analysed[0] if analysed else None
-    comparable: list[RecentSwing] = []
-    if newest is not None and newest.point is not None:
-        for swing in analysed[:10]:
-            assert swing.point is not None
-            if comparability([newest.point], [swing.point], "tempo_ratio").comparable:
-                comparable.append(swing)
-            if len(comparable) == 5:
-                break
+    window = analysed[:10]
+    points = [s.point for s in window if s.point is not None]
+    comparable = [window[i] for i in comparable_set(points, "tempo_ratio")]
     # Comparable swings share a hand (compare.comparability refuses mixed hands), so
     # the newest swing's hand is the hand of every reading the priority rests on.
     left = newest is not None and newest.point is not None and newest.point.handedness == "left"

@@ -270,18 +270,38 @@ def desktop_row(swing_id: int, swing: dict[str, Any]) -> SimpleNamespace:
     )  # fmt: skip
 
 
-@pytest.mark.parametrize("focus", ["tempo_quick", "head_stability"])
-def test_a_plan_played_through_matches_the_desktop(focus: str, tmp_path: Path) -> None:
+# Shoulder ratios, oldest first, of a session where the phone's angle drifted (#53):
+# each is within tolerance of the newest (0.50), but 0.25 and 0.75 are not of each other.
+SPREAD = (0.25, 0.25, 0.75, 0.75, 0.55, 0.50)
+
+
+def plan_swings(spread: bool = False) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Six swings before a plan and five retest swings, as the browser stores them."""
     rng = random.Random(7)
+
+    def camera(i: int, ratio: float) -> CameraSignature:
+        return CAMERAS[0].model_copy(update={"shoulder_ratio": ratio}) if spread else CAMERAS[i % 2]
+
     before, after = [], []
     for i in range(6):
         point = SwingPoint(swing_id=i + 1, value=rng.gauss(2.5, 0.1), handedness="right",
-                           club="7 iron", camera=CAMERAS[i % 2])  # fmt: skip
+                           club="7 iron", camera=camera(i, SPREAD[i]))  # fmt: skip
         before.append(browser_swing(point, rng.gauss(0.10, 0.01)))
     for i in range(5):
         point = SwingPoint(swing_id=i + 7, value=rng.gauss(3.1, 0.1), handedness="right",
-                           club="7 iron", camera=CAMERAS[i % 2])  # fmt: skip
+                           club="7 iron", camera=camera(i, SPREAD[-1]))  # fmt: skip
         after.append(browser_swing(point, rng.gauss(0.09, 0.01)))
+    return before, after
+
+
+@pytest.mark.parametrize(
+    ("focus", "spread"),
+    [("tempo_quick", False), ("head_stability", False), ("tempo_quick", True)],
+)
+def test_a_plan_played_through_matches_the_desktop(
+    focus: str, spread: bool, tmp_path: Path
+) -> None:
+    before, after = plan_swings(spread)
     job = {
         "rules": practice_payload(), "choose": [], "compare": [], "g3": [],
         "plan": {"before": before, "after": after, "focus": focus},
@@ -302,6 +322,11 @@ def test_a_plan_played_through_matches_the_desktop(focus: str, tmp_path: Path) -
     agree(change.model_dump(mode="json"), browser["change"], "change")
     assert browser["closed"] is True and browser["active"] is None
     assert browser["erased"] == 11 and browser["afterErase"] == 0
+    if spread:
+        # The baseline is comparable as a set, so retests filmed like the newest
+        # swing get a verdict instead of a plan that can never be compared (#53).
+        assert baseline == [6, 5, 4, 3]
+        assert change.verdict != "not_comparable"
 
 
 def _swing(
