@@ -108,6 +108,14 @@ fixed, it moves to the changelog with the measurement that shows it.
     when its whole measured spread lies outside the tour range.
     The desktop keeps its optional local Ollama coach instead, and the iPhone app has
     the Ollama coach but not this read: the iPhone is a step behind the browser here.
+13b. **Progress charts differ by app (#38).** The browser draws one chart per
+    measure (tempo, head movement, pelvis sway, shoulder turn) from its practice
+    log. Swings filmed differently from the latest one are drawn hollow and left
+    out of each day's median, and the tour readings sit behind as a labelled band.
+    The tour band for head, sway and turn is face on only, and is drawn whatever
+    the camera. The desktop's session page draws a band of one standard deviation
+    around the golfer's own average, with no comparability check and no tour band.
+    The iPhone's History screen charts tempo only.
 14. **The browser keeps its practice log in the browser.** Clearing site data, a
     private window, or another browser starts from nothing, and nothing moves between
     the desktop, the browser and the iPhone. The iPhone's practice screen builds in CI

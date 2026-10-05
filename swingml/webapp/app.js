@@ -18,6 +18,7 @@ import { PracticeLog, cameraSignature, clipKey, formatG3, storedMetrics } from "
 import { SwingWatcher, cameraConstraints, extensionFor, frameRateNote, framingVerdict, levelVerdict,
   recordingType } from "./capture.js";
 import { stemRead, voiceCue } from "./read.js";
+import { MIN_SWINGS, progressSeries, progressSvg } from "./progress.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 // Pinned to the version the analysis was measured with (#51; model.js).
@@ -2530,6 +2531,7 @@ function renderPractice(swingId, note = "") {
   refreshPracticeOptions();
   show("practice", Boolean(swingId || plan));
   el("bar-practice").hidden = !(swingId || plan);
+  renderProgress();
 }
 
 function refreshPracticeOptions() {
@@ -2550,6 +2552,7 @@ function wirePractice() {
     renderPractice(kept.length ? kept[kept.length - 1].id : null);
   } else {
     refreshPracticeOptions();
+    renderProgress();
   }
   el("practice").addEventListener("click", (event) => {
     const log = state.log;
@@ -3099,4 +3102,31 @@ function speakSwing(index, record) {
     rules: state.payload.practice || null, userSet: [...a.userSet], swing: index, refused: false,
   } : { metrics: {}, swing: index, refused: true });
   try { window.speechSynthesis.speak(new SpeechSynthesisUtterance(text)); } catch { /* silent */ }
+}
+
+/* Progress over time (#38): one chart per measure from the practice log kept in
+ * this browser (progress.js), redrawn whenever the log changes. */
+function renderProgress() {
+  if (!state.log || !state.payload) return;
+  const rules = state.payload.practice || null;
+  const verdicts = state.log.data.plans.filter((plan) => plan.retest.length)
+    .map((plan) => ({ plan, change: state.log.planChange(rules, plan) }));
+  const series = progressSeries({
+    swings: state.log.swings, verdicts, rules,
+    band: state.payload.calibration && state.payload.calibration.tempo,
+  });
+  show("progress", true);
+  el("progress-empty").hidden = series.enough;
+  el("progress-empty").textContent = `Record ${MIN_SWINGS} swings to see a trend` +
+    (series.swings ? ` (${series.swings} kept so far).` : ".");
+  el("progress-charts").innerHTML = !series.enough ? "" : series.measures
+    .filter((m) => m.points.length)
+    .map((m) => `<figure class="progress-card" data-measure="${m.key}">
+      <h3>${escapeHtml(m.label)}</h3><p class="unit">${escapeHtml(m.unit)}</p>
+      ${progressSvg(m)}
+      <details><summary>As a table</summary><table><thead><tr><th>Swing</th><th>Day</th>
+        <th>${escapeHtml(m.label)}</th><th></th></tr></thead><tbody>${m.points.map((p) =>
+          `<tr><td>${p.id}</td><td>${escapeHtml(p.day)}</td><td>${p.value.toFixed(m.digits)}</td>` +
+          `<td>${p.comparable ? "" : "filmed differently"}</td></tr>`).join("")}</tbody></table>
+      </details></figure>`).join("");
 }

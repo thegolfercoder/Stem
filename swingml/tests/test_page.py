@@ -1049,3 +1049,60 @@ def test_a_session_speaks_nothing_when_the_voice_is_off(
         page.click("#rec-session-stop")
         assert errors == []
         browser.close()
+
+
+# -- progress over time (#38) -------------------------------------------------------
+
+# Where to save screenshots for a change's evidence, when asked (never by default).
+SCREENS = Path(os.environ["STEM_SCREENS"]) if os.environ.get("STEM_SCREENS") else None
+
+
+def _progress_log() -> dict[str, Any]:
+    camera = {"orientation": "portrait", "body_height": 0.6, "centre_x": 0.5,
+              "shoulder_ratio": 0.9, "frame_rate": 60.0}  # fmt: skip
+    swings = []
+    for n, (day, tempo, ratio) in enumerate(
+        [("2026-09-28", 2.5, 0.9), ("2026-09-28", 2.6, 0.9), ("2026-09-28", 2.4, 0.9),
+         ("2026-10-02", 2.9, 0.9), ("2026-10-02", 3.0, 0.2), ("2026-10-02", 3.1, 0.9)],
+        start=1,
+    ):  # fmt: skip
+        swings.append({
+            "id": n, "at": f"{day}T09:0{n}:00Z", "ok": True, "refusal": None,
+            "detection_rate": 1.0, "handedness": "right", "club": "7 iron",
+            "camera": {**camera, "shoulder_ratio": ratio}, "positions_set_by_you": 0,
+            "clip_key": f"k{n}", "slowed_by": None,
+            "metrics": {"tempo_ratio": tempo, "head_movement": 0.05, "pelvis_sway": 0.04,
+                        "shoulder_turn_foreshortened": 58.0 + n, "detection_rate": 1.0},
+        })  # fmt: skip
+    return {"next": 7, "swings": swings, "plans": []}
+
+
+@pytest.mark.parametrize("width", [390, 1280])
+def test_progress_charts_draw_from_the_kept_log(landmark_json: str, width: int) -> None:
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(playwright, landmark_json, kept=_progress_log())
+        page.set_viewport_size({"width": width, "height": 900})
+        page.wait_for_selector("#progress", state="visible")
+        assert page.locator("#progress-empty").is_hidden()
+        cards = page.locator(".progress-card")
+        assert cards.count() == 4
+        tempo = page.locator(".progress-card[data-measure='tempo_ratio']")
+        assert tempo.locator("circle.pg-point").count() == 6
+        assert tempo.locator("circle.pg-hollow").count() == 1
+        assert "tour players, broadcast video" in (tempo.text_content() or "")
+        assert page.evaluate(NO_OVERFLOW), f"the progress section scrolls sideways at {width} px"
+        if SCREENS:
+            tempo.screenshot(path=str(SCREENS / f"progress-tempo-{width}.png"))
+            page.locator("#progress").screenshot(path=str(SCREENS / f"progress-{width}.png"))
+        assert errors == []
+        browser.close()
+
+
+def test_a_fresh_log_says_how_many_swings_a_trend_needs(landmark_json: str) -> None:
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(playwright, landmark_json)
+        page.wait_for_selector("#progress", state="visible")
+        assert (page.text_content("#progress-empty") or "").startswith("Record 3 swings")
+        assert page.locator(".progress-card").count() == 0
+        assert errors == []
+        browser.close()

@@ -122,6 +122,25 @@ details.fold>summary h2.section{margin:12px 0}
 .rec-chip.ok{color:var(--good)} .rec-chip.warn{color:var(--warn)}
 .rec-actions{display:flex;flex-wrap:wrap;gap:10px}
 .rec-actions button{min-height:44px}
+.progress-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px}
+.progress-card{margin:0;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);padding:12px 14px}
+.progress-card h3{margin:0;font-size:15px}
+.progress-card .unit{margin:0 0 4px;color:var(--ink-dim);font-size:12px}
+.progress-empty{color:var(--ink-dim)}
+.pg-chart{display:block;width:100%;height:auto;overflow:visible}
+.pg-ref{fill:var(--panel-2)}
+.pg-ref-label{fill:var(--ink-faint);font:500 10px var(--font)}
+.pg-axis{fill:var(--ink-faint);font:500 10px var(--mono)}
+.pg-base{stroke:var(--line);stroke-width:1}
+.pg-session{stroke:var(--line);stroke-width:1;stroke-dasharray:2 3}
+.pg-spread{stroke:var(--accent);stroke-width:2;stroke-opacity:.3;stroke-linecap:round}
+.pg-median{fill:none;stroke:var(--ink-dim);stroke-width:2;stroke-linecap:round}
+.pg-link{stroke:var(--ink-faint);stroke-width:1;stroke-dasharray:3 3}
+.pg-point{fill:var(--accent);stroke:var(--panel);stroke-width:2}
+.pg-point.pg-hollow{fill:var(--panel);stroke:var(--accent);stroke-width:1.5}
+.pg-verdict{fill:var(--ink-dim);font:600 10px var(--font)}
+.progress-card table{width:100%;border-collapse:collapse;font-size:12px}
+.progress-card td,.progress-card th{padding:2px 6px;text-align:left;border-bottom:1px solid var(--line)}
 .session-board{display:grid;gap:4px;padding:14px 16px;border-radius:10px;background:var(--panel-2);text-align:center}
 .session-board[hidden]{display:none}
 .session-count{font-weight:700;font-size:clamp(40px,12vw,72px);line-height:1.05;letter-spacing:-.01em}
@@ -549,6 +568,16 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
     <div class="practice-data" id="practice-data"></div>
   </section>
 
+  <section id="progress" hidden>
+    <h2 class="section">Progress <span class="prov prov-measured">your kept swings</span></h2>
+    <p class="section-sub">Each dot is one swing kept in this browser; the line joins each day's
+      median. A hollow dot was filmed differently from your latest swing (club, hand, camera angle or
+      spot), so it is left out of the median. The shaded band is what tour players read through the
+      same analysis: a reference, not a target.</p>
+    <p class="progress-empty" id="progress-empty" hidden>Record 3 swings to see a trend.</p>
+    <div class="progress-grid" id="progress-charts"></div>
+  </section>
+
   <div class="lightbox" id="lightbox" hidden>
     <button class="lb-close" id="lb-close" type="button" aria-label="Close">&times;</button>
     <figure>
@@ -589,6 +618,7 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
 /*__PRACTICE__*/
 /*__CAPTURE__*/
 /*__READ__*/
+/*__PROGRESS__*/
 /*__APP__*/
 boot(/*__PAYLOAD__*/);
 </script>
