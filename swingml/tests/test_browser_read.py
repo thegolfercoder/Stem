@@ -255,3 +255,55 @@ def test_the_face_on_threshold_lies_between_the_views_on_validation() -> None:
     cut = payload()["practice"]["face_on_min_shoulder_ratio"]
     assert audit["threshold"] == cut
     assert audit["summary"]["face on"]["min"] >= cut > audit["summary"]["down the line"]["max"]
+
+
+# -- the spoken cue after a session swing (#62) -----------------------------------
+
+
+def cue(metrics: dict[str, Any] | None = None, *, hand: str = "right",
+        user_set: tuple[int, ...] = (), refused: bool = False) -> str:  # fmt: skip
+    data = payload()
+    return str(node(
+        f"r.voiceCue({{ metrics: {json.dumps(metrics or METRICS)}, handedness: {json.dumps(hand)},"
+        f" band: {json.dumps(data['calibration']['tempo'])}, rules: {json.dumps(data['practice'])},"
+        f" userSet: {json.dumps(list(user_set))}, swing: 7, refused: {json.dumps(refused)} }})"
+    ))  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    ("value", "said", "read_says"),
+    [
+        (3.2, "Swing 7, tempo 3.2, inside the tour range.", ", inside the"),
+        (2.0, "Swing 7, tempo 2.0, a quick backswing for your downswing.", ", all below the"),
+        (6.5, "Swing 7, tempo 6.5, a long backswing for your downswing.", ", all above the"),
+        (2.7, "Swing 7, tempo 2.7, at the edge of the tour range.", ", which overlaps the"),
+    ],
+)
+def test_the_cue_says_what_stems_read_says(value: float, said: str, read_says: str) -> None:
+    metrics = {**METRICS, "tempoRatio": value}
+    assert cue(metrics) == said
+    assert read_says in by_key(read(metrics))["tempo"]["text"]
+
+
+def test_without_a_spread_that_applies_the_cue_judges_nothing() -> None:
+    metrics = {**METRICS, "tempoRatio": 2.0}
+    assert cue(metrics, user_set=(3,)) == "Swing 7, tempo 2.0, backswing to downswing."
+    assert cue(metrics, hand="left") == (
+        "Swing 7, tempo 2.0, backswing to downswing; a rough reading for a left-hander."
+    )
+
+
+def test_slow_motion_refusals_and_missing_tempos_are_said_as_such() -> None:
+    assert cue({**METRICS, "slowedBy": 3.0}).endswith("; read as slow motion.")
+    assert cue(refused=True) == "Swing 7 not read."
+    assert cue({**METRICS, "tempoRatio": None}) == "Swing 7: no tempo reading."
+
+
+@pytest.mark.parametrize("change", FORBIDDEN_CASES)
+@pytest.mark.parametrize("hand", ["right", "left"])
+def test_no_cue_names_a_quantity_one_camera_cannot_measure(change: dict, hand: str) -> None:
+    forbidden = node("r.FORBIDDEN")
+    for refused in (False, True):
+        text = cue({**METRICS, **change}, hand=hand, refused=refused).lower()
+        found = [w for w in forbidden if re.search(rf"\b{re.escape(w)}\b", text)]
+        assert not found, (found, text)

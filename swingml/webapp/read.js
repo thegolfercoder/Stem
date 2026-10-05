@@ -52,22 +52,15 @@ export function stemRead(input) {
     if (tour) {
       const reference = `the ${range(tour, 2)} that tour swings read through the same analysis ` +
         `(the middle 80% of ${tour.n_swings})`;
-      // Below or above only when the whole measured spread is: one reading inside
-      // its own spread of the range cannot say the backswing is quick or long (QA,
-      // #52). Without a spread that applies (no band, positions placed by hand, a
-      // left-hander's band not measured) the range is quoted and nothing judged.
-      const judged = band && !handPlaced.length && !left;
-      if (judged) {
-        const spread = Math.abs(tempo) * band.half_width_fraction;
-        if (tempo + spread < tour.p10) {
-          text += `, all below ${reference}: a quick backswing for your downswing`;
-        } else if (tempo - spread > tour.p90) {
-          text += `, all above ${reference}: a long backswing for your downswing`;
-        } else if (tempo >= tour.p10 && tempo <= tour.p90) {
-          text += `, inside ${reference}`;
-        } else {
-          text += `, which overlaps ${reference}`;
-        }
+      const verdict = tempoVerdict(input);
+      if (verdict === "below") {
+        text += `, all below ${reference}: a quick backswing for your downswing`;
+      } else if (verdict === "above") {
+        text += `, all above ${reference}: a long backswing for your downswing`;
+      } else if (verdict === "inside") {
+        text += `, inside ${reference}`;
+      } else if (verdict === "overlaps") {
+        text += `, which overlaps ${reference}`;
       } else {
         text += `; tour swings read ${range(tour, 2)} through the same analysis ` +
           `(the middle 80% of ${tour.n_swings})`;
@@ -168,6 +161,50 @@ export function stemRead(input) {
     out.push({ key: "priority", text: endWithStop(input.noPriority), provenance: "derived", caveats: [] });
   }
   return out;
+}
+
+/* Where one swing's tempo sits against the tour readings: "below" or "above" only
+ * when its whole measured spread does (QA, #52), "inside", "overlaps", or
+ * "unjudged" where no spread applies (no band, positions placed by hand, a
+ * left-hander's band not measured) or there is no tempo or reference. Stem's
+ * read and the spoken cue both use this, so they cannot disagree. */
+export function tempoVerdict(input) {
+  const { metrics: m, handedness, band, rules } = input;
+  const tour = rules && rules.tour_tempo;
+  const handPlaced = TEMPO_EVENTS.some((e) => new Set(input.userSet || []).has(e));
+  if (!finite(m.tempoRatio) || !tour || !band || handPlaced || handedness === "left") return "unjudged";
+  const tempo = m.tempoRatio;
+  const spread = Math.abs(tempo) * band.half_width_fraction;
+  if (tempo + spread < tour.p10) return "below";
+  if (tempo - spread > tour.p90) return "above";
+  if (tempo >= tour.p10 && tempo <= tour.p90) return "inside";
+  return "overlaps";
+}
+
+/* One short sentence to speak after a swing in a range session (#62), when the
+ * golfer is too far from the phone to read it. Built from the same verdict as
+ * Stem's read: a number is never spoken without what it means, a judgement is
+ * never stronger than the read's, and nothing on FORBIDDEN is said. The left-
+ * handed and slow-motion caveats are shortened, not dropped. `input` is
+ * stemRead's, plus `swing` (its number) and `refused` (true for a clip the
+ * analysis did not read). */
+export function voiceCue(input) {
+  const n = input.swing;
+  if (input.refused) return `Swing ${n} not read.`;
+  const m = input.metrics;
+  if (!finite(m.tempoRatio)) return `Swing ${n}: no tempo reading.`;
+  const tempo = `tempo ${m.tempoRatio.toFixed(1)}`;
+  const meaning = {
+    below: "a quick backswing for your downswing",
+    above: "a long backswing for your downswing",
+    inside: "inside the tour range",
+    overlaps: "at the edge of the tour range",
+    unjudged: "backswing to downswing",
+  }[tempoVerdict(input)];
+  const caveats = [];
+  if (input.handedness === "left") caveats.push("a rough reading for a left-hander");
+  if (m.slowedBy) caveats.push("read as slow motion");
+  return `Swing ${n}, ${tempo}, ${meaning}${caveats.length ? `; ${caveats.join(", ")}` : ""}.`;
 }
 
 function lower(text) {

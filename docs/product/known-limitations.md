@@ -81,8 +81,10 @@ fixed, it moves to the changelog with the measurement that shows it.
    camera uses a second copy of the pose estimator, so a session needs memory for
    two; where the second cannot be made, the camera waits while each swing is
    analysed and the page says so. Tested with Chromium's fake camera and a stand-in
-   estimator, not yet on a phone at a range. The desktop app and the iPhone app
-   have no session mode.
+   estimator, not yet on a phone at a range. An optional spoken cue after each
+   swing (#62) uses the browser's own voice (speechSynthesis), where it has one,
+   and says no more than Stem's read. The desktop app and the iPhone app have no
+   session mode.
 
 ## Practice loop
 

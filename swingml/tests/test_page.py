@@ -910,24 +910,40 @@ export const PoseLandmarker = { createFromOptions: async () => {
 )
 
 
+# The device's voice, stood in for: each utterance is recorded, nothing is played.
+SPEECH_STUB = """
+window.__spoken = [];
+Object.defineProperty(window, "speechSynthesis", { configurable: true,
+  value: { speak(u) { window.__spoken.push(u.text); }, cancel() {} } });
+window.SpeechSynthesisUtterance = function (text) { this.text = text; };
+"""
+
+
+def _session_page(playwright: Any, landmark_json: str, camera: Path) -> Any:
+    browser, page, errors, requests = _camera_page(playwright, landmark_json, camera)
+    page.unroute("**/vision_bundle.mjs")
+    page.route(
+        "**/vision_bundle.mjs",
+        lambda route: route.fulfill(status=200, content_type="text/javascript", body=SESSION_STUB),
+    )
+    page.add_init_script(SPEECH_STUB)
+    page.reload()
+    page.wait_for_selector("#record", state="visible")
+    page.click("#record")
+    page.wait_for_function(
+        "() => document.getElementById('rec-preview').videoWidth > 0", timeout=20_000
+    )
+    return browser, page, errors, requests
+
+
 def test_a_range_session_records_and_reads_every_swing_and_counts_the_refused(
     landmark_json: str, fake_camera: Path
 ) -> None:
     with sync_playwright() as playwright:
-        browser, page, errors, requests = _camera_page(playwright, landmark_json, fake_camera)
-        page.unroute("**/vision_bundle.mjs")
-        page.route(
-            "**/vision_bundle.mjs",
-            lambda route: route.fulfill(
-                status=200, content_type="text/javascript", body=SESSION_STUB
-            ),
-        )
-        page.reload()
-        page.wait_for_selector("#record", state="visible")
-        page.click("#record")
-        page.wait_for_function(
-            "() => document.getElementById('rec-preview').videoWidth > 0", timeout=20_000
-        )
+        browser, page, errors, requests = _session_page(playwright, landmark_json, fake_camera)
+        # Spoken cues on (#62): one per clip, refused ones included.
+        assert page.locator("#session-voice-box").is_visible()
+        page.check("#session-voice")
         page.click("#rec-session")
         page.evaluate("() => { window.__liveStart = performance.now(); }")
         assert page.locator("#session-board").is_visible()
@@ -954,6 +970,11 @@ def test_a_range_session_records_and_reads_every_swing_and_counts_the_refused(
         kept = page.evaluate(KEPT)
         assert [s["ok"] for s in kept["swings"]] == [True, False, True], kept["swings"]
         assert page.evaluate("() => [window.__estimators, window.__sharedLive]") == [2, None]
+        spoken = page.evaluate("() => window.__spoken")
+        assert len(spoken) == SESSION_SWINGS, spoken
+        assert spoken[0].startswith("Swing 1, tempo ") and spoken[1] == "Swing 2 not read."
+        assert spoken[2].startswith("Swing 3, tempo ")
+        assert page.evaluate("() => localStorage.getItem('swing-voice-v1')") == "on"
         assert len({s["clip_key"] for s in kept["swings"]}) == SESSION_SWINGS
         # Analysing did not pull the page away from the camera.
         assert page.evaluate(
@@ -1007,5 +1028,24 @@ def test_a_tempo_from_positions_moved_by_hand_shows_no_model_band(
             assert "measured spread" not in text, (where, text)
             assert "error bands describe the model, so they are not shown" in text, (where, text)
             assert "top set by you" in text.lower(), (where, text)
+        assert errors == []
+        browser.close()
+
+
+def test_a_session_speaks_nothing_when_the_voice_is_off(
+    landmark_json: str, fake_camera: Path
+) -> None:
+    """#62: the cue is off by default."""
+    with sync_playwright() as playwright:
+        browser, page, errors, _ = _session_page(playwright, landmark_json, fake_camera)
+        assert not page.is_checked("#session-voice")
+        page.click("#rec-session")
+        page.evaluate("() => { window.__liveStart = performance.now(); }")
+        page.wait_for_function(
+            "() => /^1 read/.test(document.getElementById('session-tally').textContent)",
+            timeout=300_000,
+        )
+        assert page.evaluate("() => window.__spoken") == []
+        page.click("#rec-session-stop")
         assert errors == []
         browser.close()

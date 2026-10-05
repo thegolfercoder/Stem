@@ -17,7 +17,7 @@ import { computeMetrics, implausible, readAtSpeeds, slowMotionCheck, slowedMetri
 import { PracticeLog, cameraSignature, clipKey, formatG3, storedMetrics } from "./practice.js";
 import { SwingWatcher, cameraConstraints, extensionFor, frameRateNote, framingVerdict, levelVerdict,
   recordingType } from "./capture.js";
-import { stemRead } from "./read.js";
+import { stemRead, voiceCue } from "./read.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 // Pinned to the version the analysis was measured with (#51; model.js).
@@ -2696,6 +2696,7 @@ function wireRecorder() {
   el("rec-start").onclick = () => startRecording();
   el("rec-stop").onclick = () => stopRecording();
   el("rec-session").onclick = () => startSession();
+  wireVoice();
   el("rec-session-stop").onclick = () => stopSession();
   document.addEventListener("visibilitychange", () => {
     // A wake lock is released whenever the page is hidden; take it again on return.
@@ -2903,6 +2904,8 @@ function startSession() {
   el("session-board").hidden = false;
   // The bar at the foot of a phone's screen would cover the board.
   el("action-bar").hidden = true;
+  // The board is what the golfer reads from the tee: bring it to the top.
+  el("session-board").scrollIntoView({ block: "start" });
   recMessage("");
   renderSession("Waiting for you at address");
   keepAwake();
@@ -3042,6 +3045,7 @@ async function drainSession() {
   } else {
     session.refused += 1;
   }
+  speakSwing(index, record);
   session.working = false;
   renderSession(session.active ? undefined : (session.queue.length ? "Session stopped; finishing the analysis"
     : "Session stopped"));
@@ -3067,4 +3071,32 @@ function renderSession(stateText, recording = false) {
   if (session.noSwing) parts.push(`${session.noSwing} recording${session.noSwing === 1 ? "" : "s"} with no swing`);
   if (pending) parts.push(`${pending} being analysed`);
   el("session-tally").textContent = parts.join(" \u00b7 ") + (session.note ? `. ${session.note}` : "");
+}
+
+/* The spoken cue (#62): after each swing in a range session, one short sentence
+ * from read.js `voiceCue`, in the device's own voice (speechSynthesis). Off by
+ * default and remembered per browser; where the browser cannot speak, the
+ * option is not offered. */
+const VOICE_KEY = "swing-voice-v1";
+
+function wireVoice() {
+  if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") return;
+  const box = el("session-voice");
+  el("session-voice-box").hidden = false;
+  try { box.checked = browserStorage().getItem(VOICE_KEY) === "on"; } catch { box.checked = false; }
+  box.onchange = () => {
+    try { browserStorage().setItem(VOICE_KEY, box.checked ? "on" : "off"); } catch { /* not kept */ }
+  };
+}
+
+function speakSwing(index, record) {
+  if (el("session-voice-box").hidden || !el("session-voice").checked) return;
+  const a = state.analysis;
+  const ok = Boolean(record && record.ok && a);
+  const text = voiceCue(ok ? {
+    metrics: (state.last && state.last.metrics) || a.metrics, handedness: a.handedness,
+    band: state.payload.calibration && state.payload.calibration.tempo,
+    rules: state.payload.practice || null, userSet: [...a.userSet], swing: index, refused: false,
+  } : { metrics: {}, swing: index, refused: true });
+  try { window.speechSynthesis.speak(new SpeechSynthesisUtterance(text)); } catch { /* silent */ }
 }
