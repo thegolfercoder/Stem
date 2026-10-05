@@ -157,13 +157,19 @@ def create_blueprint(store: SwingStore) -> Blueprint:
 
     @bp.post("/api/plans/<int:plan_id>/feedback")
     def feedback(plan_id: int) -> Any:
+        # Feedback belongs to a plan and, when it names one, a swing that exist (#68).
+        if store.plan(plan_id) is None:
+            return jsonify({"error": "no such plan"}), 404
         payload = request.get_json(silent=True) or {}
         useful = payload.get("useful")
         feel = payload.get("feel")
+        swing_id = payload.get("swing_id") if isinstance(payload.get("swing_id"), int) else None
+        if swing_id is not None and store.get(swing_id) is None:
+            return jsonify({"error": "no such swing"}), 404
         try:
             store.add_feedback(
                 plan_id,
-                payload.get("swing_id") if isinstance(payload.get("swing_id"), int) else None,
+                swing_id,
                 int(useful) if isinstance(useful, (int, str)) and str(useful).isdigit() else None,
                 str(feel)[:1000] if feel else None,
             )

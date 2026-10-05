@@ -550,15 +550,23 @@ def create_app(
     @app.get("/api/swings")
     def api_swings() -> Any:
         club = request.args.get("club") or None
-        limit = min(int(request.args.get("limit", 50)), 500)
-        rows = swing_store.recent(limit=limit, club=club)
+        # A positive whole number, at most 500 (#68): int() of anything else threw,
+        # and a negative one reached SQLite as no limit at all.
+        raw = request.args.get("limit", "50")
+        if not raw.isdigit() or int(raw) < 1:
+            return jsonify({"error": "limit must be a whole number of 1 or more"}), 400
+        rows = swing_store.recent(limit=min(int(raw), 500), club=club)
         return jsonify([_swing_summary(row) for row in rows])
 
     @app.post("/api/swings/<int:swing_id>")
     def api_update_swing(swing_id: int) -> Any:
+        if swing_store.get(swing_id) is None:
+            return jsonify({"error": "no such swing"}), 404
         payload = request.get_json(silent=True) or {}
         label = payload.get("label")
         club = payload.get("club")
+        if not all(value is None or isinstance(value, str) for value in (label, club)):
+            return jsonify({"error": "label and club must be text"}), 400
         if not swing_store.update(swing_id, label=label, club=club):
             return jsonify({"error": "nothing to update"}), 400
         return jsonify({"ok": True})

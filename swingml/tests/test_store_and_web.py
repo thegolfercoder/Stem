@@ -267,3 +267,55 @@ def test_a_store_from_before_clip_fingerprints_opens_and_keeps_its_swings(
     assert old is not None and old.source_name == "old.mov" and old.clip_sha256 is None
     swing_id, outcome = store.record(analysis, "new.mov", clip_sha256="abc")
     assert (swing_id, outcome) == (2, "new") and store.by_clip("abc") is not None
+
+
+# -- the API's own input checks (#68) --------------------------------------------
+
+
+@pytest.mark.parametrize("limit", ["abc", "-1", "0", "1.5", ""])
+def test_a_malformed_limit_is_refused_never_a_500_or_uncapped(client, limit: str) -> None:  # type: ignore[no-untyped-def]
+    response = client.get(f"/api/swings?limit={limit}")
+    assert response.status_code == 400, response.get_data(as_text=True)
+    assert "limit" in response.get_json()["error"]
+
+
+def test_a_limit_is_capped_at_five_hundred(client) -> None:  # type: ignore[no-untyped-def]
+    assert client.get("/api/swings?limit=100000").status_code == 200
+    assert len(client.get("/api/swings?limit=1").get_json()) == 1
+
+
+@pytest.mark.parametrize("field", ["label", "club"])
+@pytest.mark.parametrize("value", [{"a": 1}, ["x"], 3, True])
+def test_a_label_or_club_that_is_not_text_is_refused(client, field: str, value: object) -> None:  # type: ignore[no-untyped-def]
+    response = client.post("/api/swings/1", json={field: value})
+    assert response.status_code == 400, response.get_data(as_text=True)
+    assert client.get("/api/swings").get_json()[0]["club"] == "7 iron"
+
+
+def test_updating_a_swing_that_does_not_exist_is_a_404(client) -> None:  # type: ignore[no-untyped-def]
+    response = client.post("/api/swings/999", json={"club": "driver"})
+    assert response.status_code == 404 and response.get_json()["error"] == "no such swing"
+
+
+def test_feedback_for_a_plan_that_does_not_exist_is_a_404_and_stores_nothing(client) -> None:  # type: ignore[no-untyped-def]
+    response = client.post("/api/plans/999/feedback", json={"useful": 1})
+    assert response.status_code == 404
+    exported = client.get("/api/export").get_json()
+    assert exported.get("feedback", []) == []
+
+
+def test_feedback_is_kept_for_a_real_plan_and_refused_for_a_missing_swing(
+    tmp_path: Path, analysis: SwingAnalysis
+) -> None:
+    store = SwingStore(tmp_path / "s.db")
+    swing = store.add(analysis, source_name="clip.mov", club="7 iron")
+    plan = store.create_plan("tempo_quick", "tempo-count-three", "tempo_ratio", "increase",
+                             "7 iron", [swing])  # fmt: skip
+    app = create_app(store=store)
+    app.config.update(TESTING=True)
+    http = app.test_client()
+    missing = http.post(f"/api/plans/{plan}/feedback", json={"useful": 3, "swing_id": 999})
+    assert missing.status_code == 404 and missing.get_json()["error"] == "no such swing"
+    assert store.feedback(plan) == []
+    kept = http.post(f"/api/plans/{plan}/feedback", json={"useful": 3, "swing_id": swing})
+    assert kept.status_code == 201 and len(store.feedback(plan)) == 1
