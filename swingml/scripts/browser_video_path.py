@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import functools
 import http.server
+import importlib
 import json
 import sys
 import threading
@@ -70,9 +71,10 @@ def serve(root: Path) -> tuple[http.server.ThreadingHTTPServer, str]:
 
 
 def cmd_run(args: argparse.Namespace) -> None:
-    from playwright.sync_api import sync_playwright
-
-    from tests.browser import chromium_path
+    # By name, so the type checker reads the same without Playwright installed:
+    # CI does not install it, and only this command needs it.
+    sync_playwright = importlib.import_module("playwright.sync_api").sync_playwright
+    chromium_path = importlib.import_module("tests.browser").chromium_path
 
     out = args.cache
     out.mkdir(parents=True, exist_ok=True)
