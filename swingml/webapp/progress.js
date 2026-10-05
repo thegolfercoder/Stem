@@ -33,6 +33,15 @@ const VERDICT_LABELS = {
 const finite = (x) => typeof x === "number" && Number.isFinite(x);
 const TEMPO_EVENTS = [0, 3, 5];
 
+/* The golfer's own calendar day for a stored UTC time (#69): an evening session
+ * west of UTC, or a morning one east of it, crosses UTC midnight but is one day. */
+function localDay(at) {
+  const when = at ? new Date(at) : null;
+  if (!when || Number.isNaN(when.getTime())) return (at || "").slice(0, 10);
+  const two = (n) => String(n).padStart(2, "0");
+  return `${when.getFullYear()}-${two(when.getMonth() + 1)}-${two(when.getDate())}`;
+}
+
 function median(values) {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
@@ -66,7 +75,7 @@ export function progressSeries(input) {
       const banded = measure.key === "tempo_ratio" && input.band && s.handedness !== "left" &&
         !(s.positions_set_by_you > 0);
       const spread = banded ? Math.abs(value) * input.band.half_width_fraction : null;
-      return { id: s.id, at: s.at || null, day: (s.at || "").slice(0, 10), value, comparable,
+      return { id: s.id, at: s.at || null, day: localDay(s.at), value, comparable,
                low: spread === null ? null : value - spread,
                high: spread === null ? null : value + spread };
     });

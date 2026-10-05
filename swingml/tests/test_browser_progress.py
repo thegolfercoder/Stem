@@ -10,6 +10,7 @@ draws nothing.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import statistics
 import subprocess
@@ -45,7 +46,9 @@ def swing(n: int, day: str, tempo: float, camera: dict = FACE_ON, **extra: Any) 
     }  # fmt: skip
 
 
-def series(swings: list[dict], verdicts: list[dict] | None = None) -> dict[str, Any]:
+def series(
+    swings: list[dict], verdicts: list[dict] | None = None, tz: str = "UTC"
+) -> dict[str, Any]:
     data = json.loads(PAYLOAD.read_text(encoding="utf-8"))
     script = (
         f"import * as g from {json.dumps((WEBAPP / 'progress.js').as_uri())};"
@@ -59,6 +62,7 @@ def series(swings: list[dict], verdicts: list[dict] | None = None) -> dict[str, 
     done = subprocess.run(
         ["node", "--input-type=module", "-e", script, json.dumps(job)],
         capture_output=True, text=True, timeout=60, check=True,
+        env={**os.environ, "TZ": tz},
     )  # fmt: skip
     return dict(json.loads(done.stdout))
 
@@ -134,3 +138,17 @@ def test_refused_swings_are_not_drawn() -> None:
            swing(3, "2026-10-01", 3.1), swing(4, "2026-10-01", 3.2)]  # fmt: skip
     result = series(log)
     assert result["swings"] == 3 and [p["id"] for p in tempo_of(result)["points"]] == [1, 3, 4]
+
+
+def test_an_evening_session_across_utc_midnight_is_one_local_day() -> None:
+    """QA (#69): 16:40-17:40 in Los Angeles is 23:40-00:40 UTC."""
+    log = [{**swing(n, "2026-10-04", 3.0 + n / 100),
+            "at": at} for n, at in enumerate(
+        ["2026-10-04T23:40:00Z", "2026-10-04T23:55:00Z", "2026-10-05T00:10:00Z",
+         "2026-10-05T00:25:00Z", "2026-10-05T00:40:00Z"], start=1)]  # fmt: skip
+    tempo = tempo_of(series(log, tz="America/Los_Angeles"))
+    assert [s["day"] for s in tempo["sessions"]] == ["2026-10-04"]
+    assert tempo["sessions"][0]["n"] == 5
+    assert {p["day"] for p in tempo["points"]} == {"2026-10-04"}
+    # The same swings in Tokyo are one local day too, the next one.
+    assert [s["day"] for s in tempo_of(series(log, tz="Asia/Tokyo"))["sessions"]] == ["2026-10-05"]
