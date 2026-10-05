@@ -35,7 +35,7 @@ const TEMPO_EVENTS = [0, 3, 5];
 
 /* The golfer's own calendar day for a stored UTC time (#69): an evening session
  * west of UTC, or a morning one east of it, crosses UTC midnight but is one day. */
-function localDay(at) {
+export function localDay(at) {
   const when = at ? new Date(at) : null;
   if (!when || Number.isNaN(when.getTime())) return (at || "").slice(0, 10);
   const two = (n) => String(n).padStart(2, "0");

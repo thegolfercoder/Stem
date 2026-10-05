@@ -226,8 +226,11 @@ export function cardText(input) {
       const spread = Math.abs(m.tempoRatio) * band.half_width_fraction;
       lines.spread = `Measured spread ${(m.tempoRatio - spread).toFixed(2)}–` +
         `${(m.tempoRatio + spread).toFixed(2)}` + (left ? " (not measured for left-handers)" : "");
-      lines.limitation = `Measured from one phone camera; tempo ±${Math.round(100 * band.half_width_fraction)}% ` +
-        `for ${Math.round(100 * band.coverage)}% of held-out swings.`;
+      // The coverage was measured on right-handed swings only (#71).
+      if (!left) {
+        lines.limitation = `Measured from one phone camera; tempo ±${Math.round(100 * band.half_width_fraction)}% ` +
+          `for ${Math.round(100 * band.coverage)}% of held-out swings.`;
+      }
     }
     const tour = rules && rules.tour_tempo;
     if (tour) {
@@ -237,7 +240,13 @@ export function cardText(input) {
       lines.meaning = `${where[0].toUpperCase()}${where.slice(1)} ${range(tour, 2)}, ` +
         "the middle 80% of tour swings through the same analysis";
     }
-    if (m.slowedBy) lines.meaning = `${lines.meaning ? `${lines.meaning}. ` : ""}Read as slow motion`;
+    // Worded as the page words it: a clip that only reads as a swing slowed down
+    // was read as slow motion; one that reads either way only may be (#71).
+    if (m.slowedBy) {
+      const slowed = m.slowedRetimed === false ? "May be slow motion" : "Read as slow motion";
+      lines.meaning = `${lines.meaning ? `${lines.meaning}. ` : ""}${slowed}, ` +
+        `played about ${m.slowedBy.toFixed(0)} times slower`;
+    }
   } else {
     lines.tempo = "No tempo reading for this swing";
   }

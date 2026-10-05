@@ -18,7 +18,7 @@ import { PracticeLog, cameraSignature, clipKey, formatG3, storedMetrics } from "
 import { SwingWatcher, cameraConstraints, extensionFor, frameRateNote, framingVerdict, levelVerdict,
   recordingType } from "./capture.js";
 import { cardText, stemRead, voiceCue } from "./read.js";
-import { MIN_SWINGS, progressSeries, progressSvg } from "./progress.js";
+import { MIN_SWINGS, localDay, progressSeries, progressSvg } from "./progress.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 // Pinned to the version the analysis was measured with (#51; model.js).
@@ -3150,7 +3150,7 @@ function swingCardLines() {
     metrics: m, handedness: a.handedness,
     band: state.payload.calibration && state.payload.calibration.tempo,
     rules: state.payload.practice || null, userSet: [...a.userSet], insight: state.readInsight,
-    date: new Date().toISOString().slice(0, 10),
+    date: localDay(new Date()),
   });
 }
 
@@ -3159,45 +3159,79 @@ function drawSwingCard(lines) {
   const shots = [0, 3, 5].map((e) => state.frames && state.frames[e]).filter(Boolean);
   const scale = (c) => frame / c.canvas.width;
   const shotHeight = Math.max(...shots.map((c) => Math.round(c.canvas.height * scale(c))), 0);
-  const text = [lines.tempo, lines.spread, lines.meaning, lines.priority].filter(Boolean);
-  const height = pad + 40 + shotHeight + 30 + text.length * 34 + 84 + pad;
   const canvas = document.createElement("canvas");
+  const g = canvas.getContext("2d");
+  const font = (weight, size) => `${weight} ${size}px -apple-system, Segoe UI, Roboto, sans-serif`;
+  // Every line is wrapped to the card's width and the card grows to fit, so a
+  // caveat at the end of a line is never the part cut off (#71).
+  const blocks = [];
+  for (const [i, line] of [lines.tempo, lines.spread, lines.meaning, lines.priority].filter(Boolean)
+    .entries()) {
+    const style = i === 0 ? { font: font(700, 26), color: "#161a21", lead: 34 }
+      : { font: font(400, 20), color: "#58616f", lead: 28 };
+    g.font = style.font;
+    blocks.push({ ...style, rows: wrapLines(g, line, width - 2 * pad), after: 6 });
+  }
+  g.font = font(400, 17);
+  const foot = [lines.limitation, "Derived from this swing's positions; made with Stem on this device."]
+    .flatMap((line) => wrapLines(g, line, width - 2 * pad));
+  const textHeight = blocks.reduce((sum, b) => sum + b.rows.length * b.lead + b.after, 0);
+  const height = pad + 40 + shotHeight + 30 + 30 + textHeight + 24 + foot.length * 24 + pad;
   canvas.width = width;
   canvas.height = height;
-  const g = canvas.getContext("2d");
   g.fillStyle = "#ffffff";
   g.fillRect(0, 0, width, height);
   g.fillStyle = "#161a21";
-  g.font = "600 26px -apple-system, Segoe UI, Roboto, sans-serif";
+  g.font = font(600, 26);
   g.fillText(`Swing, ${lines.date}`, pad, pad + 26);
   shots.forEach((c, i) => {
     const x = pad + i * (frame + gap), y = pad + 40;
     g.drawImage(c.canvas, x, y, frame, Math.round(c.canvas.height * scale(c)));
-    g.font = "500 18px -apple-system, Segoe UI, Roboto, sans-serif";
+    g.font = font(500, 18);
     g.fillStyle = "#58616f";
     g.fillText(c.label, x, y + shotHeight + 24);
   });
   let y = pad + 40 + shotHeight + 30 + 30;
-  for (const [i, line] of text.entries()) {
-    g.fillStyle = i === 0 ? "#161a21" : "#58616f";
-    g.font = i === 0 ? "700 26px -apple-system, Segoe UI, Roboto, sans-serif"
-      : "400 20px -apple-system, Segoe UI, Roboto, sans-serif";
-    wrapText(g, line, pad, y, width - 2 * pad);
-    y += 34;
+  for (const block of blocks) {
+    g.fillStyle = block.color;
+    g.font = block.font;
+    for (const row of block.rows) {
+      g.fillText(row, pad, y);
+      y += block.lead;
+    }
+    y += block.after;
   }
   g.fillStyle = "#8b94a3";
-  g.font = "400 17px -apple-system, Segoe UI, Roboto, sans-serif";
-  wrapText(g, lines.limitation, pad, height - pad - 30, width - 2 * pad);
-  wrapText(g, "Derived from this swing's positions; made with Stem on this device.",
-           pad, height - pad - 6, width - 2 * pad);
+  g.font = font(400, 17);
+  y = height - pad - 6 - (foot.length - 1) * 24;
+  for (const row of foot) {
+    g.fillText(row, pad, y);
+    y += 24;
+  }
   return canvas;
 }
 
-function wrapText(g, text, x, y, maxWidth) {
-  // One line, shortened with an ellipsis rather than spilling off the card.
-  let line = text;
-  while (line.length > 4 && g.measureText(line).width > maxWidth) line = `${line.slice(0, -2)}…`;
-  g.fillText(line, x, y);
+/* `text` broken at spaces into rows no wider than `maxWidth` in `g`'s font. A
+ * single word wider than that (none of the card's are) is shortened with an
+ * ellipsis rather than spilling off the card. */
+function wrapLines(g, text, maxWidth) {
+  const rows = [];
+  let row = "";
+  for (const word of String(text).split(/\s+/).filter(Boolean)) {
+    const next = row ? `${row} ${word}` : word;
+    if (row && g.measureText(next).width > maxWidth) {
+      rows.push(row);
+      row = word;
+    } else {
+      row = next;
+    }
+  }
+  if (row) rows.push(row);
+  return rows.map((r) => {
+    let fit = r;
+    while (fit.length > 4 && g.measureText(fit).width > maxWidth) fit = `${fit.slice(0, -2)}…`;
+    return fit;
+  });
 }
 
 async function shareSwing() {

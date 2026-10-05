@@ -348,9 +348,19 @@ def test_the_card_judges_no_more_than_stems_read() -> None:
     assert hand_placed["meaning"].startswith("Tour swings read")
     left = card({**METRICS, "tempoRatio": 2.0}, hand="left")
     assert "not measured for left-handers" in left["spread"]
+    # Nor is the coverage behind the footer's ±% (#71).
+    assert left["limitation"] == "Measured from one phone camera."
     assert left["meaning"].startswith("Tour swings read")
     assert card({**METRICS, "tempoRatio": 2.0})["meaning"].startswith("A quick backswing")
     assert card({**METRICS, "tempoRatio": None})["tempo"] == "No tempo reading for this swing"
+
+
+def test_the_card_words_slow_motion_as_the_page_does() -> None:
+    read = card({**METRICS, "slowedBy": 4, "slowedRetimed": True})["meaning"]
+    assert read.endswith(". Read as slow motion, played about 4 times slower")
+    maybe = card({**METRICS, "slowedBy": 2, "slowedRetimed": False})["meaning"]
+    assert maybe.endswith(". May be slow motion, played about 2 times slower")
+    assert "slow motion" not in card()["meaning"]
 
 
 def test_the_card_carries_the_practice_priority() -> None:

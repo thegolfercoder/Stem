@@ -163,6 +163,21 @@ def clip(sequence: PoseSequence, tmp_path_factory: pytest.TempPathFactory) -> Pa
 
 
 @pytest.fixture(scope="module")
+def slowed_clip(sequence: PoseSequence, tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """`clip`'s frames played twice as slowly: a slow-motion export. Cut short of
+    the page's long-clip scan (12 s), whose sampling the stub does not replay."""
+    path = tmp_path_factory.mktemp("page") / "slowed.webm"
+    height, width = 426, 240
+    rate = 1.0 / float(np.median(np.diff(sequence.timestamps_s))) / 2
+    writer = cv2.VideoWriter(str(path), cv2.VideoWriter.fourcc(*"VP80"), rate, (width, height))
+    assert writer.isOpened(), "could not open a VP8 writer"
+    for index in range(min(sequence.n_frames, int(11.5 * rate))):
+        writer.write(np.full((height, width, 3), (index % 11) * 20, np.uint8))
+    writer.release()
+    return path
+
+
+@pytest.fixture(scope="module")
 def landmark_json(sequence: PoseSequence) -> str:
     return landmarks_of(sequence)
 
@@ -1156,5 +1171,68 @@ def test_a_shared_swing_card_is_made_on_the_device_from_the_pages_numbers(
         if SCREENS:
             (SCREENS / "swing-card.png").write_bytes(data)
             page.locator("#summary-card").screenshot(path=str(SCREENS / f"share-{width}.png"))
+        assert errors == []
+        browser.close()
+
+
+# Every string the page draws on a canvas, with its width at the font it was drawn in.
+DRAWN = """
+window.__drawn = [];
+const fill = CanvasRenderingContext2D.prototype.fillText;
+CanvasRenderingContext2D.prototype.fillText = function (text, x, y, ...rest) {
+  window.__drawn.push({ text: String(text), x, width: this.measureText(text).width,
+                        canvas: this.canvas.width });
+  return fill.call(this, text, x, y, ...rest);
+};
+"""
+
+
+@pytest.mark.parametrize("hand", ["right", "left"])
+def test_a_slowed_swings_card_keeps_every_word_and_the_golfers_own_date(
+    landmark_json: str, slowed_clip: Path, hand: str
+) -> None:
+    """#71: long lines were clipped to one line, dropping "slow motion" from the
+    image that leaves the device; the date was UTC's; a left-hander's footer
+    quoted a coverage measured on right-handers only."""
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        # 03:00 UTC is still the evening before in Los Angeles.
+        context = browser.new_context(
+            viewport={"width": 390, "height": 900},
+            accept_downloads=True,
+            timezone_id="America/Los_Angeles",
+        )
+        page = context.new_page()
+        page.clock.set_fixed_time("2026-10-05T03:00:00Z")
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.add_init_script(DRAWN)
+        page.goto(PAGE.resolve().as_uri())
+        page.click(f"#handedness [data-value={hand}]")
+        _analyse(page, slowed_clip)
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        assert "slow motion" in (page.text_content("#summary-card") or "")
+        page.evaluate("() => { window.__drawn = []; }")
+        with page.expect_download() as download:
+            page.click("#share-swing")
+        data = Path(download.value.path()).read_bytes()
+        drawn = [d for d in page.evaluate("() => window.__drawn") if d["canvas"] == 900]
+        text = " ".join(d["text"] for d in drawn)
+        assert "slow motion, played about 2 times slower" in text, text
+        assert not any(d["text"].endswith("…") for d in drawn), drawn
+        assert all(d["x"] + d["width"] <= 900 - 30 for d in drawn), drawn
+        assert "Swing, 2026-10-04" in text
+        assert Path(download.value.suggested_filename).name == "swing-2026-10-04.png"
+        assert ("±" in text) == (hand == "right"), text
+        if SCREENS:
+            (SCREENS / f"swing-card-slowed-{hand}.png").write_bytes(data)
+            page.locator("#summary-card").screenshot(
+                path=str(SCREENS / f"share-slowed-{hand}-390.png")
+            )
         assert errors == []
         browser.close()

@@ -124,7 +124,10 @@ fixed, it moves to the changelog with the measurement that shows it.
     tempo with its spread, where it sits against tour swings, the practice priority,
     and what one phone camera cannot promise. It goes to the device's share sheet,
     or is downloaded where the browser cannot share files. A photo-heavy card over
-    1 MB is saved as JPEG. The desktop app and the iPhone app have no share card yet.
+    1 MB is saved as JPEG. Long lines wrap and the card grows to fit, so a caveat
+    (slow motion, left-handed) is never cut off (#71). The card is dated with the
+    device's own day. A left-hander's card quotes no ±% coverage, which was measured
+    on right-handed swings only. The desktop app and the iPhone app have no share card yet.
 14. **The browser keeps its practice log in the browser.** Clearing site data, a
     private window, or another browser starts from nothing, and nothing moves between
     the desktop, the browser and the iPhone. The iPhone's practice screen builds in CI
