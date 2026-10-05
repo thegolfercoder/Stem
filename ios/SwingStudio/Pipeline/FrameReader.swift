@@ -1,4 +1,5 @@
 import AVFoundation
+import SwingCore
 import CoreImage
 import ImageIO
 import UIKit
@@ -59,12 +60,14 @@ final class FrameReader {
             end: CMTime(seconds: stop + 0.05, preferredTimescale: 600))
         guard reader.startReading() else { throw reader.error ?? PipelineError.unreadable }
         defer { reader.cancelReading() }
-        var kept = -Double.infinity
+        var gate = FrameGate(stop: stop, minGap: minGap)
         let turn = override ?? orientation
         while let sample = output.copyNextSampleBuffer() {
+            // The frame's own presentation time, never index ÷ rate (FrameGate, #40, #47).
             let time = CMSampleBufferGetPresentationTimeStamp(sample).seconds
-            if time > stop + 1e-3 { break }
-            if time - kept < minGap - 2e-3 { continue }
+            let verdict = gate.verdict(time)
+            if verdict == .done { break }
+            if verdict == .skip { continue }
             guard let pixels = CMSampleBufferGetImageBuffer(sample) else { continue }
             var image = CIImage(cvPixelBuffer: pixels).oriented(turn)
             let longest = max(image.extent.width, image.extent.height)
@@ -73,8 +76,7 @@ final class FrameReader {
                 image = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
             }
             guard let frame = context.createCGImage(image, from: image.extent) else { continue }
-            kept = time
-            if try !onFrame(time, frame) { break }
+            if try !onFrame(gate.took(time), frame) { break }
         }
         if reader.status == .failed { throw reader.error ?? PipelineError.unreadable }
     }
