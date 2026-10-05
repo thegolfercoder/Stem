@@ -59,7 +59,8 @@ def test_the_browser_pins_the_same_bundle() -> None:
 
 def test_nothing_else_fetches_a_floating_bundle() -> None:
     found = subprocess.run(
-        ["git", "grep", "-l", "pose_landmarker_heavy/float16/latest"],
+        # Assembled, so this file does not match its own search.
+        ["git", "grep", "-l", "pose_landmarker_heavy/float16/" + "latest"],
         cwd=REPO, capture_output=True, text=True, check=False,
     ).stdout.split()  # fmt: skip
     assert set(found) <= UNPINNED_PROTECTED, found
