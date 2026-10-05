@@ -17,7 +17,7 @@ import { computeMetrics, implausible, readAtSpeeds, slowMotionCheck, slowedMetri
 import { PracticeLog, cameraSignature, clipKey, formatG3, storedMetrics } from "./practice.js";
 import { SwingWatcher, cameraConstraints, extensionFor, frameRateNote, framingVerdict, levelVerdict,
   recordingType } from "./capture.js";
-import { stemRead, voiceCue } from "./read.js";
+import { cardText, stemRead, voiceCue } from "./read.js";
 import { MIN_SWINGS, progressSeries, progressSvg } from "./progress.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
@@ -1868,6 +1868,7 @@ function renderSummaryCard(m) {
   const caveat = leftHandedCaveat(state.payload, state.analysis && state.analysis.handedness);
   if (caveat && !byHand) range.textContent += ` · ${caveat}`;
   el("again-record").hidden = el("record").hidden;
+  el("share-card").hidden = true;
   summaryPriority(null);
 }
 
@@ -2675,6 +2676,7 @@ export function boot(payload) {
       pick();
     };
   }
+  el("share-swing").onclick = () => { shareSwing().catch((error) => console.error(error)); };
 }
 
 
@@ -2984,7 +2986,9 @@ function sampleSession() {
   } else if (event.type === "cancel") {
     cutClip(false);
     renderSession("Waiting for you at address");
-  } else if (event.swing) {
+  } else if (event.swing !== false) {
+    // A swing seen, or one the samples were too sparse to rule out: kept, and
+    // the analysis judges it.
     cutClip(true);
   } else {
     cutClip(false);
@@ -3034,7 +3038,9 @@ function queueClip(chunks, mimeType) {
 
 async function drainSession() {
   if (session.working || !session.queue.length) return;
-  if (state.busy) { setTimeout(drainSession, 500); return; }
+  // Not while a swing is being recorded: analysing competes with the camera's
+  // sampling, and a sparsely sampled swing is harder to see (capture.js).
+  if (state.busy || session.recorder) { setTimeout(drainSession, 500); return; }
   session.working = true;
   const { file, index } = session.queue.shift();
   renderSession();
@@ -3129,4 +3135,102 @@ function renderProgress() {
           `<tr><td>${p.id}</td><td>${escapeHtml(p.day)}</td><td>${p.value.toFixed(m.digits)}</td>` +
           `<td>${p.comparable ? "" : "filmed differently"}</td></tr>`).join("")}</tbody></table>
       </details></figure>`).join("");
+}
+
+/* Share a swing (#44): a picture made on this device from what the page shows,
+ * the frames at address, top and impact with the pose drawn and the words of
+ * read.js `cardText`. Handed to the device's share sheet where it takes files,
+ * otherwise downloaded; the page uploads nothing. */
+const CARD = { width: 900, frame: 270, gap: 15, pad: 30 };
+
+function swingCardLines() {
+  const a = state.analysis;
+  const m = (state.last && state.last.metrics) || a.metrics;
+  return cardText({
+    metrics: m, handedness: a.handedness,
+    band: state.payload.calibration && state.payload.calibration.tempo,
+    rules: state.payload.practice || null, userSet: [...a.userSet], insight: state.readInsight,
+    date: new Date().toISOString().slice(0, 10),
+  });
+}
+
+function drawSwingCard(lines) {
+  const { width, frame, gap, pad } = CARD;
+  const shots = [0, 3, 5].map((e) => state.frames && state.frames[e]).filter(Boolean);
+  const scale = (c) => frame / c.canvas.width;
+  const shotHeight = Math.max(...shots.map((c) => Math.round(c.canvas.height * scale(c))), 0);
+  const text = [lines.tempo, lines.spread, lines.meaning, lines.priority].filter(Boolean);
+  const height = pad + 40 + shotHeight + 30 + text.length * 34 + 84 + pad;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const g = canvas.getContext("2d");
+  g.fillStyle = "#ffffff";
+  g.fillRect(0, 0, width, height);
+  g.fillStyle = "#161a21";
+  g.font = "600 26px -apple-system, Segoe UI, Roboto, sans-serif";
+  g.fillText(`Swing, ${lines.date}`, pad, pad + 26);
+  shots.forEach((c, i) => {
+    const x = pad + i * (frame + gap), y = pad + 40;
+    g.drawImage(c.canvas, x, y, frame, Math.round(c.canvas.height * scale(c)));
+    g.font = "500 18px -apple-system, Segoe UI, Roboto, sans-serif";
+    g.fillStyle = "#58616f";
+    g.fillText(c.label, x, y + shotHeight + 24);
+  });
+  let y = pad + 40 + shotHeight + 30 + 30;
+  for (const [i, line] of text.entries()) {
+    g.fillStyle = i === 0 ? "#161a21" : "#58616f";
+    g.font = i === 0 ? "700 26px -apple-system, Segoe UI, Roboto, sans-serif"
+      : "400 20px -apple-system, Segoe UI, Roboto, sans-serif";
+    wrapText(g, line, pad, y, width - 2 * pad);
+    y += 34;
+  }
+  g.fillStyle = "#8b94a3";
+  g.font = "400 17px -apple-system, Segoe UI, Roboto, sans-serif";
+  wrapText(g, lines.limitation, pad, height - pad - 30, width - 2 * pad);
+  wrapText(g, "Derived from this swing's positions; made with Stem on this device.",
+           pad, height - pad - 6, width - 2 * pad);
+  return canvas;
+}
+
+function wrapText(g, text, x, y, maxWidth) {
+  // One line, shortened with an ellipsis rather than spilling off the card.
+  let line = text;
+  while (line.length > 4 && g.measureText(line).width > maxWidth) line = `${line.slice(0, -2)}…`;
+  g.fillText(line, x, y);
+}
+
+async function shareSwing() {
+  if (!state.analysis || !state.frames) return;
+  const lines = swingCardLines();
+  const canvas = drawSwingCard(lines);
+  // PNG keeps the text sharp; a photo-heavy card over 1 MB goes as JPEG instead.
+  let blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  let type = "image/png";
+  if (blob && blob.size > 1e6) {
+    blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.88));
+    type = "image/jpeg";
+  }
+  if (!blob) return;
+  const name = `swing-${lines.date}.${type === "image/png" ? "png" : "jpg"}`;
+  const url = URL.createObjectURL(blob);
+  el("share-preview").src = url;
+  el("share-preview").alt = [lines.tempo, lines.spread, lines.meaning].filter(Boolean).join(". ");
+  el("share-caption").textContent = [lines.tempo, lines.spread, lines.meaning, lines.priority,
+    lines.limitation].filter(Boolean).join("\n");
+  el("share-card").hidden = false;
+  el("share-card").dataset.bytes = String(blob.size);
+  const file = new File([blob], name, { type });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: "My swing" });
+      return;
+    }
+  } catch (error) {
+    if (error && error.name === "AbortError") return;
+  }
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
 }

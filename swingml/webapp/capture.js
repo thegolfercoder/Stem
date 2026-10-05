@@ -132,7 +132,14 @@ export function levelVerdict(beta, gamma, landscape, tolerance = 3) {
  * body at the finish, where a face-on estimator gives them visibility under 0.1.
  *
  *   start  the golfer has been framed and still for `addressSeconds`: at address.
- *   swing  motion reaches `swingSpeed` after the start.
+ *          0.8 s, not 1: the fixture's golfer holds address about a second, and
+ *          sampled 3 times a second a 1 s rule started after the takeaway.
+ *   swing  motion reaches the swing threshold after the start. Samples further
+ *          apart average the swing's speed down toward a setup's, so the threshold
+ *          falls with the gap: `swingSpeed` at `denseGap` or closer, down to
+ *          `sparseSwingSpeed` at `sparseGap`. On the fixture, the swing's fastest
+ *          sample over every sampling phase reads at least 0.79 at 5 Hz, 0.49 at
+ *          3 Hz and 0.42 at 2 Hz, against a setup's or a walk's 0.37, 0.31 and 0.28.
  *   stop   `settleSeconds` after the last swing-speed sample (the finish has
  *          settled), or `capSeconds` after the start. A stop with no swing seen is
  *          reported as such, so the page can say so rather than analyse nothing.
@@ -140,7 +147,15 @@ export function levelVerdict(beta, gamma, landscape, tolerance = 3) {
  *          speed: the golfer stood still and then walked or set up, which is not
  *          a takeaway (one reaches swing speed within about 0.3 s). The clip is
  *          discarded and the watcher waits for the real address, so a long
- *          pre-shot routine cannot use up the cap before the swing.
+ *          pre-shot routine cannot use up the cap before the swing. Only on
+ *          samples at most `cancelGap` apart (about 3 a second): sparser, the
+ *          swing's fastest sample can come after a second of takeaway, and a
+ *          missed swing costs more than a long clip.
+ *
+ * A stop at the cap says `swing: false` only when the samples were close enough
+ * to have seen one (gaps up to `sparseGap`); otherwise `swing: null`, unknown, and
+ * the page keeps the clip for the analysis to judge. A busy phone, analysing the
+ * last clip while this one is recorded, samples less often.
  *
  * After a stop the golfer must move again before a new address counts, so holding
  * the finish, or standing still between balls, does not start an empty clip.
@@ -152,7 +167,11 @@ export function levelVerdict(beta, gamma, landscape, tolerance = 3) {
 export const SESSION = {
   stillSpeed: 0.10,
   swingSpeed: 0.5,
-  addressSeconds: 1.0,
+  sparseSwingSpeed: 0.36,
+  denseGap: 0.2,
+  sparseGap: 0.5,
+  cancelGap: 0.35,
+  addressSeconds: 0.8,
   setupSeconds: 1.0,
   settleSeconds: 1.5,
   capSeconds: 8,
@@ -171,6 +190,7 @@ export class SwingWatcher {
     this.startedAt = null;
     this.lastSwingAt = null;
     this.movingSince = null;
+    this.widestGap = 0;
   }
 
   /* One live sample at time `t` (seconds): the estimator's landmarks or null, and
@@ -181,11 +201,14 @@ export class SwingWatcher {
     const motion = this.motion(t, landmarks);
     if (motion === undefined) return null;   // too soon after the last sample
     if (this.state === "recording") {
-      if (motion !== null && motion >= r.swingSpeed) this.lastSwingAt = t;
+      const gap = t - this.previousT;
+      this.widestGap = Math.max(this.widestGap, gap);
+      if (motion !== null && motion >= this.swingThreshold(gap)) this.lastSwingAt = t;
       if (this.lastSwingAt === null) {
         const moving = motion !== null && motion >= r.stillSpeed;
         if (!moving) this.movingSince = null;
         else if (this.movingSince === null) this.movingSince = this.previousT;
+        if (gap > r.cancelGap) this.movingSince = null;
         if (this.movingSince !== null && t - this.movingSince >= r.setupSeconds) {
           this.state = "waiting";
           this.stillSince = null;
@@ -197,7 +220,9 @@ export class SwingWatcher {
       const capped = t - this.startedAt >= r.capSeconds;
       const settled = this.lastSwingAt !== null && t - this.lastSwingAt >= r.settleSeconds;
       if (!capped && !settled) return null;
-      const event = { type: "stop", t, swing: this.lastSwingAt !== null, capped: capped && !settled };
+      const seen = this.lastSwingAt !== null;
+      const event = { type: "stop", t, capped: capped && !settled,
+                      swing: seen ? true : this.widestGap > r.sparseGap ? null : false };
       this.state = "rearming";
       this.stillSince = null;
       this.startedAt = null;
@@ -215,8 +240,16 @@ export class SwingWatcher {
     if (t - this.stillSince < r.addressSeconds) return null;
     this.state = "recording";
     this.startedAt = t;
+    this.widestGap = 0;
     this.lastSwingAt = null;
     return { type: "start", t };
+  }
+
+  /* The swing threshold for samples `gap` seconds apart (see SESSION above). */
+  swingThreshold(gap) {
+    const r = this.rules;
+    const f = Math.min(1, Math.max(0, (gap - r.denseGap) / (r.sparseGap - r.denseGap)));
+    return r.swingSpeed + f * (r.sparseSwingSpeed - r.swingSpeed);
   }
 
   /* Body heights per second since the last sample; null when it cannot be read,

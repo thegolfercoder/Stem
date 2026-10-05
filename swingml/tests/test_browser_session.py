@@ -86,6 +86,44 @@ def test_one_swing_is_recorded_from_address_to_a_settled_finish(
     assert events[1]["swing"] and not events[1]["capped"]
 
 
+def test_a_busy_phone_sampling_three_times_a_second_still_records_the_swing(
+    tmp_path: Path,
+) -> None:
+    """While the last clip is analysed the camera is sampled less often. At 3 a
+    second, from every phase, the swing is seen and recorded whole (the full page
+    suite once missed one this way)."""
+    for phase in range(10):
+        events = watch(sampled(FRAMES, 3, phase), tmp_path)
+        assert [e["type"] for e in events] == ["start", "stop"], (phase, events)
+        start, stop = events[0]["t"] * FPS, events[1]["t"] * FPS
+        assert START_EARLIEST <= start < ADDRESS and FINISH < stop <= STOP_LATEST, (phase, events)
+        assert events[1]["swing"] is True
+
+
+def test_at_two_a_second_a_swing_is_never_cancelled_or_discarded(tmp_path: Path) -> None:
+    """At 2 a second the swing is recorded from before address in every phase; it
+    is seen in most, and where it is not, the recording runs on (to the cap, kept
+    for the analysis), never cancelled or called empty."""
+    seen = 0
+    for phase in range(15):
+        events = watch(sampled(FRAMES, 2, phase), tmp_path)
+        assert events and events[0]["type"] == "start" and events[0]["t"] * FPS < ADDRESS
+        assert all(e["type"] != "cancel" for e in events), (phase, events)
+        assert all(e.get("swing") is not False for e in events if e["type"] == "stop")
+        seen += any(e.get("swing") is True for e in events)
+    assert seen >= 14, seen
+
+
+def test_too_sparse_to_tell_keeps_the_clip_for_the_analysis(tmp_path: Path) -> None:
+    """At one sample a second a swing and a setup read alike: no cancel, and the
+    stop at the cap says the swing is unknown rather than absent."""
+    still = [FRAMES[-1]] * int(10 * FPS)
+    events = watch(sampled(FRAMES + still, 1, 0), tmp_path)
+    assert [e["type"] for e in events][:2] == ["start", "stop"], events
+    assert events[0]["t"] * FPS < ADDRESS
+    assert events[1]["capped"] and events[1]["swing"] is None
+
+
 @pytest.mark.parametrize("gap_s", [0.0, 3.0])
 def test_a_range_of_swings_gives_one_clip_each_none_split_or_merged(
     gap_s: float, tmp_path: Path

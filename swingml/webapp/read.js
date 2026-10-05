@@ -207,6 +207,48 @@ export function voiceCue(input) {
   return `Swing ${n}, ${tempo}, ${meaning}${caveats.length ? `; ${caveats.join(", ")}` : ""}.`;
 }
 
+/* The words on a shared swing card (#44), short enough for an image: the tempo
+ * with its measured spread where one applies, where it sits against the tour
+ * readings (the same verdict as Stem's read), the practice priority, and what
+ * one phone camera cannot promise. `input` is stemRead's plus `date`. Every
+ * number is the page's, with the page's rounding. */
+export function cardText(input) {
+  const { metrics: m, band, rules } = input;
+  const left = input.handedness === "left";
+  const handPlaced = TEMPO_EVENTS.some((e) => new Set(input.userSet || []).has(e));
+  const lines = { date: input.date || "", tempo: null, spread: null, meaning: null,
+                  priority: null, limitation: "Measured from one phone camera." };
+  if (finite(m.tempoRatio)) {
+    lines.tempo = `Tempo ${m.tempoRatio.toFixed(2)} (backswing ÷ downswing)`;
+    if (handPlaced) {
+      lines.spread = "Positions set by hand: the model's spread does not apply";
+    } else if (band) {
+      const spread = Math.abs(m.tempoRatio) * band.half_width_fraction;
+      lines.spread = `Measured spread ${(m.tempoRatio - spread).toFixed(2)}–` +
+        `${(m.tempoRatio + spread).toFixed(2)}` + (left ? " (not measured for left-handers)" : "");
+      lines.limitation = `Measured from one phone camera; tempo ±${Math.round(100 * band.half_width_fraction)}% ` +
+        `for ${Math.round(100 * band.coverage)}% of held-out swings.`;
+    }
+    const tour = rules && rules.tour_tempo;
+    if (tour) {
+      const where = { below: "a quick backswing for the downswing, against", above:
+        "a long backswing for the downswing, against", inside: "inside", overlaps: "overlapping",
+        unjudged: "tour swings read" }[tempoVerdict(input)];
+      lines.meaning = `${where[0].toUpperCase()}${where.slice(1)} ${range(tour, 2)}, ` +
+        "the middle 80% of tour swings through the same analysis";
+    }
+    if (m.slowedBy) lines.meaning = `${lines.meaning ? `${lines.meaning}. ` : ""}Read as slow motion`;
+  } else {
+    lines.tempo = "No tempo reading for this swing";
+  }
+  // Only a priority with a drill: "record more swings" is advice for the page, not a card.
+  const insight = input.insight;
+  if (insight && insight.drill && insight.kind !== "not_enough") {
+    lines.priority = `Working on: ${lower(insight.title)}. Drill: ${insight.drill.title}`;
+  }
+  return lines;
+}
+
 function lower(text) {
   return text && /^[A-Z][a-z]/.test(text) ? text[0].toLowerCase() + text.slice(1) : text;
 }

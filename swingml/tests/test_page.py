@@ -1106,3 +1106,55 @@ def test_a_fresh_log_says_how_many_swings_a_trend_needs(landmark_json: str) -> N
         assert page.locator(".progress-card").count() == 0
         assert errors == []
         browser.close()
+
+
+# -- sharing a swing card (#44) -------------------------------------------------------
+
+
+@pytest.mark.parametrize("width", [390])
+def test_a_shared_swing_card_is_made_on_the_device_from_the_pages_numbers(
+    landmark_json: str, clip: Path, width: int
+) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        context = browser.new_context(
+            viewport={"width": width, "height": 900}, accept_downloads=True
+        )
+        page = context.new_page()
+        errors: list[str] = []
+        requests: list[tuple[str, str, int]] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.on(
+            "request", lambda r: requests.append((r.method, r.url, len(r.post_data_buffer or b"")))
+        )
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.goto(PAGE.resolve().as_uri())
+        _analyse(page, clip)
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        before = len(requests)
+        with page.expect_download() as download:
+            page.click("#share-swing")
+        saved = Path(download.value.path())
+        data = saved.read_bytes()
+        assert data[:8] == b"\x89PNG\r\n\x1a\n" and len(data) < 1_000_000
+        assert int(page.get_attribute("#share-card", "data-bytes") or 0) == len(data)
+        # The card's numbers are the page's.
+        caption = page.text_content("#share-caption") or ""
+        assert f"Tempo {page.text_content('#sum-tempo')} (backswing" in caption
+        spread = (page.text_content("#sum-range") or "").split(" · ")[0]
+        dash = "\u2013"
+        expected = spread.replace("measured spread ", "Measured spread ")
+        assert expected.replace(f" {dash} ", dash) in caption
+        assert "one phone camera" in caption
+        # Made here: nothing left the page while the card was made.
+        assert all(url.startswith(("blob:", "data:")) for _, url, _ in requests[before:]), requests
+        assert page.evaluate(NO_OVERFLOW)
+        if SCREENS:
+            (SCREENS / "swing-card.png").write_bytes(data)
+            page.locator("#summary-card").screenshot(path=str(SCREENS / f"share-{width}.png"))
+        assert errors == []
+        browser.close()

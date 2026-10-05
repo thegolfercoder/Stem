@@ -307,3 +307,64 @@ def test_no_cue_names_a_quantity_one_camera_cannot_measure(change: dict, hand: s
         text = cue({**METRICS, **change}, hand=hand, refused=refused).lower()
         found = [w for w in forbidden if re.search(rf"\b{re.escape(w)}\b", text)]
         assert not found, (found, text)
+
+
+# -- the words on a shared swing card (#44) -----------------------------------------
+
+
+def card(metrics: dict[str, Any] | None = None, *, hand: str = "right",
+         user_set: tuple[int, ...] = (), recent: list[dict[str, Any]] | None = None
+         ) -> dict[str, Any]:  # fmt: skip
+    data = payload()
+    rules = data["practice"]
+    insight = "null" if recent is None else f"p.choosePriority(rules, {json.dumps(recent)})"
+    return dict(node(
+        f"(() => {{ const rules = {json.dumps(rules)};"
+        f" return r.cardText({{ metrics: {json.dumps(metrics or METRICS)},"
+        f" handedness: {json.dumps(hand)}, band: {json.dumps(data['calibration']['tempo'])},"
+        f" rules, userSet: {json.dumps(list(user_set))}, insight: {insight},"
+        " date: '2026-10-05' });"
+        " })()"
+    ))  # fmt: skip
+
+
+def test_the_card_quotes_the_pages_tempo_spread_and_limitation() -> None:
+    band = payload()["calibration"]["tempo"]
+    lines = card()
+    spread = 3.2 * band["half_width_fraction"]
+    assert lines["tempo"] == "Tempo 3.20 (backswing ÷ downswing)"
+    assert lines["spread"] == f"Measured spread {3.2 - spread:.2f}{DASH}{3.2 + spread:.2f}"
+    assert lines["meaning"].startswith("Inside ")
+    pct, cov = round(100 * band["half_width_fraction"]), round(100 * band["coverage"])
+    assert lines["limitation"] == (
+        f"Measured from one phone camera; tempo ±{pct}% for {cov}% of held-out swings."
+    )
+    assert lines["date"] == "2026-10-05" and lines["priority"] is None
+
+
+def test_the_card_judges_no_more_than_stems_read() -> None:
+    hand_placed = card({**METRICS, "tempoRatio": 2.0}, user_set=(3,))
+    assert hand_placed["spread"].startswith("Positions set by hand")
+    assert hand_placed["meaning"].startswith("Tour swings read")
+    left = card({**METRICS, "tempoRatio": 2.0}, hand="left")
+    assert "not measured for left-handers" in left["spread"]
+    assert left["meaning"].startswith("Tour swings read")
+    assert card({**METRICS, "tempoRatio": 2.0})["meaning"].startswith("A quick backswing")
+    assert card({**METRICS, "tempoRatio": None})["tempo"] == "No tempo reading for this swing"
+
+
+def test_the_card_carries_the_practice_priority() -> None:
+    lines = card(recent=history("right", (2.4, 2.5, 2.45)))
+    assert lines["priority"].startswith("Working on: ") and "Drill: " in lines["priority"]
+    assert card(recent=history("right", (3.2,)))["priority"] is None
+
+
+@pytest.mark.parametrize("change", FORBIDDEN_CASES)
+@pytest.mark.parametrize("hand", ["right", "left"])
+def test_no_card_names_a_quantity_one_camera_cannot_measure(change: dict, hand: str) -> None:
+    forbidden = node("r.FORBIDDEN")
+    for recent in (None, history(hand, (2.4, 2.5, 2.45)), history(hand, (5.0, 5.1, 4.9))):
+        lines = card({**METRICS, **change}, hand=hand, recent=recent)
+        text = " ".join(str(v) for v in lines.values() if v).lower()
+        found = [w for w in forbidden if re.search(rf"\b{re.escape(w)}\b", text)]
+        assert not found, (found, text)

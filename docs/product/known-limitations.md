@@ -76,7 +76,10 @@ fixed, it moves to the changelog with the measurement that shows it.
    recordings with no swing are counted on screen. The thresholds were set on the
    one real phone swing in the tests (`capture.js` `SESSION`); a golfer who
    waggles for over a second, or holds very still after a short swing, may be
-   cut early or missed, and that has not been measured on range footage. The
+   cut early or missed, and that has not been measured on range footage. A phone
+   busy analysing the last swing samples the camera less often. The swing finder
+   allows for that down to about twice a second. Below that, a recording runs to
+   8 s and is kept for the analysis to judge rather than dropped. The
    screen is kept awake only where the browser offers the Wake Lock API. The
    camera uses a second copy of the pose estimator, so a session needs memory for
    two; where the second cannot be made, the camera waits while each swing is
@@ -116,6 +119,12 @@ fixed, it moves to the changelog with the measurement that shows it.
     the camera. The desktop's session page draws a band of one standard deviation
     around the golfer's own average, with no comparability check and no tour band.
     The iPhone's History screen charts tempo only.
+13c. **Sharing a swing is browser-only (#44).** The browser makes a picture of a
+    swing on the device: the frames at address, top and impact with the pose, the
+    tempo with its spread, where it sits against tour swings, the practice priority,
+    and what one phone camera cannot promise. It goes to the device's share sheet,
+    or is downloaded where the browser cannot share files. A photo-heavy card over
+    1 MB is saved as JPEG. The desktop app and the iPhone app have no share card yet.
 14. **The browser keeps its practice log in the browser.** Clearing site data, a
     private window, or another browser starts from nothing, and nothing moves between
     the desktop, the browser and the iPhone. The iPhone's practice screen builds in CI
