@@ -29,6 +29,7 @@ from swingml.insights.compare import (
 from swingml.insights.drills import BY_FOCUS, BY_ID, Drill
 from swingml.insights.engine import TRACKABLE, Insight, RecentSwing, choose
 from swingml.store import StoredSwing, SwingStore
+from swingml.web.inputs import whole_number
 
 HISTORY = 12
 
@@ -170,7 +171,7 @@ def create_blueprint(store: SwingStore) -> Blueprint:
             store.add_feedback(
                 plan_id,
                 swing_id,
-                int(useful) if isinstance(useful, (int, str)) and str(useful).isdigit() else None,
+                whole_number(useful),
                 str(feel)[:1000] if feel else None,
             )
         except ValueError as error:

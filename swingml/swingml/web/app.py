@@ -45,6 +45,7 @@ from swingml.quantity import NoReading, Quantity
 from swingml.session import summarise_session
 from swingml.skeleton import Handedness
 from swingml.store import StoredSwing, SwingStore
+from swingml.web.inputs import whole_number
 from swingml.web.service import (
     AnalysisService,
     event_frame_files,
@@ -530,7 +531,7 @@ def create_app(
         label = (request.form.get("label") or "").strip() or None
 
         plan_field = (request.form.get("plan") or "").strip()
-        plan_id = int(plan_field) if plan_field.isdigit() else None
+        plan_id = whole_number(plan_field)
         if plan_id is not None and swing_store.plan(plan_id) is None:
             return jsonify({"error": "that practice plan does not exist"}), 400
 
@@ -552,10 +553,10 @@ def create_app(
         club = request.args.get("club") or None
         # A positive whole number, at most 500 (#68): int() of anything else threw,
         # and a negative one reached SQLite as no limit at all.
-        raw = request.args.get("limit", "50")
-        if not raw.isdigit() or int(raw) < 1:
+        limit = whole_number(request.args.get("limit", "50"))
+        if limit is None or limit < 1:
             return jsonify({"error": "limit must be a whole number of 1 or more"}), 400
-        rows = swing_store.recent(limit=min(int(raw), 500), club=club)
+        rows = swing_store.recent(limit=min(limit, 500), club=club)
         return jsonify([_swing_summary(row) for row in rows])
 
     @app.post("/api/swings/<int:swing_id>")

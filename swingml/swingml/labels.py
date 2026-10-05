@@ -139,7 +139,7 @@ def training_labels(frames_root: Path) -> Iterator[tuple[int, GolferPositions, P
     if not frames_root.is_dir():
         return
     for directory in sorted(frames_root.iterdir(), key=lambda p: (len(p.name), p.name)):
-        if not directory.name.isdigit():
+        if not (directory.name.isascii() and directory.name.isdigit()):
             continue
         positions = read_positions(directory)
         if positions is None or not positions.training_label:

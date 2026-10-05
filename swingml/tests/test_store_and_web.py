@@ -23,6 +23,7 @@ from swingml.skeleton import Handedness
 from swingml.store import SwingStore
 from swingml.web.app import create_app
 from swingml.web.frames import body_crop, draw_pose
+from swingml.web.inputs import whole_number
 from synth.camera import CameraConfig, NoiseConfig, render_pose_sequence
 from synth.swing import generate_swing
 
@@ -272,7 +273,7 @@ def test_a_store_from_before_clip_fingerprints_opens_and_keeps_its_swings(
 # -- the API's own input checks (#68) --------------------------------------------
 
 
-@pytest.mark.parametrize("limit", ["abc", "-1", "0", "1.5", ""])
+@pytest.mark.parametrize("limit", ["abc", "-1", "0", "1.5", "", "%C2%B2", "%E2%91%A0", "%D9%A3"])
 def test_a_malformed_limit_is_refused_never_a_500_or_uncapped(client, limit: str) -> None:  # type: ignore[no-untyped-def]
     response = client.get(f"/api/swings?limit={limit}")
     assert response.status_code == 400, response.get_data(as_text=True)
@@ -319,3 +320,27 @@ def test_feedback_is_kept_for_a_real_plan_and_refused_for_a_missing_swing(
     assert store.feedback(plan) == []
     kept = http.post(f"/api/plans/{plan}/feedback", json={"useful": 3, "swing_id": swing})
     assert kept.status_code == 201 and len(store.feedback(plan)) == 1
+
+
+@pytest.mark.parametrize(
+    ("text", "number"),
+    [("12", 12), ("0", 0), (7, 7), ("²", None), ("①", None), ("٣", None), ("-1", None),
+     (-1, None), ("1.5", None), ("", None), (True, None), (None, None)],
+)  # fmt: skip
+def test_only_ascii_digits_are_read_as_a_number(text: object, number: int | None) -> None:
+    """#68, QA: str.isdigit() is true of "²", which int() then refuses."""
+    assert whole_number(text) == number
+
+
+def test_feedback_with_a_unicode_digit_rating_is_not_a_crash(
+    tmp_path: Path, analysis: SwingAnalysis
+) -> None:
+    store = SwingStore(tmp_path / "s.db")
+    swing = store.add(analysis, source_name="clip.mov", club="7 iron")
+    plan = store.create_plan("tempo_quick", "tempo-count-three", "tempo_ratio", "increase",
+                             "7 iron", [swing])  # fmt: skip
+    app = create_app(store=store)
+    app.config.update(TESTING=True)
+    response = app.test_client().post(f"/api/plans/{plan}/feedback", json={"useful": "²"})
+    assert response.status_code == 201
+    assert [row["useful"] for row in store.feedback(plan)] == [None]
