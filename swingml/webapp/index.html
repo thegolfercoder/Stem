@@ -280,6 +280,31 @@ h2.section{font-size:19px;margin:28px 0 4px;letter-spacing:-.01em}
 .text-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .options-check{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13.5px;color:var(--ink-dim)}
 .options-check[hidden]{display:none}
+.drill-body{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:520px){.drill-body{grid-template-columns:minmax(0,1fr);gap:8px}
+  .drill-demo{display:flex;gap:10px;align-items:flex-end}
+  .drill-demo .drill-demo-svg{width:110px;flex:none}}
+.drill-demo{margin:0}
+.drill-demo figcaption{font-size:11px;line-height:1.3;color:var(--ink-faint);margin-top:4px}
+.drill-demo-svg{display:block;width:100%;height:auto;background:var(--panel-2);border-radius:8px}
+.dm-bone{stroke:var(--ink-dim);stroke-width:2.2;stroke-linecap:round}
+.dm-lit{stroke:var(--accent-warm);stroke-width:3.2;stroke-linecap:round}
+.dm-club{stroke:var(--ink-faint);stroke-width:1.4;stroke-linecap:round}
+.dm-head{fill:none;stroke:var(--ink-dim);stroke-width:2.2}
+.dm-lit-head{fill:none;stroke:var(--accent-warm);stroke-width:2.8}
+.dm-guide{fill:none;stroke:var(--accent);stroke-width:1;stroke-dasharray:3 2}
+.dm-frame{fill:none;stroke:var(--accent);stroke-width:1.2;stroke-dasharray:4 3}
+.dm-stick{stroke:var(--warn);stroke-width:1.6;stroke-linecap:round}
+.dm-ground{stroke:var(--line);stroke-width:1}
+.dm-say{fill:var(--accent);font:700 12px var(--font)}
+.rep-counter{display:grid;gap:8px;margin-top:6px;padding-top:10px;border-top:1px solid var(--line)}
+.rep-count{font-weight:600;font-variant-numeric:tabular-nums}
+.rep-actions{display:flex;flex-wrap:wrap;gap:8px}
+.rep-actions .btn{margin:0}
+.rep-pace{color:var(--ink-dim);font-size:14px}
+.rep-pace select{min-height:36px;margin-left:6px;background:var(--panel-2);color:var(--ink);
+  border:1px solid var(--line);border-radius:8px;padding:4px 8px;font:inherit}
+.rep-timer{color:var(--ink-faint);font-size:13px;font-variant-numeric:tabular-nums}
 .practice-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
   padding:16px 18px;margin-top:12px}
 .practice-card h3{margin:0 0 6px;font-size:17px;letter-spacing:-.01em}
@@ -631,6 +656,7 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
 /*__CAPTURE__*/
 /*__READ__*/
 /*__PROGRESS__*/
+/*__DRILLS__*/
 /*__APP__*/
 boot(/*__PAYLOAD__*/);
 </script>

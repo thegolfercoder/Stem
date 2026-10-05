@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Any
 
 from swingml.insights import compare, engine
-from swingml.insights.drills import DRILLS
+from swingml.insights.drills import DRILLS, POSES
 from swingml.insights.reference import (
     FACE_ON_MIN_SHOULDER_RATIO,
     TOUR_BODY_READINGS,
@@ -29,6 +29,11 @@ def practice_payload() -> dict[str, Any]:
         "scale_free_metrics": sorted(compare.SCALE_FREE_METRICS),
         "t95": [[df, value] for df, value in sorted(compare._T95.items())],
         "drills": [drill.model_dump(mode="json") for drill in DRILLS],
+        # The drills' illustrations name these hand-drawn poses (webapp/drills.js).
+        "drill_poses": {
+            name: {joint: list(point) for joint, point in pose.items()}
+            for name, pose in POSES.items()
+        },
         "trackable": [list(choice) for choice in engine.TRACKABLE],
         "tour_tempo": TOUR_TEMPO_READINGS.model_dump(mode="json"),
         # Not used by any priority rule (docs/ml/checkpoint-reference.md); the

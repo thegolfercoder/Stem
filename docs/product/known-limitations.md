@@ -128,6 +128,13 @@ fixed, it moves to the changelog with the measurement that shows it.
     (slow motion, left-handed) is never cut off (#71). The card is dated with the
     device's own day. A left-hander's card quotes no ±% coverage, which was measured
     on right-handed swings only. The desktop app and the iPhone app have no share card yet.
+13d. **Drill figures and the rep counter are browser-only (#57).** Each drill shows
+    a looping stick figure beside its steps. The figure is drawn by hand, not
+    measured from anyone's swing, and the page says so. It is one right-handed
+    golfer seen face on, so a left-hander sees it mirrored from their own swing. The
+    count drills are slowed down so the count can be read. The rep counter and its
+    pace timer keep the count for the visit only. The desktop app and the iPhone app
+    carry the same figure data in their payload but do not draw it yet.
 14. **The browser keeps its practice log in the browser.** Clearing site data, a
     private window, or another browser starts from nothing, and nothing moves between
     the desktop, the browser and the iPhone. The iPhone's practice screen builds in CI

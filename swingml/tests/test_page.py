@@ -42,6 +42,7 @@ from __future__ import annotations
 import atexit
 import base64
 import contextlib
+import datetime
 import json
 import os
 import shutil
@@ -56,6 +57,7 @@ import pytest
 
 from swingml.analysis import AnalysisConfig, analyse_pose_sequence, load_model
 from swingml.events import SwingEvent
+from swingml.insights.drills import DRILLS
 from swingml.pose.base import PoseSequence
 from swingml.quantity import NoReading
 from swingml.skeleton import Handedness
@@ -1235,4 +1237,80 @@ def test_a_slowed_swings_card_keeps_every_word_and_the_golfers_own_date(
                 path=str(SCREENS / f"share-slowed-{hand}-390.png")
             )
         assert errors == []
+        browser.close()
+
+
+# -- drills shown, with a rep counter (#57) -----------------------------------------
+
+
+@pytest.mark.parametrize("width", [390, 1280])
+def test_the_drill_is_shown_and_its_reps_counted(landmark_json: str, width: int) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context(viewport={"width": width, "height": 900}).new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.clock.install(time=datetime.datetime(2026, 10, 5, 9, 0, tzinfo=datetime.UTC))
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.add_init_script(
+            f"localStorage.setItem('swing-practice-v1', {json.dumps(json.dumps(_progress_log()))});"
+        )
+        page.goto(PAGE.resolve().as_uri())
+        panel = page.locator("#priority-panel")
+        panel.locator(".drill-demo-svg").wait_for()
+        shown = panel.locator(".rep-counter").get_attribute("data-drill")
+        drill = next(d for d in DRILLS if d.id == shown)
+        assert drill.title in (panel.text_content() or "")
+        # The figure moves, on the drill's own loop, and says what it is.
+        assert panel.locator(".drill-demo-svg animate").count() > 50
+        assert "not a measurement" in (panel.locator(".drill-demo figcaption").text_content() or "")
+        paused = "() => document.querySelector('#priority-panel svg').animationsPaused()"
+        assert page.evaluate(paused) is False
+        # Counted by hand.
+        counter = panel.locator(".rep-counter")
+        count = counter.locator(".rep-count")
+        for _ in range(drill.reps_per_set - 1):
+            counter.locator("[data-rep=add]").click()
+        assert count.text_content() == f"Set 1 of {drill.sets} · rep {drill.reps_per_set - 1} " \
+            f"of {drill.reps_per_set}"  # fmt: skip
+        counter.locator("[data-rep=undo]").click()
+        counter.locator("[data-rep=reset]").click()
+        assert count.text_content() == f"Set 1 of {drill.sets} · rep 0 of {drill.reps_per_set}"
+        # Counted by the pace timer, which stops for the rest at the end of the set.
+        counter.locator("select[data-rep=pace]").select_option("8")
+        timer = counter.locator(".rep-timer").text_content() or ""
+        assert timer.startswith("Next rep counted in 8"), timer
+        page.clock.run_for(8_300)
+        assert count.text_content() == f"Set 1 of {drill.sets} · rep 1 of {drill.reps_per_set}"
+        page.clock.run_for(8_000 * drill.reps_per_set)
+        assert count.text_content() == f"Set 1 of {drill.sets} done: rest, then the next"
+        assert counter.locator("select[data-rep=pace]").input_value() == "0"
+        assert page.evaluate(NO_OVERFLOW), f"the drill scrolls sideways at {width} px"
+        if SCREENS:
+            panel.screenshot(path=str(SCREENS / f"drill-{width}.png"))
+        assert errors == []
+        browser.close()
+
+
+def test_a_golfer_asking_for_less_motion_sees_the_figure_held(landmark_json: str) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context(reduced_motion="reduce").new_page()
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.add_init_script(
+            f"localStorage.setItem('swing-practice-v1', {json.dumps(json.dumps(_progress_log()))});"
+        )
+        page.goto(PAGE.resolve().as_uri())
+        page.locator("#priority-panel .drill-demo-svg").wait_for()
+        paused = "() => [...document.querySelectorAll('.drill-demo-svg')]" \
+            ".every((s) => s.animationsPaused())"  # fmt: skip
+        assert page.evaluate(paused)
         browser.close()

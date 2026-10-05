@@ -19,6 +19,7 @@ import { SwingWatcher, cameraConstraints, extensionFor, frameRateNote, framingVe
   recordingType } from "./capture.js";
 import { cardText, stemRead, voiceCue } from "./read.js";
 import { MIN_SWINGS, localDay, progressSeries, progressSvg } from "./progress.js";
+import { ILLUSTRATION, drillDemoSvg, repLabel, repState } from "./drills.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 // Pinned to the version the analysis was measured with (#51; model.js).
@@ -2409,10 +2410,110 @@ const signed = (x) => (x >= 0 ? "+" : "") + formatG3(x);
 const reading = (x) => (x === null || x === undefined ? "no reading"
   : Math.abs(x) >= 1 ? x.toFixed(2) : x.toFixed(3));
 
+/* A drill shown as well as told (#57): its figure from drills.js beside the steps,
+ * and a rep counter for its sets with an optional pace timer. The count is kept
+ * for this visit only. */
+const repCounts = new Map();
+const PACES = [0, 8, 12, 20];
+
 function drillMarkup(drill) {
+  const poses = state.payload.practice.drill_poses;
+  const demo = drill.demo && poses
+    ? `<figure class="drill-demo">${drillDemoSvg(drill, poses)}
+         <figcaption>${escapeHtml(ILLUSTRATION)}</figcaption></figure>` : "";
   return `<p class="eyebrow">The drill</p><h3>${escapeHtml(drill.title)}</h3>
+    <div class="drill-body">${demo}<div>
     <ol>${drill.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol>
-    <p><b>${escapeHtml(drill.reps)}.</b> ${escapeHtml(drill.what_counts)}</p>`;
+    <p><b>${escapeHtml(drill.reps)}.</b> ${escapeHtml(drill.what_counts)}</p>
+    ${drill.sets ? repCounterMarkup(drill) : ""}</div></div>`;
+}
+
+function repCounterMarkup(drill) {
+  const count = repCounts.get(drill.id) || { done: 0, pace: 0 };
+  return `<div class="rep-counter" data-drill="${escapeHtml(drill.id)}">
+    <output class="rep-count" aria-live="polite">${escapeHtml(repLabel(drill, count.done))}</output>
+    <div class="rep-actions">
+      <button class="btn btn-primary" type="button" data-rep="add">+1 rep</button>
+      <button class="btn" type="button" data-rep="undo">Undo</button>
+      <button class="btn" type="button" data-rep="reset">Start over</button>
+    </div>
+    <label class="rep-pace">Pace timer
+      <select data-rep="pace">${PACES.map((s) => `<option value="${s}"${s === count.pace ? " selected" : ""}>` +
+        `${s ? `a rep every ${s} s` : "off"}</option>`).join("")}</select></label>
+    <span class="rep-timer">${escapeHtml(paceText(count))}</span>
+  </div>`;
+}
+
+function paceText(count) {
+  if (!count.pace) return "";
+  return `Next rep counted in ${Math.max(0, Math.ceil((count.next - Date.now()) / 1000))} s`;
+}
+
+function setReps(id, change) {
+  const drill = state.payload.practice.drills.find((d) => d.id === id);
+  if (!drill) return;
+  const count = { done: 0, pace: 0, next: 0, ...repCounts.get(id) };
+  if (change === "add") count.done += 1;
+  if (change === "undo") count.done = Math.max(0, count.done - 1);
+  if (change === "reset") Object.assign(count, { done: 0, pace: 0 });
+  if (typeof change === "number") {
+    count.pace = change;
+    count.next = Date.now() + change * 1000;
+  }
+  const now = repState(drill, count.done);
+  count.done = now.done;
+  // The timer stops at the end of each set, for the rest, and at the end of the drill.
+  if (change === "add" && (now.setDone || now.finished)) count.pace = 0;
+  repCounts.set(id, count);
+  for (const box of document.querySelectorAll(`.rep-counter[data-drill="${CSS.escape(id)}"]`)) {
+    box.querySelector(".rep-count").textContent = repLabel(drill, count.done);
+    box.querySelector("select").value = String(count.pace);
+    box.querySelector(".rep-timer").textContent = paceText(count);
+  }
+  paceTimer();
+}
+
+let paceTicker = null;
+function paceTimer() {
+  const running = [...repCounts.values()].some((c) => c.pace);
+  if (running && !paceTicker) {
+    paceTicker = setInterval(() => {
+      for (const [id, count] of repCounts) {
+        if (!count.pace) continue;
+        if (Date.now() >= count.next) {
+          setReps(id, "add");
+          const after = repCounts.get(id);
+          if (after.pace) after.next = Date.now() + after.pace * 1000;
+        }
+        for (const box of document.querySelectorAll(`.rep-counter[data-drill="${CSS.escape(id)}"]`)) {
+          box.querySelector(".rep-timer").textContent = paceText(repCounts.get(id));
+        }
+      }
+    }, 250);
+  } else if (!running && paceTicker) {
+    clearInterval(paceTicker);
+    paceTicker = null;
+  }
+}
+
+function wireDrills() {
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest && event.target.closest(".rep-counter [data-rep]");
+    if (!button || button.tagName === "SELECT") return;
+    setReps(button.closest(".rep-counter").dataset.drill, button.dataset.rep);
+  });
+  document.addEventListener("change", (event) => {
+    const select = event.target.closest && event.target.closest(".rep-counter select[data-rep]");
+    if (select) setReps(select.closest(".rep-counter").dataset.drill, Number(select.value));
+  });
+}
+
+/* A golfer who asks for less motion sees each figure held still. */
+function settleDrillDemos() {
+  if (!window.matchMedia || !window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  for (const svg of document.querySelectorAll(".drill-demo-svg")) {
+    if (svg.pauseAnimations) svg.pauseAnimations();
+  }
 }
 
 function planMarkup(plan) {
@@ -2509,6 +2610,7 @@ function renderPractice(swingId, note = "") {
   el("plan-panel").innerHTML = plan ? planMarkup(plan) : "";
   const insight = swingId ? log.insightFor(rules, swingId) : null;
   el("priority-panel").innerHTML = insight ? insightMarkup(insight, swingId) : "";
+  settleDrillDemos();
   summaryPriority(insight, swingId);
   // The read gives this swing's priority only; a sample or an earlier swing's is not its own.
   const own = Boolean(swingId) && Boolean(state.analysis) && state.analysis.logId === swingId;
@@ -2702,6 +2804,7 @@ function wireRecorder() {
   el("rec-stop").onclick = () => stopRecording();
   el("rec-session").onclick = () => startSession();
   wireVoice();
+  wireDrills();
   el("rec-session-stop").onclick = () => stopSession();
   document.addEventListener("visibilitychange", () => {
     // A wake lock is released whenever the page is hidden; take it again on return.

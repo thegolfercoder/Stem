@@ -28,6 +28,7 @@ MODULES = (
     "capture.js",
     "read.js",
     "progress.js",
+    "drills.js",
     "app.js",
 )
 # Where each module goes in index.html, in the same order.
