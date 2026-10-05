@@ -5342,5 +5342,3342 @@
         ]
       }
     }
-  ]
+  ],
+  "browser": {
+    "source": "the browser page (hosted build, pose estimator bundled, processor delegate) in headless Chromium on the same real-time clips of golfdb-validation-v2, each transcoded to VP9 in MP4 with every frame at its original time; holdout not read",
+    "all_real_time": {
+      "n": 80,
+      "n_groups": 29,
+      "refused_by_browser_only": [
+        731
+      ],
+      "refused_by_archive_only": [],
+      "archive": {
+        "answered": 81,
+        "within_1_core4": {
+          "share": 0.6719,
+          "ci95": [
+            0.625,
+            0.7267
+          ]
+        },
+        "offset_vs_labels": {
+          "address": {
+            "median": 0.993,
+            "ci95": [
+              -0.98,
+              2.991
+            ]
+          },
+          "toe_up": {
+            "median": 0.463,
+            "ci95": [
+              -0.0545,
+              0.996
+            ]
+          },
+          "mid_backswing": {
+            "median": -0.814,
+            "ci95": [
+              -0.9681,
+              0.019
+            ]
+          },
+          "top": {
+            "median": 0.065,
+            "ci95": [
+              -0.114,
+              0.927
+            ]
+          },
+          "mid_downswing": {
+            "median": 0.038,
+            "ci95": [
+              -0.06,
+              0.134
+            ]
+          },
+          "impact": {
+            "median": -0.093,
+            "ci95": [
+              -0.788,
+              -0.021
+            ]
+          },
+          "mid_follow_through": {
+            "median": 0.116,
+            "ci95": [
+              -0.124,
+              0.871
+            ]
+          },
+          "finish": {
+            "median": -22.189,
+            "ci95": [
+              -24.943,
+              -20.045
+            ]
+          }
+        },
+        "offset_vs_archive": {
+          "address": 0.0,
+          "toe_up": 0.0,
+          "mid_backswing": 0.0,
+          "top": 0.0,
+          "mid_downswing": 0.0,
+          "impact": 0.0,
+          "mid_follow_through": 0.0,
+          "finish": 0.0
+        }
+      },
+      "browser": {
+        "answered": 80,
+        "within_1_core4": {
+          "share": 0.6469,
+          "ci95": [
+            0.5923,
+            0.7083
+          ]
+        },
+        "offset_vs_labels": {
+          "address": {
+            "median": 2.03,
+            "ci95": [
+              -0.02,
+              4.4847
+            ]
+          },
+          "toe_up": {
+            "median": 0.91,
+            "ci95": [
+              0.03,
+              1.04
+            ]
+          },
+          "mid_backswing": {
+            "median": -0.01,
+            "ci95": [
+              -0.62,
+              0.05
+            ]
+          },
+          "top": {
+            "median": 0.46,
+            "ci95": [
+              -0.1,
+              0.98
+            ]
+          },
+          "mid_downswing": {
+            "median": 0.02,
+            "ci95": [
+              -0.16,
+              0.2
+            ]
+          },
+          "impact": {
+            "median": -0.14,
+            "ci95": [
+              -0.58,
+              0.0
+            ]
+          },
+          "mid_follow_through": {
+            "median": 0.26,
+            "ci95": [
+              -0.0007,
+              0.81
+            ]
+          },
+          "finish": {
+            "median": -21.21,
+            "ci95": [
+              -25.06,
+              -18.86
+            ]
+          }
+        },
+        "offset_vs_archive": {
+          "address": -0.009,
+          "toe_up": 0.039,
+          "mid_backswing": 0.12,
+          "top": -0.01,
+          "mid_downswing": -0.024,
+          "impact": -0.024,
+          "mid_follow_through": 0.002,
+          "finish": 0.349
+        },
+        "paired_within_1_difference": {
+          "share": -0.025,
+          "ci95": [
+            -0.066,
+            0.0147
+          ]
+        },
+        "share_of_events_within_half_a_grid_step_of_archive": 0.5062
+      }
+    },
+    "face_on": {
+      "n": 29,
+      "n_groups": 19,
+      "refused_by_browser_only": [
+        731
+      ],
+      "refused_by_archive_only": [],
+      "archive": {
+        "answered": 30,
+        "within_1_core4": {
+          "share": 0.6638,
+          "ci95": [
+            0.5806,
+            0.7586
+          ]
+        },
+        "offset_vs_labels": {
+          "address": {
+            "median": 1.97,
+            "ci95": [
+              -0.034,
+              6.024
+            ]
+          },
+          "toe_up": {
+            "median": 0.064,
+            "ci95": [
+              -0.07,
+              0.982
+            ]
+          },
+          "mid_backswing": {
+            "median": -0.953,
+            "ci95": [
+              -1.9285,
+              0.03
+            ]
+          },
+          "top": {
+            "median": 0.968,
+            "ci95": [
+              0.4853,
+              1.121
+            ]
+          },
+          "mid_downswing": {
+            "median": 0.077,
+            "ci95": [
+              -0.022,
+              0.155
+            ]
+          },
+          "impact": {
+            "median": -0.116,
+            "ci95": [
+              -0.852,
+              0.06
+            ]
+          },
+          "mid_follow_through": {
+            "median": 0.781,
+            "ci95": [
+              -0.124,
+              0.957
+            ]
+          },
+          "finish": {
+            "median": -21.053,
+            "ci95": [
+              -25.834,
+              -15.133
+            ]
+          }
+        },
+        "offset_vs_archive": {
+          "address": 0.0,
+          "toe_up": 0.0,
+          "mid_backswing": 0.0,
+          "top": 0.0,
+          "mid_downswing": 0.0,
+          "impact": 0.0,
+          "mid_follow_through": 0.0,
+          "finish": 0.0
+        }
+      },
+      "browser": {
+        "answered": 29,
+        "within_1_core4": {
+          "share": 0.6724,
+          "ci95": [
+            0.5811,
+            0.7593
+          ]
+        },
+        "offset_vs_labels": {
+          "address": {
+            "median": 3.98,
+            "ci95": [
+              0.94,
+              5.02
+            ]
+          },
+          "toe_up": {
+            "median": 0.0,
+            "ci95": [
+              -1.04,
+              1.0
+            ]
+          },
+          "mid_backswing": {
+            "median": -0.9,
+            "ci95": [
+              -1.9,
+              0.02
+            ]
+          },
+          "top": {
+            "median": 1.04,
+            "ci95": [
+              0.82,
+              1.19
+            ]
+          },
+          "mid_downswing": {
+            "median": 0.04,
+            "ci95": [
+              -0.12,
+              0.38
+            ]
+          },
+          "impact": {
+            "median": -0.12,
+            "ci95": [
+              -0.9,
+              0.06
+            ]
+          },
+          "mid_follow_through": {
+            "median": 0.72,
+            "ci95": [
+              -0.08,
+              0.91
+            ]
+          },
+          "finish": {
+            "median": -21.24,
+            "ci95": [
+              -25.64,
+              -17.96
+            ]
+          }
+        },
+        "offset_vs_archive": {
+          "address": -0.011,
+          "toe_up": -0.065,
+          "mid_backswing": -0.044,
+          "top": -0.104,
+          "mid_downswing": 0.034,
+          "impact": 0.003,
+          "mid_follow_through": 0.04,
+          "finish": 0.574
+        },
+        "paired_within_1_difference": {
+          "share": 0.0086,
+          "ci95": [
+            -0.0735,
+            0.0968
+          ]
+        },
+        "share_of_events_within_half_a_grid_step_of_archive": 0.4914
+      }
+    },
+    "clips": [
+      {
+        "clip": 136,
+        "group": "player:SO YEON RYU",
+        "face_on": false,
+        "labels": [
+          46,
+          72,
+          92,
+          108,
+          116,
+          124,
+          130,
+          202
+        ],
+        "archive": [
+          42.994,
+          80.015,
+          93.899,
+          109.977,
+          117.828,
+          124.911,
+          130.773,
+          149.03
+        ],
+        "browser": [
+          43.02,
+          79.92,
+          93.9,
+          109.92,
+          117.12,
+          124.14,
+          130.68,
+          148.32
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 200,
+        "group": "player:KARRIE WEBB",
+        "face_on": false,
+        "labels": [
+          38,
+          68,
+          78,
+          96,
+          106,
+          114,
+          118,
+          162
+        ],
+        "archive": [
+          38.974,
+          68.919,
+          78.001,
+          97.996,
+          106.092,
+          113.014,
+          118.15,
+          130.808
+        ],
+        "browser": [
+          34.98,
+          68.04,
+          78.0,
+          97.86,
+          106.02,
+          112.98,
+          118.74,
+          130.62
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 204,
+        "group": "player:SO YEON RYU",
+        "face_on": true,
+        "labels": [
+          444,
+          468,
+          486,
+          503,
+          509,
+          517,
+          523,
+          577
+        ],
+        "archive": [
+          445.004,
+          472.973,
+          483.987,
+          502.934,
+          509.875,
+          516.023,
+          521.902,
+          545.196
+        ],
+        "browser": [
+          435.36,
+          471.42,
+          483.36,
+          502.26,
+          508.38,
+          516.42,
+          522.36,
+          539.34
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 220,
+        "group": "player:LUKE DONALD",
+        "face_on": false,
+        "labels": [
+          86,
+          108,
+          116,
+          132,
+          142,
+          148,
+          152,
+          196
+        ],
+        "archive": [
+          82.943,
+          107.94,
+          116.99,
+          132.038,
+          140.955,
+          147.9,
+          153.9,
+          175.23
+        ],
+        "browser": [
+          83.04,
+          109.02,
+          118.02,
+          133.02,
+          140.94,
+          147.84,
+          153.9,
+          177.12
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 248,
+        "group": "player:JERRY KELLY",
+        "face_on": true,
+        "labels": [
+          12,
+          42,
+          56,
+          76,
+          84,
+          90,
+          96,
+          128
+        ],
+        "archive": [
+          3.011,
+          43.965,
+          53.237,
+          77.053,
+          84.101,
+          90.219,
+          95.829,
+          112.694
+        ],
+        "browser": [
+          6.96,
+          43.02,
+          55.02,
+          77.04,
+          84.18,
+          91.08,
+          96.72,
+          110.04
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 368,
+        "group": "player:BEATRIZ RECARI",
+        "face_on": false,
+        "labels": [
+          599,
+          631,
+          639,
+          655,
+          663,
+          671,
+          675,
+          723
+        ],
+        "archive": [
+          605.958,
+          630.954,
+          641.999,
+          654.069,
+          661.856,
+          669.135,
+          674.866,
+          685.822
+        ],
+        "browser": [
+          605.52,
+          631.56,
+          644.4,
+          655.44,
+          661.5,
+          668.58,
+          674.46,
+          685.32
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 372,
+        "group": "player:ALISON LEE",
+        "face_on": true,
+        "labels": [
+          258,
+          300,
+          316,
+          334,
+          344,
+          352,
+          356,
+          396
+        ],
+        "archive": [
+          260.991,
+          301.97,
+          312.104,
+          334.81,
+          344.068,
+          351.129,
+          356.888,
+          374.182
+        ],
+        "browser": [
+          264.0,
+          301.02,
+          311.22,
+          332.94,
+          343.86,
+          351.06,
+          356.94,
+          374.76
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 384,
+        "group": "player:RETIEF GOOSEN",
+        "face_on": true,
+        "labels": [
+          606,
+          648,
+          656,
+          672,
+          680,
+          686,
+          690,
+          730
+        ],
+        "archive": [
+          618.997,
+          648.009,
+          657.024,
+          672.968,
+          680.122,
+          686.317,
+          691.814,
+          705.103
+        ],
+        "browser": [
+          625.32,
+          648.36,
+          656.34,
+          673.26,
+          680.28,
+          686.4,
+          691.32,
+          707.34
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 400,
+        "group": "player:RETIEF GOOSEN",
+        "face_on": false,
+        "labels": [
+          581,
+          619,
+          629,
+          645,
+          651,
+          659,
+          663,
+          697
+        ],
+        "archive": [
+          596.921,
+          618.041,
+          629.944,
+          644.825,
+          651.154,
+          657.985,
+          662.954,
+          676.205
+        ],
+        "browser": [
+          594.48,
+          619.44,
+          630.48,
+          644.64,
+          650.7,
+          657.6,
+          663.24,
+          677.34
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 416,
+        "group": "player:DANIELLE KANG",
+        "face_on": true,
+        "labels": [
+          392,
+          422,
+          430,
+          444,
+          454,
+          460,
+          466,
+          505
+        ],
+        "archive": [
+          397.932,
+          420.997,
+          430.064,
+          446.014,
+          453.94,
+          460.146,
+          465.902,
+          483.947
+        ],
+        "browser": [
+          397.02,
+          420.96,
+          430.02,
+          446.04,
+          454.02,
+          460.2,
+          466.02,
+          484.14
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 496,
+        "group": "player:MARIAJO URIBE",
+        "face_on": false,
+        "labels": [
+          324,
+          346,
+          356,
+          372,
+          378,
+          384,
+          390,
+          425
+        ],
+        "archive": [
+          329.972,
+          347.915,
+          355.163,
+          370.911,
+          378.21,
+          385.05,
+          390.043,
+          400.241
+        ],
+        "browser": [
+          327.0,
+          347.88,
+          355.98,
+          370.86,
+          378.12,
+          384.24,
+          390.0,
+          412.8
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 532,
+        "group": "player:ROCCO MEDIATE",
+        "face_on": true,
+        "labels": [
+          136,
+          176,
+          184,
+          204,
+          214,
+          220,
+          226,
+          272
+        ],
+        "archive": [
+          150.969,
+          176.982,
+          186.032,
+          205.121,
+          213.95,
+          220.06,
+          225.593,
+          257.181
+        ],
+        "browser": [
+          150.96,
+          175.98,
+          185.94,
+          204.96,
+          213.84,
+          220.2,
+          225.9,
+          238.92
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 588,
+        "group": "player:SO YEON RYU",
+        "face_on": false,
+        "labels": [
+          144,
+          172,
+          196,
+          216,
+          224,
+          230,
+          236,
+          284
+        ],
+        "archive": [
+          141.002,
+          178.001,
+          192.031,
+          215.06,
+          222.993,
+          229.19,
+          234.898,
+          252.978
+        ],
+        "browser": [
+          142.98,
+          178.02,
+          193.02,
+          215.04,
+          222.96,
+          229.2,
+          234.96,
+          253.8
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 612,
+        "group": "player:MARK CALCAVECCHIA",
+        "face_on": true,
+        "labels": [
+          380,
+          412,
+          418,
+          436,
+          446,
+          452,
+          456,
+          488
+        ],
+        "archive": [
+          373.005,
+          409.013,
+          418.032,
+          436.918,
+          446.006,
+          453.014,
+          457.905,
+          470.706
+        ],
+        "browser": [
+          379.98,
+          408.96,
+          418.02,
+          436.02,
+          446.04,
+          453.12,
+          458.64,
+          474.72
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 636,
+        "group": "player:TOMMY FLEETWOOD",
+        "face_on": false,
+        "labels": [
+          414,
+          436,
+          444,
+          460,
+          470,
+          474,
+          480,
+          509
+        ],
+        "archive": [
+          414.018,
+          436.861,
+          443.075,
+          459.054,
+          469.108,
+          475.995,
+          480.892,
+          499.875
+        ],
+        "browser": [
+          417.96,
+          436.98,
+          443.1,
+          459.84,
+          469.14,
+          475.86,
+          480.18,
+          498.24
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 648,
+        "group": "player:MORGAN PRESSEL",
+        "face_on": false,
+        "labels": [
+          88,
+          116,
+          126,
+          146,
+          152,
+          160,
+          166,
+          208
+        ],
+        "archive": [
+          89.004,
+          116.976,
+          125.948,
+          143.921,
+          152.029,
+          158.161,
+          164.934,
+          187.955
+        ],
+        "browser": [
+          91.02,
+          117.0,
+          127.92,
+          143.88,
+          152.04,
+          158.22,
+          164.88,
+          187.38
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 672,
+        "group": "player:JULIETA GRANADA",
+        "face_on": true,
+        "labels": [
+          120,
+          150,
+          162,
+          178,
+          186,
+          194,
+          198,
+          232
+        ],
+        "archive": [
+          115.984,
+          151.934,
+          161.106,
+          179.026,
+          186.033,
+          193.852,
+          198.836,
+          223.943
+        ],
+        "browser": [
+          124.98,
+          152.94,
+          163.02,
+          180.0,
+          187.14,
+          193.02,
+          198.84,
+          212.1
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 45,
+        "group": "player:KEVIN NA",
+        "face_on": false,
+        "labels": [
+          62,
+          80,
+          92,
+          120,
+          130,
+          134,
+          140,
+          168
+        ],
+        "archive": [
+          52.929,
+          81.996,
+          91.119,
+          120.823,
+          129.903,
+          135.18,
+          140.775,
+          158.699
+        ],
+        "browser": [
+          52.98,
+          82.98,
+          91.14,
+          121.02,
+          129.96,
+          135.9,
+          140.88,
+          161.58
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 121,
+        "group": "player:KEVIN CHAPPELL",
+        "face_on": false,
+        "labels": [
+          18,
+          52,
+          60,
+          74,
+          80,
+          88,
+          102,
+          188
+        ],
+        "archive": [
+          26.001,
+          51.995,
+          59.991,
+          72.994,
+          81.046,
+          89.008,
+          104.969,
+          116.274
+        ],
+        "browser": [
+          34.02,
+          52.98,
+          60.96,
+          72.96,
+          81.0,
+          88.02,
+          103.98,
+          116.1
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 137,
+        "group": "player:SO YEON RYU",
+        "face_on": false,
+        "labels": [
+          60,
+          88,
+          110,
+          126,
+          134,
+          142,
+          148,
+          210
+        ],
+        "archive": [
+          63.01,
+          96.998,
+          110.011,
+          128.908,
+          136.113,
+          143.134,
+          149.065,
+          167.292
+        ],
+        "browser": [
+          63.0,
+          97.98,
+          111.0,
+          128.88,
+          136.74,
+          143.16,
+          149.58,
+          165.96
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 229,
+        "group": "player:PATRICK REED",
+        "face_on": true,
+        "labels": [
+          42,
+          62,
+          70,
+          90,
+          102,
+          108,
+          112,
+          164
+        ],
+        "archive": [
+          40.986,
+          63.913,
+          70.963,
+          92.005,
+          101.944,
+          108.148,
+          113.815,
+          138.166
+        ],
+        "browser": [
+          40.98,
+          63.78,
+          70.02,
+          90.96,
+          101.88,
+          108.12,
+          113.82,
+          140.04
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 273,
+        "group": "player:RETIEF GOOSEN",
+        "face_on": true,
+        "labels": [
+          42,
+          64,
+          72,
+          90,
+          96,
+          104,
+          108,
+          144
+        ],
+        "archive": [
+          42.984,
+          63.951,
+          70.156,
+          89.084,
+          96.903,
+          103.144,
+          108.865,
+          121.624
+        ],
+        "browser": [
+          27.06,
+          62.94,
+          72.0,
+          88.98,
+          96.9,
+          103.08,
+          108.78,
+          122.82
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 353,
+        "group": "player:KIRADECH ALPHIBARNRAT",
+        "face_on": false,
+        "labels": [
+          374,
+          390,
+          400,
+          412,
+          420,
+          426,
+          430,
+          468
+        ],
+        "archive": [
+          374.957,
+          391.947,
+          399.025,
+          411.925,
+          419.087,
+          425.208,
+          430.917,
+          444.45
+        ],
+        "browser": [
+          373.02,
+          392.04,
+          399.06,
+          411.9,
+          419.1,
+          425.1,
+          430.74,
+          442.38
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 357,
+        "group": "player:RETIEF GOOSEN",
+        "face_on": false,
+        "labels": [
+          540,
+          568,
+          576,
+          592,
+          600,
+          606,
+          610,
+          648
+        ],
+        "archive": [
+          541.995,
+          567.003,
+          575.026,
+          591.858,
+          599.942,
+          606.915,
+          611.893,
+          626.769
+        ],
+        "browser": [
+          540.3,
+          568.26,
+          575.4,
+          591.36,
+          599.4,
+          606.42,
+          612.18,
+          626.52
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 621,
+        "group": "player:TOM LEHMAN",
+        "face_on": false,
+        "labels": [
+          719,
+          741,
+          749,
+          767,
+          775,
+          779,
+          807,
+          847
+        ],
+        "archive": [
+          713.994,
+          739.884,
+          746.124,
+          759.919,
+          766.911,
+          773.196,
+          779.012,
+          792.905
+        ],
+        "browser": [
+          714.6,
+          740.52,
+          749.46,
+          760.5,
+          766.74,
+          774.54,
+          779.58,
+          793.56
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 138,
+        "group": "player:SO YEON RYU",
+        "face_on": false,
+        "labels": [
+          430,
+          452,
+          474,
+          492,
+          498,
+          507,
+          513,
+          571
+        ],
+        "archive": [
+          423.996,
+          455.953,
+          472.0,
+          491.01,
+          499.88,
+          506.178,
+          512.099,
+          531.411
+        ],
+        "browser": [
+          421.02,
+          454.02,
+          472.02,
+          491.82,
+          499.8,
+          506.1,
+          512.1,
+          543.06
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 198,
+        "group": "player:ALISON LEE",
+        "face_on": false,
+        "labels": [
+          446,
+          482,
+          494,
+          511,
+          523,
+          529,
+          535,
+          579
+        ],
+        "archive": [
+          455.978,
+          482.995,
+          494.012,
+          512.028,
+          521.902,
+          528.152,
+          533.937,
+          555.22
+        ],
+        "browser": [
+          454.98,
+          482.1,
+          493.98,
+          512.82,
+          522.6,
+          527.88,
+          533.1,
+          558.18
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 202,
+        "group": "player:SUZANN PETTERSEN",
+        "face_on": false,
+        "labels": [
+          705,
+          725,
+          737,
+          751,
+          759,
+          765,
+          771,
+          811
+        ],
+        "archive": [
+          701.012,
+          726.904,
+          735.922,
+          750.886,
+          758.064,
+          764.145,
+          769.815,
+          782.804
+        ],
+        "browser": [
+          700.44,
+          727.38,
+          736.38,
+          750.48,
+          758.4,
+          764.46,
+          769.62,
+          782.4
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 214,
+        "group": "player:PERNILLA LINDBERG",
+        "face_on": false,
+        "labels": [
+          110,
+          136,
+          146,
+          164,
+          174,
+          182,
+          186,
+          232
+        ],
+        "archive": [
+          109.003,
+          137.109,
+          145.061,
+          165.908,
+          175.005,
+          181.076,
+          186.767,
+          199.069
+        ],
+        "browser": [
+          114.96,
+          137.94,
+          145.98,
+          165.84,
+          174.9,
+          181.02,
+          186.72,
+          199.02
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 266,
+        "group": "player:DANIELLE KANG",
+        "face_on": false,
+        "labels": [
+          108,
+          136,
+          142,
+          160,
+          164,
+          174,
+          178,
+          212
+        ],
+        "archive": [
+          110.865,
+          136.997,
+          144.95,
+          158.021,
+          164.915,
+          170.233,
+          175.931,
+          198.433
+        ],
+        "browser": [
+          111.96,
+          137.04,
+          146.04,
+          157.98,
+          164.1,
+          170.22,
+          176.1,
+          187.14
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 302,
+        "group": "player:CHRISTINA KIM",
+        "face_on": true,
+        "labels": [
+          52,
+          74,
+          84,
+          100,
+          108,
+          114,
+          120,
+          164
+        ],
+        "archive": [
+          49.009,
+          73.985,
+          82.931,
+          100.903,
+          108.077,
+          114.113,
+          119.773,
+          133.393
+        ],
+        "browser": [
+          49.98,
+          73.92,
+          81.96,
+          100.08,
+          108.12,
+          114.06,
+          118.98,
+          130.44
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 402,
+        "group": "player:BILLY ANDRADE",
+        "face_on": false,
+        "labels": [
+          350,
+          372,
+          382,
+          404,
+          416,
+          422,
+          426,
+          464
+        ],
+        "archive": [
+          346.983,
+          374.926,
+          383.986,
+          405.897,
+          415.145,
+          421.987,
+          427.792,
+          440.91
+        ],
+        "browser": [
+          345.0,
+          374.94,
+          384.06,
+          405.96,
+          415.86,
+          421.98,
+          427.8,
+          440.52
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 422,
+        "group": "player:TOM LEHMAN",
+        "face_on": true,
+        "labels": [
+          655,
+          677,
+          683,
+          697,
+          703,
+          709,
+          713,
+          741
+        ],
+        "archive": [
+          647.979,
+          670.998,
+          678.328,
+          695.783,
+          701.99,
+          708.861,
+          713.781,
+          727.614
+        ],
+        "browser": [
+          647.52,
+          672.54,
+          681.48,
+          695.4,
+          702.36,
+          708.42,
+          713.34,
+          726.78
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 466,
+        "group": "player:MARC LEISHMAN",
+        "face_on": false,
+        "labels": [
+          603,
+          621,
+          631,
+          645,
+          653,
+          659,
+          665,
+          719
+        ],
+        "archive": [
+          600.998,
+          624.013,
+          631.933,
+          644.913,
+          652.786,
+          658.969,
+          664.817,
+          679.864
+        ],
+        "browser": [
+          605.46,
+          624.48,
+          632.46,
+          645.36,
+          652.5,
+          659.58,
+          666.48,
+          679.44
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 570,
+        "group": "player:MARTIN KAYMER",
+        "face_on": false,
+        "labels": [
+          334,
+          356,
+          362,
+          376,
+          384,
+          390,
+          394,
+          434
+        ],
+        "archive": [
+          328.996,
+          353.936,
+          360.968,
+          375.859,
+          384.002,
+          390.186,
+          395.076,
+          414.717
+        ],
+        "browser": [
+          328.98,
+          354.0,
+          362.04,
+          375.96,
+          384.06,
+          390.12,
+          394.98,
+          407.1
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 590,
+        "group": "player:SUZANN PETTERSEN",
+        "face_on": false,
+        "labels": [
+          94,
+          118,
+          130,
+          144,
+          150,
+          158,
+          162,
+          192
+        ],
+        "archive": [
+          92.001,
+          118.976,
+          127.112,
+          143.054,
+          150.999,
+          157.216,
+          163.051,
+          257.552
+        ],
+        "browser": [
+          91.98,
+          118.92,
+          128.94,
+          143.88,
+          150.96,
+          157.92,
+          163.2,
+          183.72
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 618,
+        "group": "player:MATT KUCHAR",
+        "face_on": true,
+        "labels": [
+          509,
+          623,
+          635,
+          649,
+          655,
+          663,
+          667,
+          707
+        ],
+        "archive": [
+          596.012,
+          622.978,
+          632.033,
+          648.004,
+          655.078,
+          661.904,
+          666.925,
+          678.14
+        ],
+        "browser": [
+          595.44,
+          623.46,
+          635.46,
+          649.38,
+          655.32,
+          661.5,
+          666.48,
+          679.56
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 638,
+        "group": "player:PERNILLA LINDBERG",
+        "face_on": false,
+        "labels": [
+          304,
+          334,
+          344,
+          364,
+          374,
+          380,
+          384,
+          420
+        ],
+        "archive": [
+          307.019,
+          334.996,
+          344.98,
+          364.874,
+          374.032,
+          379.965,
+          385.123,
+          396.924
+        ],
+        "browser": [
+          309.0,
+          335.04,
+          345.12,
+          364.92,
+          374.88,
+          381.18,
+          386.04,
+          411.12
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 646,
+        "group": "player:JERRY KELLY",
+        "face_on": false,
+        "labels": [
+          130,
+          156,
+          164,
+          180,
+          188,
+          196,
+          200,
+          240
+        ],
+        "archive": [
+          128.988,
+          154.993,
+          164.036,
+          180.912,
+          188.134,
+          195.081,
+          200.16,
+          220.74
+        ],
+        "browser": [
+          127.98,
+          155.04,
+          163.98,
+          180.96,
+          188.88,
+          195.06,
+          200.1,
+          220.68
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 650,
+        "group": "player:MORGAN PRESSEL",
+        "face_on": false,
+        "labels": [
+          462,
+          498,
+          506,
+          526,
+          536,
+          544,
+          548,
+          591
+        ],
+        "archive": [
+          467.005,
+          495.982,
+          507.024,
+          525.913,
+          536.902,
+          543.081,
+          548.826,
+          560.589
+        ],
+        "browser": [
+          467.34,
+          498.24,
+          507.36,
+          528.24,
+          536.4,
+          542.58,
+          548.28,
+          559.92
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 674,
+        "group": "player:KARRIE WEBB",
+        "face_on": true,
+        "labels": [
+          436,
+          462,
+          472,
+          490,
+          498,
+          507,
+          511,
+          553
+        ],
+        "archive": [
+          437.97,
+          462.875,
+          471.243,
+          490.935,
+          499.056,
+          506.965,
+          512.608,
+          525.317
+        ],
+        "browser": [
+          436.98,
+          462.0,
+          470.1,
+          491.04,
+          498.96,
+          504.36,
+          510.66,
+          526.98
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 682,
+        "group": "player:RORY SABBATINI",
+        "face_on": true,
+        "labels": [
+          326,
+          354,
+          366,
+          388,
+          398,
+          404,
+          408,
+          442
+        ],
+        "archive": [
+          326.989,
+          354.064,
+          366.999,
+          388.054,
+          397.032,
+          403.951,
+          408.902,
+          421.416
+        ],
+        "browser": [
+          326.94,
+          355.02,
+          367.86,
+          389.1,
+          397.08,
+          403.92,
+          408.9,
+          421.92
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 55,
+        "group": "player:BEATRIZ RECARI",
+        "face_on": false,
+        "labels": [
+          84,
+          116,
+          126,
+          142,
+          148,
+          156,
+          162,
+          206
+        ],
+        "archive": [
+          84.996,
+          114.99,
+          125.96,
+          141.056,
+          149.044,
+          156.003,
+          161.139,
+          186.809
+        ],
+        "browser": [
+          87.96,
+          115.98,
+          126.06,
+          141.06,
+          149.1,
+          156.0,
+          161.16,
+          184.02
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 119,
+        "group": "player:KEVIN CHAPPELL",
+        "face_on": false,
+        "labels": [
+          54,
+          80,
+          88,
+          104,
+          110,
+          116,
+          120,
+          150
+        ],
+        "archive": [
+          56.012,
+          81.013,
+          88.091,
+          101.989,
+          109.906,
+          116.006,
+          121.11,
+          133.814
+        ],
+        "browser": [
+          63.96,
+          81.9,
+          87.12,
+          101.88,
+          109.14,
+          115.2,
+          121.02,
+          133.2
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 191,
+        "group": "player:BOO WEEKLEY",
+        "face_on": false,
+        "labels": [
+          128,
+          150,
+          160,
+          172,
+          180,
+          186,
+          190,
+          222
+        ],
+        "archive": [
+          123.018,
+          150.043,
+          158.146,
+          172.855,
+          179.121,
+          185.118,
+          190.877,
+          210.736
+        ],
+        "browser": [
+          119.04,
+          149.94,
+          158.04,
+          172.02,
+          179.88,
+          185.82,
+          191.82,
+          204.6
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 199,
+        "group": "player:MARIAJO URIBE",
+        "face_on": false,
+        "labels": [
+          310,
+          334,
+          344,
+          358,
+          368,
+          374,
+          380,
+          416
+        ],
+        "archive": [
+          306.03,
+          334.01,
+          343.013,
+          359.031,
+          367.919,
+          374.164,
+          380.082,
+          409.006
+        ],
+        "browser": [
+          309.96,
+          333.96,
+          343.92,
+          357.06,
+          366.9,
+          374.16,
+          380.16,
+          539.34
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 279,
+        "group": "player:HYO JOO KIM",
+        "face_on": true,
+        "labels": [
+          46,
+          76,
+          86,
+          108,
+          120,
+          128,
+          132,
+          168
+        ],
+        "archive": [
+          46.988,
+          75.998,
+          85.977,
+          110.054,
+          118.902,
+          125.258,
+          130.888,
+          145.526
+        ],
+        "browser": [
+          42.96,
+          74.04,
+          84.06,
+          109.92,
+          118.98,
+          125.22,
+          130.92,
+          146.1
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 423,
+        "group": "player:TOM LEHMAN",
+        "face_on": true,
+        "labels": [
+          192,
+          216,
+          222,
+          234,
+          242,
+          248,
+          252,
+          276
+        ],
+        "archive": [
+          187.04,
+          212.062,
+          222.822,
+          235.987,
+          242.742,
+          248.155,
+          253.702,
+          262.391
+        ],
+        "browser": [
+          192.96,
+          212.04,
+          221.04,
+          234.9,
+          241.92,
+          248.04,
+          252.84,
+          266.1
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 727,
+        "group": "player:MARK CALCAVECCHIA",
+        "face_on": false,
+        "labels": [
+          448,
+          472,
+          480,
+          498,
+          507,
+          513,
+          519,
+          545
+        ],
+        "archive": [
+          447.02,
+          471.936,
+          480.132,
+          497.859,
+          506.12,
+          512.913,
+          517.955,
+          531.77
+        ],
+        "browser": [
+          445.02,
+          472.08,
+          481.98,
+          497.04,
+          506.04,
+          512.1,
+          517.08,
+          532.92
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 731,
+        "group": "player:SUZANN PETTERSEN",
+        "face_on": true,
+        "labels": [
+          480,
+          505,
+          515,
+          529,
+          537,
+          545,
+          549,
+          577
+        ],
+        "archive": [
+          485.048,
+          505.855,
+          514.007,
+          529.963,
+          537.118,
+          543.883,
+          548.864,
+          569.018
+        ],
+        "browser": null,
+        "browser_outcome": "refused",
+        "browser_handedness": null
+      },
+      {
+        "clip": 751,
+        "group": "player:KARRIE WEBB",
+        "face_on": false,
+        "labels": [
+          500,
+          540,
+          552,
+          568,
+          580,
+          586,
+          592,
+          642
+        ],
+        "archive": [
+          514.991,
+          540.029,
+          550.001,
+          569.923,
+          580.773,
+          586.989,
+          591.966,
+          604.23
+        ],
+        "browser": [
+          511.26,
+          540.3,
+          551.22,
+          571.2,
+          580.2,
+          586.38,
+          592.14,
+          607.5
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1020,
+        "group": "player:BEATRIZ RECARI",
+        "face_on": false,
+        "labels": [
+          621,
+          651,
+          659,
+          675,
+          681,
+          689,
+          695,
+          735
+        ],
+        "archive": [
+          617.996,
+          647.948,
+          659.039,
+          674.963,
+          682.211,
+          689.008,
+          694.861,
+          720.296
+        ],
+        "browser": [
+          613.56,
+          649.5,
+          660.48,
+          675.48,
+          682.68,
+          689.7,
+          695.64,
+          721.38
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1088,
+        "group": "player:PERNILLA LINDBERG",
+        "face_on": true,
+        "labels": [
+          304,
+          338,
+          348,
+          364,
+          378,
+          384,
+          388,
+          436
+        ],
+        "archive": [
+          314.007,
+          339.947,
+          348.028,
+          368.891,
+          378.026,
+          384.177,
+          389.702,
+          400.198
+        ],
+        "browser": [
+          315.0,
+          339.0,
+          347.1,
+          369.18,
+          378.0,
+          384.18,
+          389.04,
+          400.08
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1160,
+        "group": "player:BEATRIZ RECARI",
+        "face_on": true,
+        "labels": [
+          709,
+          755,
+          765,
+          779,
+          787,
+          795,
+          799,
+          823
+        ],
+        "archive": [
+          727.011,
+          754.907,
+          764.167,
+          780.953,
+          787.913,
+          793.223,
+          798.876,
+          812.284
+        ],
+        "browser": [
+          726.6,
+          754.56,
+          764.52,
+          781.32,
+          787.5,
+          792.78,
+          798.66,
+          813.9
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1256,
+        "group": "player:PERNILLA LINDBERG",
+        "face_on": true,
+        "labels": [
+          172,
+          198,
+          208,
+          222,
+          230,
+          240,
+          244,
+          288
+        ],
+        "archive": [
+          177.011,
+          198.953,
+          206.977,
+          222.062,
+          231.944,
+          239.785,
+          245.095,
+          273.04
+        ],
+        "browser": [
+          177.0,
+          198.96,
+          206.16,
+          221.94,
+          231.96,
+          239.88,
+          245.16,
+          266.64
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1288,
+        "group": "player:RORY SABBATINI",
+        "face_on": false,
+        "labels": [
+          450,
+          476,
+          486,
+          511,
+          521,
+          527,
+          531,
+          561
+        ],
+        "archive": [
+          451.021,
+          477.0,
+          486.958,
+          509.899,
+          520.023,
+          526.182,
+          531.986,
+          551.179
+        ],
+        "browser": [
+          451.02,
+          477.06,
+          487.92,
+          509.1,
+          519.96,
+          526.08,
+          531.78,
+          552.0
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1344,
+        "group": "player:LUKE DONALD",
+        "face_on": false,
+        "labels": [
+          517,
+          539,
+          549,
+          563,
+          573,
+          579,
+          583,
+          627
+        ],
+        "archive": [
+          512.991,
+          536.944,
+          545.978,
+          563.01,
+          571.976,
+          578.019,
+          583.012,
+          604.115
+        ],
+        "browser": [
+          511.02,
+          537.0,
+          546.0,
+          563.1,
+          571.98,
+          578.04,
+          583.02,
+          604.08
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1352,
+        "group": "player:BEATRIZ RECARI",
+        "face_on": true,
+        "labels": [
+          388,
+          422,
+          432,
+          446,
+          452,
+          460,
+          466,
+          505
+        ],
+        "archive": [
+          396.98,
+          420.898,
+          429.036,
+          445.089,
+          454.068,
+          460.204,
+          465.853,
+          480.056
+        ],
+        "browser": [
+          393.0,
+          420.96,
+          429.12,
+          446.82,
+          453.96,
+          461.04,
+          466.02,
+          479.52
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 849,
+        "group": "player:JERRY KELLY",
+        "face_on": true,
+        "labels": [
+          564,
+          597,
+          609,
+          625,
+          633,
+          639,
+          643,
+          673
+        ],
+        "archive": [
+          569.009,
+          595.991,
+          606.015,
+          623.137,
+          632.003,
+          638.963,
+          643.957,
+          661.452
+        ],
+        "browser": [
+          568.38,
+          596.4,
+          605.58,
+          624.54,
+          632.34,
+          638.64,
+          644.34,
+          656.16
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 865,
+        "group": "player:RETIEF GOOSEN",
+        "face_on": false,
+        "labels": [
+          563,
+          601,
+          609,
+          625,
+          633,
+          639,
+          643,
+          681
+        ],
+        "archive": [
+          578.995,
+          599.962,
+          607.06,
+          624.848,
+          633.042,
+          639.219,
+          644.852,
+          658.807
+        ],
+        "browser": [
+          580.44,
+          600.42,
+          607.56,
+          624.6,
+          632.58,
+          639.48,
+          644.52,
+          667.2
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 937,
+        "group": "player:MATT KUCHAR",
+        "face_on": false,
+        "labels": [
+          204,
+          270,
+          284,
+          296,
+          304,
+          310,
+          316,
+          344
+        ],
+        "archive": [
+          247.003,
+          272.91,
+          281.033,
+          296.033,
+          303.961,
+          310.195,
+          315.88,
+          327.848
+        ],
+        "browser": [
+          246.0,
+          271.98,
+          281.04,
+          295.92,
+          303.06,
+          310.2,
+          315.06,
+          336.0
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 997,
+        "group": "player:RORY SABBATINI",
+        "face_on": false,
+        "labels": [
+          306,
+          336,
+          348,
+          374,
+          384,
+          390,
+          394,
+          422
+        ],
+        "archive": [
+          305.003,
+          339.985,
+          351.052,
+          373.862,
+          382.946,
+          389.134,
+          393.825,
+          402.969
+        ],
+        "browser": [
+          307.02,
+          339.96,
+          351.06,
+          373.02,
+          382.14,
+          389.04,
+          394.08,
+          403.14
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1061,
+        "group": "player:BEATRIZ RECARI",
+        "face_on": false,
+        "labels": [
+          568,
+          604,
+          612,
+          628,
+          634,
+          642,
+          648,
+          690
+        ],
+        "archive": [
+          577.989,
+          603.916,
+          611.205,
+          627.004,
+          635.878,
+          641.958,
+          647.801,
+          670.02
+        ],
+        "browser": [
+          573.3,
+          603.3,
+          612.36,
+          627.18,
+          636.12,
+          642.3,
+          647.4,
+          669.42
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1105,
+        "group": "player:BILLY ANDRADE",
+        "face_on": true,
+        "labels": [
+          174,
+          198,
+          206,
+          226,
+          236,
+          244,
+          248,
+          276
+        ],
+        "archive": [
+          173.966,
+          198.974,
+          208.025,
+          227.115,
+          236.05,
+          242.235,
+          247.833,
+          264.996
+        ],
+        "browser": [
+          174.9,
+          198.9,
+          207.96,
+          227.94,
+          236.04,
+          242.94,
+          247.92,
+          267.72
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1249,
+        "group": "player:SO YEON RYU",
+        "face_on": true,
+        "labels": [
+          390,
+          426,
+          450,
+          466,
+          474,
+          482,
+          486,
+          524
+        ],
+        "archive": [
+          389.982,
+          428.046,
+          441.275,
+          464.955,
+          473.088,
+          481.148,
+          486.872,
+          497.535
+        ],
+        "browser": [
+          392.04,
+          432.0,
+          445.02,
+          464.1,
+          473.82,
+          481.92,
+          487.74,
+          498.36
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 826,
+        "group": "player:HYO JOO KIM",
+        "face_on": false,
+        "labels": [
+          496,
+          525,
+          533,
+          553,
+          565,
+          571,
+          577,
+          617
+        ],
+        "archive": [
+          495.006,
+          522.008,
+          531.975,
+          551.037,
+          563.896,
+          571.035,
+          576.891,
+          592.057
+        ],
+        "browser": [
+          493.98,
+          521.94,
+          532.02,
+          550.08,
+          563.04,
+          571.02,
+          576.84,
+          594.0
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 842,
+        "group": "player:LUKE DONALD",
+        "face_on": true,
+        "labels": [
+          436,
+          466,
+          474,
+          488,
+          498,
+          505,
+          509,
+          557
+        ],
+        "archive": [
+          442.024,
+          465.025,
+          473.039,
+          490.071,
+          497.146,
+          504.052,
+          509.647,
+          526.992
+        ],
+        "browser": [
+          439.98,
+          464.94,
+          473.1,
+          489.12,
+          497.1,
+          504.12,
+          509.88,
+          531.12
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1098,
+        "group": "player:SUZANN PETTERSEN",
+        "face_on": false,
+        "labels": [
+          1680,
+          1702,
+          1710,
+          1726,
+          1734,
+          1742,
+          1746,
+          1774
+        ],
+        "archive": [
+          154.854,
+          178.828,
+          188.09,
+          203.841,
+          211.82,
+          219.072,
+          224.918,
+          242.12
+        ],
+        "browser": [
+          1678.56,
+          1703.46,
+          1713.6,
+          1725.54,
+          1732.62,
+          1739.76,
+          1744.68,
+          1756.02
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1282,
+        "group": "player:JULIETA GRANADA",
+        "face_on": false,
+        "labels": [
+          262,
+          286,
+          296,
+          310,
+          318,
+          328,
+          332,
+          364
+        ],
+        "archive": [
+          263.969,
+          288.925,
+          298.947,
+          311.073,
+          318.981,
+          326.021,
+          331.876,
+          343.89
+        ],
+        "browser": [
+          263.04,
+          288.96,
+          298.92,
+          311.1,
+          318.96,
+          326.04,
+          331.8,
+          351.18
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1346,
+        "group": "player:LUKE DONALD",
+        "face_on": false,
+        "labels": [
+          352,
+          378,
+          386,
+          400,
+          408,
+          414,
+          418,
+          472
+        ],
+        "archive": [
+          344.008,
+          374.866,
+          383.088,
+          400.891,
+          409.071,
+          415.057,
+          420.986,
+          442.125
+        ],
+        "browser": [
+          345.0,
+          376.86,
+          384.96,
+          400.98,
+          408.96,
+          414.24,
+          419.94,
+          442.26
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1374,
+        "group": "player:ALISON LEE",
+        "face_on": true,
+        "labels": [
+          539,
+          587,
+          601,
+          617,
+          627,
+          635,
+          641,
+          681
+        ],
+        "archive": [
+          551.997,
+          587.978,
+          601.066,
+          618.864,
+          627.155,
+          634.354,
+          640.722,
+          661.143
+        ],
+        "browser": [
+          548.46,
+          583.56,
+          602.52,
+          618.48,
+          627.48,
+          634.68,
+          640.44,
+          665.22
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 851,
+        "group": "player:JERRY KELLY",
+        "face_on": false,
+        "labels": [
+          402,
+          436,
+          444,
+          464,
+          472,
+          478,
+          482,
+          518
+        ],
+        "archive": [
+          403.997,
+          433.949,
+          444.999,
+          463.046,
+          471.911,
+          477.981,
+          482.901,
+          495.179
+        ],
+        "browser": [
+          404.04,
+          433.98,
+          445.02,
+          462.96,
+          471.84,
+          477.24,
+          482.82,
+          586.08
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 867,
+        "group": "player:MORGAN PRESSEL",
+        "face_on": false,
+        "labels": [
+          98,
+          132,
+          140,
+          156,
+          166,
+          172,
+          178,
+          216
+        ],
+        "archive": [
+          100.998,
+          129.971,
+          140.019,
+          157.889,
+          166.833,
+          172.932,
+          178.006,
+          192.743
+        ],
+        "browser": [
+          100.02,
+          129.96,
+          140.04,
+          157.98,
+          166.86,
+          172.26,
+          177.9,
+          192.6
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 875,
+        "group": "player:MATT KUCHAR",
+        "face_on": true,
+        "labels": [
+          498,
+          584,
+          596,
+          608,
+          616,
+          624,
+          628,
+          672
+        ],
+        "archive": [
+          561.004,
+          585.026,
+          595.032,
+          609.109,
+          616.197,
+          623.047,
+          628.026,
+          640.267
+        ],
+        "browser": [
+          562.26,
+          586.2,
+          595.32,
+          609.42,
+          616.38,
+          622.56,
+          628.14,
+          640.2
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 891,
+        "group": "player:KARRIE WEBB",
+        "face_on": false,
+        "labels": [
+          480,
+          504,
+          512,
+          532,
+          542,
+          550,
+          554,
+          592
+        ],
+        "archive": [
+          482.994,
+          507.972,
+          517.935,
+          532.927,
+          541.972,
+          548.995,
+          554.014,
+          564.963
+        ],
+        "browser": [
+          483.0,
+          507.96,
+          517.02,
+          532.92,
+          541.14,
+          548.1,
+          553.92,
+          566.94
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1115,
+        "group": "player:BOO WEEKLEY",
+        "face_on": false,
+        "labels": [
+          254,
+          280,
+          288,
+          302,
+          310,
+          318,
+          322,
+          352
+        ],
+        "archive": [
+          254.99,
+          280.99,
+          290.106,
+          303.033,
+          310.881,
+          317.143,
+          323.002,
+          338.775
+        ],
+        "browser": [
+          255.0,
+          280.92,
+          290.1,
+          302.94,
+          310.8,
+          318.0,
+          323.82,
+          337.86
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1151,
+        "group": "player:ALISON LEE",
+        "face_on": false,
+        "labels": [
+          624,
+          675,
+          687,
+          703,
+          713,
+          721,
+          727,
+          769
+        ],
+        "archive": [
+          640.018,
+          673.992,
+          685.043,
+          704.007,
+          713.877,
+          720.115,
+          725.918,
+          745.985
+        ],
+        "browser": [
+          645.42,
+          676.38,
+          686.4,
+          704.4,
+          713.46,
+          720.42,
+          726.36,
+          747.48
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1255,
+        "group": "player:PERNILLA LINDBERG",
+        "face_on": true,
+        "labels": [
+          122,
+          152,
+          162,
+          176,
+          184,
+          194,
+          198,
+          244
+        ],
+        "archive": [
+          130.999,
+          152.993,
+          161.047,
+          176.068,
+          185.995,
+          193.884,
+          199.94,
+          230.682
+        ],
+        "browser": [
+          130.98,
+          153.9,
+          162.0,
+          177.84,
+          186.96,
+          194.04,
+          199.98,
+          230.82
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1295,
+        "group": "player:ALISON LEE",
+        "face_on": false,
+        "labels": [
+          128,
+          162,
+          178,
+          194,
+          204,
+          212,
+          218,
+          254
+        ],
+        "archive": [
+          134.98,
+          164.047,
+          175.961,
+          195.92,
+          205.142,
+          212.162,
+          217.861,
+          231.814
+        ],
+        "browser": [
+          133.02,
+          163.98,
+          175.92,
+          195.96,
+          205.8,
+          212.1,
+          217.8,
+          235.92
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1323,
+        "group": "player:ALISON LEE",
+        "face_on": true,
+        "labels": [
+          262,
+          302,
+          316,
+          332,
+          342,
+          350,
+          356,
+          394
+        ],
+        "archive": [
+          260.051,
+          301.909,
+          312.03,
+          335.147,
+          344.062,
+          350.085,
+          355.814,
+          373.243
+        ],
+        "browser": [
+          265.08,
+          300.0,
+          310.98,
+          333.06,
+          342.96,
+          350.1,
+          355.92,
+          379.92
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      },
+      {
+        "clip": 1331,
+        "group": "player:JERRY KELLY",
+        "face_on": false,
+        "labels": [
+          156,
+          182,
+          192,
+          206,
+          216,
+          222,
+          226,
+          258
+        ],
+        "archive": [
+          156.966,
+          182.048,
+          192.052,
+          207.902,
+          214.999,
+          221.979,
+          226.993,
+          237.353
+        ],
+        "browser": [
+          156.96,
+          183.0,
+          193.92,
+          208.02,
+          215.1,
+          221.88,
+          226.92,
+          243.96
+        ],
+        "browser_outcome": "analysed",
+        "browser_handedness": null
+      }
+    ]
+  }
 }
