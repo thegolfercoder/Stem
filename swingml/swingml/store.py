@@ -135,6 +135,18 @@ def _value(metrics: object, name: str) -> float | None:
     return float(reading.value)
 
 
+_SQLITE_INTEGER = (-(2**63), 2**63 - 1)
+
+
+def _storable(row_id: object) -> bool:
+    """Whether `row_id` fits SQLite's INTEGER; one that does not names no row (#70).
+
+    Werkzeug's int converter and JSON integers have no upper bound, and an id
+    wider than 64 bits would otherwise raise OverflowError deep in a query.
+    """
+    return isinstance(row_id, int) and _SQLITE_INTEGER[0] <= row_id <= _SQLITE_INTEGER[1]
+
+
 class SwingStore:
     """A file of swings. Safe to open from more than one place at once."""
 
@@ -243,6 +255,8 @@ class SwingStore:
         return _row_to_swing(row) if row is not None else None
 
     def get(self, swing_id: int) -> StoredSwing | None:
+        if not _storable(swing_id):
+            return None
         with self._connect() as connection:
             row = connection.execute("SELECT * FROM swings WHERE id = ?", (swing_id,)).fetchone()
         return _row_to_swing(row) if row is not None else None
@@ -268,6 +282,8 @@ class SwingStore:
         return [row["club"] for row in rows]
 
     def delete(self, swing_id: int) -> bool:
+        if not _storable(swing_id):
+            return False
         with self._connect() as connection:
             cursor = connection.execute("DELETE FROM swings WHERE id = ?", (swing_id,))
             connection.execute("DELETE FROM plan_swings WHERE swing_id = ?", (swing_id,))
@@ -315,6 +331,8 @@ class SwingStore:
         return plan_id
 
     def plan(self, plan_id: int) -> dict[str, Any] | None:
+        if not _storable(plan_id):
+            return None
         with self._connect() as connection:
             row = connection.execute("SELECT * FROM plans WHERE id = ?", (plan_id,)).fetchone()
             if row is None:
@@ -352,6 +370,8 @@ class SwingStore:
     def close_plan(self, plan_id: int, status: str) -> bool:
         if status not in ("completed", "abandoned"):
             raise ValueError(f"a plan closes as completed or abandoned, not {status!r}")
+        if not _storable(plan_id):
+            return False
         with self._connect() as connection:
             cursor = connection.execute(
                 "UPDATE plans SET status = ?, closed_at = ? WHERE id = ? AND status = 'active'",
@@ -373,6 +393,8 @@ class SwingStore:
         return int(cursor.lastrowid or 0)
 
     def feedback(self, plan_id: int) -> list[dict[str, Any]]:
+        if not _storable(plan_id):
+            return []
         with self._connect() as connection:
             rows = connection.execute(
                 "SELECT * FROM feedback WHERE plan_id = ? ORDER BY id", (plan_id,)
@@ -429,7 +451,7 @@ class SwingStore:
         if club is not None:
             sets.append("club = ?")
             params.append(club)
-        if not sets:
+        if not sets or not _storable(swing_id):
             return False
         params.append(swing_id)
         with self._connect() as connection:
@@ -444,6 +466,8 @@ class SwingStore:
         cleared when the golfer placed the positions rather than set to a figure
         nobody measured.
         """
+        if not _storable(swing_id):
+            return False
         metrics = None if isinstance(analysis.metrics, NoReading) else analysis.metrics
         ok = not isinstance(analysis.events, NoReading)
         confidence = (

@@ -344,3 +344,48 @@ def test_feedback_with_a_unicode_digit_rating_is_not_a_crash(
     response = app.test_client().post(f"/api/plans/{plan}/feedback", json={"useful": "²"})
     assert response.status_code == 201
     assert [row["useful"] for row in store.feedback(plan)] == [None]
+
+
+HUGE = "9" * 25  # wider than SQLite's INTEGER (#70)
+
+
+@pytest.mark.parametrize(
+    ("method", "url", "body"),
+    [
+        ("post", f"/api/swings/{HUGE}", {"label": "x"}),
+        ("delete", f"/api/swings/{HUGE}", None),
+        ("get", f"/swing/{HUGE}", None),
+        ("post", f"/api/plans/{HUGE}/feedback", {"useful": 1}),
+    ],
+)
+def test_an_id_too_large_for_the_database_is_a_404_not_a_500(
+    client,
+    method: str,
+    url: str,
+    body: dict | None,  # type: ignore[no-untyped-def]
+) -> None:
+    response = getattr(client, method)(url, json=body) if body else getattr(client, method)(url)
+    assert response.status_code == 404, response.get_data(as_text=True)[:200]
+
+
+def test_feedback_naming_a_swing_too_large_for_the_database_is_a_404(
+    tmp_path: Path, analysis: SwingAnalysis
+) -> None:
+    store = SwingStore(tmp_path / "s.db")
+    swing = store.add(analysis, source_name="clip.mov", club="7 iron")
+    plan = store.create_plan("tempo_quick", "tempo-count-three", "tempo_ratio", "increase",
+                             "7 iron", [swing])  # fmt: skip
+    app = create_app(store=store)
+    app.config.update(TESTING=True)
+    response = app.test_client().post(
+        f"/api/plans/{plan}/feedback", json={"useful": 1, "swing_id": 10**25}
+    )
+    assert response.status_code == 404 and store.feedback(plan) == []
+
+
+def test_the_store_treats_an_id_outside_sqlites_range_as_absent(tmp_path: Path) -> None:
+    store = SwingStore(tmp_path / "s.db")
+    for bad in (10**25, 2**63, -(2**63) - 1):
+        assert store.get(bad) is None and store.plan(bad) is None
+        assert store.delete(bad) is False and store.update(bad, label="x") is False
+        assert store.close_plan(bad, "completed") is False and store.feedback(bad) == []
