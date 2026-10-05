@@ -45,15 +45,21 @@ targets:
             exit 0
           fi
           MODEL="$SRCROOT/SwingStudio/Resources/pose_landmarker_heavy.task"
+          # The exact pose model the analysis was measured with (#51; swingml/swingml/assets.py).
+          POSE_MODEL_URL=https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task
+          POSE_MODEL_SHA256=64437af838a65d18e5ba7a0d39b465540069bc8aae8308de3e318aad31fcbc7b
           if [ ! -f "$MODEL" ]; then
             echo "Fetching the pose model (about 30 MB)..."
-            if ! curl -L --fail -sS -o "$MODEL.part" \
-                https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task; then
+            if ! curl -L --fail -sS -o "$MODEL.part" "$POSE_MODEL_URL"; then
               rm -f "$MODEL.part"
               echo "warning: could not fetch the pose model; the app will say so until a build can"
               exit 0
             fi
             mv "$MODEL.part" "$MODEL"
+          fi
+          if [ "$(shasum -a 256 "$MODEL" | cut -d' ' -f1)" != "$POSE_MODEL_SHA256" ]; then
+            echo "warning: $MODEL is not the pose model the analysis was measured with, so it is not bundled; delete it to fetch $POSE_MODEL_URL"
+            exit 0
           fi
           cp "$MODEL" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/"
     settings:

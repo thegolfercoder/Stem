@@ -11,7 +11,7 @@ The data every shipped model and every quoted number depends on.
 | Labels | the eight events, one frame each, by the dataset's annotators; plus view (face-on / down-the-line / other), club, slow-motion flag, player |
 | Handedness | not annotated; inferred from which shoulder the hands are nearer at the labelled top (45 of 48 correct on 51 golfers of known handedness; uncallable clips dropped) |
 | Extracted | 1,216 of 1,400 clips pass the gates (body in ≥60% of frames, handedness callable, labels inside the clip); 184 refused |
-| Landmarks | MediaPipe pose landmarker (heavy, float16), resampled to 60 Hz, 132 features per frame |
+| Landmarks | MediaPipe pose landmarker (heavy, float16, version 1, sha256 `64437af8…`; every engine refuses another bundle, `swingml/assets.py` `POSE_MODEL_SHA256`, #51), resampled to 60 Hz, 132 features per frame |
 | Capture | broadcast and range video, mostly tour professionals; in the holdout, 41% are slow-motion replays and views are 20% face-on, 48% down-the-line, 32% other |
 
 ### Splits (frozen, `swingml/swingml/manifests/`)

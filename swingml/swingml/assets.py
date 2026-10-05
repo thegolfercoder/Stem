@@ -25,8 +25,14 @@ from pathlib import Path
 
 POSE_MODEL_URL = (
     "https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
-    "pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task"
+    "pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task"
 )
+POSE_MODEL_SHA256 = "64437af838a65d18e5ba7a0d39b465540069bc8aae8308de3e318aad31fcbc7b"
+"""The landmarker bundle every landmark behind the event model, its calibration and
+docs/audit was produced with (#51). Version 1, not "latest": a bundle that changed
+under the app would change every reading without any gate seeing it. The browser
+(webapp/app.js, build_artifact.py) and the iPhone (ios/setup.sh, ios/project.yml)
+pin the same URL and digest; tests/test_pose_model_pin.py holds them to it."""
 POSE_MODEL_NAME = "pose_landmarker_heavy.task"
 EVENT_MODEL_NAME = "swing_event_net.pt"
 EVENT_MODEL_NUMPY_NAME = "swing_event_net.npz"
@@ -239,6 +245,29 @@ def find_event_ensemble() -> list[Path]:
     return []
 
 
+class PoseModelMismatchError(RuntimeError):
+    """A landmarker bundle that is not the one the analysis was measured with."""
+
+
+_pose_digests: dict[tuple[str, int, int], str] = {}
+
+
+def verify_pose_model(path: Path) -> None:
+    """Refuse a landmarker bundle other than `POSE_MODEL_SHA256` (#51)."""
+    stat = path.stat()
+    key = (str(path.resolve()), stat.st_size, stat.st_mtime_ns)
+    if key not in _pose_digests:
+        _pose_digests[key] = sha256_of(path)
+    actual = _pose_digests[key]
+    if actual != POSE_MODEL_SHA256:
+        raise PoseModelMismatchError(
+            f"{path} is not the pose model this analysis was measured with "
+            f"(sha256 {actual[:12]}, expected {POSE_MODEL_SHA256[:12]}), so it is not used: "
+            "landmarks from another model would change every reading unseen. Delete it to "
+            f"download the right one, or point ${POSE_MODEL_ENV_VAR} at a copy of {POSE_MODEL_URL}."
+        )
+
+
 def download_pose_model(
     destination: Path | None = None,
     on_progress: Callable[[int, int], None] | None = None,
@@ -274,6 +303,11 @@ def download_pose_model(
             "Download it by hand and point $SWINGML_POSE_MODEL at it."
         ) from error
 
+    try:
+        verify_pose_model(partial)
+    except PoseModelMismatchError:
+        partial.unlink(missing_ok=True)
+        raise
     shutil.move(str(partial), str(target))
     return target
 

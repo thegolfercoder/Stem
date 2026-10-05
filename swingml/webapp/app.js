@@ -11,7 +11,8 @@
 
 import { PoseSequence, resamplePose, extractFeatures, normalisePose,
          BONES, EVENT_NAMES, CLUB_DEFINED, L } from "./engine.js";
-import { SwingEventModel, bandsVaryWithConfidence, decodeEvents, errorBand } from "./model.js";
+import { POSE_MODEL_URL, SwingEventModel, bandsVaryWithConfidence, checkPoseModel, decodeEvents,
+  errorBand } from "./model.js";
 import { computeMetrics, implausible, readAtSpeeds, slowMotionCheck, slowedMetrics } from "./metrics.js";
 import { PracticeLog, cameraSignature, clipKey, formatG3, storedMetrics } from "./practice.js";
 import { SwingWatcher, cameraConstraints, extensionFor, frameRateNote, framingVerdict, levelVerdict,
@@ -19,8 +20,8 @@ import { SwingWatcher, cameraConstraints, extensionFor, frameRateNote, framingVe
 import { stemRead } from "./read.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
-const POSE_MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/" +
-  "pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task";
+// Pinned to the version the analysis was measured with (#51; model.js).
+const POSE_MODEL = POSE_MODEL_URL;
 
 /* A copy of the estimator published beside the page, when there is one.
  *
@@ -392,7 +393,12 @@ async function ready() {
     import(`${root}/vision_bundle.mjs`), 60000, NO_ESTIMATOR);
   const files = await deadline(
     vision.FilesetResolver.forVisionTasks(`${root}/wasm`), 120000, NO_ESTIMATOR);
-  const buffer = LOCAL ? await deadline(loadChunks(LOCAL.model), 300000, NO_ESTIMATOR) : null;
+  // No chunks means no copy shipped with the page: the pinned URL is fetched instead.
+  const buffer = LOCAL && LOCAL.model && LOCAL.model.length
+    ? await deadline(loadChunks(LOCAL.model), 300000, NO_ESTIMATOR) : null;
+  // A copy shipped with the page is checked before use. Fetched from Google, the
+  // pinned version is fetched by the estimator itself, out of the page's reach.
+  if (buffer) state.poseModelChecked = (await checkPoseModel(buffer)).checked;
   // A fresh copy for each attempt: the estimator may take ownership of what it
   // is handed, and the processor fallback below needs the bytes again.
   const source = () => buffer ? { modelAssetBuffer: buffer.slice() } : { modelAssetPath: POSE_MODEL };

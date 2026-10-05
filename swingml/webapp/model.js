@@ -15,6 +15,28 @@ function decodeBase64(base64) {
   return new Float32Array(bytes.buffer);
 }
 
+/* The pose estimator every landmark behind the event model and its measured bands
+ * came from (#51): version 1, not "latest", and its SHA-256. swingml/assets.py
+ * holds the same two values; tests/test_pose_model_pin.py keeps them equal. */
+export const POSE_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/" +
+  "pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task";
+export const POSE_MODEL_SHA256 = "64437af838a65d18e5ba7a0d39b465540069bc8aae8308de3e318aad31fcbc7b";
+
+/* Throws, saying why, when `bytes` are not that estimator: landmarks from another
+ * one would change every reading with nothing to show it. Where the browser has
+ * no digest (an insecure context), it cannot check, and says so in `checked`. */
+export async function checkPoseModel(bytes, subtle = globalThis.crypto && globalThis.crypto.subtle) {
+  if (!subtle) return { checked: false };
+  const digest = new Uint8Array(await subtle.digest("SHA-256", bytes));
+  const hex = [...digest].map((b) => b.toString(16).padStart(2, "0")).join("");
+  if (hex !== POSE_MODEL_SHA256) {
+    throw new Error(`The pose model this page was given is not the one its analysis was measured with ` +
+      `(sha256 ${hex.slice(0, 12)}, expected ${POSE_MODEL_SHA256.slice(0, 12)}), so it is not used: ` +
+      "another model would change every reading without showing it.");
+  }
+  return { checked: true };
+}
+
 export class SwingEventNet {
   constructor(payload) {
     this.arch = payload.architecture;
