@@ -417,7 +417,7 @@ def create_app(
     service = AnalysisService(swing_store, model_path=model_path)
     app.extensions["swingml"] = {"store": swing_store, "service": service}
 
-    from swingml.web.coach_routes import create_blueprint
+    from swingml.web.coach_routes import create_blueprint, stamp_read
     from swingml.web.practice import create_blueprint as practice_blueprint
     from swingml.web.practice import insight_for
 
@@ -625,6 +625,7 @@ def create_app(
             return jsonify({"error": str(error)}), 400
         if current.positions_set_by == "model":
             save_model_analysis(directory, stored.analysis)
+        stamp_read(swing_id, current)
         swing_store.replace_analysis(swing_id, moved)
         write_positions(
             directory,
@@ -648,6 +649,9 @@ def create_app(
         if original is None:
             return jsonify({"error": "the model's positions were never changed"}), 409
         restored = SwingAnalysis.model_validate(original)
+        stored = swing_store.get(swing_id)
+        if stored is not None:
+            stamp_read(swing_id, SwingAnalysis.model_validate(stored.analysis))
         swing_store.replace_analysis(swing_id, restored)
         clear_positions(directory)
         event_pictures_from_strip(swing_id, restored.event_source_frames)

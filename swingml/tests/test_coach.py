@@ -264,3 +264,71 @@ def test_without_ollama_the_routes_say_what_to_do(
     assert status["running"] is False and "ollama.com" in status["advice"]
     reply = client.post("/api/chat", json={"messages": [{"role": "user", "content": "hi"}]})
     assert reply.status_code == 503 and "ollama pull" in reply.get_json()["error"]
+
+
+def test_a_saved_read_is_not_served_as_current_once_the_positions_change(
+    app_with_swing: tuple[Any, int],
+) -> None:
+    """#75: a read quoting the model's tempo stayed beside the golfer's corrected
+    tempo, after positions were set and after they were reset."""
+    from swingml.labels import save_pose
+    from swingml.web.service import frames_dir
+    from synth.camera import CameraConfig, render_pose_sequence
+    from synth.swing import generate_swing
+    from tests.test_store_and_web import QUIET
+
+    app, swing_id = app_with_swing
+    client = app.test_client()
+    swing = generate_swing(frame_rate_hz=60.0)
+    camera = CameraConfig(
+        azimuth_deg=0.0, distance_m=4.5, frame_width=720, frame_height=1280, vertical_fov_deg=55.0
+    )
+    save_pose(render_pose_sequence(swing, camera, QUIET, seed=0), frames_dir() / str(swing_id))
+    assert client.post(f"/api/swings/{swing_id}/coach").get_data(as_text=True)
+    first = client.get(f"/api/swings/{swing_id}/coach").get_json()
+    assert first["text"] and first["stale"] is False
+
+    frames = [int(f) for f in swing.truth.event_frames]
+    frames[3] += 2  # the golfer moves the top
+    moved = client.post(f"/api/swings/{swing_id}/positions", json={"frames": frames})
+    assert moved.status_code == 200, moved.get_json()
+    after_move = client.get(f"/api/swings/{swing_id}/coach").get_json()
+    assert after_move["stale"] is True and after_move["text"] == first["text"]
+
+    # Asked again, the read is the moved swing's own.
+    assert client.post(f"/api/swings/{swing_id}/coach").get_data(as_text=True)
+    assert client.get(f"/api/swings/{swing_id}/coach").get_json()["stale"] is False
+
+    # And back to the model's positions, that read is out of date in turn.
+    assert client.delete(f"/api/swings/{swing_id}/positions").status_code == 200
+    assert client.get(f"/api/swings/{swing_id}/coach").get_json()["stale"] is True
+
+
+def test_a_read_kept_before_reads_were_stamped_goes_stale_when_positions_change(
+    app_with_swing: tuple[Any, int],
+) -> None:
+    import json
+
+    from swingml.labels import save_pose
+    from swingml.web.service import frames_dir
+    from synth.camera import CameraConfig, render_pose_sequence
+    from synth.swing import generate_swing
+    from tests.test_store_and_web import QUIET
+
+    app, swing_id = app_with_swing
+    client = app.test_client()
+    swing = generate_swing(frame_rate_hz=60.0)
+    camera = CameraConfig(
+        azimuth_deg=0.0, distance_m=4.5, frame_width=720, frame_height=1280, vertical_fov_deg=55.0
+    )
+    directory = frames_dir() / str(swing_id)
+    save_pose(render_pose_sequence(swing, camera, QUIET, seed=0), directory)
+    (directory / "coach.json").write_text(
+        json.dumps({"model": "m", "saw_pictures": False, "text": "Your tempo is 2.80.",
+                    "at": "2026-10-01T10:00:00+00:00"}), encoding="utf-8",
+    )  # fmt: skip
+    assert client.get(f"/api/swings/{swing_id}/coach").get_json()["stale"] is False
+    frames = [int(f) for f in swing.truth.event_frames]
+    frames[3] += 2
+    client.post(f"/api/swings/{swing_id}/positions", json={"frames": frames})
+    assert client.get(f"/api/swings/{swing_id}/coach").get_json()["stale"] is True

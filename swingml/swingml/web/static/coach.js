@@ -10,7 +10,12 @@
 
   section.hidden = false;
   fetch(`/api/swings/${window.SWING_ID}/coach`).then((r) => r.json()).then((saved) => {
-    if (saved && saved.text) {
+    if (saved && saved.text && saved.stale) {
+      // Written for positions this swing no longer has: its numbers are not the page's (#75).
+      meta.textContent = "The coach's last read was written for this swing's earlier " +
+        "positions, so its numbers are not the ones shown now. Ask again for a read of these.";
+      ask.textContent = "Ask again";
+    } else if (saved && saved.text) {
       window.renderLite(out, saved.text);
       meta.textContent = `${saved.model}, ${saved.saw_pictures ? "from the pictures and the numbers" : "from the numbers only"}, ${when(saved.at)}`;
       ask.textContent = "Ask again";

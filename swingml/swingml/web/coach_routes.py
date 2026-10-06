@@ -34,7 +34,20 @@ def _frames_dir(swing_id: int) -> Path:
     return frames_dir() / str(swing_id)
 
 
-def saved_read(swing_id: int) -> dict[str, Any] | None:
+def written_for(analysis: SwingAnalysis) -> dict[str, Any]:
+    """What a coach's read was written from: the positions it measured, who set
+    them and how the clip was read. The read quotes numbers that follow from these,
+    so when any changes the read is about a different measurement (#75)."""
+    return {
+        "positions": list(analysis.event_source_frames),
+        "set_by": analysis.positions_set_by,
+        "handedness": str(analysis.handedness),
+        "slowed_by": analysis.playback_slowed_by,
+    }
+
+
+def saved_read(swing_id: int, analysis: SwingAnalysis | None = None) -> dict[str, Any] | None:
+    """The kept read, with `stale` true when it was written for another analysis."""
     path = _frames_dir(swing_id) / "coach.json"
     if not path.is_file():
         return None
@@ -42,7 +55,21 @@ def saved_read(swing_id: int) -> dict[str, Any] | None:
         loaded = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    return loaded if isinstance(loaded, dict) else None
+    if not isinstance(loaded, dict):
+        return None
+    stamp = loaded.get("written_for")
+    loaded["stale"] = bool(analysis is not None and stamp is not None
+                           and stamp != written_for(analysis))  # fmt: skip
+    return loaded
+
+
+def stamp_read(swing_id: int, analysis: SwingAnalysis) -> None:
+    """Before the analysis is replaced, mark a read kept before reads were stamped
+    as written for the analysis it was shown beside until now."""
+    read = saved_read(swing_id)
+    if read is not None and read.get("written_for") is None:
+        read.pop("stale", None)
+        _save_read(swing_id, {**read, "written_for": written_for(analysis)})
 
 
 def _save_read(swing_id: int, record: dict[str, Any]) -> None:
@@ -85,7 +112,9 @@ def create_blueprint(store: SwingStore, client: OllamaClient | None = None) -> B
 
     @blueprint.get("/api/swings/<int:swing_id>/coach")
     def api_saved_read(swing_id: int) -> Any:
-        return jsonify(saved_read(swing_id) or {})
+        stored = store.get(swing_id)
+        analysis = SwingAnalysis.model_validate(stored.analysis) if stored else None
+        return jsonify(saved_read(swing_id, analysis) or {})
 
     @blueprint.post("/api/swings/<int:swing_id>/coach")
     def api_coach(swing_id: int) -> Any:
@@ -136,6 +165,7 @@ def create_blueprint(store: SwingStore, client: OllamaClient | None = None) -> B
                     "saw_pictures": sheet is not None,
                     "text": text,
                     "at": datetime.now(UTC).isoformat(),
+                    "written_for": written_for(analysis),
                 },
             )
 
