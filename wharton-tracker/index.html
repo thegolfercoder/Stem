@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WGHSIC Trade Tracker</title>
+  <meta name="description" content="Trade log, allocation checks, reserve and facility estimates for the Wharton Global High School Investment Competition 2026-27.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <strong>WGHSIC Trade Tracker</strong>
+      <span class="sub">Client: Laura Gao · "Lock the reserve, grow the rest"</span>
+    </div>
+    <div class="top-actions">
+      <span id="save-status" class="muted small" aria-live="polite"></span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <a href="#dashboard" data-tab="dashboard">Dashboard</a>
+    <a href="#trades" data-tab="trades">Trades</a>
+    <a href="#notes" data-tab="notes">Trading Notes</a>
+    <a href="#ips" data-tab="ips">IPS</a>
+    <a href="#reserve" data-tab="reserve">Reserve</a>
+    <a href="#facility" data-tab="facility">Facility range</a>
+    <a href="#deadlines" data-tab="deadlines">Deadlines</a>
+    <a href="#settings" data-tab="settings">Settings &amp; data</a>
+  </nav>
+
+  <main>
+    <section id="view-dashboard" class="view"></section>
+    <section id="view-trades" class="view"></section>
+    <section id="view-notes" class="view"></section>
+    <section id="view-ips" class="view"></section>
+    <section id="view-reserve" class="view"></section>
+    <section id="view-facility" class="view"></section>
+    <section id="view-deadlines" class="view"></section>
+    <section id="view-settings" class="view"></section>
+  </main>
+
+  <!-- Only this is visible when printing the IPS. -->
+  <article id="ips-print" class="ips-print" aria-hidden="true"></article>
+
+  <footer class="foot muted small">
+    Data lives only in this browser (localStorage). Export a JSON backup from Settings &amp; data before clearing your browser or switching devices.
+    Prices are entered by hand; nothing here fetches market data.
+  </footer>
+
+  <script src="calc.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
