@@ -30,6 +30,7 @@ MODULES = (
     "progress.js",
     "drills.js",
     "overlay.js",
+    "session.js",
     "app.js",
 )
 # Where each module goes in index.html, in the same order.

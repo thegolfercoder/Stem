@@ -143,6 +143,15 @@ fixed, it moves to the changelog with the measurement that shows it.
     The lines join the pose estimator's points, which wander a little from frame to
     frame. Frames are the ones kept while tracking (at most the tracking rate). The
     desktop and iPhone apps do not have it yet.
+13f. **The session summary is browser-only (#59).** After three comparable swings kept
+    on one day (same club, hand, orientation, camera angle and spot), the browser shows
+    each reading's median and middle half, and names the most and least typical swings.
+    Only tempo has a measured per-swing band (±27%); a tempo spread inside it is called
+    measurement noise and does not single a swing out. Head movement, sway and turn have
+    no measured band, and the card says some of their spread may be the camera's.
+    "Typical" is not "best": none of these readings has a target. A named swing opens
+    its row in the kept list, which holds numbers only. The desktop and iPhone apps do
+    not have it yet.
 14. **The browser keeps its practice log in the browser.** Clearing site data, a
     private window, or another browser starts from nothing, and nothing moves between
     the desktop, the browser and the iPhone. The iPhone's practice screen builds in CI

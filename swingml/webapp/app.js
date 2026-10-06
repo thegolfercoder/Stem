@@ -21,6 +21,7 @@ import { cardText, stemRead, voiceCue } from "./read.js";
 import { MIN_SWINGS, localDay, progressSeries, progressSvg } from "./progress.js";
 import { ILLUSTRATION, drillDemoSvg, repLabel, repState } from "./drills.js";
 import { frameLines, headBox, headInside, lineLabels } from "./overlay.js";
+import { MIN_SESSION, sessionSummary } from "./session.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 // Pinned to the version the analysis was measured with (#51; model.js).
@@ -2739,7 +2740,7 @@ function keptMarkup(log) {
   const plan = log.activePlan();
   const role = (id) => !plan ? "" : plan.baseline.includes(id) ? " · before the drill"
     : plan.retest.includes(id) ? " · retest" : "";
-  const rows = log.swings.slice().reverse().map((s) => `<li><span>Swing ${s.id} · ${escapeHtml(
+  const rows = log.swings.slice().reverse().map((s) => `<li id="kept-swing-${s.id}"><span>Swing ${s.id} · ${escapeHtml(
     (s.at || "").slice(0, 10))}${s.club ? ` · ${escapeHtml(s.club)}` : ""}${role(s.id)}</span>
       <b>${s.ok ? `tempo ${reading(s.metrics && s.metrics.tempo_ratio)}` : "refused"}</b>
       <button class="btn" type="button" data-remove="${s.id}">Remove</button></li>`).join("");
@@ -2952,6 +2953,7 @@ function wireRecorder() {
   wireVoice();
   wireDrills();
   wireScrubber();
+  wireSessionSummary();
   el("rec-session-stop").onclick = () => stopSession();
   document.addEventListener("visibilitychange", () => {
     // A wake lock is released whenever the page is hidden; take it again on return.
@@ -3363,8 +3365,63 @@ function speakSwing(index, record) {
 
 /* Progress over time (#38): one chart per measure from the practice log kept in
  * this browser (progress.js), redrawn whenever the log changes. */
+/* This session (#59): session.js's summary of today's comparable kept swings. */
+function renderSessionSummary() {
+  const summary = sessionSummary({
+    swings: state.log.swings, rules: state.payload.practice || null,
+    band: state.payload.calibration && state.payload.calibration.tempo,
+  });
+  show("session-summary", Boolean(summary.day));
+  if (!summary.day) return;
+  if (!summary.enough) {
+    el("session-body").innerHTML = `<p class="note">${summary.n} comparable swing${summary.n === 1 ? "" : "s"} ` +
+      `kept on ${escapeHtml(summary.day)}. Record ${MIN_SESSION - summary.n} more from the same spot with the ` +
+      "same club for a summary of the session.</p>";
+    return;
+  }
+  const swing = (id, extra = "") =>
+    `<button class="btn-link" type="button" data-kept="${id}">Swing ${id}</button>${extra}`;
+  const rows = summary.measures.map((m) => {
+    const note = m.withinNoise === true
+      ? `Within measurement noise: one swing's reading is \u00b1${m.band.toFixed(m.digits)} for 80% of swings`
+      : m.withinNoise === false
+        ? `Wider than one swing's \u00b1${m.band.toFixed(m.digits)}: the swings differ`
+        : "No per-swing band has been measured, so some of this spread may be the camera's";
+    return `<tr data-measure="${m.key}"><td>${escapeHtml(m.label)}</td>` +
+      `<td class="num">${m.median.toFixed(m.digits)}</td>` +
+      `<td class="num">${m.q1.toFixed(m.digits)}\u2013${m.q3.toFixed(m.digits)}</td>` +
+      `<td class="note">${escapeHtml(note)}</td></tr>`;
+  }).join("");
+  const picks = summary.typical
+    ? `<ul class="session-picks"><li data-pick="typical">Most typical: ${swing(summary.typical.id)}</li>` +
+      `<li data-pick="least">Least typical: ${summary.least.map((s) =>
+        swing(s.id, s.furthestOn ? ` (furthest on ${escapeHtml(s.furthestOn.toLowerCase())})` : "")).join(", ")}</li></ul>` +
+      `<p class="note">Judged on ${escapeHtml(summary.rankedOn.join(", ").toLowerCase())}: how far each swing ` +
+      "sits from the session's middle, in spreads. Typical is not best: none of these readings has a target.</p>"
+    : "<p class=\"note\">No swing is singled out: the swings are within measurement noise of each other.</p>";
+  el("session-body").innerHTML =
+    `<p class="section-sub">${summary.n} comparable swings kept on ${escapeHtml(summary.day)}.</p>` +
+    `<table><thead><tr><th>Reading</th><th>Median</th><th>Middle half</th><th></th></tr></thead>` +
+    `<tbody>${rows}</tbody></table>${picks}`;
+}
+
+function wireSessionSummary() {
+  el("session-body").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-kept]");
+    if (!button) return;
+    const kept = document.querySelector("details.kept");
+    const row = document.getElementById(`kept-swing-${button.dataset.kept}`);
+    if (!kept || !row) return;
+    kept.open = true;
+    for (const other of document.querySelectorAll(".kept li.found")) other.classList.remove("found");
+    row.classList.add("found");
+    row.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+}
+
 function renderProgress() {
   if (!state.log || !state.payload) return;
+  renderSessionSummary();
   const rules = state.payload.practice || null;
   const verdicts = state.log.data.plans.filter((plan) => plan.retest.length)
     .map((plan) => ({ plan, change: state.log.planChange(rules, plan) }));

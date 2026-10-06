@@ -1390,3 +1390,60 @@ def test_the_scrubber_steps_frames_and_redraws_the_lines(
         assert page.evaluate(NO_OVERFLOW), f"the scrubber scrolls sideways at {width} px"
         assert errors == []
         browser.close()
+
+
+# -- this session in one card (#59) ---------------------------------------------------
+
+ADD_SWING = """(change) => {
+  const log = JSON.parse(localStorage.getItem('swing-practice-v1'));
+  const last = log.swings[log.swings.length - 1];
+  const id = log.next;
+  log.swings.push({ ...last, id, clip_key: 'k' + id, at: new Date().toISOString(),
+                    metrics: { ...last.metrics, ...change } });
+  log.next = id + 1;
+  localStorage.setItem('swing-practice-v1', JSON.stringify(log));
+}"""
+
+
+def test_the_session_card_appears_with_the_third_comparable_swing(
+    landmark_json: str, clip: Path
+) -> None:
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(playwright, landmark_json)
+        page.set_viewport_size({"width": 390, "height": 900})
+        _analyse(page, clip)
+        page.wait_for_selector("#session-summary", state="visible")
+        assert "Record 2 more" in (page.text_content("#session-body") or "")
+        page.evaluate(ADD_SWING, {"head_movement": 0.2})
+        page.reload()
+        page.wait_for_selector("#session-summary", state="visible")
+        assert "Record 1 more" in (page.text_content("#session-body") or "")
+        assert page.locator("#session-body table").count() == 0
+        page.evaluate(ADD_SWING, {"head_movement": 0.01, "tempo_ratio": 3.0})
+        page.reload()
+        page.wait_for_selector("#session-body table")
+        body = page.text_content("#session-body") or ""
+        assert "3 comparable swings" in body
+        assert page.locator("#session-body tr[data-measure]").count() >= 3
+        tempo = page.text_content("#session-body tr[data-measure='tempo_ratio']") or ""
+        assert (
+            "measurement noise" in tempo
+            or "the swings differ" in tempo
+            or "No per-swing band" in tempo
+        )
+        assert (
+            "Most typical" in body
+            and "Least typical" in body
+            and "best" not in body.lower().replace("typical is not best", "")
+        )
+        # One tap from the swing: the kept list opens on it.
+        least = page.locator("[data-pick='least'] [data-kept]").first
+        target = least.get_attribute("data-kept")
+        least.click()
+        page.wait_for_selector(f"#kept-swing-{target}.found")
+        assert page.evaluate("() => document.querySelector('details.kept').open")
+        assert page.evaluate(NO_OVERFLOW)
+        if SCREENS:
+            page.locator("#session-summary").screenshot(path=str(SCREENS / "session-390.png"))
+        assert errors == []
+        browser.close()

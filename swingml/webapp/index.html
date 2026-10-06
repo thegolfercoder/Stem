@@ -270,6 +270,14 @@ h2.section{font-size:19px;margin:28px 0 4px;letter-spacing:-.01em}
 .scrub-show label{display:inline-flex;gap:6px;align-items:center;min-height:32px}
 .scrub-angles{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:14px}
 .scrub-angles li{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.session-summary table{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0 10px}
+.session-summary th,.session-summary td{text-align:left;padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.session-summary th{font-weight:500;color:var(--ink-faint);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.session-summary td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.session-summary .note{color:var(--ink-dim);font-size:13px}
+.session-picks{display:grid;gap:6px;margin:0 0 8px;padding:0;list-style:none}
+.session-picks .btn-link{min-height:32px}
+.kept li.found{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
 .prov{font-size:10.5px;padding:2px 7px;border-radius:999px;letter-spacing:.04em;
   text-transform:uppercase;border:1px solid var(--line);white-space:nowrap}
 .prov-measured{color:var(--good)}
@@ -653,6 +661,11 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
     <div class="practice-data" id="practice-data"></div>
   </section>
 
+  <section id="session-summary" class="session-summary" hidden>
+    <h2 class="section">This session <span class="prov prov-measured">your kept swings</span></h2>
+    <div id="session-body"></div>
+  </section>
+
   <section id="progress" hidden>
     <h2 class="section">Progress <span class="prov prov-measured">your kept swings</span></h2>
     <p class="section-sub">Each dot is one swing kept in this browser; the line joins each day's
@@ -706,6 +719,7 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
 /*__PROGRESS__*/
 /*__DRILLS__*/
 /*__OVERLAY__*/
+/*__SESSION__*/
 /*__APP__*/
 boot(/*__PAYLOAD__*/);
 </script>
