@@ -3,14 +3,16 @@
 [![checks](https://github.com/thegolfercoder/Stem/actions/workflows/checks.yml/badge.svg)](https://github.com/thegolfercoder/Stem/actions/workflows/checks.yml)
 
 Two pieces of work on measuring a golf swing without a launch monitor's price
-tag. They share a set of principles and no code.
+tag. They share a set of principles and no code. A third, unrelated folder
+holds a competition trade tracker.
 
 | Path | What it is | State |
 |---|---|---|
 | `swingml/` | **Swing analysis from a single phone camera.** Pose estimation, a temporal model over the eight swing events, and the metrics that follow. Runs as a local web app, a command line tool, or one self-contained HTML file with no install. | Working. |
 | `launchmon-py/` | **Radar DSP for a launch monitor.** A 24 GHz CW Doppler front end arriving as USB-C audio, and the signal processing that turns it into ball and club speed. | Working. No hardware yet. |
+| `wharton-tracker/` | **Trade tracker for the Wharton Global High School Investment Competition 2026-27.** Static page, no backend: trade log, allocation checks, reserve and facility-range estimates. Unrelated to the golf work. | Working. |
 
-Both suites run on every push - lint, types and tests - and the badge above is
+All three run their checks on every push - the golf suites lint, types and tests - and the badge above is
 the only place a test count belongs. Written into prose it goes stale the day
 after somebody adds a test, and this file carried "151 tests" for a while after
 the number was 195.
