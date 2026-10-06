@@ -1447,3 +1447,60 @@ def test_the_session_card_appears_with_the_third_comparable_swing(
             page.locator("#session-summary").screenshot(path=str(SCREENS / "session-390.png"))
         assert errors == []
         browser.close()
+
+
+# Image decodes held until the test lets them go, so a frame can be left half drawn.
+HOLD_BITMAPS = """
+window.__held = [];
+window.__holding = false;
+const decode = window.createImageBitmap.bind(window);
+window.createImageBitmap = (...args) => {
+  if (!window.__holding) return decode(...args);
+  return new Promise((resolve, reject) =>
+    window.__held.push(() => decode(...args).then(resolve, reject)));
+};
+window.__release = () => {
+  window.__holding = false;
+  const go = window.__held;
+  window.__held = [];
+  go.forEach((f) => f());
+};
+"""
+
+
+def test_a_frame_still_being_drawn_when_the_next_clip_starts_is_dropped(
+    landmark_json: str, clip: Path
+) -> None:
+    """#77: a scrubber frame pending from one swing finished after the next clip's
+    analysis had cleared the positions, and read a position of nothing."""
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context(viewport={"width": 1180, "height": 900}).new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.add_init_script(HOLD_BITMAPS)
+        page.goto(PAGE.resolve().as_uri())
+        _analyse(page, clip)
+        page.wait_for_selector("#scrub-canvas canvas")
+        page.evaluate("() => { window.__holding = true; }")
+        page.click("#scrub-jumps [data-jump='3']")  # its frame decode is now held
+        page.wait_for_function("() => window.__held.length > 0")
+        page.evaluate("() => window.__resetLandmarks && window.__resetLandmarks()")
+        page.set_input_files("input[type=file]", str(clip))  # the next clip clears the positions
+        page.wait_for_function(
+            "() => !document.getElementById('working').classList.contains('hidden')"
+        )
+        page.evaluate("() => window.__release()")
+        page.wait_for_function(
+            "() => document.getElementById('working').classList.contains('hidden')"
+            " && document.getElementById('results').offsetParent !== null",
+            timeout=300_000,
+        )
+        page.wait_for_selector("#scrub-canvas canvas")
+        assert errors == []
+        browser.close()

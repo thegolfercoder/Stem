@@ -2204,16 +2204,18 @@ function renderScrubber() {
   if (el("scrubber").open && !session.active) scrubTo(scrub.index);
 }
 
-function scrubFaceOn(sequence) {
+function scrubFaceOn(sequence, frames) {
   const rules = state.payload.practice;
-  const camera = cameraSignature(sequence, state.frames[0].index);
+  const camera = cameraSignature(sequence, frames[0].index);
   if (!camera || !Number.isFinite(camera.shoulder_ratio) || !rules) return null;
   return camera.shoulder_ratio >= rules.face_on_min_shoulder_ratio;
 }
 
 async function scrubTo(index) {
-  const analysis = state.analysis;
-  if (!analysis || !state.frames) return;
+  // The swing this frame is for: a frame still decoding when the next clip's
+  // analysis clears these must not be drawn against that one's (#77).
+  const analysis = state.analysis, frames = state.frames;
+  if (!analysis || !frames) return;
   const sequence = analysis.sequence;
   const n = sequence.n;
   const i = Math.max(0, Math.min(n - 1, Math.round(index)));
@@ -2221,7 +2223,7 @@ async function scrubTo(index) {
   el("scrub-slider").value = String(i);
   const ticket = ++scrub.ticket;
   const canvas = await frameCanvas(sequence, i, scrub.show.skeleton);
-  if (ticket !== scrub.ticket) return;
+  if (ticket !== scrub.ticket || state.analysis !== analysis || state.frames !== frames) return;
   const g = canvas.getContext("2d");
   const lines = frameLines(sequence.xy[i], sequence.visibility[i], canvas.width, canvas.height);
   const thick = Math.max(2, Math.round(Math.min(canvas.width, canvas.height) / 200));
@@ -2239,7 +2241,7 @@ async function scrubTo(index) {
       g.beginPath(); g.moveTo(ax - dx, ay - dy); g.lineTo(bx + dx, by + dy); g.stroke();
     }
   }
-  const address = state.frames[0].index;
+  const address = frames[0].index;
   const box = headBox(sequence.xy[address], sequence.visibility[address]);
   const inside = headInside(box, sequence.xy[i], sequence.visibility[i]);
   if (scrub.show.head && box) {
@@ -2256,15 +2258,15 @@ async function scrubTo(index) {
   el("scrub-canvas").replaceChildren(canvas);
 
   const time = sequence.times[i];
-  const at = state.frames.findIndex((f) => f.index === i);
+  const at = frames.findIndex((f) => f.index === i);
   const real = analysis.slowedBy && analysis.retimed !== false
     ? ` \u00b7 about ${(time / analysis.slowedBy).toFixed(3)} s as the swing happened` : "";
   el("scrub-time").textContent = `Frame ${i + 1} of ${n} \u00b7 ${time.toFixed(3)} s in the clip${real}` +
-    (at >= 0 ? ` \u00b7 ${state.frames[at].label}` : "");
+    (at >= 0 ? ` \u00b7 ${frames[at].label}` : "");
   for (const button of el("scrub-jumps").querySelectorAll("[data-jump]")) {
     button.setAttribute("aria-current", String(Number(button.dataset.jump) === at));
   }
-  const labels = lineLabels(lines, scrubFaceOn(sequence));
+  const labels = lineLabels(lines, scrubFaceOn(sequence, frames));
   const rows = ["shoulders", "hips", "spine"].filter((k) => scrub.show[k] && labels[k]).map((k) =>
     [k, labels[k].replace(/, in the picture$/, "")]);
   if (scrub.show.head && inside !== null) {
@@ -2293,6 +2295,7 @@ function playScrub() {
   const from = sequence.times[scrub.index], started = performance.now();
   el("scrub-play").textContent = "Pause";
   scrub.timer = setInterval(() => {
+    if (state.analysis !== analysis) { stopScrub(); return; }
     const target = from + ((performance.now() - started) / 1000) * speed;
     let i = scrub.index;
     while (i < n - 1 && sequence.times[i + 1] <= target) i++;
