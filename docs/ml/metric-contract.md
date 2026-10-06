@@ -29,7 +29,11 @@ Per event: the frame in the source clip (`event_source_frames`), its time
 diagnostic, not an error bar), a sub-frame position, and a measured error band where
 one exists. Positions set by the golfer are marked `positions_set_by="golfer"` and
 carry no model bands [`test_golfer_positions.py`]. A clip read as slow motion carries
-`playback_slowed_by` and no millisecond bands [`test_measured_failures.py`].
+`playback_slowed_by` and no millisecond bands [`test_measured_failures.py`], and
+`playback_retimed` says whether it was measured on the slowed-down timeline (true) or as
+recorded (false, "may be slow motion"). Positions the golfer moves on such a clip are
+measured the same way and its durations stay withheld, on the desktop as in the browser
+(#74) [`test_golfer_positions.py`, `test_browser_slow_motion.py`].
 
 ## Metrics shipped
 

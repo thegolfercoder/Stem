@@ -14,7 +14,15 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from swingml.analysis import SwingAnalysis, analyse_with_positions
+from swingml.analysis import (
+    AnalysisConfig,
+    SwingAnalysis,
+    analyse_pose_sequence,
+    analyse_with_positions,
+    load_model,
+    slowed_reading,
+)
+from swingml.assets import find_event_model
 from swingml.events import EventSequence, SwingEvent
 from swingml.labels import (
     GolferPositions,
@@ -272,3 +280,70 @@ def test_labelled_swings_become_an_archive_the_trainer_reads(
     assert len(samples) == 1
     # The synthetic sequence is already on the 60 Hz grid, so the labels are the frames.
     assert tuple(int(f) for f in samples[0].event_frames) == truth
+
+
+# -- a slow-motion clip (#74) ---------------------------------------------------------
+
+
+REAL_SWING = Path(__file__).parent / "fixtures" / "real_swing_01.npz"
+
+
+def _slowed_real_swing(factor: float) -> PoseSequence:
+    data = np.load(REAL_SWING)
+    return PoseSequence(
+        xy=data["xy"], visibility=data["visibility"], timestamps_s=data["timestamps_s"] * factor,
+        frame_width=int(data["frame_width"]), frame_height=int(data["frame_height"]),
+        world_xyz=data["world_xyz"], detected=data["detected"],
+    )  # fmt: skip
+
+
+@pytest.mark.parametrize("factor", [2.0, 4.0])
+def test_moving_a_position_on_a_slow_motion_clip_keeps_durations_withheld(  # type: ignore[no-untyped-def]
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, factor: float
+) -> None:
+    """A golfer nudging the top on a 4x replay was shown a 3.5 s backswing as
+    measured: the desktop re-measured at recorded speed and forgot the clip was
+    read as slow motion. The reading stays slowed, whichever way it was read."""
+    path = find_event_model()
+    if path is None:
+        pytest.skip("no shipped event model")
+    sequence = _slowed_real_swing(factor)
+    analysis = analyse_pose_sequence(
+        sequence, load_model(path), AnalysisConfig(handedness=Handedness.RIGHT)
+    )
+    assert analysis.playback_slowed_by is not None, "the fixture no longer reads as slowed"
+    monkeypatch.setenv("SWINGML_HOME", str(tmp_path / "home"))
+    store = SwingStore(tmp_path / "s.db")
+    swing_id = store.add(analysis, source_name="slowmo.mov")
+    save_pose(sequence, frames_dir() / str(swing_id))
+    app = create_app(store=store)
+    app.config.update(TESTING=True)
+    frames = list(analysis.event_source_frames)
+    frames[int(SwingEvent.TOP)] += 1
+    response = app.test_client().post(f"/api/swings/{swing_id}/positions", json={"frames": frames})
+    assert response.status_code == 200, response.get_json()
+
+    stored = SwingAnalysis.model_validate(store.get(swing_id).analysis)
+    assert stored.positions_set_by == "golfer"
+    assert stored.playback_slowed_by == analysis.playback_slowed_by
+    assert stored.playback_retimed == analysis.playback_retimed
+    assert not isinstance(stored.metrics, NoReading)
+    for name in ("backswing_duration", "downswing_duration", "swing_duration"):
+        withheld = getattr(stored.metrics, name)
+        assert isinstance(withheld, NoReading), (name, withheld)
+        assert withheld.reason == getattr(analysis.metrics, name).reason
+    tempo = stored.metrics.tempo_ratio
+    assert not isinstance(tempo, NoReading)
+    assert any("slow motion" in a for a in tempo.assumptions)
+
+
+def test_a_slowed_analysis_kept_before_the_retimed_flag_is_read_from_its_reason() -> None:
+    sequence = _slowed_real_swing(2.0)
+    base = analyse_with_positions(sequence, (81, 91, 95, 106, 111, 114, 117, 126), Handedness.RIGHT)
+    for retimed in (True, False):
+        slowed = analyse_with_positions(
+            sequence, (81, 91, 95, 106, 111, 114, 117, 126), Handedness.RIGHT,
+            slowed_by=2.0, retimed=retimed,
+        ).model_copy(update={"playback_retimed": None})  # fmt: skip
+        assert slowed_reading(slowed) == (2.0, retimed)
+    assert slowed_reading(base) == (None, True)

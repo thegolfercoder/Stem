@@ -19,7 +19,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from swingml.analysis import AnalysisConfig, SwingAnalysis, analyse_pose_sequence, load_model
+from swingml.analysis import (
+    AnalysisConfig,
+    SwingAnalysis,
+    analyse_pose_sequence,
+    analyse_with_positions,
+    load_model,
+)
+from swingml.events import SwingEvent
 from swingml.model.ensemble import EnsembleConfig, SwingEventEnsemble
 from swingml.pose.base import PoseSequence
 from swingml.quantity import NoReading, Quantity
@@ -73,7 +80,9 @@ def python_read(sequence: PoseSequence, check: bool = False) -> SwingAnalysis:
     return analyse_pose_sequence(sequence, model, config)
 
 
-def browser_read(sequence: PoseSequence, workdir: Path, check: bool = False) -> dict:
+def browser_read(
+    sequence: PoseSequence, workdir: Path, check: bool = False, positions: list[int] | None = None
+) -> dict:
     payload = PAYLOAD
     if check:
         changed = json.loads(PAYLOAD.read_text(encoding="utf-8"))
@@ -97,6 +106,7 @@ def browser_read(sequence: PoseSequence, workdir: Path, check: bool = False) -> 
                 "height": sequence.frame_height,
                 "handedness": "right",
                 "payload": str(payload),
+                "positions": positions,
             }
         ),
         encoding="utf-8",
@@ -193,3 +203,48 @@ def test_what_ships_withholds_durations_and_keeps_the_recorded_speed_read(
     assert isinstance(shipped.metrics.backswing_duration, NoReading)
     assert browser["slowedBy"] == shipped.playback_slowed_by
     assert browser["frames"] == list(unchecked.events.frames)
+
+
+# -- a position moved by the golfer on a slow-motion read (#74) -------------------
+
+
+@pytest.mark.parametrize(("factor", "check"), [(2.0, False), (4.0, False), (2.0, True)])
+def test_a_moved_position_is_measured_alike_and_stays_slowed(
+    factor: float, check: bool, tmp_path: Path
+) -> None:
+    """The desktop measured a golfer's positions at the clip's recorded speed and
+    dropped the slow-motion reading: a 3.5 s backswing on a 4x replay. The browser
+    keeps the read's timeline and withholds the durations; both must."""
+    sequence = fixture_sequence(factor)
+    python = python_read(sequence, check)
+    assert python.playback_slowed_by is not None and not isinstance(python.events, NoReading)
+    retimed = python.playback_retimed is not False
+    frames = list(python.event_source_frames)
+    frames[int(SwingEvent.TOP)] += 1  # the golfer nudges the top a frame later
+    moved = analyse_with_positions(
+        sequence, frames, Handedness.RIGHT,
+        slowed_by=python.playback_slowed_by, retimed=retimed,
+    )  # fmt: skip
+    browser = browser_read(sequence, tmp_path, check, positions=frames)["moved"]
+    assert moved.playback_slowed_by == browser["slowedBy"] == python.playback_slowed_by
+    assert moved.playback_retimed is retimed and browser["slowedRetimed"] is retimed
+    assert not isinstance(moved.metrics, NoReading)
+    for name in ("backswing_duration", "downswing_duration", "swing_duration",
+                 "time_to_peak_hand_speed"):  # fmt: skip
+        assert isinstance(getattr(moved.metrics, name), NoReading), name
+    assert browser["backswingMs"] is browser["downswingMs"] is browser["wholeMs"] is None
+    tempo = moved.metrics.tempo_ratio
+    assert not isinstance(tempo, NoReading)
+    assert tempo.value == pytest.approx(browser["tempoRatio"], abs=1e-6)
+    assert any("slow motion" in a for a in tempo.assumptions)
+    # Measured on the same timeline: the readings taken from the pose at each
+    # position agree too, which tempo, a ratio of times, cannot show.
+    for key, name, tolerance in (("shoulderTurnDeg", "shoulder_turn_foreshortened", 5e-4),
+                                 ("hipTurnDeg", "hip_turn_foreshortened", 5e-4),
+                                 ("headMovement", "head_movement", 1e-6),
+                                 ("pelvisSway", "pelvis_sway", 1e-6)):  # fmt: skip
+        reading = getattr(moved.metrics, name)
+        if isinstance(reading, NoReading):
+            assert browser[key] is None, (key, browser[key])
+        else:
+            assert reading.value == pytest.approx(browser[key], abs=tolerance), key

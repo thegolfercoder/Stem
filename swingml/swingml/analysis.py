@@ -208,6 +208,15 @@ class SwingAnalysis(BaseModel):
             "durations do not, and are refused."
         ),
     )
+    playback_retimed: bool | None = Field(
+        default=None,
+        description=(
+            "With `playback_slowed_by`: true when the swing was measured on the "
+            "slowed-down timeline (it read as a swing only that way), false when it "
+            "was measured as recorded and only may be slow motion. A golfer's moved "
+            "positions are measured the same way."
+        ),
+    )
     positions_set_by: Literal["model", "golfer"] = Field(
         default="model",
         description=(
@@ -657,8 +666,26 @@ def _as_slow_motion(analysis: SwingAnalysis, factor: float, retimed: bool = True
             "event_times_s": tuple(t * factor if retimed else t for t in analysis.event_times_s),
             "event_uncertainty": bands,
             "playback_slowed_by": factor,
+            "playback_retimed": retimed,
         }
     )
+
+
+def slowed_reading(analysis: SwingAnalysis) -> tuple[float | None, bool]:
+    """The slow-motion reading an analysis was made under: (factor, retimed).
+
+    Analyses kept before `playback_retimed` existed say which in the reason their
+    durations were withheld with.
+    """
+    factor = analysis.playback_slowed_by
+    if factor is None:
+        return None, True
+    if analysis.playback_retimed is not None:
+        return factor, analysis.playback_retimed
+    metrics = analysis.metrics
+    withheld = None if isinstance(metrics, NoReading) else metrics.backswing_duration
+    maybe = MAYBE_SLOWED_REASON.format(factor=factor)
+    return factor, not (isinstance(withheld, NoReading) and withheld.reason == maybe)
 
 
 def _analyse_at_recorded_speed(
@@ -804,6 +831,9 @@ def analyse_with_positions(
     handedness: Handedness,
     config: AnalysisConfig | None = None,
     video: VideoInfo | None = None,
+    *,
+    slowed_by: float | None = None,
+    retimed: bool = True,
 ) -> SwingAnalysis:
     """The swing measured from eight positions the golfer chose, not the model.
 
@@ -812,8 +842,24 @@ def analyse_with_positions(
     eight positions sit has changed, so the model plays no part and its error
     bands, which describe the model, are not attached.
 
+    `slowed_by` and `retimed` carry the slow-motion reading of the analysis the
+    positions replace (`slowed_reading`): the swing is measured on the timeline
+    the model read it on and its durations stay withheld, as the browser does
+    (#74). Without them a slow-motion replay's durations came back several times
+    too long.
+
     Raises ValueError if the positions are not in swing order.
     """
+    if slowed_by is not None:
+        timeline = (
+            sequence.model_copy(update={"timestamps_s": sequence.timestamps_s / slowed_by})
+            if retimed
+            else sequence
+        )
+        moved = analyse_with_positions(timeline, source_frames, handedness, config, video)
+        return _as_slow_motion(moved, slowed_by, retimed).model_copy(
+            update={"camera": camera_signature(sequence, int(source_frames[0]))}
+        )
     config = config or AnalysisConfig()
     chosen = [int(f) for f in source_frames]
     if len(chosen) != len(SwingEvent.ordered()):

@@ -28,7 +28,7 @@ from flask import (
     url_for,
 )
 
-from swingml.analysis import SwingAnalysis, analyse_with_positions
+from swingml.analysis import SwingAnalysis, analyse_with_positions, slowed_reading
 from swingml.assets import find_event_model, home
 from swingml.events import CLUB_DEFINED_EVENTS, SwingEvent
 from swingml.labels import (
@@ -614,10 +614,13 @@ def create_app(
             model_frames = current.event_source_frames
         else:
             return jsonify({"error": "no positions were found in this clip to move"}), 409
+        # A slow-motion reading stays one: the positions are measured as the model's were.
+        slowed_by, retimed = slowed_reading(current)
         try:
             moved = analyse_with_positions(
-                sequence, frames, current.handedness, video=current.video
-            )
+                sequence, frames, current.handedness, video=current.video,
+                slowed_by=slowed_by, retimed=retimed,
+            )  # fmt: skip
         except ValueError as error:
             return jsonify({"error": str(error)}), 400
         if current.positions_set_by == "model":
