@@ -1504,3 +1504,150 @@ def test_a_frame_still_being_drawn_when_the_next_clip_starts_is_dropped(
         page.wait_for_selector("#scrub-canvas canvas")
         assert errors == []
         browser.close()
+
+
+# -- installed, and working with no signal (#61) --------------------------------------
+
+
+@pytest.fixture(scope="module")
+def offline_site(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The site build, with the pose estimator's bundle replaced by the stub (so no
+    MediaPipe download is needed) but its real, pinned pose model in chunks."""
+    try:
+        from swingml.pose.mediapipe_pose import resolve_model_path
+
+        resolve_model_path(None)
+    except Exception as error:  # any reason there is no model
+        pytest.skip(f"needs the pose model: {error}")
+    site = tmp_path_factory.mktemp("site")
+    for name, body in (("vision_bundle.mjs", STUB), ("wasm/vision_wasm_internal.js", "// stub"),
+                       ("wasm/vision_wasm_internal.wasm", "stub")):  # fmt: skip
+        (site / "mediapipe" / name).parent.mkdir(parents=True, exist_ok=True)
+        (site / "mediapipe" / name).write_text(body, encoding="utf-8")
+    subprocess.run(
+        [sys.executable, str(HERE.parent / "scripts" / "build_artifact.py"), "--out", str(site),
+         "--sample", str(site / "none.mov")],
+        check=True, capture_output=True, cwd=HERE.parent,
+    )  # fmt: skip
+    return site
+
+
+@contextlib.contextmanager
+def _served(root: Path):  # type: ignore[no-untyped-def]
+    import functools
+    import http.server
+    import threading
+
+    class Quiet(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: Any) -> None:
+            return
+
+    server = http.server.ThreadingHTTPServer(
+        ("127.0.0.1", 0), functools.partial(Quiet, directory=str(root))
+    )
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}/"
+    finally:
+        server.shutdown()
+
+
+def _copy_site(site: Path, tmp_path: Path) -> Path:
+    copy = tmp_path / "site"
+    shutil.copytree(site, copy)
+    return copy
+
+
+def _status(page: Any, pattern: str) -> str:
+    page.wait_for_function(
+        f"() => /{pattern}/.test(document.getElementById('offline-status').textContent)",
+        timeout=120_000,
+    )
+    return page.text_content("#offline-status") or ""
+
+
+def test_the_installed_page_analyses_a_swing_with_no_network(
+    offline_site: Path, landmark_json: str, clip: Path, tmp_path: Path
+) -> None:
+    site = _copy_site(offline_site, tmp_path)
+    with sync_playwright() as playwright, _served(site) as url:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        context = browser.new_context(viewport={"width": 390, "height": 900})
+        page = context.new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.goto(url)
+        assert _status(page, "Available offline") == "Available offline"
+        # Installable: a manifest with what an install needs, and a worker in charge.
+        manifest = page.evaluate(
+            "async () => (await fetch(document.querySelector('link[rel=manifest]').href)).json()"
+        )
+        assert manifest["display"] == "standalone" and manifest["start_url"] == "./"
+        assert {i["sizes"] for i in manifest["icons"]} == {"192x192", "512x512"}
+        assert page.evaluate("() => navigator.serviceWorker.controller !== null")
+        if SCREENS:
+            page.screenshot(path=str(SCREENS / "offline-ready-390.png"))
+
+        context.set_offline(True)
+        page.reload()
+        page.wait_for_selector("input[type=file]", state="attached")
+        _analyse(page, clip)
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        assert (page.text_content("#sum-tempo") or "").strip()
+        assert errors == []
+        browser.close()
+
+
+def test_a_file_that_does_not_match_its_checksum_is_not_kept(
+    offline_site: Path, tmp_path: Path
+) -> None:
+    site = _copy_site(offline_site, tmp_path)
+    chunk = next((site / "model").glob("*.part1.b64.txt"))
+    chunk.write_bytes(chunk.read_bytes()[:-4] + b"AAAA")  # a damaged download
+    with sync_playwright() as playwright, _served(site) as url:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context().new_page()
+        page.goto(url)
+        text = _status(page, "Not saved")
+        assert f"model/{chunk.name} did not match its checksum" in text, text
+        page.reload()
+        page.wait_for_selector("#offline-status", state="attached")
+        assert page.evaluate("() => navigator.serviceWorker.controller === null")
+        browser.close()
+
+
+def test_a_new_version_waits_for_the_golfer_to_reload(offline_site: Path, tmp_path: Path) -> None:
+    sys.path.insert(0, str(HERE.parent / "scripts"))
+    from build_artifact import write_offline
+
+    site = _copy_site(offline_site, tmp_path)
+    with sync_playwright() as playwright, _served(site) as url:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context().new_page()
+        page.goto(url)
+        _status(page, "Available offline")
+        first = page.get_attribute("#offline-status", "data-version")
+        # A new version is published: one file changes and the worker is rebuilt.
+        index = site / "index.html"
+        index.write_text(index.read_text(encoding="utf-8") + "\n<!-- v2 -->\n", encoding="utf-8")
+        second = write_offline(site, HERE.parent / "webapp")
+        assert second != first
+        page.reload()
+        page.wait_for_selector("#offline-update", state="visible", timeout=120_000)
+        # Nothing swapped underneath: the page in use is still the first version.
+        assert (
+            page.evaluate(
+                "() => new Promise((ok) => { navigator.serviceWorker.addEventListener('message',"
+                " (e) => ok(e.data.version), { once: true });"
+                " navigator.serviceWorker.controller.postMessage({ type: 'version' }); })"
+            )
+            == first
+        )
+        page.click("#offline-reload")
+        page.wait_for_function(
+            f"() => document.getElementById('offline-status').dataset.version === '{second}'",
+            timeout=120_000,
+        )
+        assert page.locator("#offline-update").is_hidden()
+        browser.close()

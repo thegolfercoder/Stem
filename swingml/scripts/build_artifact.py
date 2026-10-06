@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import importlib
 import json
 import re
@@ -84,6 +85,62 @@ def split_model(out: Path) -> list[str]:
         (out / name).write_bytes(base64.b64encode(data[start : start + CHUNK_BYTES]))
         names.append(name)
     return names
+
+
+MANIFEST = {
+    "name": "Swing Story",
+    "short_name": "Swing Story",
+    "description": "Golf swing analysis that runs on this device.",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "background_color": "#0e1014",
+    "theme_color": "#0e1014",
+    "icons": [
+        {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+        {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    ],
+}
+
+
+def write_icons(out: Path) -> None:
+    """The page's mark (a dark disc with the accent and warm glows) as app icons."""
+    from PIL import Image, ImageDraw, ImageFilter
+
+    for size in (192, 512):
+        image = Image.new("RGB", (size, size), (14, 16, 20))
+        glow = Image.new("RGB", (size, size), (14, 16, 20))
+        draw = ImageDraw.Draw(glow)
+        r = size * 0.22
+        for (cx, cy), colour in (((0.38, 0.36), (79, 195, 247)), ((0.62, 0.64), (255, 184, 77))):
+            draw.ellipse((cx * size - r, cy * size - r, cx * size + r, cy * size + r), fill=colour)
+        glow = glow.filter(ImageFilter.GaussianBlur(size * 0.08))
+        mask = Image.new("L", (size, size), 0)
+        ImageDraw.Draw(mask).ellipse((size * 0.12,) * 2 + (size * 0.88,) * 2, fill=255)
+        image.paste(glow, (0, 0), mask)
+        (out / "icons").mkdir(exist_ok=True)
+        image.save(out / "icons" / f"icon-{size}.png")
+
+
+def write_offline(out: Path, source: Path) -> str:
+    """The service worker that keeps the site on the device (#61), last, because it
+    lists every other file of the site with its SHA-256. Returns its version."""
+    (out / "manifest.webmanifest").write_text(json.dumps(MANIFEST, indent=1), encoding="utf-8")
+    files = sorted(
+        f
+        for f in out.rglob("*")
+        if f.is_file() and f.name != "sw.js" and not f.name.startswith(".")
+    )
+    listed = [
+        {"url": f.relative_to(out).as_posix(), "sha256": hashlib.sha256(f.read_bytes()).hexdigest()}
+        for f in files
+    ]
+    version = hashlib.sha256(json.dumps(listed).encode()).hexdigest()[:12]
+    worker = (source / "sw.js").read_text(encoding="utf-8")
+    worker = worker.replace("/*__VERSION__*/", version)
+    worker = worker.replace("/*__FILES__*/[]", json.dumps(listed))
+    (out / "sw.js").write_text(worker, encoding="utf-8")
+    return version
 
 
 def write_vp9(source: Path, target: Path) -> bool:
@@ -172,6 +229,7 @@ def main() -> None:
         "model": chunks,
         "sample": sample,
         "copyInsteadOfDownload": True,
+        "offline": True,
     }
     html = html.replace(
         '<script type="module">',
@@ -182,9 +240,12 @@ def main() -> None:
 
     page = args.out / "index.html"
     page.write_text(html, encoding="utf-8")
+    write_icons(args.out)
+    version = write_offline(args.out, args.source)
     total = sum(f.stat().st_size for f in args.out.rglob("*") if f.is_file())
     print(f"wrote {page} ({page.stat().st_size / 1e6:.1f} MB), {total / 1e6:.1f} MB in all")
     print(f"  model in {len(chunks)} chunks" + (", sample swing included" if sample else ""))
+    print(f"  kept for offline use as version {version}")
 
 
 if __name__ == "__main__":

@@ -40,6 +40,12 @@ header{max-width:1120px;margin:0 auto;padding:20px;display:flex;align-items:cent
 .mark{width:18px;height:18px;border-radius:50%;border:1px solid var(--line);
   background:radial-gradient(circle at 32% 30%,var(--accent),transparent 62%),
              radial-gradient(circle at 68% 72%,var(--accent-warm),transparent 60%)}
+.offline-status{margin-left:auto;font-size:12px;color:var(--good);border:1px solid var(--line);
+  border-radius:999px;padding:3px 10px}
+.offline-status.offline-failed{color:var(--ink-dim)}
+.offline-update{max-width:1120px;margin:0 auto 8px;padding:10px 20px;display:flex;gap:12px;align-items:center;
+  flex-wrap:wrap;background:var(--panel);border:1px solid var(--accent);border-radius:var(--radius)}
+.offline-update[hidden]{display:none}
 header b{font-weight:650;letter-spacing:-.01em}
 h1{font-size:34px;letter-spacing:-.02em;margin:18px 0 8px;font-weight:660}
 .lede{color:var(--ink-dim);margin:0 0 20px;max-width:62ch;font-size:16px}
@@ -406,7 +412,12 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
 </style>
 </head>
 <body>
-<header><span class="mark"></span><b>Swing Story</b></header>
+<header><span class="mark"></span><b>Swing Story</b>
+  <span class="offline-status" id="offline-status" role="status" hidden></span></header>
+<div class="offline-update" id="offline-update" role="status" hidden>
+  <span>A newer version of this page is ready.</span>
+  <button class="btn" type="button" id="offline-reload">Reload for it</button>
+</div>
 <main>
   <h1>Drop in a swing</h1>
   <p class="lede">
@@ -720,6 +731,7 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
 /*__DRILLS__*/
 /*__OVERLAY__*/
 /*__SESSION__*/
+/*__OFFLINE__*/
 /*__APP__*/
 boot(/*__PAYLOAD__*/);
 </script>

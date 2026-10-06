@@ -154,6 +154,14 @@ fixed, it moves to the changelog with the measurement that shows it.
     "Typical" is not "best": none of these readings has a target. A named swing opens
     its row in the kept list, which holds numbers only. The desktop and iPhone apps do
     not have it yet.
+13g. **Offline use needs the site build on its own address (#61).** The site build
+    (`scripts/build_artifact.py`) can be installed to a phone's home screen and, once
+    loaded, works with no signal: a service worker keeps every file of the site,
+    including the pinned pose model, each checked against its SHA-256 first. A file
+    that does not match is not kept and the page says which. A newer version waits
+    until the golfer chooses "Reload for it". The one-file page, a page opened from
+    disk, and any host that does not allow service workers work online only, as
+    before, and say nothing about offline use. The first load needs about 50 MB.
 14. **The browser keeps its practice log in the browser.** Clearing site data, a
     private window, or another browser starts from nothing, and nothing moves between
     the desktop, the browser and the iPhone. The iPhone's practice screen builds in CI

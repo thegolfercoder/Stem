@@ -31,6 +31,7 @@ MODULES = (
     "drills.js",
     "overlay.js",
     "session.js",
+    "offline.js",
     "app.js",
 )
 # Where each module goes in index.html, in the same order.

@@ -22,6 +22,7 @@ import { MIN_SWINGS, localDay, progressSeries, progressSvg } from "./progress.js
 import { ILLUSTRATION, drillDemoSvg, repLabel, repState } from "./drills.js";
 import { frameLines, headBox, headInside, lineLabels } from "./overlay.js";
 import { MIN_SESSION, sessionSummary } from "./session.js";
+import { wireOffline } from "./offline.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 // Pinned to the version the analysis was measured with (#51; model.js).
@@ -2957,6 +2958,7 @@ function wireRecorder() {
   wireDrills();
   wireScrubber();
   wireSessionSummary();
+  wireOffline(LOCAL, { status: el("offline-status"), update: el("offline-update"), reload: el("offline-reload") });
   el("rec-session-stop").onclick = () => stopSession();
   document.addEventListener("visibilitychange", () => {
     // A wake lock is released whenever the page is hidden; take it again on return.
