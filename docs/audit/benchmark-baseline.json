@@ -1,0 +1,132 @@
+{
+  "recorded": "2026-09-28",
+  "commit_audited": "429fb30 (branch claude/prompt-usage-0oy6wa), before the changes in this audit",
+  "environment": {
+    "os": "Linux 6.18 x86_64, 4 CPUs, no GPU",
+    "python": "3.11.15",
+    "torch": "2.14.0+cpu",
+    "mediapipe": "1.0.1",
+    "numpy": "2.4.6",
+    "opencv": "5.0.0.93",
+    "node": "22",
+    "swift": "6.3.3 (Linux)"
+  },
+  "clean_checkout": {
+    "command": "git clone <repo> && python3.11 -m venv venv && pip install --extra-index-url https://download.pytorch.org/whl/cpu -e 'swingml[dev]'",
+    "exit_code": 0,
+    "wall_time_s": 136,
+    "note": "CPU torch index used to fit the disk; CI uses the default index"
+  },
+  "checks": [
+    {"command": "ruff check .", "cwd": "swingml", "exit_code": 0, "output": "All checks passed!"},
+    {"command": "ruff format --check .", "cwd": "swingml", "exit_code": 0, "output": "93 files already formatted"},
+    {"command": "mypy -p swingml -p synth", "cwd": "swingml", "exit_code": 0, "output": "Success: no issues found in 50 source files"},
+    {"command": "mypy scripts", "cwd": "swingml", "exit_code": 0, "output": "Success: no issues found in 20 source files"},
+    {
+      "command": "pytest -q -rs",
+      "cwd": "swingml (clean checkout, no out/)",
+      "exit_code": 0,
+      "output": "253 passed, 23 skipped, 3 warnings in 12.07s",
+      "skipped": {
+        "tests/test_browser_parity.py": "22 tests: 'needs node, the real-swing fixture, and an exported web payload (python scripts/export_web_model.py)'",
+        "tests/test_page.py": "1 test: 'needs playwright to drive a browser'"
+      },
+      "warnings": "3 x ResourceWarning: unclosed socket in tests/test_coach.py (FakeOllama fixture)"
+    },
+    {
+      "command": "python scripts/export_web_model.py && pytest -q -rs tests/test_browser_parity.py tests/test_page.py",
+      "cwd": "swingml (clean checkout)",
+      "exit_code": 0,
+      "output": "wrote out/web/model.json (1.87 MB, 54 tensors) in 1.9 s; 22 passed, 1 skipped in 10.28s"
+    },
+    {"command": "swift test", "cwd": "ios/SwingCore (clean checkout)", "exit_code": 0, "output": "Executed 12 tests, with 0 failures", "wall_time_s": 76},
+    {"command": "pip install -e '.[dev]' && ruff check . && ruff format --check . && mypy -p launchmon && pytest -q", "cwd": "launchmon-py (clean venv)", "exit_code": 0, "output": "All checks passed!; 28 files already formatted; Success: no issues found in 13 source files; 148 passed in 3.70s"},
+    {
+      "command": "python -m swingml.desktop --smoke-test tests/fixtures/real_swing_01.mov",
+      "cwd": "swingml (clean checkout, empty SWINGML_HOME: downloads the pose model)",
+      "exit_code": 0,
+      "output": {"ok": true, "model": "SwingEventNet", "error_bands": true, "frames": 210, "handedness": "right", "tempo": 3.214966998241964, "torch_loaded": true, "seconds": 19.2}
+    }
+  ],
+  "real_fixture": {
+    "what": "swingml/tests/fixtures/real_swing_01: one golfer, iPhone, 30 fps, positions verified from the clubhead. The only labelled phone swing in the repository.",
+    "truth": {"address": 84, "top": 105, "impact": 115, "finish": 125, "tempo": 2.1},
+    "shipped_model_e7_s0": {"address": 81, "top": 106, "impact": 114, "finish": 126, "tempo": 3.2},
+    "within_tolerance": "all four events (tolerances 3, 3, 2, 6 frames)",
+    "tempo_error": "+52%"
+  },
+  "real_holdout": {
+    "manifest": "swingml/swingml/manifests/golfdb-holdout-v1.json",
+    "clips": 201,
+    "golfer_video_groups": 35,
+    "composition": {"face_on": 41, "down_the_line": 96, "other_view": 64, "slow_motion": 82, "real_time": 119, "left_handed": 23},
+    "leakage": "no clip or golfer/video group shared with train-v1, validation-v1 or calibration-v1 (python -m swingml.dataset.manifest check)",
+    "command": "python scripts/error_breakdown.py --model swingml/data/swing_event_net.pt --clips out/golfdb/split/holdout.npz",
+    "result_file": "docs/audit/error-breakdown.json",
+    "headline": {
+      "within_1_frame_core4": 0.4888,
+      "within_1_frame_all8": 0.4185,
+      "tempo_median_rel_error": 0.1505,
+      "median_abs_error_frames": {"address": 7, "top": 2, "impact": 1, "finish": 29},
+      "tempo_error_if_one_event_were_exact": {"none": 0.1505, "address": 0.1097, "top": 0.1045, "impact": 0.1271}
+    },
+    "note": "Decoder output without the application's refusal gates, so every clip is scored; refusals are measured separately below."
+  },
+  "tempo_sensitivity": {
+    "definition": "slope of log(read tempo) on log(true tempo) over answered holdout clips; 1.0 = readings move as much as the swing does",
+    "shipped_model": {"slope": 0.4394, "ci95_by_clip": [0.1543, 0.6995]},
+    "by_true_tempo": [
+      {"true": "below 2.5", "n": 9, "true_median": 2.35, "read_median": 2.95},
+      {"true": "2.5-3.0", "n": 53, "true_median": 2.78, "read_median": 3.16},
+      {"true": "3.0-3.5", "n": 71, "true_median": 3.22, "read_median": 3.29},
+      {"true": "3.5-4.0", "n": 28, "true_median": 3.65, "read_median": 3.93},
+      {"true": "4.0-5.0", "n": 31, "true_median": 4.29, "read_median": 3.88},
+      {"true": "5.0 and above", "n": 9, "true_median": 5.12, "read_median": 3.65}
+    ]
+  },
+  "baselines": {
+    "command": "python scripts/benchmark_baselines.py --out docs/audit/baselines.json",
+    "protocol": "fitted on golfdb-train-v1 (281), variant choice on golfdb-validation-v1 (85), reported once on golfdb-holdout-v1 (201); 95% intervals resample clips",
+    "within_1_frame_core4": {
+      "velocity_peak": [0.2626, 0.221, 0.3018],
+      "kinematic": [0.3317, 0.2915, 0.3731],
+      "dtw_template": [0.1903, 0.1642, 0.2164],
+      "linear_classifier": [0.4067, 0.3669, 0.4478],
+      "network_e7_s0": [0.4888, 0.4478, 0.5286],
+      "hybrid_network_plus_kinematic_top": [0.4652, 0.4241, 0.5038]
+    },
+    "tempo_median_rel_error": {
+      "velocity_peak": 0.4491, "kinematic": 0.3565, "dtw_template": 0.4249,
+      "linear_classifier": 0.2195, "network_e7_s0": 0.1505, "hybrid": 0.152
+    },
+    "verdict": "the network beats every simple baseline, each paired interval excluding zero; the hybrid does not beat the network and is not used"
+  },
+  "refusals": {
+    "command": "python scripts/measure_refusals.py --archive out/golfdb/split/holdout.npz",
+    "result_file": "docs/audit/refusals.json",
+    "shipped_pipeline_before_this_audit": {
+      "real_time_swings_answered": "114/119 (95.8%)",
+      "slow_motion_swings_answered": "11/82 (13.4%)",
+      "no_swing_stretches_accepted": "2/424 (0.5%)"
+    },
+    "with_slow_motion_retry": {
+      "real_time_swings_answered": "117/119 (98.3%)",
+      "slow_motion_swings_answered": "82/82 (100%), 74 of them read as slow motion",
+      "no_swing_stretches_accepted": "3/424 (0.7%)",
+      "tempo_median_rel_error": {"real_time": 0.1462, "slow_motion": 0.1548}
+    },
+    "correction": "The previously published '0.9% of real swings refused' measured the confidence rule alone. Through the whole decision the shipped pipeline refused 38% of held-out real swings (76 of 201), nearly all slow-motion replays."
+  },
+  "synthetic": {
+    "command": "python scripts/make_test_clips.py --out out/testclips && python scripts/evaluate_clips.py --clips out/testclips --json docs/audit/synthetic-eval.json",
+    "render_wall_time_s": 324,
+    "result": "12/12 swings read, 3/3 no-swing clips refused, 0 dangerous reads",
+    "tempo_error_vs_generated": {
+      "face_on_normal": "+8%", "down_the_line": "+41% (confidence 0.39)", "angled_45": "-1%",
+      "slow_tempo (2.18)": "+17%", "quick_tempo (3.69)": "+1%", "left_handed": "-0%",
+      "thirty_fps": "-4%", "slow_motion_120": "+3%", "landscape_720": "+14%",
+      "tilted_camera": "+13%", "far_away": "+11%", "close_up_feet_cut": "+3%"
+    },
+    "note": "Reported apart from the real benchmarks. Before this audit the evaluator scored every clip against a tempo of 3.0, including the clips generated at 2.2 and 3.8."
+  }
+}

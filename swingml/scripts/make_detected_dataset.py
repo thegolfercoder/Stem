@@ -63,7 +63,9 @@ def build_one(
     if resampled.n_frames < 32:
         return None
 
-    event_frames = label_frames(swing, grid, features_config.canonical_rate_hz, resampled.n_frames)
+    event_frames = label_frames(
+        swing.truth.event_times_s, grid, features_config.canonical_rate_hz, resampled.n_frames
+    )
     if event_frames is None:
         return None
 

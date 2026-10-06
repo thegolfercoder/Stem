@@ -1,0 +1,298 @@
+{
+  "candidate": {
+    "path": "out/exp/g7_s1/swing_event_net.pt",
+    "sha256": "b181c33473759011cc71f44b90c9444bcc51d318e43c42dba89d43c3da67f32b"
+  },
+  "baseline": {
+    "path": "swingml/data/swing_event_net.pt",
+    "sha256": "61a05945eb833728663157f4f43f4d5383327dca4699a5eb123b2644a6f5f8ff"
+  },
+  "test": {
+    "manifest": "golfdb-holdout-v1",
+    "n_clips": 201
+  },
+  "baseline_summary": {
+    "n": 201.0,
+    "answered": 0.9900497512437811,
+    "within_1_core4": 0.48743718592964824,
+    "tempo_median_rel_error": 0.151736385391886,
+    "tempo_band_coverage": 0.8542713567839196,
+    "event_band_coverage": 0.965,
+    "false_confidence_rate": 0.1457286432160804,
+    "no_swing_accepted": 0.007075471698113208,
+    "tempo_slope": 0.31925216541975193
+  },
+  "candidate_summary": {
+    "n": 201.0,
+    "answered": 0.9900497512437811,
+    "within_1_core4": 0.5062814070351759,
+    "tempo_median_rel_error": 0.12005548521557892,
+    "tempo_band_coverage": 0.8040201005025126,
+    "event_band_coverage": 0.9821428571428571,
+    "false_confidence_rate": 0.19597989949748743,
+    "no_swing_accepted": 0.007075471698113208,
+    "tempo_slope": 0.4355923724790142
+  },
+  "gates": {
+    "evidence": {
+      "passed": true,
+      "detail": "all present"
+    },
+    "no_leakage": {
+      "passed": true,
+      "detail": "no shared clips or groups"
+    },
+    "beats_baseline_on_frozen_real_test": {
+      "passed": true,
+      "within_1_core4_difference": [
+        0.0188,
+        -0.0082,
+        0.0669
+      ],
+      "tempo_error_difference": [
+        -0.0317,
+        -0.0634,
+        -0.0138
+      ]
+    },
+    "real_fixture": {
+      "passed": false,
+      "events": {
+        "address": {
+          "truth": 84,
+          "read": 79,
+          "tolerance": 3,
+          "passed": false
+        },
+        "top": {
+          "truth": 105,
+          "read": 106,
+          "tolerance": 3,
+          "passed": true
+        },
+        "impact": {
+          "truth": 115,
+          "read": 114,
+          "tolerance": 2,
+          "passed": true
+        },
+        "finish": {
+          "truth": 125,
+          "read": 126,
+          "tolerance": 6,
+          "passed": true
+        }
+      }
+    },
+    "uncertainty_coverage": {
+      "passed": true,
+      "tempo": 0.8040201005025126,
+      "events": 0.9821428571428571,
+      "claimed": 0.8
+    },
+    "false_confidence": {
+      "passed": false,
+      "candidate": 0.19597989949748743,
+      "baseline": 0.1457286432160804
+    },
+    "refusals": {
+      "passed": true,
+      "real_swings_answered": [
+        0.9900497512437811,
+        0.9900497512437811
+      ],
+      "no_swing_accepted": [
+        0.007075471698113208,
+        0.007075471698113208
+      ],
+      "n_no_swing_stretches": 424
+    },
+    "subgroups": {
+      "passed": true,
+      "regressed": [],
+      "groups": {
+        "face_on": {
+          "n": 41,
+          "baseline": {
+            "n": 41.0,
+            "answered": 1.0,
+            "within_1_core4": 0.5304878048780488,
+            "tempo_median_rel_error": 0.1400336700138388,
+            "tempo_band_coverage": 0.8536585365853658,
+            "event_band_coverage": 0.96875,
+            "false_confidence_rate": 0.14634146341463414,
+            "no_swing_accepted": NaN,
+            "tempo_slope": 0.3449663081848933
+          },
+          "candidate": {
+            "n": 41.0,
+            "answered": 1.0,
+            "within_1_core4": 0.5792682926829268,
+            "tempo_median_rel_error": 0.12366067645918888,
+            "tempo_band_coverage": 0.8048780487804879,
+            "event_band_coverage": 0.9741379310344828,
+            "false_confidence_rate": 0.1951219512195122,
+            "no_swing_accepted": NaN,
+            "tempo_slope": 0.47712223331521747
+          }
+        },
+        "down_the_line": {
+          "n": 96,
+          "baseline": {
+            "n": 96.0,
+            "answered": 0.9895833333333334,
+            "within_1_core4": 0.47368421052631576,
+            "tempo_median_rel_error": 0.16684566801458556,
+            "tempo_band_coverage": 0.8631578947368421,
+            "event_band_coverage": 0.9780701754385965,
+            "false_confidence_rate": 0.1368421052631579,
+            "no_swing_accepted": NaN,
+            "tempo_slope": 0.28044397800820764
+          },
+          "candidate": {
+            "n": 96.0,
+            "answered": 0.9895833333333334,
+            "within_1_core4": 0.4763157894736842,
+            "tempo_median_rel_error": 0.10583766645191701,
+            "tempo_band_coverage": 0.8,
+            "event_band_coverage": 0.9870689655172413,
+            "false_confidence_rate": 0.2,
+            "no_swing_accepted": NaN,
+            "tempo_slope": 0.44469410507694285
+          }
+        },
+        "other_view": {
+          "n": 64,
+          "baseline": {
+            "n": 64.0,
+            "answered": 0.984375,
+            "within_1_core4": 0.4801587301587302,
+            "tempo_median_rel_error": 0.13858117122817837,
+            "tempo_band_coverage": 0.8412698412698413,
+            "event_band_coverage": 0.94375,
+            "false_confidence_rate": 0.15873015873015872,
+            "no_swing_accepted": NaN,
+            "tempo_slope": 0.3486135155420886
+          },
+          "candidate": {
+            "n": 64.0,
+            "answered": 0.984375,
+            "within_1_core4": 0.503968253968254,
+            "tempo_median_rel_error": 0.12900494014631242,
+            "tempo_band_coverage": 0.8095238095238095,
+            "event_band_coverage": 0.9807692307692307,
+            "false_confidence_rate": 0.19047619047619047,
+            "no_swing_accepted": NaN,
+            "tempo_slope": 0.41464332583086455
+          }
+        },
+        "slow_motion": {
+          "n": 82,
+          "baseline": {
+            "n": 82.0,
+            "answered": 1.0,
+            "within_1_core4": 0.2621951219512195,
+            "tempo_median_rel_error": 0.15476642267872776,
+            "tempo_band_coverage": 0.8170731707317073,
+            "event_band_coverage": 0.7954545454545454,
+            "false_confidence_rate": 0.18292682926829268,
+            "no_swing_accepted": NaN,
+            "tempo_slope": 0.23822702523855918
+          },
+          "candidate": {
+            "n": 82.0,
+            "answered": 1.0,
+            "within_1_core4": 0.2774390243902439,
+            "tempo_median_rel_error": 0.12599009512992623,
+            "tempo_band_coverage": 0.7560975609756098,
+            "event_band_coverage": 0.925,
+            "false_confidence_rate": 0.24390243902439024,
+            "no_swing_accepted": NaN,
+            "tempo_slope": 0.3500799662782645
+          }
+        },
+        "real_time": {
+          "n": 119,
+          "baseline": {
+            "n": 119.0,
+            "answered": 0.9831932773109243,
+            "within_1_core4": 0.6452991452991453,
+            "tempo_median_rel_error": 0.1461763632094126,
+            "tempo_band_coverage": 0.8803418803418803,
+            "event_band_coverage": 0.981359649122807,
+            "false_confidence_rate": 0.11965811965811966,
+            "no_swing_accepted": NaN,
+            "tempo_slope": 0.3788740404951423
+          },
+          "candidate": {
+            "n": 119.0,
+            "answered": 0.9831932773109243,
+            "within_1_core4": 0.6666666666666666,
+            "tempo_median_rel_error": 0.11402785032792144,
+            "tempo_band_coverage": 0.8376068376068376,
+            "event_band_coverage": 0.9870689655172413,
+            "false_confidence_rate": 0.1623931623931624,
+            "no_swing_accepted": NaN,
+            "tempo_slope": 0.5105279098831342
+          }
+        },
+        "left_handed": {
+          "n": 23,
+          "baseline": {
+            "n": 23.0,
+            "answered": 0.9565217391304348,
+            "within_1_core4": 0.42045454545454547,
+            "tempo_median_rel_error": 0.16754771508113075,
+            "tempo_band_coverage": 0.6818181818181818,
+            "event_band_coverage": 0.8660714285714286,
+            "false_confidence_rate": 0.3181818181818182,
+            "no_swing_accepted": NaN,
+            "tempo_slope": 0.04775828028189057
+          },
+          "candidate": {
+            "n": 23.0,
+            "answered": 0.9565217391304348,
+            "within_1_core4": 0.42045454545454547,
+            "tempo_median_rel_error": 0.10369080731985789,
+            "tempo_band_coverage": 0.6363636363636364,
+            "event_band_coverage": 0.9615384615384616,
+            "false_confidence_rate": 0.36363636363636365,
+            "no_swing_accepted": NaN,
+            "tempo_slope": 0.40935005507082983
+          }
+        },
+        "right_handed": {
+          "n": 178,
+          "baseline": {
+            "n": 178.0,
+            "answered": 0.9943820224719101,
+            "within_1_core4": 0.4957627118644068,
+            "tempo_median_rel_error": 0.1461763632094126,
+            "tempo_band_coverage": 0.8757062146892656,
+            "event_band_coverage": 0.9774774774774775,
+            "false_confidence_rate": 0.12429378531073447,
+            "no_swing_accepted": NaN,
+            "tempo_slope": 0.34738408092654405
+          },
+          "candidate": {
+            "n": 178.0,
+            "answered": 0.9943820224719101,
+            "within_1_core4": 0.5169491525423728,
+            "tempo_median_rel_error": 0.12099384202510814,
+            "tempo_band_coverage": 0.8248587570621468,
+            "event_band_coverage": 0.9845132743362832,
+            "false_confidence_rate": 0.1751412429378531,
+            "no_swing_accepted": NaN,
+            "tempo_slope": 0.43821364015410763
+          }
+        }
+      }
+    },
+    "tempo_sensitivity": {
+      "passed": true,
+      "baseline_slope": 0.31925216541975193,
+      "candidate_slope": 0.4355923724790142
+    }
+  },
+  "passed": false
+}

@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Swing analysis</title>
+<link rel="icon" href="data:,">
+<title>Swing Story</title>
 <style>
 :root {
   --bg:#0e1014; --panel:#161a21; --panel-2:#1c212a; --line:#262d38;
@@ -12,11 +13,25 @@
   --radius:14px;
   --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --on-accent:#06131a; --back:#4fc3f7; --down:#ffb84d; --follow:#6b7688;
+  color-scheme: dark;
 }
+/* Dark first. The light palette applies when the system asks for it and nobody
+   has chosen otherwise, or when light has been chosen outright - a host that
+   stamps data-theme on the root must win in both directions, or the page shows
+   one theme's text on the other theme's ground. */
 @media (prefers-color-scheme: light) {
-  :root { --bg:#f6f7f9; --panel:#fff; --panel-2:#f0f2f5; --line:#dfe3e9;
+  :root:not([data-theme="dark"]) {
+          --bg:#f6f7f9; --panel:#fff; --panel-2:#f0f2f5; --line:#dfe3e9;
           --ink:#161a21; --ink-dim:#58616f; --ink-faint:#8b94a3;
-          --accent:#0d7fb0; --accent-warm:#b46a00; }
+          --accent:#0d7fb0; --accent-warm:#b46a00; --on-accent:#fff;
+          --back:#0d7fb0; --down:#b46a00; --follow:#8b94a3; color-scheme: light; }
+}
+:root[data-theme="light"] {
+  --bg:#f6f7f9; --panel:#fff; --panel-2:#f0f2f5; --line:#dfe3e9;
+  --ink:#161a21; --ink-dim:#58616f; --ink-faint:#8b94a3;
+  --accent:#0d7fb0; --accent-warm:#b46a00; --on-accent:#fff;
+  --back:#0d7fb0; --down:#b46a00; --follow:#8b94a3; color-scheme: light;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -25,6 +40,12 @@ header{max-width:1120px;margin:0 auto;padding:20px;display:flex;align-items:cent
 .mark{width:18px;height:18px;border-radius:50%;border:1px solid var(--line);
   background:radial-gradient(circle at 32% 30%,var(--accent),transparent 62%),
              radial-gradient(circle at 68% 72%,var(--accent-warm),transparent 60%)}
+.offline-status{margin-left:auto;font-size:12px;color:var(--good);border:1px solid var(--line);
+  border-radius:999px;padding:3px 10px}
+.offline-status.offline-failed{color:var(--ink-dim)}
+.offline-update{max-width:1120px;margin:0 auto 8px;padding:10px 20px;display:flex;gap:12px;align-items:center;
+  flex-wrap:wrap;background:var(--panel);border:1px solid var(--accent);border-radius:var(--radius)}
+.offline-update[hidden]{display:none}
 header b{font-weight:650;letter-spacing:-.01em}
 h1{font-size:34px;letter-spacing:-.02em;margin:18px 0 8px;font-weight:660}
 .lede{color:var(--ink-dim);margin:0 0 20px;max-width:62ch;font-size:16px}
@@ -42,10 +63,129 @@ h1{font-size:34px;letter-spacing:-.02em;margin:18px 0 8px;font-weight:660}
 .drop-main{margin:0 0 6px;font-size:16px;font-weight:560}
 .drop-sub{margin:0;color:var(--ink-faint);font-size:13px}
 .btn-primary{background:var(--accent);border:1px solid transparent;
-  color:#06131a;padding:10px 20px;border-radius:10px;cursor:pointer;font:inherit;
+  color:var(--on-accent);padding:10px 20px;border-radius:10px;cursor:pointer;font:inherit;
   font-size:14.5px;font-weight:600;margin-top:14px}
 .btn-primary:hover{filter:brightness(1.08)}
-@media (prefers-color-scheme: light){ .btn-primary{color:#fff} }
+.summary-card{display:grid;grid-template-columns:minmax(0,140px) minmax(0,1fr);gap:16px;align-items:start;
+  border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);padding:14px;margin:0 0 8px}
+.sum-shot canvas{display:block;width:100%;height:auto;border-radius:8px;background:#000}
+.sum-shot:empty{display:none}
+.sum-body{display:grid;gap:8px;min-width:0}
+.sum-body .eyebrow{margin:0}
+.sum-tempo{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sum-label{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+.sum-value{font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.sum-priority{display:grid;gap:2px;border-top:1px solid var(--line);padding-top:8px}
+.sum-priority b{font-size:16px}
+.sum-drill{color:var(--ink-dim);font-size:14px}
+.sum-link{color:var(--accent);font-size:14px;min-height:44px;display:inline-flex;align-items:center}
+.sum-actions{display:flex;flex-wrap:wrap;gap:8px}
+.sum-actions .btn-primary{margin-top:0}
+.sum-note{margin:0;color:var(--ink-faint);font-size:12px}
+.share-card{margin:0;display:grid;gap:6px}
+.share-card[hidden]{display:none}
+.share-card img{display:block;width:100%;max-width:360px;height:auto;border-radius:8px;border:1px solid var(--line)}
+.share-card figcaption{color:var(--ink-dim);font-size:12px;white-space:pre-line}
+details.fold{border-top:1px solid var(--line);margin-top:8px}
+details.fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:44px}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::before{content:"\25B8";color:var(--ink-faint);transition:transform .15s}
+details.fold[open]>summary::before{transform:rotate(90deg)}
+details.fold>summary h2.section{margin:12px 0}
+.btn{min-height:44px}
+.action-bar{display:none}
+.action-bar[hidden]{display:none!important}
+@media (max-width:720px){
+  .summary-card{grid-template-columns:minmax(0,96px) minmax(0,1fr);gap:12px}
+  .sum-value{font-size:28px}
+  .action-bar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;gap:8px;
+    padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:var(--panel);
+    border-top:1px solid var(--line)}
+  .action-bar button{flex:1;min-height:44px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--ink);font:inherit;font-weight:600}
+  body{padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+}
+@media (prefers-reduced-motion:reduce){details.fold>summary::before{transition:none}}
+.drop-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:14px}
+.drop-actions .btn-primary{margin-top:0}
+.btn-secondary{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:10px;
+  padding:10px 18px;font:inherit;font-weight:600;cursor:pointer;min-height:44px}
+.btn-secondary:hover{border-color:var(--accent)}
+.recorder{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);padding:16px;
+  margin:16px 0;display:grid;gap:12px}
+.rec-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.rec-head h2{margin:0;font-size:18px}
+.rec-note{margin:0;color:var(--ink-dim);font-size:13px;max-width:62ch}
+.rec-note:empty{display:none}
+.rec-stage{position:relative;background:#000;border-radius:10px;overflow:hidden;max-height:70vh;
+  width:fit-content;max-width:100%;margin:0 auto}
+.rec-stage video{display:block;max-width:100%;max-height:70vh}
+.rec-band{position:absolute;left:12%;right:12%;top:7.5%;bottom:7.5%;border:2px dashed var(--warn);
+  border-radius:8px;pointer-events:none}
+.rec-band.ok{border-color:var(--good);border-style:solid}
+.rec-centre{position:absolute;top:0;bottom:0;left:50%;border-left:1px dashed rgba(255,255,255,.35);pointer-events:none}
+.rec-count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:min(30vw,140px);font-weight:700;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.6);pointer-events:none}
+.rec-count:empty{display:none}
+.rec-status{display:flex;flex-wrap:wrap;gap:8px}
+.rec-chip{font:500 12px/1.2 var(--mono);padding:6px 10px;border-radius:999px;background:var(--panel-2);
+  color:var(--ink-dim)}
+.rec-chip.ok{color:var(--good)} .rec-chip.warn{color:var(--warn)}
+.rec-actions{display:flex;flex-wrap:wrap;gap:10px}
+.rec-actions button{min-height:44px}
+.progress-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px}
+.progress-card{margin:0;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);padding:12px 14px}
+.progress-card h3{margin:0;font-size:15px}
+.progress-card .unit{margin:0 0 4px;color:var(--ink-dim);font-size:12px}
+.progress-empty{color:var(--ink-dim)}
+.pg-chart{display:block;width:100%;height:auto;overflow:visible}
+.pg-ref{fill:var(--panel-2)}
+.pg-ref-label{fill:var(--ink-faint);font:500 10px var(--font)}
+.pg-axis{fill:var(--ink-faint);font:500 10px var(--mono)}
+.pg-base{stroke:var(--line);stroke-width:1}
+.pg-session{stroke:var(--line);stroke-width:1;stroke-dasharray:2 3}
+.pg-spread{stroke:var(--accent);stroke-width:2;stroke-opacity:.3;stroke-linecap:round}
+.pg-median{fill:none;stroke:var(--ink-dim);stroke-width:2;stroke-linecap:round}
+.pg-link{stroke:var(--ink-faint);stroke-width:1;stroke-dasharray:3 3}
+.pg-point{fill:var(--accent);stroke:var(--panel);stroke-width:2}
+.pg-point.pg-hollow{fill:var(--panel);stroke:var(--accent);stroke-width:1.5}
+.pg-verdict{fill:var(--ink-dim);font:600 10px var(--font)}
+.progress-card table{width:100%;border-collapse:collapse;font-size:12px}
+.progress-card td,.progress-card th{padding:2px 6px;text-align:left;border-bottom:1px solid var(--line)}
+.session-board{display:grid;gap:4px;padding:14px 16px;border-radius:10px;background:var(--panel-2);text-align:center}
+.session-board[hidden]{display:none}
+.session-count{font-weight:700;font-size:clamp(40px,12vw,72px);line-height:1.05;letter-spacing:-.01em}
+.session-tempo{font-weight:600;font-size:clamp(28px,9vw,48px);line-height:1.1;font-variant-numeric:tabular-nums}
+.session-tempo[hidden]{display:none}
+.session-tempo small{font-size:.45em;font-weight:500;color:var(--ink-dim)}
+.session-state{font-weight:600;font-size:clamp(18px,5vw,26px);line-height:1.2;color:var(--ink-dim)}
+.session-state.recording{color:var(--warn)}
+.session-tally{font:500 13px/1.4 var(--mono);color:var(--ink-dim)}
+.btn-link{background:none;border:0;color:var(--accent);font:inherit;font-size:13.5px;
+  cursor:pointer;padding:6px 4px;margin-top:6px;text-decoration:underline;text-underline-offset:3px}
+.btn-link:focus-visible,.btn-primary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* The swing told in order. A timeline to scale, then what happened in each part
+   in words, every sentence built from a measured number and carrying how it was
+   obtained - the same rule as the cards above, in prose. */
+.story{display:grid;gap:18px;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);padding:20px 22px}
+.timeline{overflow-x:auto}
+.timeline svg{display:block;width:100%;min-width:520px;height:auto}
+.timeline text{fill:var(--ink-dim);font-family:var(--font);font-size:11px}
+.timeline .t-strong{fill:var(--ink);font-weight:600}
+.timeline .t-time{fill:var(--ink-faint);font-family:var(--mono);font-size:10px}
+.phase-key{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--ink-dim)}
+.phase-key i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.beats{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:beat}
+.beats li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;counter-increment:beat}
+.beats li::before{content:counter(beat);width:24px;height:24px;border-radius:50%;
+  display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--ink-dim);
+  border:1px solid var(--line);background:var(--panel-2);font-variant-numeric:tabular-nums}
+.beats h3{margin:1px 0 2px;font-size:14.5px;font-weight:620;letter-spacing:-.005em}
+.beats p{margin:0;color:var(--ink-dim);max-width:68ch}
+.beats b{color:var(--ink);font-variant-numeric:tabular-nums;font-weight:620}
+.beats .prov{margin-left:6px;vertical-align:1px}
 
 /* Settings sit beside the action rather than inside the drop target: handedness
    is not part of dropping a file, and putting it under a divider in there made
@@ -105,6 +245,7 @@ h2.section{font-size:19px;margin:28px 0 4px;letter-spacing:-.01em}
 .conf>i{display:block;height:100%;background:linear-gradient(90deg,var(--warn),var(--good))}
 .frame-band{color:var(--ink-faint);font-size:11px;font-variant-numeric:tabular-nums;cursor:help}
 .metric-range{color:var(--ink-faint);font-size:12px;margin-top:3px;font-variant-numeric:tabular-nums;cursor:help}
+.metric-caveat{color:var(--ink-faint);font-size:12px;margin-top:4px;line-height:1.35}
 .ast{color:var(--accent-warm)}
 .footnote{color:var(--ink-faint);font-size:12.5px;margin-top:12px;max-width:76ch}
 .metric-grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
@@ -118,17 +259,114 @@ h2.section{font-size:19px;margin:28px 0 4px;letter-spacing:-.01em}
 .metric-unit{font-size:13px;color:var(--ink-faint);margin-left:4px;font-weight:400}
 .metric-foot{padding-top:9px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .metric-hint{color:var(--ink-faint);font-size:12px}
+.scrubber{margin-top:16px;display:grid;gap:10px;max-width:640px}
+.scrub-view canvas{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;
+  border-radius:10px;background:#000}
+.scrub-controls{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.scrub-controls input[type=range]{width:100%;min-height:44px}
+.scrub-time{margin:0;color:var(--ink-dim);font-size:13px;font-variant-numeric:tabular-nums}
+.scrub-jumps{display:flex;flex-wrap:wrap;gap:6px}
+.scrub-jumps .btn{padding:6px 10px;font-size:13px}
+.scrub-jumps .btn[aria-current=true]{border-color:var(--accent);color:var(--accent)}
+.scrub-play{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--ink-dim);font-size:14px}
+.scrub-play select{min-height:36px;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);
+  border-radius:8px;padding:4px 8px;font:inherit}
+.scrub-show{display:flex;flex-wrap:wrap;gap:6px 14px;border:0;padding:0;margin:0;font-size:14px;color:var(--ink-dim)}
+.scrub-show legend{padding:0;margin-bottom:4px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint)}
+.scrub-show label{display:inline-flex;gap:6px;align-items:center;min-height:32px}
+.scrub-angles{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:14px}
+.scrub-angles li{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.session-summary table{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0 10px}
+.session-summary th,.session-summary td{text-align:left;padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.session-summary th{font-weight:500;color:var(--ink-faint);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.session-summary td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.session-summary .note{color:var(--ink-dim);font-size:13px}
+.session-picks{display:grid;gap:6px;margin:0 0 8px;padding:0;list-style:none}
+.session-picks .btn-link{min-height:32px}
+.kept li.found{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.compare{display:grid;gap:10px}
+.compare-verdict p{margin:0 0 6px;font-size:14px}
+.compare-verdict .compare-not{color:var(--warn)}
+.compare-verdict .compare-ok{color:var(--ink-dim)}
+.compare-view{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:600px){.compare-view{grid-template-columns:1fr}}
+.compare-view figure{margin:0}
+.compare-view canvas{display:block;width:100%;height:auto;max-height:60vh;object-fit:contain;border-radius:10px;background:#000}
+.compare-view figcaption{display:flex;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--ink-dim);margin-top:4px;font-variant-numeric:tabular-nums}
 .prov{font-size:10.5px;padding:2px 7px;border-radius:999px;letter-spacing:.04em;
   text-transform:uppercase;border:1px solid var(--line);white-space:nowrap}
 .prov-measured{color:var(--good)}
 .prov-derived{color:var(--accent)}
 .prov-projected{color:var(--accent-warm)}
+.prov-refused{color:var(--ink-dim)}
+.stem-read{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 18px;margin:0;list-style:none;display:grid;gap:14px}
+.stem-read li{display:grid;gap:4px;max-width:72ch}
+.stem-read p{margin:0;line-height:1.55}
+.stem-read .prov{margin-left:6px;vertical-align:1px}
+.read-caveat{color:var(--ink-dim);font-size:13px;line-height:1.45}
+.send-diag{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.send-diag-note{color:var(--ink-dim);font-size:13px;max-width:62ch}
+.prov-set_by_you{color:var(--ink);border-color:var(--accent);align-self:flex-start;margin-top:2px}
 .empty{color:var(--ink-dim);background:var(--panel);border:1px solid var(--line);
   border-radius:var(--radius);padding:18px;margin:0}
 .btn{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);padding:8px 14px;
   border-radius:9px;cursor:pointer;font:inherit;font-size:13.5px}
 .btn:hover{border-color:var(--accent)}
 .result-actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+/* The practice loop: a plan's verdict, the priority, and the swings kept. */
+.text-input{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);font:inherit;
+  font-size:13.5px;padding:6px 10px;border-radius:9px;min-width:0;width:12em;max-width:100%}
+.text-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.options-check{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13.5px;color:var(--ink-dim)}
+.options-check[hidden]{display:none}
+.drill-body{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:520px){.drill-body{grid-template-columns:minmax(0,1fr);gap:8px}
+  .drill-demo{display:flex;gap:10px;align-items:flex-end}
+  .drill-demo .drill-demo-svg{width:110px;flex:none}}
+.drill-demo{margin:0}
+.drill-demo figcaption{font-size:11px;line-height:1.3;color:var(--ink-faint);margin-top:4px}
+.drill-demo-svg{display:block;width:100%;height:auto;background:var(--panel-2);border-radius:8px}
+.dm-bone{stroke:var(--ink-dim);stroke-width:2.2;stroke-linecap:round}
+.dm-lit{stroke:var(--accent-warm);stroke-width:3.2;stroke-linecap:round}
+.dm-club{stroke:var(--ink-faint);stroke-width:1.4;stroke-linecap:round}
+.dm-head{fill:none;stroke:var(--ink-dim);stroke-width:2.2}
+.dm-lit-head{fill:none;stroke:var(--accent-warm);stroke-width:2.8}
+.dm-guide{fill:none;stroke:var(--accent);stroke-width:1;stroke-dasharray:3 2}
+.dm-frame{fill:none;stroke:var(--accent);stroke-width:1.2;stroke-dasharray:4 3}
+.dm-stick{stroke:var(--warn);stroke-width:1.6;stroke-linecap:round}
+.dm-ground{stroke:var(--line);stroke-width:1}
+.dm-say{fill:var(--accent);font:700 12px var(--font)}
+.rep-counter{display:grid;gap:8px;margin-top:6px;padding-top:10px;border-top:1px solid var(--line)}
+.rep-count{font-weight:600;font-variant-numeric:tabular-nums}
+.rep-actions{display:flex;flex-wrap:wrap;gap:8px}
+.rep-actions .btn{margin:0}
+.rep-pace{color:var(--ink-dim);font-size:14px}
+.rep-pace select{min-height:36px;margin-left:6px;background:var(--panel-2);color:var(--ink);
+  border:1px solid var(--line);border-radius:8px;padding:4px 8px;font:inherit}
+.rep-timer{color:var(--ink-faint);font-size:13px;font-variant-numeric:tabular-nums}
+.practice-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 18px;margin-top:12px}
+.practice-card h3{margin:0 0 6px;font-size:17px;letter-spacing:-.01em}
+.practice-card p{margin:0 0 8px;color:var(--ink-dim);max-width:72ch}
+.practice-card .eyebrow{margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint)}
+.practice-card.v-improved{border-color:color-mix(in srgb,var(--good) 55%,var(--line))}
+.practice-card.v-worsened,.practice-card.v-not_comparable{border-color:color-mix(in srgb,var(--warn) 55%,var(--line))}
+.practice-card ol,.practice-card ul{margin:6px 0 10px;padding-left:20px;color:var(--ink-dim);max-width:72ch}
+.practice-card li{margin:2px 0}
+.practice-card .blocking{color:var(--ink)}
+.evidence{list-style:none;padding:0 !important;display:grid;gap:4px}
+.evidence li{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:13.5px}
+.evidence b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.practice-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.practice-data{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;
+  color:var(--ink-faint);font-size:12.5px}
+.confidence{font-size:12.5px;color:var(--ink-faint)}
+.practice-data .kept{flex-basis:100%}
+.practice-data .kept summary{cursor:pointer;color:var(--ink-dim)}
+.practice-data .kept li{justify-content:space-between;border-bottom:1px solid var(--line);padding:4px 0}
+.practice-data .kept .btn{padding:3px 10px;font-size:12.5px}
+.practice-note{flex-basis:100%;margin:0;color:var(--ink-dim)}
 /* A line saying what was read, and the way back to reading another. Both sat at
    the very bottom before, under four sections of numbers, so the only obvious
    way to try a second clip was to scroll past everything or reload the page. */
@@ -155,16 +393,23 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
   display:flex;flex-direction:column;gap:10px}
 .lightbox canvas{max-width:100%;max-height:78vh;object-fit:contain;border-radius:12px;
   border:1px solid var(--line);background:#000;display:block;margin:0 auto}
+/* The backdrop is dark in both themes, so the text on it is light in both. */
 .lightbox figcaption{display:flex;justify-content:space-between;gap:14px;align-items:baseline;
-  color:var(--ink);font-size:15px;font-weight:560}
-.lightbox .lb-time{color:var(--ink-faint);font-family:var(--mono);font-size:13px;font-weight:400}
+  color:#f2f4f7;font-size:15px;font-weight:560}
+.lightbox .lb-time{color:#b8bec8;font-family:var(--mono);font-size:13px;font-weight:400}
 .lb-close{position:absolute;top:16px;right:18px;background:var(--panel);color:var(--ink);
   border:1px solid var(--line);border-radius:9px;width:34px;height:34px;font-size:19px;
   line-height:1;cursor:pointer}
 .lb-nav{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:9px;
   padding:7px 13px;font:inherit;font-size:13.5px;cursor:pointer}
 .lb-nav:hover,.lb-close:hover{border-color:var(--accent)}
-.lb-controls{display:flex;gap:8px;justify-content:center}
+.lb-controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.lb-use{border-color:var(--accent)}
+.lb-use:disabled{opacity:.45;cursor:default;border-color:var(--line)}
+.lb-note{margin:0;text-align:center;color:#c9ced6;font-size:13px}
+.lb-link{background:none;border:0;color:var(--accent);font:inherit;cursor:pointer;
+  text-decoration:underline;padding:0 0 0 6px}
+.lightbox .lb-link{color:#8cc4ff}
 .frame{cursor:zoom-in}
 .hidden{display:none}
 [hidden]{display:none}
@@ -176,7 +421,12 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
 </style>
 </head>
 <body>
-<header><span class="mark"></span><b>Swing analysis</b></header>
+<header><span class="mark"></span><b>Swing Story</b>
+  <span class="offline-status" id="offline-status" role="status" hidden></span></header>
+<div class="offline-update" id="offline-update" role="status" hidden>
+  <span>A newer version of this page is ready.</span>
+  <button class="btn" type="button" id="offline-reload">Reload for it</button>
+</div>
 <main>
   <h1>Drop in a swing</h1>
   <p class="lede">
@@ -194,16 +444,68 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
     </svg>
     <p class="drop-main" id="drop-main">Drag a video here</p>
     <p class="drop-sub" id="drop-sub">.mov .mp4 .m4v &middot; portrait or landscape &middot; any frame rate, slow motion included</p>
-    <button type="button" id="browse" class="btn-primary">Choose a video</button>
+    <div class="drop-actions">
+      <button type="button" id="browse" class="btn-primary">Choose a video</button>
+      <button type="button" id="record" class="btn-secondary" hidden>Record with camera</button>
+    </div>
+    <div><button type="button" id="sample" class="btn-link" hidden>or try it on a sample swing</button></div>
   </div>
+
+  <section class="recorder" id="recorder" hidden aria-labelledby="rec-title">
+    <div class="rec-head">
+      <h2 id="rec-title">Record a swing</h2>
+      <button type="button" id="rec-close" class="btn-link">Close camera</button>
+    </div>
+    <p class="rec-note" id="rec-message" role="status"></p>
+    <div class="session-board" id="session-board" hidden aria-live="polite">
+      <div class="session-count" id="session-count">No swings yet</div>
+      <div class="session-tempo" id="session-tempo" hidden></div>
+      <div class="session-state" id="session-state">Waiting for you at address</div>
+      <div class="session-tally" id="session-tally"></div>
+    </div>
+    <label class="options-check" id="session-voice-box" hidden>
+      <input type="checkbox" id="session-voice">
+      Say each swing out loud in a range session (your device's own voice; nothing is sent)</label>
+    <div class="rec-stage" id="rec-stage">
+      <video id="rec-preview" playsinline muted autoplay></video>
+      <div class="rec-band" id="rec-band" aria-hidden="true"></div>
+      <div class="rec-centre" aria-hidden="true"></div>
+      <div class="rec-count" id="rec-count" aria-live="assertive"></div>
+    </div>
+    <div class="rec-status">
+      <span class="rec-chip" id="rec-framing">Checking the framing&hellip;</span>
+      <span class="rec-chip" id="rec-level" hidden></span>
+      <span class="rec-chip" id="rec-rate"></span>
+    </div>
+    <p class="rec-note" id="rec-rate-note" hidden></p>
+    <div class="rec-actions">
+      <button type="button" id="rec-start" class="btn-primary">Start: 3 s countdown, then 6 s</button>
+      <button type="button" id="rec-session" class="btn-secondary">Range session: every swing, hands-free</button>
+      <button type="button" id="rec-stop" class="btn-secondary" hidden>Stop and analyse</button>
+      <button type="button" id="rec-session-stop" class="btn-primary" hidden>Stop the session</button>
+    </div>
+    <p class="rec-note">Stand the phone side-on to the target, about 3&ndash;4 m away, so your whole body
+      fills the band. The recording stays on this device and goes straight into the analysis.</p>
+    <p class="rec-note">In a range session the camera stays on: each time you are still at address for a
+      second, recording starts, and it stops once your finish has settled. Each swing is analysed while
+      you hit the next and kept in your practice log.</p>
+  </section>
 
   <div class="options">
     <span class="options-label">Golfer is</span>
     <div class="segmented" id="handedness" role="group" aria-label="Handedness">
-      <button type="button" data-value="right" aria-pressed="true">Right-handed</button>
+      <button type="button" data-value="auto" aria-pressed="true">Detect</button>
+      <button type="button" data-value="right" aria-pressed="false">Right-handed</button>
       <button type="button" data-value="left" aria-pressed="false">Left-handed</button>
     </div>
+    <label class="options-label" for="club">Club</label>
+    <input id="club" class="text-input" list="club-list" placeholder="optional, e.g. 7 iron"
+           autocomplete="off" maxlength="40">
+    <datalist id="club-list"></datalist>
   </div>
+  <label class="options-check" id="for-plan-box" hidden>
+    <input type="checkbox" id="for-plan" checked>
+    Count the next clip as a retest swing for your plan: <span id="for-plan-name"></span></label>
   <p class="first-run">The first clip you analyse also downloads the body-tracking model,
      about 30&nbsp;MB. After that it is cached and every later clip starts straight away.</p>
 
@@ -241,20 +543,62 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
       from a clip that did not contain a swing. A wrong number gets acted on; a missing one gets
       looked into.</p>
     <p class="footnote" id="refusal-diagnostics" hidden></p>
+    <div class="send-diag" id="send-diag-box" hidden>
+      <button class="btn" id="send-diag" type="button">Send this clip's diagnostics to Claude</button>
+      <span class="send-diag-note" id="send-diag-note">The poses found, the model's scores and
+        small pictures of the clip, filed with this run so it can be fixed. The video itself
+        goes too if it is under 20&nbsp;MB.</span>
+    </div>
   </div>
 
   <div id="results" hidden>
-    <div class="verdict">
-      <p class="verdict-clip" id="summary"></p>
-      <button class="btn" id="again" type="button">Analyse another clip</button>
-    </div>
+    <section class="summary-card" id="summary-card" aria-label="This swing at a glance">
+      <div class="sum-shot" id="sum-shot" aria-hidden="true"></div>
+      <div class="sum-body">
+        <p class="eyebrow">This swing, at impact</p>
+        <div class="sum-tempo">
+          <span class="sum-label">Tempo</span>
+          <b class="sum-value" id="sum-tempo"></b>
+          <span class="prov prov-derived">derived</span>
+        </div>
+        <div class="sum-drill" id="sum-range"></div>
+        <div class="sum-priority" id="sum-priority" hidden>
+          <span class="sum-label">Work on</span>
+          <b id="sum-priority-title"></b>
+          <span class="sum-drill" id="sum-drill"></span>
+          <a href="#practice" class="sum-link">The drill and your plan</a>
+        </div>
+        <div class="sum-actions">
+          <button class="btn btn-primary" id="again-record" type="button" hidden>Record again</button>
+          <button class="btn" id="again" type="button">Analyse another clip</button>
+          <button class="btn" id="share-swing" type="button">Share this swing</button>
+        </div>
+        <p class="sum-note">Share makes a picture of this swing on this device; nothing is
+          uploaded, and you choose where it goes.</p>
+        <figure class="share-card" id="share-card" hidden>
+          <img id="share-preview" alt="">
+          <figcaption id="share-caption"></figcaption>
+        </figure>
+        <p class="verdict-clip" id="summary"></p>
+      </div>
+    </section>
 
-    <h2 class="section">Tempo</h2>
+    <details class="fold" data-fold="tempo">
+    <summary><h2 class="section">Tempo</h2></summary>
     <p class="section-sub">How long each half took, straight from the frame times. These are
       the strongest numbers here, which is why they come first.</p>
     <div class="metric-grid" id="tempo-cards"></div>
+    </details>
 
-    <h2 class="section">The eight positions</h2>
+    <details class="fold" data-fold="story">
+    <summary><h2 class="section">The swing, start to finish</h2></summary>
+    <p class="section-sub">The whole motion to scale, then what happened in each part. Every
+      figure is one of the measurements on this page; nothing is added that was not measured.</p>
+    <div class="story" id="story"></div>
+    </details>
+
+    <details class="fold" data-fold="positions">
+    <summary><h2 class="section">The eight positions</h2></summary>
     <p class="section-sub">Where the model put each one, and how far out it has been measured
       to be. Click any frame to see it full size, then step through them with the arrow keys.</p>
     <div class="strip" id="strip"></div>
@@ -262,25 +606,129 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
     <p class="footnote"><span class="ast">*</span> Toe-up and mid-follow-through are defined
       by the club shaft being horizontal. A body-pose estimator does not see the club, so
       these two are placed from the body's motion rather than observed directly.</p>
+    </details>
+    <details class="fold" data-fold="scrub" id="scrubber" hidden>
+    <summary><h2 class="section">Step through the swing</h2></summary>
+    <div class="scrubber">
+      <div class="scrub-view"><div id="scrub-canvas"></div></div>
+      <div class="scrub-controls">
+        <button class="btn" type="button" id="scrub-back" aria-label="One frame back">&#8722;1</button>
+        <input type="range" id="scrub-slider" min="0" max="0" step="1" value="0"
+          aria-label="Frame">
+        <button class="btn" type="button" id="scrub-next" aria-label="One frame on">+1</button>
+      </div>
+      <p class="scrub-time" id="scrub-time" aria-live="polite"></p>
+      <div class="scrub-jumps" id="scrub-jumps"></div>
+      <div class="scrub-play">
+        <button class="btn" type="button" id="scrub-play">Play</button>
+        <label>Speed <select id="scrub-speed">
+          <option value="0.25">0.25&times;</option><option value="0.5" selected>0.5&times;</option>
+          <option value="1">1&times;</option></select></label>
+      </div>
+      <fieldset class="scrub-show"><legend>Draw</legend>
+        <label><input type="checkbox" data-show="skeleton" checked> Skeleton</label>
+        <label><input type="checkbox" data-show="shoulders" checked> Shoulder line</label>
+        <label><input type="checkbox" data-show="hips" checked> Hip line</label>
+        <label><input type="checkbox" data-show="spine" checked> Spine line</label>
+        <label><input type="checkbox" data-show="head" checked> Head box at address</label>
+      </fieldset>
+      <ul class="scrub-angles" id="scrub-angles"></ul>
+      <p class="footnote">Angles are between a line drawn on the frame and the frame's own
+        level or upright: what this camera saw, not the body's angle in space. Another
+        camera spot reads differently.</p>
+    </div>
+    </details>
+    <details class="fold" data-fold="compare" id="compare" hidden>
+    <summary><h2 class="section">Beside your previous swing</h2></summary>
+    <div class="compare">
+      <div class="compare-verdict" id="compare-verdict"></div>
+      <div class="compare-view">
+        <figure><div id="compare-a"></div><figcaption><b>This swing</b>
+          <span id="compare-a-time"></span></figcaption></figure>
+        <figure><div id="compare-b"></div><figcaption><b>Previous swing</b>
+          <span id="compare-b-time"></span></figcaption></figure>
+      </div>
+      <div class="scrub-controls">
+        <button class="btn" type="button" id="compare-back" aria-label="One frame back">&#8722;1</button>
+        <input type="range" id="compare-slider" min="0" max="0" step="1" value="0" aria-label="Frame">
+        <button class="btn" type="button" id="compare-next" aria-label="One frame on">+1</button>
+      </div>
+      <div class="scrub-jumps" id="compare-jumps"></div>
+      <div class="scrub-play">
+        <button class="btn" type="button" id="compare-play">Play both</button>
+        <label>Speed <select id="compare-speed">
+          <option value="0.25">0.25&times;</option><option value="0.5" selected>0.5&times;</option>
+          <option value="1">1&times;</option></select></label>
+      </div>
+      <fieldset class="scrub-show"><legend>Draw</legend>
+        <label><input type="checkbox" data-compare-show="skeleton" checked> Skeletons</label>
+        <label><input type="checkbox" data-compare-show="ghost"> Previous swing as a ghost on this one</label>
+      </fieldset>
+      <p class="footnote">The two are kept in step at their eight detected positions, so address,
+        the top and impact line up however long each part took. The ghost is the previous
+        swing's skeleton placed over this one, hips on hips at address and scaled to the same
+        torso length: a picture to compare shapes with, not a measurement. Only the swing
+        analysed just before this one, in this visit, can be shown: earlier swings are kept as
+        numbers only.</p>
+    </div>
+    </details>
 
-    <h2 class="section">Rotation at the top</h2>
+    <section id="read-section" hidden>
+      <h2 class="section">Stem's read, from your measurements</h2>
+      <p class="section-sub">Written on this device from the numbers on this page, each with
+        how it was obtained. Nothing is sent anywhere and nothing is added that was not
+        measured.</p>
+      <ol class="stem-read" id="stem-read" aria-live="polite"></ol>
+    </section>
+
+    <details class="fold" data-fold="rotation">
+    <summary><h2 class="section">Rotation at the top</h2></summary>
     <p class="section-sub">How far the shoulders and hips had turned away from square to the
       camera, measured from how much they foreshorten. It carries no sign &mdash; turning
       towards the camera and away from it look identical &mdash; and it reads low against
       reality, so compare it with your own swings from the same spot rather than a published
       figure.</p>
     <div class="metric-grid" id="turn-cards"></div>
+    </details>
 
-    <h2 class="section">Stability</h2>
+    <details class="fold" data-fold="stability">
+    <summary><h2 class="section">Stability</h2></summary>
     <p class="section-sub">Movement measured against the ground, in units of your own body
       length, so no calibration is needed.</p>
     <div class="metric-grid" id="stability-cards"></div>
+    </details>
 
+    <div class="send-diag" id="send-diag-slot"></div>
     <div class="result-actions">
       <button class="btn" id="download" type="button">Download the numbers as JSON</button>
       <button class="btn" id="again-bottom" type="button">Analyse another clip</button>
     </div>
   </div>
+
+  <section id="practice" hidden>
+    <h2 class="section">What to work on <span class="prov prov-derived">from your swings</span></h2>
+    <p class="section-sub">Chosen by fixed rules from the swings analysed in this browser, the
+      same rules as the desktop app, never by a language model. Only the numbers are kept, on
+      this device: never the clip or a frame of it.</p>
+    <div id="plan-panel"></div>
+    <div id="priority-panel"></div>
+    <div class="practice-data" id="practice-data"></div>
+  </section>
+
+  <section id="session-summary" class="session-summary" hidden>
+    <h2 class="section">This session <span class="prov prov-measured">your kept swings</span></h2>
+    <div id="session-body"></div>
+  </section>
+
+  <section id="progress" hidden>
+    <h2 class="section">Progress <span class="prov prov-measured">your kept swings</span></h2>
+    <p class="section-sub">Each dot is one swing kept in this browser; the line joins each day's
+      median. A hollow dot was filmed differently from your latest swing (club, hand, camera angle or
+      spot), so it is left out of the median. The shaded band is what tour players read through the
+      same analysis: a reference, not a target.</p>
+    <p class="progress-empty" id="progress-empty" hidden>Record 3 swings to see a trend.</p>
+    <div class="progress-grid" id="progress-charts"></div>
+  </section>
 
   <div class="lightbox" id="lightbox" hidden>
     <button class="lb-close" id="lb-close" type="button" aria-label="Close">&times;</button>
@@ -288,23 +736,46 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
       <div id="lb-canvas"></div>
       <figcaption><span id="lb-label"></span><span class="lb-time" id="lb-time"></span></figcaption>
       <div class="lb-controls">
-        <button class="lb-nav" id="lb-prev" type="button">&larr; Previous</button>
-        <button class="lb-nav" id="lb-next" type="button">Next &rarr;</button>
+        <button class="lb-nav" id="lb-prev" type="button">&larr; Previous position</button>
+        <button class="lb-nav" id="lb-next" type="button">Next position &rarr;</button>
       </div>
+      <div class="lb-controls lb-adjust">
+        <button class="lb-nav" id="lb-back" type="button" aria-label="One frame earlier" title="One frame earlier (,)">&lsaquo; Frame</button>
+        <button class="lb-nav lb-use" id="lb-use" type="button">Use this frame</button>
+        <button class="lb-nav" id="lb-fwd" type="button" aria-label="One frame later" title="One frame later (.)">Frame &rsaquo;</button>
+      </div>
+      <p class="lb-note"><span id="lb-note"></span>
+        <button class="lb-link" id="lb-reset" type="button" hidden>Back to the model's frame</button></p>
     </figure>
   </div>
+
+  <nav class="action-bar" id="action-bar" aria-label="Quick actions">
+    <button type="button" id="bar-analyse">Analyse</button>
+    <button type="button" id="bar-record" hidden>Record</button>
+    <button type="button" id="bar-practice" hidden>Practice</button>
+  </nav>
 
   <video id="scratch-video" class="hidden" playsinline muted></video>
   <canvas id="scratch-canvas" class="hidden"></canvas>
 </main>
 <footer>
-  <p>Runs entirely in your browser. The clip never leaves this device. The pose estimator is
-     fetched from Google's servers the first time and cached after that.</p>
+  <p id="footer-note">Runs entirely in your browser. The clip never leaves this device. The pose
+     estimator is fetched from Google's servers the first time and cached after that.</p>
 </footer>
+<script>/*__MP4BOX__*/</script>
 <script type="module">
 /*__ENGINE__*/
 /*__MODEL__*/
 /*__METRICS__*/
+/*__PRACTICE__*/
+/*__CAPTURE__*/
+/*__READ__*/
+/*__PROGRESS__*/
+/*__DRILLS__*/
+/*__OVERLAY__*/
+/*__SESSION__*/
+/*__OFFLINE__*/
+/*__SYNC__*/
 /*__APP__*/
 boot(/*__PAYLOAD__*/);
 </script>

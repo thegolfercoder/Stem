@@ -63,6 +63,29 @@ class AugmentConfig(BaseModel):
         default=(0, 20), description="Frames that may be trimmed from each end."
     )
     min_frames: int = Field(default=48, description="Never crop below this many frames.")
+    extend_probability: float = Field(
+        default=0.0,
+        description=(
+            "Chance of padding idle footage onto the ends. Off by default: it "
+            "lengthens clips, so it moves batch shapes and every recorded number, "
+            "and it is turned on by an experiment that says so."
+        ),
+    )
+    extend_frames: tuple[int, int] = Field(
+        default=(0, 240),
+        description=(
+            "Frames that may be added to each end. The upper bound reaches the "
+            "lead-in of a real clip: GolfDB's runs to 401 frames at the ninetieth "
+            "percentile where the generator's stops at 84."
+        ),
+    )
+    max_extended_frames: int = Field(
+        default=900,
+        description=(
+            "Ceiling on the padded length, so one long clip cannot set the batch "
+            "width for every clip beside it."
+        ),
+    )
 
 
 def time_warp(
@@ -175,6 +198,100 @@ def crop_ends(
     return features[front : n - back], events - front
 
 
+def _reflect_source(length: int, offsets: NDArray[np.int64]) -> NDArray[np.int64]:
+    """Where each virtual frame index reads from, reflecting inside [0, length-1].
+
+    Also returns, by the caller's test of the same quantity, which direction time
+    runs: the source index rises with the offset for the first half of each
+    period and falls for the second, which is what a reflection is.
+    """
+    if length <= 1:
+        return np.zeros_like(offsets)
+    period = 2 * (length - 1)
+    k = np.mod(offsets, period)
+    return np.where(k <= length - 1, k, period - k).astype(np.int64)
+
+
+def _reflect_forward(length: int, offsets: NDArray[np.int64]) -> NDArray[np.bool_]:
+    """True where the reflected frame has time running forwards."""
+    if length <= 1:
+        return np.ones_like(offsets, dtype=bool)
+    return np.mod(offsets, 2 * (length - 1)) <= length - 1
+
+
+def _extend(
+    block: NDArray[np.float32],
+    count: int,
+    before: bool,
+    layout: FeatureLayout,
+) -> NDArray[np.float32]:
+    """`count` frames of idle footage, made by reflecting `block` in time.
+
+    Reflection rather than a held frame, because the idle stretches of a real
+    clip are not still: a golfer waggles over the ball and settles into a finish,
+    and the pose estimator jitters throughout. Reflecting the clip's own idle
+    frames keeps whatever motion the real pipeline produced there instead of
+    inventing a statue.
+
+    Time reversal negates anything measured per second, which is why the layout
+    has to be passed: a velocity read backwards points the other way, and a
+    sequence whose positions move one way while its velocity channels say the
+    other is not a sequence any body could produce.
+    """
+    length = block.shape[0]
+    offsets = (
+        np.arange(-count, 0, dtype=np.int64)
+        if before
+        else np.arange(length, length + count, dtype=np.int64)
+    )
+    source = _reflect_source(length, offsets)
+    out = block[source].copy()
+    backwards = ~_reflect_forward(length, offsets)
+    if backwards.any():
+        for start, end in layout.per_second_spans:
+            out[backwards, start:end] *= -1.0
+    return out
+
+
+def extend_ends(
+    features: NDArray[np.float32],
+    events: NDArray[np.int64],
+    rng: np.random.Generator,
+    config: AugmentConfig,
+    layout: FeatureLayout,
+) -> tuple[NDArray[np.float32], NDArray[np.int64]]:
+    """Pad idle footage onto either end, the counterpart `crop_ends` never had.
+
+    Cropping could only ever make a clip shorter, so no amount of augmentation
+    could show the model a clip framed more loosely than the generator drew it -
+    and the generator draws at most 1.40 s before address and 1.10 s after the
+    finish. Measured against 360 real GolfDB clips, 45 percent carry more lead-in
+    than that and 76 percent more tail, and the clips run three times longer
+    overall against a 253-frame receptive field. A phone clip of a real swing is
+    framed like GolfDB, not like the generator.
+
+    Only the idle segments are reflected, never the swing. Reflecting the whole
+    clip would splice a mirror-image swing into the lead-in and teach the model
+    that a clip contains two.
+    """
+    if config.extend_probability <= 0.0 or rng.random() >= config.extend_probability:
+        return features, events
+    n = features.shape[0]
+    low, high = config.extend_frames
+    front = int(rng.integers(low, high + 1))
+    back = int(rng.integers(low, high + 1))
+    if front + back == 0 or n + front + back > config.max_extended_frames:
+        return features, events
+
+    pieces: list[NDArray[np.float32]] = []
+    if front:
+        pieces.append(_extend(features[: int(events[0]) + 1], front, True, layout))
+    pieces.append(features)
+    if back:
+        pieces.append(_extend(features[int(events[-1]) :], back, False, layout))
+    return np.concatenate(pieces, axis=0), events + front
+
+
 def augment_sample(
     features: NDArray[np.float32],
     events: NDArray[np.int64],
@@ -206,4 +323,5 @@ def augment_sample(
         features = occlude_landmarks(features, rng, config, layout)
 
     features, events = crop_ends(features, events, rng, config)
+    features, events = extend_ends(features, events, rng, config, layout)
     return np.ascontiguousarray(features, dtype=np.float32), events

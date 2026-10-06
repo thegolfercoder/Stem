@@ -31,12 +31,24 @@ count, a few tens of kilobytes, in a codec the headless browser can open. Its
 content does not matter, because the landmarks come from the stub. What matters
 is that the page has a real file to step through, since stepping video frame by
 frame is where both faults lived.
+
+The page is built from `webapp/` when this module loads, into a directory of its
+own. Driving `out/web/swing-analysis.html` instead tested whatever was last built
+there: stale, it failed correct code and could pass old code (#24).
 """
 
 from __future__ import annotations
 
+import atexit
+import base64
 import contextlib
+import datetime
 import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -45,26 +57,53 @@ import pytest
 
 from swingml.analysis import AnalysisConfig, analyse_pose_sequence, load_model
 from swingml.events import SwingEvent
+from swingml.insights.drills import DRILLS
 from swingml.pose.base import PoseSequence
 from swingml.quantity import NoReading
 from swingml.skeleton import Handedness
+from tests.browser import chromium_path
+from tests.mirror import mirrored
 
 HERE = Path(__file__).parent
 LANDMARKS = HERE / "fixtures" / "real_swing_01.npz"
-PAGE = HERE.parent / "out" / "web" / "swing-analysis.html"
 PAYLOAD = HERE.parent / "out" / "web" / "model.json"
 
 cv2 = pytest.importorskip("cv2", reason="needs opencv to generate a clip")
-sync_playwright = pytest.importorskip(
-    "playwright.sync_api", reason="needs playwright to drive a browser"
-).sync_playwright
+CHROMIUM = chromium_path()
 
-pytestmark = pytest.mark.skipif(
-    not PAGE.is_file() or not LANDMARKS.is_file(),
-    reason="needs the built page (python scripts/build_web_app.py) and the fixture",
-)
 
-CHROMIUM = "/opt/pw-browsers/chromium"
+def _missing() -> str | None:
+    if CHROMIUM is None:
+        return "needs playwright and a Chromium (python -m tests.browser says which)"
+    if not PAYLOAD.is_file():
+        return "needs the exported weights (python scripts/export_web_model.py)"
+    if not LANDMARKS.is_file():
+        return "needs the fixture tests/fixtures/real_swing_01.npz"
+    return None
+
+
+def _build_page() -> Path:
+    """The page as the tree builds it now (about a tenth of a second)."""
+    where = Path(tempfile.mkdtemp(prefix="stem-page-"))
+    atexit.register(shutil.rmtree, where, ignore_errors=True)
+    page = where / "swing-analysis.html"
+    subprocess.run(
+        [sys.executable, str(HERE.parent / "scripts" / "build_web_app.py"),
+         "--model", str(PAYLOAD), "--source", str(HERE.parent / "webapp"), "--out", str(page)],
+        check=True, capture_output=True,
+    )  # fmt: skip
+    return page
+
+
+MISSING = _missing()
+PAGE = _build_page() if MISSING is None else HERE / "no-page.html"
+# CI and agents/check.sh set this where a browser is installed, so a page test that
+# cannot run there fails the run instead of skipping unseen.
+if MISSING and os.environ.get("STEM_PAGE_TESTS") == "required":
+    raise RuntimeError(f"the page tests are required here but cannot run: {MISSING}")
+pytestmark = pytest.mark.skipif(MISSING is not None, reason=MISSING or "")
+if MISSING is None:
+    from playwright.sync_api import sync_playwright
 
 # A stand-in for the MediaPipe module, replaying the landmarks the real estimator
 # produced for this clip. Frames are handed out in order, which is what the page
@@ -74,6 +113,9 @@ export const FilesetResolver = { forVisionTasks: async () => ({}) };
 export const PoseLandmarker = { createFromOptions: async () => {
   const data = window.__LANDMARKS__;
   let i = 0;
+  // Each new clip replays the fixture from its first frame (practice tests
+  // analyse the same clip more than once).
+  window.__resetLandmarks = () => { i = 0; };
   return { detectForVideo() {
     const f = Math.min(i++, data.detected.length - 1);
     if (!data.detected[f]) return { landmarks: [], worldLandmarks: [] };
@@ -123,7 +165,26 @@ def clip(sequence: PoseSequence, tmp_path_factory: pytest.TempPathFactory) -> Pa
 
 
 @pytest.fixture(scope="module")
+def slowed_clip(sequence: PoseSequence, tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """`clip`'s frames played twice as slowly: a slow-motion export. Cut short of
+    the page's long-clip scan (12 s), whose sampling the stub does not replay."""
+    path = tmp_path_factory.mktemp("page") / "slowed.webm"
+    height, width = 426, 240
+    rate = 1.0 / float(np.median(np.diff(sequence.timestamps_s))) / 2
+    writer = cv2.VideoWriter(str(path), cv2.VideoWriter.fourcc(*"VP80"), rate, (width, height))
+    assert writer.isOpened(), "could not open a VP8 writer"
+    for index in range(min(sequence.n_frames, int(11.5 * rate))):
+        writer.write(np.full((height, width, 3), (index % 11) * 20, np.uint8))
+    writer.release()
+    return path
+
+
+@pytest.fixture(scope="module")
 def landmark_json(sequence: PoseSequence) -> str:
+    return landmarks_of(sequence)
+
+
+def landmarks_of(sequence: PoseSequence) -> str:
     world = (
         sequence.world_xyz
         if sequence.world_xyz is not None
@@ -150,6 +211,8 @@ class Session:
         self.spread = ""
         self.labels: list[str] = []
         self.bands: list[str] = []
+        self.band_note = ""
+        self.caveats: list[str] = []
         self.refused = False
         self.refusal_title = ""
         self.refusal_reason = ""
@@ -234,6 +297,10 @@ def run_page(
             session.bands = page.eval_on_selector_all(
                 ".frame-band", "nodes => nodes.map(n => n.textContent)"
             )
+            session.band_note = page.text_content("#band-note") or ""
+            session.caveats = page.eval_on_selector_all(
+                ".metric-caveat", "nodes => nodes.map(n => n.textContent)"
+            )
             value = page.eval_on_selector(".metric-value", "node => node.textContent")
             session.tempo = float(value)
             ranges = page.eval_on_selector_all(
@@ -289,6 +356,31 @@ def test_every_position_carries_its_measured_band(analysed: Session) -> None:
     """
     assert len(analysed.bands) == 8
     assert all("ms" in band for band in analysed.bands)
+
+
+def test_the_band_note_says_what_the_shipped_table_does(analysed: Session) -> None:
+    """The page's calibration has one band per event, so it must not say a doubtful
+    event gets a wider band (#30)."""
+    payload = json.loads(PAYLOAD.read_text(encoding="utf-8"))
+    assert not any(payload["calibration"]["events"]["confidence_edges"])
+    assert "measured, not assumed" in analysed.band_note
+    assert "wider band" not in analysed.band_note
+    assert "every swing gets the same band" in analysed.band_note
+
+
+def test_a_right_hander_is_not_told_the_band_is_not_theirs(analysed: Session) -> None:
+    assert analysed.caveats == []
+
+
+def test_a_left_hander_is_told_the_band_was_not_measured_for_them(
+    sequence: PoseSequence, clip: Path
+) -> None:
+    """The fixture mirrored: the page finds a left-hander and says what the band is (#33)."""
+    session = run_page(landmarks_of(mirrored(sequence)), clip)
+    assert not session.refused, session.refusal_reason
+    assert session.spread, "no tempo band shown"
+    payload = json.loads(PAYLOAD.read_text(encoding="utf-8"))
+    assert session.caveats == [payload["notes"]["left_handed_tempo_band"]]
 
 
 def test_the_page_and_the_python_pipeline_report_the_same_tempo(
@@ -388,3 +480,1237 @@ def test_a_file_the_browser_cannot_decode_is_reported_rather_than_hung(
     # Names the likely cause and what to do about it, rather than only failing.
     assert "could not open" in session.refusal_reason.lower()
     assert "hevc" in session.refusal_reason.lower()
+
+
+# -- the practice section ------------------------------------------------------------
+
+MEDIAPIPE_CDN = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14"
+KEPT = "() => JSON.parse(localStorage.getItem('swing-practice-v1') || 'null')"
+
+
+# Site data blocked, as a private window or a browser setting does: reading
+# localStorage throws.
+BLOCK_STORAGE = """Object.defineProperty(window, "localStorage", { configurable: true,
+  get() { throw new DOMException("The user denied storage", "SecurityError"); } });"""
+
+
+def _earlier() -> list[dict[str, Any]]:
+    """Two earlier swings of the same golfer, so one more makes three and the page
+    offers a focus to practise."""
+    return [
+        {"id": n, "at": "2026-09-29T10:00:00Z", "ok": True, "refusal": None,
+         "detection_rate": 0.99, "handedness": "right", "club": None, "camera": None,
+         "metrics": {"tempo_ratio": tempo, "detection_rate": 0.99}, "slowed_by": None,
+         "clip_key": f"earlier-{n}"}
+        for n, tempo in ((1, 3.2), (2, 3.4))
+    ]  # fmt: skip
+
+
+def _practice_page(
+    playwright: Any,
+    landmark_json: str,
+    assets: dict[str, Any] | None = None,
+    kept: dict[str, Any] | None = None,
+    *,
+    block_storage: bool = False,
+) -> Any:
+    browser = playwright.chromium.launch(executable_path=CHROMIUM)
+    # A context of its own, so a test can open a second page on the same storage.
+    page = browser.new_context(viewport={"width": 1180, "height": 900}).new_page()
+    errors: list[str] = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.route(
+        "**/vision_bundle.mjs",
+        lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+    )
+    page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+    if assets is not None:
+        page.add_init_script(f"window.SWING_ASSETS = {json.dumps(assets)};")
+    if kept is not None:
+        # Seeded once: init scripts run again on every reload.
+        page.add_init_script(
+            "if (localStorage.getItem('swing-practice-v1') === null) "
+            f"localStorage.setItem('swing-practice-v1', {json.dumps(json.dumps(kept))});"
+        )
+    if block_storage:
+        page.add_init_script(BLOCK_STORAGE)
+    page.goto(PAGE.resolve().as_uri())
+    return browser, page, errors
+
+
+def _analyse(page: Any, clip: Path) -> None:
+    page.evaluate("() => window.__resetLandmarks && window.__resetLandmarks()")
+    page.set_input_files("input[type=file]", str(clip))
+    page.wait_for_function(
+        "() => document.getElementById('working').classList.contains('hidden')"
+        " && (document.getElementById('results').offsetParent !== null"
+        " || document.getElementById('refusal').offsetParent !== null)",
+        timeout=300_000,
+    )
+
+
+def test_the_practice_log_keeps_one_swing_per_clip_and_can_forget_one(
+    landmark_json: str, clip: Path
+) -> None:
+    """#22: one clip analysed again is one swing, and a kept swing can be removed."""
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(
+            playwright, landmark_json, kept={"next": 3, "swings": _earlier(), "plans": []}
+        )
+        _analyse(page, clip)
+        kept = page.evaluate(KEPT)
+        assert [s["id"] for s in kept["swings"]] == [1, 2, 3] and kept["swings"][2]["ok"]
+        assert kept["swings"][2]["clip_key"], "the clip was not fingerprinted"
+
+        page.click("#priority-panel [data-focus]")  # start a focus as a plan
+        plan = page.evaluate(KEPT)["plans"][0]
+        assert plan["status"] == "active" and 3 in plan["baseline"]
+        assert page.is_checked("#for-plan")
+
+        # The same file again, with the retest box ticked: replaced, not added,
+        # and not counted as a retest swing of its own plan.
+        _analyse(page, clip)
+        page.wait_for_function(f"() => ({KEPT})().swings[2].reread_at")
+        kept = page.evaluate(KEPT)
+        assert len(kept["swings"]) == 3
+        assert kept["plans"][0]["retest"] == []
+        assert "replaced" in (page.text_content("#practice-data") or "")
+
+        page.click("details.kept summary")
+        page.click("[data-remove='3']")
+        kept = page.evaluate(KEPT)
+        assert [s["id"] for s in kept["swings"]] == [1, 2]
+        assert 3 not in kept["plans"][0]["baseline"] and kept["plans"][0]["retest"] == []
+        assert errors == []
+        browser.close()
+
+
+def test_the_sample_swing_is_not_kept(landmark_json: str, clip: Path) -> None:
+    """#22: the page's demonstration clip is not the golfer's swing."""
+    sample = "data:video/webm;base64," + base64.b64encode(clip.read_bytes()).decode("ascii")
+    assets = {"mediapipe": MEDIAPIPE_CDN, "model": [],
+              "sample": [{"src": sample, "type": "video/webm"}]}  # fmt: skip
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(playwright, landmark_json, assets)
+        page.wait_for_selector("#sample", state="visible")
+        page.click("#sample")
+        page.wait_for_function(
+            "() => document.getElementById('results').offsetParent !== null"
+            " || document.getElementById('refusal').offsetParent !== null",
+            timeout=300_000,
+        )
+        assert page.locator("#results").is_visible(), "the sample swing was not analysed"
+        kept = page.evaluate(KEPT)
+        assert kept is None or kept["swings"] == []
+        assert errors == []
+        browser.close()
+
+
+def test_a_plan_counts_a_retest_clip_survives_a_reload_and_is_erased(
+    landmark_json: str, clip: Path, tmp_path: Path
+) -> None:
+    """#24: a plan's whole life on the page, through app.js's wiring, not only practice.js."""
+    retest = tmp_path / "retest.webm"  # another file, so another clip
+    shutil.copy(clip, retest)
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(
+            playwright, landmark_json, kept={"next": 3, "swings": _earlier(), "plans": []}
+        )
+        _analyse(page, clip)
+        page.click("#priority-panel [data-focus]")
+        assert page.is_checked("#for-plan")
+
+        # A new clip with the box ticked is kept and counted as a retest swing.
+        _analyse(page, retest)
+        kept = page.evaluate(KEPT)
+        assert [s["id"] for s in kept["swings"]] == [1, 2, 3, 4]
+        assert 3 in kept["plans"][0]["baseline"] and kept["plans"][0]["retest"] == [4]
+
+        # Coming back to the page shows the plan and its retest swing straight away.
+        page.reload()
+        page.wait_for_selector("#plan-panel .practice-card", state="visible")
+        plan_text = page.text_content("#plan-panel") or ""
+        assert "Your plan" in plan_text and "Retest swings" in plan_text
+        assert page.locator("#for-plan-box").is_visible()
+
+        # Erasing asks for the word, and a near miss deletes nothing.
+        page.click("#practice-erase")
+        page.fill("#erase-typed", "erase")
+        page.click("#erase-go")
+        assert len(page.evaluate(KEPT)["swings"]) == 4
+        page.fill("#erase-typed", "ERASE")
+        page.click("#erase-go")
+        kept = page.evaluate(KEPT)
+        assert kept is None or (kept["swings"] == [] and kept["plans"] == [])
+        assert (page.text_content("#plan-panel") or "").strip() == ""
+        assert errors == []
+        browser.close()
+
+
+def test_with_storage_blocked_the_page_still_analyses_and_keeps_nothing(
+    landmark_json: str, clip: Path
+) -> None:
+    """#24: blocked site data costs the practice log, not the analysis."""
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(playwright, landmark_json, block_storage=True)
+        _analyse(page, clip)
+        assert page.locator("#results").is_visible(), "the clip was not analysed"
+        assert "not letting the page keep anything" in (page.text_content("#practice-data") or "")
+        assert page.locator("#practice-erase").count() == 0
+        assert errors == []
+        # The same browser profile without the block: nothing was written.
+        other = page.context.new_page()
+        other.goto(PAGE.resolve().as_uri())
+        assert other.evaluate(KEPT) is None
+        browser.close()
+
+
+def test_a_refused_rerun_keeps_the_earlier_reading_and_says_so(
+    landmark_json: str, clip: Path
+) -> None:
+    """#26: a run that is refused does not wipe out the clip's analysed reading."""
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(
+            playwright, landmark_json, kept={"next": 3, "swings": _earlier(), "plans": []}
+        )
+        _analyse(page, clip)
+        good = page.evaluate(KEPT)["swings"][2]
+        assert good["ok"] and good["metrics"]["tempo_ratio"] is not None
+        # The same clip again, with no body found in any frame this time.
+        page.evaluate("() => window.__LANDMARKS__.detected.fill(false)")
+        _analyse(page, clip)
+        assert page.locator("#refusal").is_visible(), "the second run was not refused"
+        kept = page.evaluate(KEPT)
+        assert len(kept["swings"]) == 3 and kept["swings"][2] == good
+        assert "swing 3 keeps its earlier reading" in (page.text_content("#practice-data") or "")
+        assert errors == []
+        browser.close()
+
+
+# -- recording in the page (#34) -----------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def fake_camera(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """A Y4M file Chromium plays as the camera: 30 fps, portrait, moving bars."""
+    width, height, frames = 240, 428, 30
+    path = tmp_path_factory.mktemp("camera") / "camera.y4m"
+    with path.open("wb") as out:
+        out.write(f"YUV4MPEG2 W{width} H{height} F30:1 Ip A1:1 C420jpeg\n".encode())
+        for f in range(frames):
+            luma = np.full((height, width), 60, dtype=np.uint8)
+            luma[:, (f * 8) % width : (f * 8) % width + 20] = 200
+            chroma = np.full((height // 2, width // 2), 128, dtype=np.uint8)
+            out.write(b"FRAME\n" + luma.tobytes() + chroma.tobytes() + chroma.tobytes())
+    return path
+
+
+def _camera_page(playwright: Any, landmark_json: str, camera: Path | None) -> Any:
+    args = ["--use-fake-device-for-media-stream"]
+    if camera is not None:
+        args += ["--use-fake-ui-for-media-stream", f"--use-file-for-fake-video-capture={camera}"]
+    else:
+        args += ["--deny-permission-prompts"]
+    browser = playwright.chromium.launch(executable_path=CHROMIUM, args=args)
+    page = browser.new_context(viewport={"width": 390, "height": 844}).new_page()
+    errors: list[str] = []
+    requests: list[tuple[str, str, int]] = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.on(
+        "request",
+        lambda r: requests.append((r.method, r.url, len(r.post_data_buffer or b""))),
+    )
+    page.route(
+        "**/vision_bundle.mjs",
+        lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+    )
+    page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+    # A short countdown and a recording as long as the fixture, so the test is quick.
+    page.add_init_script("window.__recordCountdown = 0; window.__recordSeconds = 7;")
+    page.goto(PAGE.resolve().as_uri())
+    return browser, page, errors, requests
+
+
+def test_a_swing_recorded_in_the_page_is_analysed_and_never_sent(
+    landmark_json: str, fake_camera: Path
+) -> None:
+    with sync_playwright() as playwright:
+        browser, page, errors, requests = _camera_page(playwright, landmark_json, fake_camera)
+        page.wait_for_selector("#record", state="visible")
+        page.click("#record")
+        page.wait_for_function(
+            "() => document.getElementById('rec-preview').videoWidth > 0", timeout=20_000
+        )
+        rate = page.text_content("#rec-rate") or ""
+        assert "fps" in rate
+        if int(rate.split()[0]) < 50:
+            assert page.locator("#rec-rate-note").is_visible()
+            assert "At 30 fps" in (page.text_content("#rec-rate-note") or "")
+        page.click("#rec-start")
+        page.evaluate("() => window.__resetLandmarks && window.__resetLandmarks()")
+        page.wait_for_selector("#rec-stop", state="visible", timeout=10_000)
+        page.wait_for_function(
+            "() => document.getElementById('working').classList.contains('hidden')"
+            " && (document.getElementById('results').offsetParent !== null"
+            " || document.getElementById('refusal').offsetParent !== null)",
+            timeout=300_000,
+        )
+        assert page.locator("#recorder").is_hidden(), "the camera panel stayed open"
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        assert (page.text_content("#drop-main") or "").startswith("swing-")
+        assert errors == []
+        # Nothing left the page: no request carried a body, and none went off this machine.
+        assert all(size == 0 for _, _, size in requests), requests
+        assert all(
+            url.startswith(("file:", "data:", "blob:")) or url.endswith("vision_bundle.mjs")
+            for _, url, _ in requests
+        ), [u for _, u, _ in requests]
+        browser.close()
+
+
+def test_a_refused_camera_falls_back_to_choosing_a_video(landmark_json: str, clip: Path) -> None:
+    with sync_playwright() as playwright:
+        browser, page, errors, _ = _camera_page(playwright, landmark_json, None)
+        page.wait_for_selector("#record", state="visible")
+        page.click("#record")
+        page.wait_for_function(
+            "() => /Choose a video/.test(document.getElementById('rec-message').textContent)",
+            timeout=20_000,
+        )
+        assert page.locator("#rec-start").is_hidden()
+        assert page.locator("#rec-stage").is_hidden()
+        # The upload path still works.
+        _analyse(page, clip)
+        assert page.locator("#results").is_visible()
+        assert errors == []
+        browser.close()
+
+
+NO_OVERFLOW = "() => document.documentElement.scrollWidth <= document.documentElement.clientWidth"
+
+
+def test_on_a_phone_the_one_thing_to_practise_comes_first(landmark_json: str, clip: Path) -> None:
+    """#37: at 360 px the summary card leads the results and nothing scrolls sideways."""
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context(viewport={"width": 360, "height": 740}).new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.goto(PAGE.resolve().as_uri())
+        assert page.evaluate(NO_OVERFLOW), "the empty page scrolls sideways at 360 px"
+        assert page.locator("#bar-analyse").is_visible()
+
+        _analyse(page, clip)
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        assert page.evaluate(NO_OVERFLOW), "the results scroll sideways at 360 px"
+        first = page.evaluate(
+            "() => [...document.getElementById('results').children]"
+            ".find((n) => n.offsetParent !== null).id"
+        )
+        assert first == "summary-card"
+
+        # The card repeats what is below; it does not say anything new.
+        tempo = (page.text_content("#sum-tempo") or "").strip()
+        assert tempo and (page.text_content("#tempo-cards .metric-value") or "").startswith(tempo)
+        assert page.locator("#sum-shot canvas").count() == 1
+        assert "measured spread" in (page.text_content("#sum-range") or "")
+        assert page.locator(".summary-card .prov-derived").is_visible()
+        assert page.locator("#sum-priority").is_visible()
+        assert page.text_content("#sum-priority-title") == page.text_content("#priority-panel h3")
+
+        # The detail sections are folded on a phone, all still on the page, and
+        # one opened stays opened in this browser.
+        assert page.locator("details.fold[open]").count() == 0
+        assert page.locator("#tempo-cards .metric").count() >= 3
+        page.click("details.fold[data-fold='tempo'] > summary")
+        assert page.locator("#tempo-cards").is_visible()
+        # A details element's toggle event is queued, not fired during the click.
+        page.wait_for_function("() => localStorage.getItem('swing-folds-v1') !== null")
+        assert json.loads(page.evaluate("() => localStorage.getItem('swing-folds-v1')")) == {
+            "tempo": True
+        }
+        assert page.evaluate(NO_OVERFLOW)
+        assert page.locator("#bar-practice").is_visible()
+        for button in page.locator(".action-bar button:visible, .summary-card .btn:visible").all():
+            box = button.bounding_box()
+            assert box is not None and box["height"] >= 44, button.text_content()
+
+        page.set_viewport_size({"width": 1280, "height": 800})
+        assert page.locator("#action-bar").is_hidden()
+        assert page.evaluate(NO_OVERFLOW)
+        assert errors == []
+        browser.close()
+
+
+def test_stems_read_is_written_in_the_page_and_sends_nothing(
+    landmark_json: str, clip: Path
+) -> None:
+    """#52: the read appears after analysis, from the page's numbers, with no Claude."""
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(playwright, landmark_json)
+        requests: list[tuple[str, str, int]] = []
+        page.on(
+            "request",
+            lambda r: requests.append((r.method, r.url, len(r.post_data_buffer or b""))),
+        )
+        assert page.evaluate("() => typeof window.claude") == "undefined"
+        _analyse(page, clip)
+        assert page.locator("#read-section").is_visible()
+        sentences = page.locator("#stem-read li")
+        assert sentences.count() >= 2
+        tempo = (page.text_content("#stem-read li[data-key='tempo']") or "").strip()
+        card = (page.text_content("#tempo-cards .metric-value") or "").strip()
+        assert f"Your tempo reads {card}" in tempo
+        assert "measured spread" in tempo and "tour swings" in tempo
+        priority = page.text_content("#stem-read li[data-key='priority']") or ""
+        assert (page.text_content("#priority-panel h3") or "").strip().lower() in priority.lower()
+        section = page.text_content("#read-section") or ""
+        assert "Claude" not in section
+        assert all(size == 0 for _, _, size in requests), requests
+        assert all(
+            url.startswith(("file:", "data:", "blob:")) or url.endswith("vision_bundle.mjs")
+            for _, url, _ in requests
+        ), [u for _, u, _ in requests]
+        assert errors == []
+        browser.close()
+
+
+# -- a range session (#56) ------------------------------------------------------------
+
+# The estimator for a session. The live camera sampler (any canvas but the
+# analysis's scratch canvas) sees the fixture swing SESSION_SWINGS times, each
+# followed by SESSION_GAP_S of the golfer standing still, from the moment the test
+# sets __liveStart; before that and after the last swing, the golfer stands still,
+# then leaves. Each recorded clip's analysis is shown the fixture from frame
+# SESSION_OFFSET on (where the watcher starts recording: tests/test_browser_session.py),
+# and the second clip's analysis finds no body, so its refusal must be counted.
+SESSION_SWINGS, SESSION_GAP_S, SESSION_OFFSET = 3, 3.0, 70
+SESSION_STUB = (
+    """
+export const FilesetResolver = { forVisionTasks: async () => ({}) };
+export const PoseLandmarker = { createFromOptions: async () => {
+  const data = window.__LANDMARKS__;
+  const n = data.detected.length, gap = Math.round(GAP * 30), loop = n + gap;
+  const none = { landmarks: [], worldLandmarks: [] };
+  const pose = (f) => (f === null || !data.detected[f]) ? none : {
+    landmarks: [data.xy[f].map((p, k) => (
+      { x: p[0], y: p[1], visibility: data.visibility[f][k] }))],
+    worldLandmarks: [data.world[f].map((p) => ({ x: p[0], y: p[1], z: p[2] }))],
+  };
+  let clip = 0, lastTime = Infinity;
+  const me = (window.__estimators = (window.__estimators || 0) + 1);
+  return { detectForVideo(canvas) {
+    if (canvas.id === "scratch-canvas") {
+      const time = globalThis.__swingFrameTime || 0;
+      if (time < lastTime - 0.5) clip += 1;
+      lastTime = time;
+      if (clip === 2) return pose(null);
+      return pose(Math.min(n - 1, OFFSET + Math.round(time * 30)));
+    }
+    if (window.__liveStart === undefined) return pose(0);
+    // The camera has an estimator of its own once a session runs (#56).
+    if (me === 1) window.__sharedLive = true;
+    const k = Math.floor((performance.now() - window.__liveStart) / 1000 * 30);
+    if (k >= SWINGS * loop) return k < SWINGS * loop + 30 ? pose(0) : pose(null);
+    const f = k % loop;
+    return pose(f < n ? f : 0);
+  } };
+} };
+""".replace("GAP", str(SESSION_GAP_S))
+    .replace("OFFSET", str(SESSION_OFFSET))
+    .replace("SWINGS", str(SESSION_SWINGS))
+)
+
+
+# The device's voice, stood in for: each utterance is recorded, nothing is played.
+SPEECH_STUB = """
+window.__spoken = [];
+Object.defineProperty(window, "speechSynthesis", { configurable: true,
+  value: { speak(u) { window.__spoken.push(u.text); }, cancel() {} } });
+window.SpeechSynthesisUtterance = function (text) { this.text = text; };
+"""
+
+
+def _session_page(playwright: Any, landmark_json: str, camera: Path) -> Any:
+    browser, page, errors, requests = _camera_page(playwright, landmark_json, camera)
+    page.unroute("**/vision_bundle.mjs")
+    page.route(
+        "**/vision_bundle.mjs",
+        lambda route: route.fulfill(status=200, content_type="text/javascript", body=SESSION_STUB),
+    )
+    page.add_init_script(SPEECH_STUB)
+    page.reload()
+    page.wait_for_selector("#record", state="visible")
+    page.click("#record")
+    page.wait_for_function(
+        "() => document.getElementById('rec-preview').videoWidth > 0", timeout=20_000
+    )
+    return browser, page, errors, requests
+
+
+def test_a_range_session_records_and_reads_every_swing_and_counts_the_refused(
+    landmark_json: str, fake_camera: Path
+) -> None:
+    with sync_playwright() as playwright:
+        browser, page, errors, requests = _session_page(playwright, landmark_json, fake_camera)
+        # Spoken cues on (#62): one per clip, refused ones included.
+        assert page.locator("#session-voice-box").is_visible()
+        page.check("#session-voice")
+        page.click("#rec-session")
+        page.evaluate("() => { window.__liveStart = performance.now(); }")
+        assert page.locator("#session-board").is_visible()
+        assert page.locator("#rec-session-stop").is_visible()
+        assert page.locator("#rec-start").is_hidden()
+        page.wait_for_function(
+            "() => /Recording/.test(document.getElementById('session-state').textContent)",
+            timeout=30_000,
+        )
+        page.wait_for_function(
+            f"() => /^{SESSION_SWINGS} read|\\b{SESSION_SWINGS - 1} read \\u00b7 1 not read/"
+            ".test(document.getElementById('session-tally').textContent)"
+            " && !/being analysed/.test(document.getElementById('session-tally').textContent)",
+            timeout=300_000,
+        )
+        # The golfer has left: no further clip appears.
+        page.wait_for_timeout(3_000)
+        tally = page.text_content("#session-tally") or ""
+        count = page.text_content("#session-count") or ""
+        assert tally.startswith(f"{SESSION_SWINGS - 1} read · 1 not read"), tally
+        assert count == f"Swing {SESSION_SWINGS}", count
+        assert (page.text_content("#session-tempo") or "").startswith("tempo "), count
+        assert page.locator("#action-bar").is_hidden()
+        kept = page.evaluate(KEPT)
+        assert [s["ok"] for s in kept["swings"]] == [True, False, True], kept["swings"]
+        assert page.evaluate("() => [window.__estimators, window.__sharedLive]") == [2, None]
+        spoken = page.evaluate("() => window.__spoken")
+        assert len(spoken) == SESSION_SWINGS, spoken
+        assert spoken[0].startswith("Swing 1, tempo ") and spoken[1] == "Swing 2 not read."
+        assert spoken[2].startswith("Swing 3, tempo ")
+        assert page.evaluate("() => localStorage.getItem('swing-voice-v1')") == "on"
+        assert len({s["clip_key"] for s in kept["swings"]}) == SESSION_SWINGS
+        # Analysing did not pull the page away from the camera.
+        assert page.evaluate(
+            "() => { const r = document.getElementById('session-board').getBoundingClientRect();"
+            " return r.bottom > 0 && r.top < window.innerHeight; }"
+        )
+        page.click("#rec-session-stop")
+        assert (page.text_content("#session-state") or "").startswith("Session stopped")
+        assert page.locator("#rec-session").is_visible()
+        assert page.evaluate("() => !document.getElementById('action-bar').hidden")
+        assert errors == []
+        assert all(size == 0 for _, _, size in requests), requests
+        assert all(
+            url.startswith(("file:", "data:", "blob:")) or url.endswith("vision_bundle.mjs")
+            for _, url, _ in requests
+        ), [u for _, u, _ in requests]
+        browser.close()
+
+
+def test_a_tempo_from_positions_moved_by_hand_shows_no_model_band(
+    landmark_json: str, clip: Path
+) -> None:
+    """#50: the model's tempo band describes the model, not the golfer's frames."""
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context(viewport={"width": 1280, "height": 900}).new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.goto(PAGE.resolve().as_uri())
+        _analyse(page, clip)
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        assert "measured spread" in (page.text_content("#tempo-cards") or "")
+        assert "measured spread" in (page.text_content("#sum-range") or "")
+
+        # Move the top one frame later, as the lightbox does.
+        page.locator("#strip figure.frame").nth(3).click()
+        page.wait_for_selector("#lightbox", state="visible")
+        page.click("#lb-fwd")
+        page.click("#lb-use")
+        page.wait_for_function(
+            "() => /set by you/.test(document.getElementById('tempo-cards').textContent)"
+        )
+        page.click("#lb-close")
+        for where in ("#tempo-cards", "#sum-range"):
+            text = page.text_content(where) or ""
+            assert "measured spread" not in text, (where, text)
+            assert "error bands describe the model, so they are not shown" in text, (where, text)
+            assert "top set by you" in text.lower(), (where, text)
+        assert errors == []
+        browser.close()
+
+
+def test_a_session_speaks_nothing_when_the_voice_is_off(
+    landmark_json: str, fake_camera: Path
+) -> None:
+    """#62: the cue is off by default."""
+    with sync_playwright() as playwright:
+        browser, page, errors, _ = _session_page(playwright, landmark_json, fake_camera)
+        assert not page.is_checked("#session-voice")
+        page.click("#rec-session")
+        page.evaluate("() => { window.__liveStart = performance.now(); }")
+        page.wait_for_function(
+            "() => /^1 read/.test(document.getElementById('session-tally').textContent)",
+            timeout=300_000,
+        )
+        assert page.evaluate("() => window.__spoken") == []
+        page.click("#rec-session-stop")
+        assert errors == []
+        browser.close()
+
+
+# -- progress over time (#38) -------------------------------------------------------
+
+# Where to save screenshots for a change's evidence, when asked (never by default).
+SCREENS = Path(os.environ["STEM_SCREENS"]) if os.environ.get("STEM_SCREENS") else None
+
+
+def _progress_log() -> dict[str, Any]:
+    camera = {"orientation": "portrait", "body_height": 0.6, "centre_x": 0.5,
+              "shoulder_ratio": 0.9, "frame_rate": 60.0}  # fmt: skip
+    swings = []
+    for n, (day, tempo, ratio) in enumerate(
+        [("2026-09-28", 2.5, 0.9), ("2026-09-28", 2.6, 0.9), ("2026-09-28", 2.4, 0.9),
+         ("2026-10-02", 2.9, 0.9), ("2026-10-02", 3.0, 0.2), ("2026-10-02", 3.1, 0.9)],
+        start=1,
+    ):  # fmt: skip
+        swings.append({
+            "id": n, "at": f"{day}T09:0{n}:00Z", "ok": True, "refusal": None,
+            "detection_rate": 1.0, "handedness": "right", "club": "7 iron",
+            "camera": {**camera, "shoulder_ratio": ratio}, "positions_set_by_you": 0,
+            "clip_key": f"k{n}", "slowed_by": None,
+            "metrics": {"tempo_ratio": tempo, "head_movement": 0.05, "pelvis_sway": 0.04,
+                        "shoulder_turn_foreshortened": 58.0 + n, "detection_rate": 1.0},
+        })  # fmt: skip
+    return {"next": 7, "swings": swings, "plans": []}
+
+
+@pytest.mark.parametrize("width", [390, 1280])
+def test_progress_charts_draw_from_the_kept_log(landmark_json: str, width: int) -> None:
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(playwright, landmark_json, kept=_progress_log())
+        page.set_viewport_size({"width": width, "height": 900})
+        page.wait_for_selector("#progress", state="visible")
+        assert page.locator("#progress-empty").is_hidden()
+        cards = page.locator(".progress-card")
+        assert cards.count() == 4
+        tempo = page.locator(".progress-card[data-measure='tempo_ratio']")
+        assert tempo.locator("circle.pg-point").count() == 6
+        assert tempo.locator("circle.pg-hollow").count() == 1
+        assert "tour players, broadcast video" in (tempo.text_content() or "")
+        assert page.evaluate(NO_OVERFLOW), f"the progress section scrolls sideways at {width} px"
+        if SCREENS:
+            tempo.screenshot(path=str(SCREENS / f"progress-tempo-{width}.png"))
+            page.locator("#progress").screenshot(path=str(SCREENS / f"progress-{width}.png"))
+        assert errors == []
+        browser.close()
+
+
+def test_a_fresh_log_says_how_many_swings_a_trend_needs(landmark_json: str) -> None:
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(playwright, landmark_json)
+        page.wait_for_selector("#progress", state="visible")
+        assert (page.text_content("#progress-empty") or "").startswith("Record 3 swings")
+        assert page.locator(".progress-card").count() == 0
+        assert errors == []
+        browser.close()
+
+
+# -- sharing a swing card (#44) -------------------------------------------------------
+
+
+@pytest.mark.parametrize("width", [390])
+def test_a_shared_swing_card_is_made_on_the_device_from_the_pages_numbers(
+    landmark_json: str, clip: Path, width: int
+) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        context = browser.new_context(
+            viewport={"width": width, "height": 900}, accept_downloads=True
+        )
+        page = context.new_page()
+        errors: list[str] = []
+        requests: list[tuple[str, str, int]] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.on(
+            "request", lambda r: requests.append((r.method, r.url, len(r.post_data_buffer or b"")))
+        )
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.goto(PAGE.resolve().as_uri())
+        _analyse(page, clip)
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        before = len(requests)
+        with page.expect_download() as download:
+            page.click("#share-swing")
+        saved = Path(download.value.path())
+        data = saved.read_bytes()
+        assert data[:8] == b"\x89PNG\r\n\x1a\n" and len(data) < 1_000_000
+        assert int(page.get_attribute("#share-card", "data-bytes") or 0) == len(data)
+        # The card's numbers are the page's.
+        caption = page.text_content("#share-caption") or ""
+        assert f"Tempo {page.text_content('#sum-tempo')} (backswing" in caption
+        spread = (page.text_content("#sum-range") or "").split(" · ")[0]
+        dash = "\u2013"
+        expected = spread.replace("measured spread ", "Measured spread ")
+        assert expected.replace(f" {dash} ", dash) in caption
+        assert "one phone camera" in caption
+        # Made here: nothing left the page while the card was made.
+        assert all(url.startswith(("blob:", "data:")) for _, url, _ in requests[before:]), requests
+        assert page.evaluate(NO_OVERFLOW)
+        if SCREENS:
+            (SCREENS / "swing-card.png").write_bytes(data)
+            page.locator("#summary-card").screenshot(path=str(SCREENS / f"share-{width}.png"))
+        assert errors == []
+        browser.close()
+
+
+# Every string the page draws on a canvas, with its width at the font it was drawn in.
+DRAWN = """
+window.__drawn = [];
+const fill = CanvasRenderingContext2D.prototype.fillText;
+CanvasRenderingContext2D.prototype.fillText = function (text, x, y, ...rest) {
+  window.__drawn.push({ text: String(text), x, width: this.measureText(text).width,
+                        canvas: this.canvas.width });
+  return fill.call(this, text, x, y, ...rest);
+};
+"""
+
+
+@pytest.mark.parametrize("hand", ["right", "left"])
+def test_a_slowed_swings_card_keeps_every_word_and_the_golfers_own_date(
+    landmark_json: str, slowed_clip: Path, hand: str
+) -> None:
+    """#71: long lines were clipped to one line, dropping "slow motion" from the
+    image that leaves the device; the date was UTC's; a left-hander's footer
+    quoted a coverage measured on right-handers only."""
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        # 03:00 UTC is still the evening before in Los Angeles.
+        context = browser.new_context(
+            viewport={"width": 390, "height": 900},
+            accept_downloads=True,
+            timezone_id="America/Los_Angeles",
+        )
+        page = context.new_page()
+        page.clock.set_fixed_time("2026-10-05T03:00:00Z")
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.add_init_script(DRAWN)
+        page.goto(PAGE.resolve().as_uri())
+        page.click(f"#handedness [data-value={hand}]")
+        _analyse(page, slowed_clip)
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        assert "slow motion" in (page.text_content("#summary-card") or "")
+        page.evaluate("() => { window.__drawn = []; }")
+        with page.expect_download() as download:
+            page.click("#share-swing")
+        data = Path(download.value.path()).read_bytes()
+        drawn = [d for d in page.evaluate("() => window.__drawn") if d["canvas"] == 900]
+        text = " ".join(d["text"] for d in drawn)
+        assert "slow motion, played about 2 times slower" in text, text
+        assert not any(d["text"].endswith("…") for d in drawn), drawn
+        assert all(d["x"] + d["width"] <= 900 - 30 for d in drawn), drawn
+        assert "Swing, 2026-10-04" in text
+        assert Path(download.value.suggested_filename).name == "swing-2026-10-04.png"
+        assert ("±" in text) == (hand == "right"), text
+        if SCREENS:
+            (SCREENS / f"swing-card-slowed-{hand}.png").write_bytes(data)
+            page.locator("#summary-card").screenshot(
+                path=str(SCREENS / f"share-slowed-{hand}-390.png")
+            )
+        assert errors == []
+        browser.close()
+
+
+# -- drills shown, with a rep counter (#57) -----------------------------------------
+
+
+@pytest.mark.parametrize("width", [390, 1280])
+def test_the_drill_is_shown_and_its_reps_counted(landmark_json: str, width: int) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context(viewport={"width": width, "height": 900}).new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.clock.install(time=datetime.datetime(2026, 10, 5, 9, 0, tzinfo=datetime.UTC))
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.add_init_script(
+            f"localStorage.setItem('swing-practice-v1', {json.dumps(json.dumps(_progress_log()))});"
+        )
+        page.goto(PAGE.resolve().as_uri())
+        panel = page.locator("#priority-panel")
+        panel.locator(".drill-demo-svg").wait_for()
+        shown = panel.locator(".rep-counter").get_attribute("data-drill")
+        drill = next(d for d in DRILLS if d.id == shown)
+        assert drill.title in (panel.text_content() or "")
+        # The figure moves, on the drill's own loop, and says what it is.
+        assert panel.locator(".drill-demo-svg animate").count() > 50
+        assert "not a measurement" in (panel.locator(".drill-demo figcaption").text_content() or "")
+        paused = "() => document.querySelector('#priority-panel svg').animationsPaused()"
+        assert page.evaluate(paused) is False
+        # Counted by hand.
+        counter = panel.locator(".rep-counter")
+        count = counter.locator(".rep-count")
+        for _ in range(drill.reps_per_set - 1):
+            counter.locator("[data-rep=add]").click()
+        assert count.text_content() == f"Set 1 of {drill.sets} · rep {drill.reps_per_set - 1} " \
+            f"of {drill.reps_per_set}"  # fmt: skip
+        counter.locator("[data-rep=undo]").click()
+        counter.locator("[data-rep=reset]").click()
+        assert count.text_content() == f"Set 1 of {drill.sets} · rep 0 of {drill.reps_per_set}"
+        # Counted by the pace timer, which stops for the rest at the end of the set.
+        counter.locator("select[data-rep=pace]").select_option("8")
+        timer = counter.locator(".rep-timer").text_content() or ""
+        assert timer.startswith("Next rep counted in 8"), timer
+        page.clock.run_for(8_300)
+        assert count.text_content() == f"Set 1 of {drill.sets} · rep 1 of {drill.reps_per_set}"
+        page.clock.run_for(8_000 * drill.reps_per_set)
+        assert count.text_content() == f"Set 1 of {drill.sets} done: rest, then the next"
+        assert counter.locator("select[data-rep=pace]").input_value() == "0"
+        assert page.evaluate(NO_OVERFLOW), f"the drill scrolls sideways at {width} px"
+        if SCREENS:
+            panel.screenshot(path=str(SCREENS / f"drill-{width}.png"))
+        assert errors == []
+        browser.close()
+
+
+def test_a_golfer_asking_for_less_motion_sees_the_figure_held(landmark_json: str) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context(reduced_motion="reduce").new_page()
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.add_init_script(
+            f"localStorage.setItem('swing-practice-v1', {json.dumps(json.dumps(_progress_log()))});"
+        )
+        page.goto(PAGE.resolve().as_uri())
+        page.locator("#priority-panel .drill-demo-svg").wait_for()
+        paused = "() => [...document.querySelectorAll('.drill-demo-svg')]" \
+            ".every((s) => s.animationsPaused())"  # fmt: skip
+        assert page.evaluate(paused)
+        browser.close()
+
+
+# -- stepping through the swing with lines on it (#58) --------------------------------
+
+
+def _scrub_state(page: Any) -> dict:
+    return dict(page.evaluate(
+        "() => ({ frame: Number(document.querySelector('#scrub-canvas canvas').dataset.frame),"
+        " slider: Number(document.getElementById('scrub-slider').value),"
+        " time: document.getElementById('scrub-time').textContent,"
+        " angles: [...document.querySelectorAll('#scrub-angles li')].map((li) => li.textContent) })"
+    ))  # fmt: skip
+
+
+@pytest.mark.parametrize("width", [390])
+def test_the_scrubber_steps_frames_and_redraws_the_lines(
+    landmark_json: str, clip: Path, width: int
+) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context(viewport={"width": width, "height": 900}).new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.goto(PAGE.resolve().as_uri())
+        _analyse(page, clip)
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        page.wait_for_selector("#scrubber:not([hidden])", state="attached")
+        if not page.evaluate("() => document.getElementById('scrubber').open"):
+            page.click("#scrubber > summary")  # folded on a phone, as every detail is
+        page.wait_for_selector("#scrub-canvas canvas")
+        times = page.evaluate("() => window.__swingRun.eventTimes")
+        names = ["Address", "Top", "Impact"]
+        # Each jump lands on the detected position: its frame's time is the event's.
+        for name, event in zip(names, (0, 3, 5), strict=True):
+            page.click(f"#scrub-jumps [data-jump='{event}']")
+            page.wait_for_function(
+                "() => document.querySelector('#scrub-canvas canvas').dataset.frame"
+                " === document.getElementById('scrub-slider').value"
+            )
+            state = _scrub_state(page)
+            shown = float(state["time"].split(" s in the clip")[0].split("·")[-1])
+            assert name in state["time"], state
+            assert shown == pytest.approx(times[event], abs=0.02), (name, state)
+            assert state["slider"] == state["frame"]
+            assert any("in the picture" in a and "from level" in a for a in state["angles"])
+            if SCREENS:
+                page.locator("#scrubber").screenshot(
+                    path=str(SCREENS / f"scrub-{name.lower()}-{width}.png")
+                )
+        # The slider moves the frame, and the lines are measured on the new frame.
+        top = _scrub_state(page)
+        page.evaluate(
+            "() => { const s = document.getElementById('scrub-slider');"
+            " s.value = String(Number(s.value) - 12); s.dispatchEvent(new Event('input')); }"
+        )
+        on_frame = "() => Number(document.querySelector('#scrub-canvas canvas').dataset.frame) === "
+        page.wait_for_function(on_frame + str(top["frame"] - 12))
+        moved = _scrub_state(page)
+        assert moved["angles"] != top["angles"], (moved, top)
+        page.click("#scrub-next")
+        page.wait_for_function(on_frame + str(top["frame"] - 11))
+        # Lines can be switched off; the head row says where the head is against address.
+        page.uncheck("[data-show='shoulders']")
+        page.wait_for_function(
+            "() => !document.querySelector(\"#scrub-angles li[data-line='shoulders']\")"
+        )
+        assert page.locator("#scrub-angles li[data-line='head']").count() == 1
+        assert all("in the picture" in a for a in _scrub_state(page)["angles"])
+        assert page.evaluate(NO_OVERFLOW), f"the scrubber scrolls sideways at {width} px"
+        assert errors == []
+        browser.close()
+
+
+# -- this session in one card (#59) ---------------------------------------------------
+
+ADD_SWING = """(change) => {
+  const log = JSON.parse(localStorage.getItem('swing-practice-v1'));
+  const last = log.swings[log.swings.length - 1];
+  const id = log.next;
+  log.swings.push({ ...last, id, clip_key: 'k' + id, at: new Date().toISOString(),
+                    metrics: { ...last.metrics, ...change } });
+  log.next = id + 1;
+  localStorage.setItem('swing-practice-v1', JSON.stringify(log));
+}"""
+
+
+def test_the_session_card_appears_with_the_third_comparable_swing(
+    landmark_json: str, clip: Path
+) -> None:
+    with sync_playwright() as playwright:
+        browser, page, errors = _practice_page(playwright, landmark_json)
+        page.set_viewport_size({"width": 390, "height": 900})
+        _analyse(page, clip)
+        page.wait_for_selector("#session-summary", state="visible")
+        assert "Record 2 more" in (page.text_content("#session-body") or "")
+        page.evaluate(ADD_SWING, {"head_movement": 0.2})
+        page.reload()
+        page.wait_for_selector("#session-summary", state="visible")
+        assert "Record 1 more" in (page.text_content("#session-body") or "")
+        assert page.locator("#session-body table").count() == 0
+        page.evaluate(ADD_SWING, {"head_movement": 0.01, "tempo_ratio": 3.0})
+        page.reload()
+        page.wait_for_selector("#session-body table")
+        body = page.text_content("#session-body") or ""
+        assert "3 comparable swings" in body
+        assert page.locator("#session-body tr[data-measure]").count() >= 3
+        tempo = page.text_content("#session-body tr[data-measure='tempo_ratio']") or ""
+        assert (
+            "measurement noise" in tempo
+            or "the swings differ" in tempo
+            or "No per-swing band" in tempo
+        )
+        assert (
+            "Most typical" in body
+            and "Least typical" in body
+            and "best" not in body.lower().replace("typical is not best", "")
+        )
+        # One tap from the swing: the kept list opens on it.
+        least = page.locator("[data-pick='least'] [data-kept]").first
+        target = least.get_attribute("data-kept")
+        least.click()
+        page.wait_for_selector(f"#kept-swing-{target}.found")
+        assert page.evaluate("() => document.querySelector('details.kept').open")
+        assert page.evaluate(NO_OVERFLOW)
+        if SCREENS:
+            page.locator("#session-summary").screenshot(path=str(SCREENS / "session-390.png"))
+        assert errors == []
+        browser.close()
+
+
+# Image decodes held until the test lets them go, so a frame can be left half drawn.
+HOLD_BITMAPS = """
+window.__held = [];
+window.__holding = false;
+const decode = window.createImageBitmap.bind(window);
+window.createImageBitmap = (...args) => {
+  if (!window.__holding) return decode(...args);
+  return new Promise((resolve, reject) =>
+    window.__held.push(() => decode(...args).then(resolve, reject)));
+};
+window.__release = () => {
+  window.__holding = false;
+  const go = window.__held;
+  window.__held = [];
+  go.forEach((f) => f());
+};
+"""
+
+
+def test_a_frame_still_being_drawn_when_the_next_clip_starts_is_dropped(
+    landmark_json: str, clip: Path
+) -> None:
+    """#77: a scrubber frame pending from one swing finished after the next clip's
+    analysis had cleared the positions, and read a position of nothing."""
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context(viewport={"width": 1180, "height": 900}).new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.add_init_script(HOLD_BITMAPS)
+        page.goto(PAGE.resolve().as_uri())
+        _analyse(page, clip)
+        page.wait_for_selector("#scrub-canvas canvas")
+        page.evaluate("() => { window.__holding = true; }")
+        page.click("#scrub-jumps [data-jump='3']")  # its frame decode is now held
+        page.wait_for_function("() => window.__held.length > 0")
+        page.evaluate("() => window.__resetLandmarks && window.__resetLandmarks()")
+        page.set_input_files("input[type=file]", str(clip))  # the next clip clears the positions
+        page.wait_for_function(
+            "() => !document.getElementById('working').classList.contains('hidden')"
+        )
+        page.evaluate("() => window.__release()")
+        page.wait_for_function(
+            "() => document.getElementById('working').classList.contains('hidden')"
+            " && document.getElementById('results').offsetParent !== null",
+            timeout=300_000,
+        )
+        page.wait_for_selector("#scrub-canvas canvas")
+        assert errors == []
+        browser.close()
+
+
+# -- installed, and working with no signal (#61) --------------------------------------
+
+
+@pytest.fixture(scope="module")
+def offline_site(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The site build, with the pose estimator's bundle replaced by the stub (so no
+    MediaPipe download is needed) but its real, pinned pose model in chunks."""
+    try:
+        from swingml.pose.mediapipe_pose import resolve_model_path
+
+        resolve_model_path(None)
+    except Exception as error:  # any reason there is no model
+        pytest.skip(f"needs the pose model: {error}")
+    site = tmp_path_factory.mktemp("site")
+    for name, body in (("vision_bundle.mjs", STUB), ("wasm/vision_wasm_internal.js", "// stub"),
+                       ("wasm/vision_wasm_internal.wasm", "stub")):  # fmt: skip
+        (site / "mediapipe" / name).parent.mkdir(parents=True, exist_ok=True)
+        (site / "mediapipe" / name).write_text(body, encoding="utf-8")
+    subprocess.run(
+        [sys.executable, str(HERE.parent / "scripts" / "build_artifact.py"), "--out", str(site),
+         "--sample", str(site / "none.mov")],
+        check=True, capture_output=True, cwd=HERE.parent,
+    )  # fmt: skip
+    return site
+
+
+@contextlib.contextmanager
+def _served(root: Path):  # type: ignore[no-untyped-def]
+    import functools
+    import http.server
+    import threading
+
+    class Quiet(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: Any) -> None:
+            return
+
+    server = http.server.ThreadingHTTPServer(
+        ("127.0.0.1", 0), functools.partial(Quiet, directory=str(root))
+    )
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}/"
+    finally:
+        server.shutdown()
+
+
+def _copy_site(site: Path, tmp_path: Path) -> Path:
+    copy = tmp_path / "site"
+    shutil.copytree(site, copy)
+    return copy
+
+
+def _status(page: Any, pattern: str) -> str:
+    page.wait_for_function(
+        f"() => /{pattern}/.test(document.getElementById('offline-status').textContent)",
+        timeout=120_000,
+    )
+    return page.text_content("#offline-status") or ""
+
+
+def test_the_installed_page_analyses_a_swing_with_no_network(
+    offline_site: Path, landmark_json: str, clip: Path, tmp_path: Path
+) -> None:
+    site = _copy_site(offline_site, tmp_path)
+    with sync_playwright() as playwright, _served(site) as url:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        context = browser.new_context(viewport={"width": 390, "height": 900})
+        page = context.new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.goto(url)
+        assert _status(page, "Available offline") == "Available offline"
+        # Installable: a manifest with what an install needs, and a worker in charge.
+        manifest = page.evaluate(
+            "async () => (await fetch(document.querySelector('link[rel=manifest]').href)).json()"
+        )
+        assert manifest["display"] == "standalone" and manifest["start_url"] == "./"
+        assert {i["sizes"] for i in manifest["icons"]} == {"192x192", "512x512"}
+        assert page.evaluate("() => navigator.serviceWorker.controller !== null")
+        if SCREENS:
+            page.screenshot(path=str(SCREENS / "offline-ready-390.png"))
+
+        context.set_offline(True)
+        page.reload()
+        page.wait_for_selector("input[type=file]", state="attached")
+        _analyse(page, clip)
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        assert (page.text_content("#sum-tempo") or "").strip()
+        assert errors == []
+        browser.close()
+
+
+def test_a_file_that_does_not_match_its_checksum_is_not_kept(
+    offline_site: Path, tmp_path: Path
+) -> None:
+    site = _copy_site(offline_site, tmp_path)
+    chunk = next((site / "model").glob("*.part1.b64.txt"))
+    chunk.write_bytes(chunk.read_bytes()[:-4] + b"AAAA")  # a damaged download
+    with sync_playwright() as playwright, _served(site) as url:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context().new_page()
+        page.goto(url)
+        text = _status(page, "Not saved")
+        assert f"model/{chunk.name} did not match its checksum" in text, text
+        page.reload()
+        page.wait_for_selector("#offline-status", state="attached")
+        assert page.evaluate("() => navigator.serviceWorker.controller === null")
+        browser.close()
+
+
+def test_a_new_version_waits_for_the_golfer_to_reload(offline_site: Path, tmp_path: Path) -> None:
+    sys.path.insert(0, str(HERE.parent / "scripts"))
+    from build_artifact import write_offline
+
+    site = _copy_site(offline_site, tmp_path)
+    with sync_playwright() as playwright, _served(site) as url:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context().new_page()
+        page.goto(url)
+        _status(page, "Available offline")
+        first = page.get_attribute("#offline-status", "data-version")
+        # A new version is published: one file changes and the worker is rebuilt.
+        index = site / "index.html"
+        index.write_text(index.read_text(encoding="utf-8") + "\n<!-- v2 -->\n", encoding="utf-8")
+        second = write_offline(site, HERE.parent / "webapp")
+        assert second != first
+        page.reload()
+        page.wait_for_selector("#offline-update", state="visible", timeout=120_000)
+        # Nothing swapped underneath: the page in use is still the first version.
+        assert (
+            page.evaluate(
+                "() => new Promise((ok) => { navigator.serviceWorker.addEventListener('message',"
+                " (e) => ok(e.data.version), { once: true });"
+                " navigator.serviceWorker.controller.postMessage({ type: 'version' }); })"
+            )
+            == first
+        )
+        page.click("#offline-reload")
+        page.wait_for_function(
+            f"() => document.getElementById('offline-status').dataset.version === '{second}'",
+            timeout=120_000,
+        )
+        assert page.locator("#offline-update").is_hidden()
+        browser.close()
+
+
+# -- this swing beside the previous one (#35) ----------------------------------------
+
+
+@pytest.mark.parametrize("width", [390, 1280])
+def test_two_swings_play_in_step_at_their_positions(
+    landmark_json: str, clip: Path, slowed_clip: Path, width: int
+) -> None:
+    """The fixture, then the same swing slowed twice: every position of one lands
+    on the same position of the other, within a frame."""
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context(viewport={"width": width, "height": 900}).new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.goto(PAGE.resolve().as_uri())
+        _analyse(page, clip)
+        assert page.locator("#compare").is_hidden()  # nothing to compare with yet
+        _analyse(page, slowed_clip)
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        page.wait_for_selector("#compare:not([hidden])", state="attached")
+        if not page.evaluate("() => document.getElementById('compare').open"):
+            page.click("#compare > summary")
+        page.wait_for_selector("#compare-a canvas")
+        mine, previous = json.loads(page.get_attribute("#compare", "data-positions") or "[]")
+        assert "Tempo: this swing" in (page.text_content("#compare-verdict") or "")
+        drawn = "() => [document.querySelector('#compare-a canvas').dataset.frame," \
+            " document.querySelector('#compare-b canvas').dataset.frame].map(Number)"  # fmt: skip
+        for event in range(8):
+            page.click(f"#compare-jumps [data-jump='{event}']")
+            page.wait_for_function(f"() => ({drawn})()[0] === {mine[event]}")
+            _, b = page.evaluate(drawn)
+            assert abs(b - previous[event]) <= 1, (event, b, previous[event])
+            if SCREENS and event in (0, 3, 5) and width == 390:
+                page.locator("#compare").screenshot(
+                    path=str(SCREENS / f"compare-{event}-{width}.png")
+                )
+        # The slider moves both.
+        page.evaluate(
+            "() => { const s = document.getElementById('compare-slider');"
+            " s.value = String(Number(s.value) - 20); s.dispatchEvent(new Event('input')); }"
+        )
+        page.wait_for_function(f"() => ({drawn})()[0] === {mine[7] - 20}")
+        _, b = page.evaluate(drawn)
+        assert b < previous[7]
+        # The ghost and the skeletons can be switched.
+        picture = "() => document.querySelector('#compare-a canvas').toDataURL()"
+        before = page.evaluate(picture)
+        page.check("[data-compare-show='ghost']")
+        page.wait_for_function(f"() => ({picture})() !== {json.dumps(before)}")
+        page.uncheck("[data-compare-show='skeleton']")
+        page.wait_for_function(f"() => ({picture})() !== {json.dumps(before)}")
+        assert page.evaluate(NO_OVERFLOW), f"the compare view scrolls sideways at {width} px"
+        if SCREENS:
+            page.locator("#compare").screenshot(path=str(SCREENS / f"compare-ghost-{width}.png"))
+        assert errors == []
+        browser.close()

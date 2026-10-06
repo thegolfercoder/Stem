@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import IO
+from typing import IO, TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import NDArray
@@ -44,19 +44,47 @@ from swingml.analysis import (
 from swingml.assets import (
     home,
 )
+from swingml.capture import Preflight, preflight
+from swingml.dataset.manifest import sha256_of
 from swingml.events import SwingEvent
+from swingml.labels import save_pose
 from swingml.model.calibration import ModelCalibration
 from swingml.model.ensemble import (
     SwingEventEnsemble,
 )
-from swingml.model.tcn import SwingEventNet
+from swingml.model.numpy_net import NumpyEventNet
 from swingml.pose.base import PoseSequence
 from swingml.pose.mediapipe_pose import MediaPipePoseEstimator
 from swingml.quantity import NoReading
-from swingml.skeleton import Handedness
+from swingml.skeleton import Handedness, infer_handedness
 from swingml.store import SwingStore
 from swingml.video.reader import VideoInfo, VideoReader
-from swingml.web.frames import extract_event_frames, extract_sequence_frames
+from swingml.web.frames import (
+    extract_event_frames,
+    extract_sequence_frames,
+    frames_at,
+    strip_frames,
+)
+
+if TYPE_CHECKING:
+    from swingml.model.tcn import SwingEventNet
+
+POSE_MAX_SIDE = 640
+"""Frames are shrunk to this before the pose estimator sees them.
+
+It works at a few hundred pixels whatever it is handed, so a 4K frame is time spent
+for nothing, and the event model was trained on landmarks from small video. The
+browser app does the same, so the two answer alike.
+"""
+
+POSE_MAX_RATE_HZ = 60.0
+"""The model looks at sixty frames a second; a 240 fps clip is tracked at this."""
+
+STRIP_LEAD_S = 0.5
+STRIP_TAIL_S = 0.25
+STRIP_MAX_FRAMES = 240
+"""The scrubbing strip: every tracked frame from just before address to just after
+the finish. Four seconds at sixty frames a second, which no swing needs."""
 
 
 class JobState(StrEnum):
@@ -165,7 +193,9 @@ class AnalysisService:
         """Build the model and estimator now rather than on the first upload."""
         self._ensure_loaded()
 
-    def _ensure_loaded(self) -> tuple[SwingEventNet | SwingEventEnsemble, MediaPipePoseEstimator]:
+    def _ensure_loaded(
+        self,
+    ) -> tuple[SwingEventNet | NumpyEventNet | SwingEventEnsemble, MediaPipePoseEstimator]:
         with self._model_lock:
             ok, why = self.ready()
             if not ok:
@@ -181,16 +211,17 @@ class AnalysisService:
         self,
         upload_path: Path,
         original_name: str,
-        handedness: Handedness,
+        handedness: Handedness | None,
         club: str | None = None,
         label: str | None = None,
+        plan_id: int | None = None,
     ) -> Job:
         job = Job(id=uuid.uuid4().hex[:12], filename=original_name)
         with self._jobs_lock:
             self._jobs[job.id] = job
         thread = threading.Thread(
             target=self._run,
-            args=(job, upload_path, original_name, handedness, club, label),
+            args=(job, upload_path, original_name, handedness, club, label, plan_id),
             daemon=True,
         )
         thread.start()
@@ -211,32 +242,46 @@ class AnalysisService:
         job: Job,
         upload_path: Path,
         original_name: str,
-        handedness: Handedness,
+        handedness: Handedness | None,
         club: str | None,
         label: str | None,
+        plan_id: int | None = None,
     ) -> None:
         try:
             with self._run_lock:
                 job.state = JobState.READING
+                # The same file analysed again is one swing (SwingStore.record).
+                clip_sha256 = sha256_of(upload_path)
                 job.message = "loading the model"
                 model, _ = self._ensure_loaded()
-                assert isinstance(model, SwingEventNet | SwingEventEnsemble)
+
+                job.message = "checking how the clip was filmed"
+                _, estimator = self._ensure_loaded()
+                check = preflight(upload_path, estimator)
+                if check.blocking:
+                    self._refuse_at_preflight(
+                        job, check, upload_path, original_name, club, label, clip_sha256
+                    )
+                    return
 
                 job.message = "finding the body in each frame"
                 sequence, video_info = self._extract_pose(upload_path, job)
 
                 job.state = JobState.ANALYSING
                 job.message = "finding the swing"
-                analysis = analyse_pose_sequence(
-                    sequence,
-                    model,
-                    AnalysisConfig(handedness=handedness, calibration=self.calibration),
-                    video=video_info,
-                )
+                analysis = self.analyse(sequence, model, handedness, video_info)
+                if check.warnings:
+                    analysis = analysis.model_copy(
+                        update={
+                            "capture_warnings": tuple(
+                                f"{c.name}: {c.measured}. {c.advice}" for c in check.warnings
+                            )
+                        }
+                    )
 
                 job.state = JobState.RENDERING
                 job.message = "saving the key frames"
-                swing_id = record_swing(
+                swing_id, outcome = record_swing(
                     self.store,
                     analysis,
                     sequence,
@@ -244,25 +289,123 @@ class AnalysisService:
                     source_name=original_name,
                     label=label,
                     club=club,
+                    clip_sha256=clip_sha256,
                 )
 
                 job.swing_id = swing_id
+                if outcome == "kept":
+                    self._keep_earlier(job, swing_id, upload_path)
+                    return
+                refused = isinstance(analysis.events, NoReading)
+                self.store.log_event(
+                    "analysis_refused" if refused else "analysis_succeeded",
+                    reason=analysis.events.reason
+                    if isinstance(analysis.events, NoReading)
+                    else None,
+                )
+                if plan_id is not None:
+                    self.store.add_plan_swing(plan_id, swing_id, "retest")
+                    self.store.log_event("retest_recorded", plan=plan_id, refused=refused)
                 job.state = JobState.DONE
                 job.message = (
                     analysis.events.reason if isinstance(analysis.events, NoReading) else "done"
                 )
+                if outcome == "replaced":
+                    job.message += (
+                        f" The same clip was analysed before, so swing {swing_id} was replaced "
+                        "by this reading rather than kept twice."
+                    )
         except Exception as error:
             job.state = JobState.FAILED
             job.error = str(error) or error.__class__.__name__
             job.message = "analysis failed"
             traceback.print_exc()
 
+    def _refuse_at_preflight(
+        self,
+        job: Job,
+        check: Preflight,
+        upload_path: Path,
+        original_name: str,
+        club: str | None,
+        label: str | None,
+        clip_sha256: str | None = None,
+    ) -> None:
+        """Store the refusal the quick look found, without tracking the whole clip."""
+        reason = "; ".join(f"{c.name}: {c.measured}" for c in check.blocking)
+        advice = " ".join(c.advice for c in check.blocking)
+        refusal = NoReading(reason=f"{reason}. {advice}", source="capture")
+        analysis = SwingAnalysis(
+            video=None,
+            detection_rate=0.0,
+            canonical_frames=0,
+            events=refusal,
+            event_times_s=(),
+            event_source_frames=(),
+            metrics=refusal,
+            handedness=Handedness.RIGHT,
+        )
+        swing_id, outcome = self.store.record(
+            analysis, original_name, upload_path, label, club, clip_sha256
+        )
+        job.swing_id = swing_id
+        if outcome == "kept":
+            self._keep_earlier(job, swing_id, upload_path)
+            return
+        self.store.log_event("analysis_refused", reason=reason, at="preflight")
+        job.state = JobState.DONE
+        job.message = refusal.reason
+
+    def _keep_earlier(self, job: Job, swing_id: int, upload_path: Path) -> None:
+        """A refused run of a clip already analysed: the earlier reading stands."""
+        with contextlib.suppress(OSError):
+            upload_path.unlink()  # a second copy of a clip that is already kept
+        self.store.log_event("analysis_refused", kept_earlier=swing_id)
+        job.state = JobState.DONE
+        job.message = (
+            f"This run was refused, so swing {swing_id} keeps its earlier reading of the same clip."
+        )
+
+    def analyse(
+        self,
+        sequence: PoseSequence,
+        model: SwingEventNet | NumpyEventNet | SwingEventEnsemble,
+        handedness: Handedness | None,
+        video: VideoInfo | None = None,
+    ) -> SwingAnalysis:
+        """Analyse a tracked clip, working out which way round the golfer stands
+        when not told.
+
+        Handedness reaches only a few of the model's inputs, so a first pass either
+        way finds the top well enough to ask the body: at the top a right-hander's
+        hands are over the right shoulder. If the first pass finds no swing at all,
+        the other way round gets its own chance before anything is refused.
+        """
+
+        def run(hand: Handedness) -> SwingAnalysis:
+            config = AnalysisConfig(handedness=hand, calibration=self.calibration)
+            return analyse_pose_sequence(sequence, model, config, video=video)
+
+        if handedness is not None:
+            return run(handedness)
+        analysis = run(Handedness.RIGHT)
+        if isinstance(analysis.events, NoReading):
+            other = run(Handedness.LEFT)
+            return analysis if isinstance(other.events, NoReading) else other
+        top = int(analysis.event_source_frames[int(SwingEvent.TOP)])
+        called = infer_handedness(sequence.xy, sequence.visibility, top)
+        if called is not None and called[0] is not Handedness.RIGHT:
+            other = run(called[0])
+            if not isinstance(other.events, NoReading):
+                return other
+        return analysis
+
     def _extract_pose(self, path: Path, job: Job) -> tuple[PoseSequence, VideoInfo]:
         with VideoReader(path) as reader:
             job.frames_expected = max(0, reader.declared_frames)
 
             def frames() -> Iterator[tuple[NDArray[np.uint8], float]]:
-                yield from reader.frames()
+                yield from reader.frames(max_side=POSE_MAX_SIDE, max_rate_hz=POSE_MAX_RATE_HZ)
 
             def progress(done: int) -> None:
                 job.frames_done = done
@@ -281,35 +424,63 @@ def record_swing(
     source_name: str,
     label: str | None = None,
     club: str | None = None,
-) -> int:
+    clip_sha256: str | None = None,
+) -> tuple[int, str]:
     """Store an analysis and write the images the interface needs to show it.
+
+    Returns the swing's id and how it was stored (`SwingStore.record`): `new`,
+    `replaced` (the same clip analysed before; its files are rewritten), or
+    `kept` (a refused re-run of a clip already analysed; nothing is written).
 
     Shared by the web upload and the command line so that a swing analysed either
     way looks the same afterwards. Having the terminal produce a row the interface
     then renders without pictures is the kind of small inconsistency that makes
     software feel unfinished.
     """
-    swing_id = store.add(
-        analysis, source_name=source_name, video_path=video_path, label=label, club=club
-    )
+    earlier = store.by_clip(clip_sha256) if clip_sha256 else None
+    swing_id, outcome = store.record(analysis, source_name, video_path, label, club, clip_sha256)
+    if outcome == "kept":
+        return swing_id, outcome
+    if earlier is not None and earlier.video_path and Path(earlier.video_path) != video_path:
+        old = Path(earlier.video_path)
+        if old.parent.resolve() == videos_dir().resolve():
+            with contextlib.suppress(OSError):
+                old.unlink()  # the earlier upload of the same bytes
+    # The landmarks are kept for every swing, refused or not, so positions the
+    # golfer sets can be measured without tracking the clip again.
+    with contextlib.suppress(Exception):
+        save_pose(sequence, frames_dir() / str(swing_id))
     if isinstance(analysis.events, NoReading):
-        return swing_id
+        return swing_id, outcome
 
     directory = frames_dir() / str(swing_id)
+    events = analysis.event_source_frames
+    times = sequence.timestamps_s
+    # The strip runs from half a second before address to a quarter after the
+    # finish, every tracked frame of it, so a position the model placed wrongly
+    # can be moved to the right frame - including an address it put too late.
+    first = int(np.searchsorted(times, times[events[0]] - STRIP_LEAD_S))
+    last = int(np.searchsorted(times, times[events[-1]] + STRIP_TAIL_S, side="right")) - 1
+    strip = strip_frames(sequence, first, last, STRIP_MAX_FRAMES)
+    # One read of the clip for both sets of pictures.
+    images: dict[int, NDArray[np.uint8]] = {}
     with contextlib.suppress(Exception):
-        extract_event_frames(video_path, sequence, analysis.event_source_frames, directory)
+        images = frames_at(video_path, sequence, sorted(set(strip) | set(events)))
     with contextlib.suppress(Exception):
-        events = analysis.event_source_frames
+        extract_event_frames(video_path, sequence, events, directory, images=images)
+    with contextlib.suppress(Exception):
         manifest = extract_sequence_frames(
             video_path,
             sequence,
-            first_frame=events[0],
-            last_frame=events[-1],
+            first_frame=first,
+            last_frame=last,
             destination=directory,
+            max_frames=STRIP_MAX_FRAMES,
             crop_frames=list(events),
+            images=images,
         )
         (directory / "sequence.json").write_text(json.dumps(manifest), encoding="utf-8")
-    return swing_id
+    return swing_id, outcome
 
 
 def save_upload(stream: IO[bytes], original_name: str) -> Path:
@@ -354,3 +525,22 @@ def sequence_manifest(swing_id: int) -> list[dict[str, object]]:
 
 def analysis_from_row(payload: dict[str, object]) -> SwingAnalysis:
     return SwingAnalysis.model_validate(payload)
+
+
+def event_pictures_from_strip(swing_id: int, event_frames: tuple[int, ...]) -> None:
+    """Point the eight position pictures at the strip's frames after a move.
+
+    The strip already holds every tracked frame around the swing, drawn and
+    cropped, so a moved position needs no second read of the clip. A position
+    outside the strip loses its picture rather than keeping one of the wrong
+    moment.
+    """
+    directory = frames_dir() / str(swing_id)
+    by_frame = {int(str(item["frame"])): str(item["name"]) for item in sequence_manifest(swing_id)}
+    for event in SwingEvent.ordered():
+        target = directory / f"{int(event)}_{event.name.lower()}.jpg"
+        source = by_frame.get(int(event_frames[int(event)]))
+        if source is not None and (directory / source).is_file():
+            shutil.copyfile(directory / source, target)
+        else:
+            target.unlink(missing_ok=True)

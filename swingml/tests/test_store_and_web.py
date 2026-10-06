@@ -23,6 +23,7 @@ from swingml.skeleton import Handedness
 from swingml.store import SwingStore
 from swingml.web.app import create_app
 from swingml.web.frames import body_crop, draw_pose
+from swingml.web.inputs import whole_number
 from synth.camera import CameraConfig, NoiseConfig, render_pose_sequence
 from synth.swing import generate_swing
 
@@ -198,3 +199,193 @@ def test_swing_can_be_relabelled_then_removed(client) -> None:  # type: ignore[n
 
 def test_unknown_job_is_a_404(client) -> None:  # type: ignore[no-untyped-def]
     assert client.get("/api/jobs/nonexistent").status_code == 404
+
+
+# -- only this machine -------------------------------------------------------------
+
+
+def test_requests_for_another_host_name_are_refused(client) -> None:  # type: ignore[no-untyped-def]
+    """DNS rebinding: a site pointed at 127.0.0.1 arrives with its own name."""
+    response = client.get("/api/swings", headers={"Host": "evil.example:5000"})
+    assert response.status_code == 403
+    assert client.get("/api/swings", headers={"Host": "127.0.0.1:5000"}).status_code == 200
+
+
+def test_state_changes_from_another_site_are_refused(client) -> None:  # type: ignore[no-untyped-def]
+    refused = client.delete("/api/swings/1", headers={"Origin": "https://evil.example"})
+    assert refused.status_code == 403
+    assert client.get("/swing/1").status_code == 200
+
+
+def test_deleting_a_swing_removes_its_files(tmp_path: Path, monkeypatch, analysis) -> None:  # type: ignore[no-untyped-def]
+    from swingml.web.service import frames_dir, videos_dir
+
+    monkeypatch.setenv("SWINGML_HOME", str(tmp_path / "home"))
+    video = videos_dir() / "clip.mov"
+    video.write_bytes(b"x")
+    store = SwingStore(tmp_path / "s.db")
+    swing_id = store.add(analysis, source_name="clip.mov", video_path=video)
+    (frames_dir() / str(swing_id)).mkdir(parents=True)
+    (frames_dir() / str(swing_id) / "0_address.jpg").write_bytes(b"x")
+    app = create_app(store=store)
+    app.config.update(TESTING=True)
+    assert app.test_client().delete(f"/api/swings/{swing_id}").status_code == 200
+    assert not video.exists()
+    assert not (frames_dir() / str(swing_id)).exists()
+
+
+def test_serving_on_the_network_is_an_explicit_choice(tmp_path: Path, analysis) -> None:  # type: ignore[no-untyped-def]
+    store = SwingStore(tmp_path / "s.db")
+    app = create_app(store=store, allow_any_host=True)
+    app.config.update(TESTING=True)
+    http = app.test_client()
+    assert http.get("/api/swings", headers={"Host": "192.168.1.20:8000"}).status_code == 200
+    refused = http.post(
+        "/api/plans", json={"focus": "capture"},
+        headers={"Host": "192.168.1.20:8000", "Origin": "https://evil.example"},
+    )  # fmt: skip
+    assert refused.status_code == 403
+
+
+def test_a_store_from_before_clip_fingerprints_opens_and_keeps_its_swings(
+    tmp_path: Path, analysis: SwingAnalysis
+) -> None:
+    """Version 3 adds two columns in place; a version 2 file loses nothing."""
+    import sqlite3
+
+    from swingml.store import SCHEMA
+
+    path = tmp_path / "old.db"
+    with sqlite3.connect(path) as connection:
+        connection.executescript(SCHEMA)  # the tables as version 2 created them
+        connection.execute(
+            "INSERT INTO swings (created_at, source_name, handedness, ok, analysis_json) "
+            "VALUES ('2026-09-01T10:00:00+00:00', 'old.mov', 'right', 1, ?)",
+            (json.dumps(analysis.model_dump(mode="json")),),
+        )
+    store = SwingStore(path)
+    old = store.get(1)
+    assert old is not None and old.source_name == "old.mov" and old.clip_sha256 is None
+    swing_id, outcome = store.record(analysis, "new.mov", clip_sha256="abc")
+    assert (swing_id, outcome) == (2, "new") and store.by_clip("abc") is not None
+
+
+# -- the API's own input checks (#68) --------------------------------------------
+
+
+@pytest.mark.parametrize("limit", ["abc", "-1", "0", "1.5", "", "%C2%B2", "%E2%91%A0", "%D9%A3"])
+def test_a_malformed_limit_is_refused_never_a_500_or_uncapped(client, limit: str) -> None:  # type: ignore[no-untyped-def]
+    response = client.get(f"/api/swings?limit={limit}")
+    assert response.status_code == 400, response.get_data(as_text=True)
+    assert "limit" in response.get_json()["error"]
+
+
+def test_a_limit_is_capped_at_five_hundred(client) -> None:  # type: ignore[no-untyped-def]
+    assert client.get("/api/swings?limit=100000").status_code == 200
+    assert len(client.get("/api/swings?limit=1").get_json()) == 1
+
+
+@pytest.mark.parametrize("field", ["label", "club"])
+@pytest.mark.parametrize("value", [{"a": 1}, ["x"], 3, True])
+def test_a_label_or_club_that_is_not_text_is_refused(client, field: str, value: object) -> None:  # type: ignore[no-untyped-def]
+    response = client.post("/api/swings/1", json={field: value})
+    assert response.status_code == 400, response.get_data(as_text=True)
+    assert client.get("/api/swings").get_json()[0]["club"] == "7 iron"
+
+
+def test_updating_a_swing_that_does_not_exist_is_a_404(client) -> None:  # type: ignore[no-untyped-def]
+    response = client.post("/api/swings/999", json={"club": "driver"})
+    assert response.status_code == 404 and response.get_json()["error"] == "no such swing"
+
+
+def test_feedback_for_a_plan_that_does_not_exist_is_a_404_and_stores_nothing(client) -> None:  # type: ignore[no-untyped-def]
+    response = client.post("/api/plans/999/feedback", json={"useful": 1})
+    assert response.status_code == 404
+    exported = client.get("/api/export").get_json()
+    assert exported.get("feedback", []) == []
+
+
+def test_feedback_is_kept_for_a_real_plan_and_refused_for_a_missing_swing(
+    tmp_path: Path, analysis: SwingAnalysis
+) -> None:
+    store = SwingStore(tmp_path / "s.db")
+    swing = store.add(analysis, source_name="clip.mov", club="7 iron")
+    plan = store.create_plan("tempo_quick", "tempo-count-three", "tempo_ratio", "increase",
+                             "7 iron", [swing])  # fmt: skip
+    app = create_app(store=store)
+    app.config.update(TESTING=True)
+    http = app.test_client()
+    missing = http.post(f"/api/plans/{plan}/feedback", json={"useful": 3, "swing_id": 999})
+    assert missing.status_code == 404 and missing.get_json()["error"] == "no such swing"
+    assert store.feedback(plan) == []
+    kept = http.post(f"/api/plans/{plan}/feedback", json={"useful": 3, "swing_id": swing})
+    assert kept.status_code == 201 and len(store.feedback(plan)) == 1
+
+
+@pytest.mark.parametrize(
+    ("text", "number"),
+    [("12", 12), ("0", 0), (7, 7), ("²", None), ("①", None), ("٣", None), ("-1", None),
+     (-1, None), ("1.5", None), ("", None), (True, None), (None, None)],
+)  # fmt: skip
+def test_only_ascii_digits_are_read_as_a_number(text: object, number: int | None) -> None:
+    """#68, QA: str.isdigit() is true of "²", which int() then refuses."""
+    assert whole_number(text) == number
+
+
+def test_feedback_with_a_unicode_digit_rating_is_not_a_crash(
+    tmp_path: Path, analysis: SwingAnalysis
+) -> None:
+    store = SwingStore(tmp_path / "s.db")
+    swing = store.add(analysis, source_name="clip.mov", club="7 iron")
+    plan = store.create_plan("tempo_quick", "tempo-count-three", "tempo_ratio", "increase",
+                             "7 iron", [swing])  # fmt: skip
+    app = create_app(store=store)
+    app.config.update(TESTING=True)
+    response = app.test_client().post(f"/api/plans/{plan}/feedback", json={"useful": "²"})
+    assert response.status_code == 201
+    assert [row["useful"] for row in store.feedback(plan)] == [None]
+
+
+HUGE = "9" * 25  # wider than SQLite's INTEGER (#70)
+
+
+@pytest.mark.parametrize(
+    ("method", "url", "body"),
+    [
+        ("post", f"/api/swings/{HUGE}", {"label": "x"}),
+        ("delete", f"/api/swings/{HUGE}", None),
+        ("get", f"/swing/{HUGE}", None),
+        ("post", f"/api/plans/{HUGE}/feedback", {"useful": 1}),
+    ],
+)
+def test_an_id_too_large_for_the_database_is_a_404_not_a_500(
+    client,
+    method: str,
+    url: str,
+    body: dict | None,  # type: ignore[no-untyped-def]
+) -> None:
+    response = getattr(client, method)(url, json=body) if body else getattr(client, method)(url)
+    assert response.status_code == 404, response.get_data(as_text=True)[:200]
+
+
+def test_feedback_naming_a_swing_too_large_for_the_database_is_a_404(
+    tmp_path: Path, analysis: SwingAnalysis
+) -> None:
+    store = SwingStore(tmp_path / "s.db")
+    swing = store.add(analysis, source_name="clip.mov", club="7 iron")
+    plan = store.create_plan("tempo_quick", "tempo-count-three", "tempo_ratio", "increase",
+                             "7 iron", [swing])  # fmt: skip
+    app = create_app(store=store)
+    app.config.update(TESTING=True)
+    response = app.test_client().post(
+        f"/api/plans/{plan}/feedback", json={"useful": 1, "swing_id": 10**25}
+    )
+    assert response.status_code == 404 and store.feedback(plan) == []
+
+
+def test_the_store_treats_an_id_outside_sqlites_range_as_absent(tmp_path: Path) -> None:
+    store = SwingStore(tmp_path / "s.db")
+    for bad in (10**25, 2**63, -(2**63) - 1):
+        assert store.get(bad) is None and store.plan(bad) is None
+        assert store.delete(bad) is False and store.update(bad, label="x") is False
+        assert store.close_plan(bad, "completed") is False and store.feedback(bad) == []

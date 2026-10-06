@@ -20,16 +20,18 @@ back to a time and to the nearest original frame before it leaves.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
+from itertools import pairwise
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-import torch
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field
 
 from swingml.events import EventSequence, SwingEvent
 from swingml.features import FeatureConfig, extract_features, resample_pose
+from swingml.insights.compare import CameraSignature, camera_signature
 from swingml.metrics.swing import MetricConfig, SwingMetrics, compute_metrics
 from swingml.model.calibration import (
     ErrorBand,
@@ -44,11 +46,14 @@ from swingml.model.ensemble import (
     EnsembleConfig,
     SwingEventEnsemble,
 )
-from swingml.model.tcn import DEFAULT_DILATIONS, PaddingMode, SwingEventNet
+from swingml.model.numpy_net import NumpyEventNet
 from swingml.pose.base import PoseEstimator, PoseSequence
-from swingml.quantity import NoReading
+from swingml.quantity import NoReading, Quantity
 from swingml.skeleton import Handedness
 from swingml.video.reader import VideoInfo, VideoReader
+
+if TYPE_CHECKING:
+    from swingml.model.tcn import PaddingMode, SwingEventNet
 
 
 class AnalysisConfig(BaseModel):
@@ -67,18 +72,28 @@ class AnalysisConfig(BaseModel):
         ),
     )
     min_mean_confidence: float = Field(
+        default=0.20,
+        description=(
+            "Mean confidence over all eight events below which no swing is reported. "
+            "Read together with min_core_confidence; both must be met.\n\n"
+            "It was 0.30 on its own, set when the model had seen only rendered "
+            "swings. Measured on real ones that rule turned away 69 percent of the "
+            "real swings in the held-out GolfDB clips - a finish the clip cut short, "
+            "or a toe-up the estimator cannot see, drags a mean of all eight down "
+            "however sure the rest are. Both thresholds were then chosen on the "
+            "validation and calibration clips (170 swings, and 350 stretches of the "
+            "same videos with no swing in them: the golfer before address, after "
+            "the finish, and a backswing that never comes down) and reported on the "
+            "held-out ones (224 swings, 473 such stretches): with the installed model "
+            "they turn away 0.9 percent of real swings and accept 0.6 percent of the "
+            "stretches with none."
+        ),
+    )
+    min_core_confidence: float = Field(
         default=0.30,
         description=(
-            "Mean event confidence below which no swing is reported.\n\n"
-            "This was left switched off until there was something to set it from, "
-            "because a guessed threshold is worse than none. Measured over a set of "
-            "clips built to contain no swing - somebody standing at address, a swing "
-            "cut off at the top, an empty frame - the model returned 0.02, 0.27 and "
-            "0.15. Over clips that did contain a swing, filmed face on, down the "
-            "line, at forty-five degrees, tilted, left handed, near, far, and at "
-            "three frame rates, it returned 0.38 at worst and 0.89 or better on "
-            "eleven of twelve. The gap is wide and this sits in it, close enough to "
-            "the bad group to keep the hardest real angle."
+            "Mean confidence over address, top, mid-downswing and impact below which "
+            "no swing is reported: the positions every real swing is sure of."
         ),
     )
     min_detection_rate: float = Field(
@@ -109,6 +124,44 @@ class AnalysisConfig(BaseModel):
     max_frames: int | None = Field(
         default=None, description="Cap on frames read, for very long clips."
     )
+    slow_motion_factors: tuple[float, ...] = Field(
+        default=(2.0, 4.0, 8.0),
+        description=(
+            "Playback slow-downs tried when a clip is refused for its events. A "
+            "phone's slow-motion export shows a swing four or eight times slower "
+            "than it happened, and read at recorded speed it looks like no swing "
+            "at all. Empty turns the retry off."
+        ),
+    )
+    slow_motion_check_backswing_s: float | None = Field(
+        default=1.1,
+        description=(
+            "A clip answered at recorded speed whose backswing (address to top, whole "
+            "frames on the model's grid) is longer than this is also read at each "
+            "slow-motion factor. A clip slowed two or three times passes every gate at "
+            "recorded speed, so without this its durations are reported as measured "
+            "(#32). None checks only refused clips. 1.1 s and the margin were chosen on "
+            "golfdb-validation-v2 (docs/ml/slow-motion-rule.md)."
+        ),
+    )
+    slow_motion_check_rereads: bool = Field(
+        default=False,
+        description=(
+            "What a fired check does. False (#49): keep the recorded-speed events, tempo "
+            "and everything else, and withhold only what a guessed playback speed would "
+            "make wrong: the durations, and the millisecond error bands. True: re-read "
+            "the clip at the slowed speed, which moves its events and tempo; that rule "
+            "failed the release gate's non-inferiority test on tempo (#41)."
+        ),
+    )
+    slow_motion_margin: float = Field(
+        default=0.01,
+        description=(
+            "How much more confident (core geometric mean) the best slow-motion read "
+            "must be than the recorded-speed read before an answered clip is read as "
+            "slow motion instead."
+        ),
+    )
 
 
 class SwingAnalysis(BaseModel):
@@ -134,6 +187,42 @@ class SwingAnalysis(BaseModel):
             "Per event, how far from the truth a prediction like this one has been "
             "observed to fall. Empty when no calibration was supplied, which is the "
             "honest state rather than a default of zero."
+        ),
+    )
+    camera: CameraSignature | None = Field(
+        default=None,
+        description=(
+            "Where the camera was, read from the golfer's body at address, so swings "
+            "filmed from different spots are not compared as though they were not."
+        ),
+    )
+    capture_warnings: tuple[str, ...] = Field(
+        default=(),
+        description="What the quick look before analysis found wrong with how the clip was filmed.",
+    )
+    playback_slowed_by: float | None = Field(
+        default=None,
+        description=(
+            "Set when the clip only read as a swing once treated as slow motion "
+            "played back this many times slower. Tempo survives an even slow-down; "
+            "durations do not, and are refused."
+        ),
+    )
+    playback_retimed: bool | None = Field(
+        default=None,
+        description=(
+            "With `playback_slowed_by`: true when the swing was measured on the "
+            "slowed-down timeline (it read as a swing only that way), false when it "
+            "was measured as recorded and only may be slow motion. A golfer's moved "
+            "positions are measured the same way."
+        ),
+    )
+    positions_set_by: Literal["model", "golfer"] = Field(
+        default="model",
+        description=(
+            "Who placed the eight positions. When the golfer moved them, every "
+            "timing below is measured from their frames, and the model's error "
+            "bands no longer apply and are not reported."
         ),
     )
     tempo_uncertainty: RelativeBand | None = Field(
@@ -239,6 +328,8 @@ def save_model(model: SwingEventNet, path: Path | str) -> None:
     offers a kernel size and a padding mode, and a run that changed either wrote a
     checkpoint that quietly came back as a different network.
     """
+    import torch
+
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
@@ -254,12 +345,31 @@ def save_model(model: SwingEventNet, path: Path | str) -> None:
     )
 
 
+def load_event_model(checkpoint_path: Path | str) -> SwingEventNet | NumpyEventNet:
+    """Whichever network a file holds: the NumPy weights (.npz) the packaged
+    application runs, which need no PyTorch, or a PyTorch checkpoint (.pt).
+
+    A file from the package's own data is checked against its released SHA-256
+    first (`assets.verify_shipped`), and refused if it differs.
+    """
+    from swingml.assets import verify_shipped
+
+    verify_shipped(checkpoint_path)
+    if Path(checkpoint_path).suffix == ".npz":
+        return NumpyEventNet.load(checkpoint_path)
+    return load_model(checkpoint_path)
+
+
 def load_model(checkpoint_path: Path | str) -> SwingEventNet:
-    """Rebuild the trained model from a checkpoint.
+    """Rebuild the trained model from a PyTorch checkpoint.
 
     Tolerant of a checkpoint that predates a field, because a model that took an
     hour to train should not become unloadable over a missing dictionary key.
     """
+    import torch
+
+    from swingml.model.tcn import DEFAULT_DILATIONS, SwingEventNet
+
     checkpoint = torch.load(str(checkpoint_path), map_location="cpu", weights_only=False)
     state = checkpoint["state_dict"]
 
@@ -315,7 +425,7 @@ def _implausible_timing(
     return None
 
 
-def model_fingerprint(model: SwingEventNet | SwingEventEnsemble) -> str:
+def model_fingerprint(model: SwingEventNet | NumpyEventNet | SwingEventEnsemble) -> str:
     """The digest a calibration is checked against.
 
     An ensemble folds in every member and the settings that change its answers,
@@ -326,8 +436,8 @@ def model_fingerprint(model: SwingEventNet | SwingEventEnsemble) -> str:
     if isinstance(model, SwingEventEnsemble):
         parts: list[tuple[str, NDArray[np.float32]]] = []
         for index, member in enumerate(model.members):
-            for name, tensor in member.state_dict().items():
-                parts.append((f"{index}.{name}", tensor.detach().numpy()))
+            for name, values in _weights(member):
+                parts.append((f"{index}.{name}", values))
         warps = ",".join(f"{w:.6f}" for w in model.config.time_warps)
         return fingerprint_state(
             [
@@ -338,9 +448,14 @@ def model_fingerprint(model: SwingEventNet | SwingEventEnsemble) -> str:
                 ),
             ]
         )
-    return fingerprint_state(
-        (name, tensor.detach().numpy()) for name, tensor in model.state_dict().items()
-    )
+    return fingerprint_state(_weights(model))
+
+
+def _weights(model: SwingEventNet | NumpyEventNet) -> list[tuple[str, NDArray[np.float32]]]:
+    """Every named weight array, whichever implementation holds them."""
+    if isinstance(model, NumpyEventNet):
+        return list(model.arrays.items())
+    return [(name, tensor.detach().numpy()) for name, tensor in model.state_dict().items()]
 
 
 class ResolvedModel(BaseModel):
@@ -357,7 +472,10 @@ class ResolvedModel(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid", arbitrary_types_allowed=True)
 
-    model: SwingEventNet | SwingEventEnsemble
+    # Any, because naming the PyTorch network here would import PyTorch, which
+    # the packaged application runs without: SwingEventNet, NumpyEventNet or an
+    # ensemble of either.
+    model: Any
     paths: tuple[Path, ...]
     calibration: ModelCalibration | None
 
@@ -387,7 +505,7 @@ def resolve_model(
     paths: tuple[Path, ...]
     if explicit is not None:
         paths = (Path(explicit),)
-        model: SwingEventNet | SwingEventEnsemble = load_model(explicit)
+        model: SwingEventNet | NumpyEventNet | SwingEventEnsemble = load_event_model(explicit)
     else:
         members = find_event_ensemble()
         if members:
@@ -401,7 +519,7 @@ def resolve_model(
             if single is None:
                 return None
             paths = (single,)
-            model = load_model(single)
+            model = load_event_model(single)
 
     # Whichever table was measured through these weights, if any of them was.
     # Choosing by fingerprint rather than by where the file sits means a machine
@@ -420,7 +538,7 @@ def resolve_model(
 
 def analyse_pose_sequence(
     sequence: PoseSequence,
-    model: SwingEventNet | SwingEventEnsemble,
+    model: SwingEventNet | NumpyEventNet | SwingEventEnsemble,
     config: AnalysisConfig | None = None,
     video: VideoInfo | None = None,
 ) -> SwingAnalysis:
@@ -429,17 +547,165 @@ def analyse_pose_sequence(
     Separated from the video path so the model can be exercised on generated
     sequences without rendering and re-detecting them, and so a different pose
     source can be dropped in without touching anything here.
+
+    A clip refused for its events is tried again as slow motion (see
+    `AnalysisConfig.slow_motion_factors`): measured on 201 held-out real swings,
+    the 82 slow-motion replays among them have a median backswing of 3.07 s at
+    playback speed, past any real backswing, and the model's confidence on a
+    swing slowed four or eight times collapses below the refusal threshold. Read
+    as if played faster, the same frames decode as a swing. Whichever slow-down
+    decodes with the most confident core events and passes every gate is kept,
+    and the result says so.
     """
     config = config or AnalysisConfig()
+    first = _with_camera(_analyse_at_recorded_speed(sequence, model, config, video), sequence)
+    if isinstance(first.events, NoReading):
+        if first.events.source != "events":
+            return first
+        to_beat = None
+    else:
+        # Answered at recorded speed. A clip slowed two or three times gets here
+        # too, with every duration two or three times too long (#32), so a long
+        # backswing is checked against the slow-motion reads as well.
+        bound = config.slow_motion_check_backswing_s
+        backswing_s = (
+            first.events.duration_frames(SwingEvent.ADDRESS, SwingEvent.TOP)
+            / config.features.canonical_rate_hz
+        )
+        if bound is None or backswing_s <= bound:
+            return first
+        to_beat = core_confidence(first.events.confidence) + config.slow_motion_margin
+    best: tuple[float, float, SwingAnalysis] | None = None
+    for factor in config.slow_motion_factors:
+        faster = sequence.model_copy(update={"timestamps_s": sequence.timestamps_s / factor})
+        attempt = _analyse_at_recorded_speed(faster, model, config, video)
+        if isinstance(attempt.events, NoReading):
+            continue
+        core = core_confidence(attempt.events.confidence)
+        if best is None or core > best[0]:
+            best = (core, factor, attempt)
+    if best is None or (to_beat is not None and best[0] <= to_beat):
+        return first
+    if to_beat is not None and not config.slow_motion_check_rereads:
+        # The clip may be slowed: keep the recorded-speed reading and withhold only
+        # what the unknown speed would make wrong (#49).
+        return _as_slow_motion(first, best[1], retimed=False)
+    return _with_camera(_as_slow_motion(best[2], best[1]), sequence)
+
+
+def core_confidence(confidence: Sequence[float]) -> float:
+    """Geometric mean confidence over address, top, mid-downswing and impact."""
+    core = np.maximum([confidence[i] for i in (0, 3, 4, 5)], 1e-12)
+    return float(np.exp(np.mean(np.log(core))))
+
+
+def _with_camera(analysis: SwingAnalysis, sequence: PoseSequence) -> SwingAnalysis:
+    if isinstance(analysis.events, NoReading) or not analysis.event_source_frames:
+        return analysis
+    return analysis.model_copy(
+        update={"camera": camera_signature(sequence, analysis.event_source_frames[0])}
+    )
+
+
+SLOWED_REASON = (
+    "the clip reads as a swing only when treated as slow motion played back about "
+    "{factor:.0f} times slower, and how much slower it really was cannot be known "
+    "from the video, so no duration is reported. Film at normal speed for timings"
+)
+MAYBE_SLOWED_REASON = (
+    "the clip reads more confidently as slow motion played back about {factor:.0f} "
+    "times slower than at the speed it was recorded, and how much slower it really "
+    "was cannot be known from the video, so no duration is reported. Film at normal "
+    "speed for timings"
+)
+SLOWED_ASSUMPTION = (
+    "slow motion: assumes the whole swing was slowed by the same factor. A phone's "
+    "slow-motion clip ramps speed at its start and end; if the swing crosses a ramp "
+    "this ratio is wrong"
+)
+
+
+def _as_slow_motion(analysis: SwingAnalysis, factor: float, retimed: bool = True) -> SwingAnalysis:
+    """An analysis made at a guessed speed, with everything that depends on the guess refused.
+
+    Frame numbers are unchanged (every timestamp was scaled alike, so the nearest
+    frame is the same frame); times go back onto the clip's own timeline. A
+    recorded-speed analysis (`retimed=False`) is already on that timeline.
+    """
+    reason = (SLOWED_REASON if retimed else MAYBE_SLOWED_REASON).format(factor=factor)
+    refused = NoReading(reason=reason, source="timestamps")
+    metrics = analysis.metrics
+    if not isinstance(metrics, NoReading):
+        tempo = metrics.tempo_ratio
+        metrics = metrics.model_copy(
+            update={
+                "tempo_ratio": (
+                    tempo.model_copy(
+                        update={"assumptions": (*tempo.assumptions, SLOWED_ASSUMPTION)}
+                    )
+                    if isinstance(tempo, Quantity)
+                    else tempo
+                ),
+                "backswing_duration": refused,
+                "downswing_duration": refused,
+                "swing_duration": refused,
+                "time_to_peak_hand_speed": refused,
+                "kinematic_peak_times_ms": {},
+            }
+        )
+    bands = tuple(
+        NoReading(
+            reason="the error bands were measured in milliseconds at recorded speed",
+            source="calibration",
+        )
+        for _ in analysis.event_uncertainty
+    )
+    return analysis.model_copy(
+        update={
+            "metrics": metrics,
+            "event_times_s": tuple(t * factor if retimed else t for t in analysis.event_times_s),
+            "event_uncertainty": bands,
+            "playback_slowed_by": factor,
+            "playback_retimed": retimed,
+        }
+    )
+
+
+def slowed_reading(analysis: SwingAnalysis) -> tuple[float | None, bool]:
+    """The slow-motion reading an analysis was made under: (factor, retimed).
+
+    Analyses kept before `playback_retimed` existed say which in the reason their
+    durations were withheld with.
+    """
+    factor = analysis.playback_slowed_by
+    if factor is None:
+        return None, True
+    if analysis.playback_retimed is not None:
+        return factor, analysis.playback_retimed
+    metrics = analysis.metrics
+    withheld = None if isinstance(metrics, NoReading) else metrics.backswing_duration
+    maybe = MAYBE_SLOWED_REASON.format(factor=factor)
+    return factor, not (isinstance(withheld, NoReading) and withheld.reason == maybe)
+
+
+def _analyse_at_recorded_speed(
+    sequence: PoseSequence,
+    model: SwingEventNet | NumpyEventNet | SwingEventEnsemble,
+    config: AnalysisConfig,
+    video: VideoInfo | None,
+) -> SwingAnalysis:
+    """One pass at the clip's own timestamps: resample, detect, decode, gate, measure."""
     original_times = sequence.timestamps_s.copy()
 
     resampled, grid = resample_pose(sequence, config.features.canonical_rate_hz)
     detection_rate = float(np.mean(resampled.detected)) if resampled.detected is not None else 1.0
 
     features = extract_features(resampled, config.handedness, config.features)
-    if isinstance(model, SwingEventEnsemble):
+    if isinstance(model, SwingEventEnsemble | NumpyEventNet):
         logits = model.logits(features)
     else:
+        import torch
+
         # Asked for explicitly rather than assumed. `load_model` does it, so the
         # shipped path was fine, but a model handed straight over from training is
         # still in training mode and its dropout is still on - which does not fail,
@@ -470,7 +736,7 @@ def analyse_pose_sequence(
             handedness=config.handedness,
         )
 
-    events = decode_events(logits, config.min_mean_confidence)
+    events = decode_events(logits, config.min_mean_confidence, config.min_core_confidence)
     if isinstance(events, NoReading):
         return SwingAnalysis(
             video=video,
@@ -559,9 +825,80 @@ def analyse_pose_sequence(
     )
 
 
+def analyse_with_positions(
+    sequence: PoseSequence,
+    source_frames: Sequence[int],
+    handedness: Handedness,
+    config: AnalysisConfig | None = None,
+    video: VideoInfo | None = None,
+    *,
+    slowed_by: float | None = None,
+    retimed: bool = True,
+) -> SwingAnalysis:
+    """The swing measured from eight positions the golfer chose, not the model.
+
+    `source_frames` index the tracked sequence, as `event_source_frames` does. The
+    measurements are the same functions of the same landmarks; only where the
+    eight positions sit has changed, so the model plays no part and its error
+    bands, which describe the model, are not attached.
+
+    `slowed_by` and `retimed` carry the slow-motion reading of the analysis the
+    positions replace (`slowed_reading`): the swing is measured on the timeline
+    the model read it on and its durations stay withheld, as the browser does
+    (#74). Without them a slow-motion replay's durations came back several times
+    too long.
+
+    Raises ValueError if the positions are not in swing order.
+    """
+    if slowed_by is not None:
+        timeline = (
+            sequence.model_copy(update={"timestamps_s": sequence.timestamps_s / slowed_by})
+            if retimed
+            else sequence
+        )
+        moved = analyse_with_positions(timeline, source_frames, handedness, config, video)
+        return _as_slow_motion(moved, slowed_by, retimed).model_copy(
+            update={"camera": camera_signature(sequence, int(source_frames[0]))}
+        )
+    config = config or AnalysisConfig()
+    chosen = [int(f) for f in source_frames]
+    if len(chosen) != len(SwingEvent.ordered()):
+        raise ValueError(f"expected {len(SwingEvent.ordered())} positions, got {len(chosen)}")
+    if any(b <= a for a, b in pairwise(chosen)):
+        raise ValueError("the eight positions must be in swing order, each after the last")
+    if chosen[0] < 0 or chosen[-1] >= sequence.n_frames:
+        raise ValueError("a position lies outside the clip")
+
+    rate = config.features.canonical_rate_hz
+    resampled, grid = resample_pose(sequence, rate)
+    detection_rate = float(np.mean(resampled.detected)) if resampled.detected is not None else 1.0
+    times = sequence.timestamps_s[chosen].astype(np.float64)
+    positions = np.clip((times - grid[0]) * rate, 0, resampled.n_frames - 1)
+    frames = np.rint(positions).astype(int)
+    if np.any(np.diff(frames) <= 0):
+        raise ValueError("two positions are closer together than the analysis can separate")
+    events = EventSequence(
+        frames=tuple(int(f) for f in frames),  # type: ignore[arg-type]
+        confidence=(1.0,) * 8,
+        subframe=tuple(float(p) for p in positions),  # type: ignore[arg-type]
+    )
+    return SwingAnalysis(
+        video=video,
+        detection_rate=detection_rate,
+        canonical_frames=resampled.n_frames,
+        events=events,
+        event_times_s=tuple(float(t) for t in times),
+        event_source_frames=tuple(chosen),
+        metrics=compute_metrics(resampled, events, handedness, config.metrics),
+        handedness=handedness,
+        positions_set_by="golfer",
+        camera=camera_signature(sequence, chosen[0]),
+    )
+
+
 def analyse_video(
     path: Path | str,
-    model: SwingEventNet | SwingEventEnsemble,
+    model: SwingEventNet | NumpyEventNet | SwingEventEnsemble,
     estimator: PoseEstimator,
     config: AnalysisConfig | None = None,
     on_progress: Callable[[int, int], None] | None = None,
