@@ -1,7 +1,8 @@
 """Tempo-sensitivity experiments, scored the way the application decides.
 
-The shipped model reads tempo at 0.44 of its real spread (slope of log read tempo
-on log true tempo on the frozen holdout). Each experiment here changes one thing
+When these experiments were run (429fb30) the shipped model read tempo at 0.44 of its
+real spread (slope of log read tempo on log true tempo on the frozen holdout; 0.32 with
+the slow-motion rule that ships since). Each experiment here changes one thing
 and is scored on a split named by its frozen manifest, through the application's
 own decision: the decoder's confidence thresholds, the plausible-timing gate and
 the slow-motion retry. Intervals resample golfer/video groups, never clips, and
@@ -859,7 +860,7 @@ def level_cells(
 def cmd_levels(args: argparse.Namespace) -> None:
     """#18: coverage of the shipped 80% tempo band by true and by read tempo level.
 
-    Readings are compressed toward the middle (log-log slope 0.44,
+    Readings are compressed toward the middle (log-log slope 0.44 at 429fb30,
     docs/ml/tempo-experiments.md), so the quickest and slowest swings are the
     likeliest to fall outside a band fitted to all swings at once. Tercile cut
     points are fixed on the fitting split (calibration), then applied unchanged

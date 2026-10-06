@@ -16,8 +16,9 @@ promise (showing a golfer whether they changed).
 
 ### 1. Tempo is pulled toward about 3.3 (open)
 
-The slope of log read tempo on log true tempo is **0.44** (95% CI 0.15-0.70) on
-the real holdout. A true 2.35 reads 2.95; a true 5.12 reads 3.65. Median error is
+The slope of log read tempo on log true tempo was **0.44** (95% CI 0.15-0.70) on
+the real holdout at 429fb30, and is 0.32 with the slow-motion rule that ships
+(`release-gate-slowmo-rule.json`). A true 2.35 reads 2.95; a true 5.12 reads 3.65. Median error is
 11% for true tempos between 3 and 4, and 19% below 3 and 17.5% above 4. The only
 labelled phone swing (true 2.10) reads 3.20. Synthetic clips show the same thing:
 a generated 2.18 reads 2.55.

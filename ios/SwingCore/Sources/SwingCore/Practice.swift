@@ -318,7 +318,7 @@ public func compareSwings(_ rules: PracticeRules, _ before: [SwingPoint], _ afte
             + "more swings on each side narrow it."
     }
     if metric == "tempo_ratio" {
-        change.explanation += " Tempo readings move by less than the real change (about 0.44 of it on "
+        change.explanation += " Tempo readings move by less than the real change (about 0.32 of it on "
             + "held-out swings), so a real change in tempo is shown smaller than it is."
     }
     change.meanBefore = mean(a)

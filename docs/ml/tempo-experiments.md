@@ -1,7 +1,8 @@
 # Tempo compression: what was tried and what it showed
 
-The shipped model reads tempo at 0.44 of its real spread on the frozen holdout
-(slope of log read tempo on log true tempo, 95% CI 0.15–0.70): a quick golfer
+When these experiments were run (at 429fb30), the shipped model read tempo at 0.44 of
+its real spread on the frozen holdout (slope of log read tempo on log true tempo, 95% CI
+0.15–0.70; 0.32 with the slow-motion rule that ships since, `release-gate-slowmo-rule.json`): a quick golfer
 reads less quick and a slow one less slow, so a quick tempo can go unflagged.
 These experiments each change one thing and score it through the application's
 own decision (confidence thresholds, timing gate, slow-motion retry) with

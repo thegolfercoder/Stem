@@ -1,7 +1,7 @@
 """What skilled golfers read as, through this model, and how far that can be trusted.
 
 Comparing a golfer against the tempo *labels* of tour players would compare two
-different things: the model compresses tempo toward about 3.3 (slope 0.44 on
+different things: the model compresses tempo toward about 3.3 (slope 0.32 on
 held-out real swings), so a golfer's reading has to be compared against the
 *readings* the same model gives tour players. Both then carry the same
 compression.
@@ -41,8 +41,10 @@ TOUR_TEMPO_READINGS = TempoReference(
     model_fingerprint="shipped e7_s0",
 )
 
-TEMPO_COMPRESSION_SLOPE = 0.44
-"""Slope of log read tempo on log true tempo, golfdb-holdout-v1 (95% CI 0.15-0.70)."""
+TEMPO_COMPRESSION_SLOPE = 0.32
+"""Slope of log read tempo on log true tempo on golfdb-holdout-v1, through the shipped
+decision with the slow-motion rule that ships (0.322, `docs/audit/release-gate-slowmo-rule.json`,
+a point estimate). Measured at 429fb30, before that rule: 0.44 (95% CI 0.15-0.70)."""
 
 TEMPO_MISS_EXAMPLE = (
     "On the one phone swing whose positions were checked by hand, a true tempo of 2.1 "

@@ -9,8 +9,10 @@ fixed, it moves to the changelog with the measurement that shows it.
    video of tour players (GolfDB). One phone swing has been checked by hand, and its
    tempo read 3.20 against a true 2.10.
 2. **Tempo is compressed toward 3.3.** A golfer's distance from typical, and a
-   golfer's change, show at about 0.44 of their real size (95% CI 0.15-0.70). A quick
-   tempo can read as normal. `docs/audit/benchmark-baseline.json`.
+   golfer's change, show at about 0.32 of their real size with the slow-motion rule
+   that ships (`docs/audit/release-gate-slowmo-rule.json`; 0.44, 95% CI 0.15-0.70, was
+   measured before it, `docs/audit/benchmark-baseline.json`). A quick tempo can read as
+   normal.
 3. **Positions within one frame about half the time.** 49.0% for address, top,
    mid-downswing and impact on held-out real swings with the slow-motion rule that ships
    (48.9% before it); address is the worst (median 7 frames at 60 Hz, measured before it).

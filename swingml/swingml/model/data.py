@@ -248,9 +248,9 @@ def tempo_log_error(logits: torch.Tensor, events: torch.Tensor, mask: torch.Tens
 
     The frame-wise cross-entropy scores each event on its own, so a network can
     lower it by moving address and top toward where they usually are, and that is
-    the compression measured on real swings (slope 0.44). This scores the ratio
-    the product actually reports, so being wrong about a quick or a slow swing
-    costs in proportion to how wrong the tempo comes out.
+    the compression measured on real swings (slope 0.44 at 429fb30, 0.32 as shipped).
+    This scores the ratio the product actually reports, so being wrong about a quick
+    or a slow swing costs in proportion to how wrong the tempo comes out.
     """
     positions = soft_positions(logits, mask)
     back = (positions[:, 3] - positions[:, 0]).clamp_min(1.0)

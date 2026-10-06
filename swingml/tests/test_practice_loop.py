@@ -23,7 +23,7 @@ from swingml.insights.compare import (
     t95,
 )
 from swingml.insights.engine import RecentSwing, choose
-from swingml.insights.reference import TOUR_TEMPO_READINGS
+from swingml.insights.reference import TEMPO_COMPRESSION_SLOPE, TOUR_TEMPO_READINGS
 from swingml.labels import save_pose
 from swingml.pose.base import PoseSequence
 from swingml.quantity import NoReading, Provenance, Quantity
@@ -141,7 +141,8 @@ def test_a_clear_change_the_drill_aims_for_is_called_improved() -> None:
     change = compare(before, after, "tempo_ratio", "increase")
     assert change.verdict == "improved"
     assert change.interval is not None and change.interval[0] > 0
-    assert "0.44" in change.explanation
+    assert f"about {TEMPO_COMPRESSION_SLOPE:.2f} of it" in change.explanation
+    assert "0.44" not in change.explanation  # the 429fb30 figure, before the shipped rule (#73)
 
 
 def test_a_change_the_spread_can_explain_is_not_called_a_change() -> None:

@@ -73,7 +73,8 @@ Also since the audit:
 
 ## What does not work, or is not supported
 
-- **Tempo is compressed toward 3.3** (slope 0.44). The headline number understates
+- **Tempo is compressed toward 3.3** (slope 0.44 at 429fb30; 0.32 with the slow-motion rule
+  that ships, `release-gate-slowmo-rule.json`). The headline number understates
   every golfer's distance from typical and every change a golfer makes. This is the
   most important limitation for an improvement product and it is not fixed.
 - **Address is placed with a median error of 7 frames** on real footage, and the

@@ -12,7 +12,7 @@ it. "Model accuracy" is not a cause.
 | Pose | 3D output not rigid | shoulder/hip line length varies >25% | 3D angles refused | `metrics/swing.py` |
 | Pose | left/right confusion | handedness call margin at the top | tries both ways; reports how it was decided | `infer_handedness` |
 | Event model | address placed early or late | median 7 frames; label convention differs on phone | measured band; golfer can move it | error breakdown |
-| Event model | tempo compressed toward 3.3 | slope 0.44 of log read on log true tempo | tour-range reference compares readings with readings; comparison says change is understated | error breakdown, gate |
+| Event model | tempo compressed toward 3.3 | slope 0.32 of log read on log true tempo with the shipped rule (0.44 at 429fb30) | tour-range reference compares readings with readings; comparison says change is understated | error breakdown, gate |
 | Event model | finish not locatable | median 29 frames | never used as a duration end | `FINISH_UNRELIABLE` |
 | Event model | confident and wrong | tempo outside its band with core confidence ≥0.5: 14.6% | gated so it cannot rise | release gate |
 | Gates | no-swing clip accepted | no-swing stretches accepted: 3/424 | refusal thresholds tuned on validation, measured on test | `measure_refusals.py` |

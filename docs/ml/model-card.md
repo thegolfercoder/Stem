@@ -60,7 +60,7 @@ that report does not record.
 | Within 1 frame, all 8 events | 41.9% |
 | Tempo, median relative error | 15.1% [13.2, 17.5]; with the shipped slow-motion rule 15.3% |
 | Tempo band (±27%) coverage | with the shipped slow-motion rule 84.9% (85.4% with the rule before it) |
-| Tempo sensitivity (slope of log read on log true tempo) | 0.44 [0.15, 0.70] |
+| Tempo sensitivity (slope of log read on log true tempo) | 0.44 [0.15, 0.70]; with the shipped slow-motion rule 0.32 |
 | Median error: address / top / impact / finish (frames at 60 Hz) | 7 / 2 / 1 / 29 |
 | Real swings answered through the app's decision (with slow-motion retry) | 199 / 201 |
 | No-swing stretches from the same videos accepted | 3 / 424 (0.7%) |
@@ -82,8 +82,9 @@ of 12, +17% at a generated 2.18, +41% down the line.
 
 ## Known failure modes
 
-1. **Tempo is pulled toward about 3.3.** Slope 0.44: a true 2.35 reads 2.95, a true
-   5.12 reads 3.65. Differences between golfers, and a golfer's change over time,
+1. **Tempo is pulled toward about 3.3.** Slope 0.32 through the shipped decision with
+   its slow-motion rule (0.44 measured at 429fb30, when a true 2.35 read 2.95 and a true
+   5.12 read 3.65). Differences between golfers, and a golfer's change over time,
    appear at well under their real size. Readings far from 3 are more wrong than
    readings near it (median error 19% below 3.0, 11% between 3 and 4, 17.5% above 4).
 2. **Address and top carry most of the tempo error.** Placing address exactly would

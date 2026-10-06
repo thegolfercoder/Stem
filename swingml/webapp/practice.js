@@ -202,7 +202,7 @@ export function compareSwings(rules, before, after, metric, direction) {
       "more swings on each side narrow it.",
   }[verdict];
   if (metric === "tempo_ratio") {
-    explanation += " Tempo readings move by less than the real change (about 0.44 of it on held-out " +
+    explanation += " Tempo readings move by less than the real change (about 0.32 of it on held-out " +
       "swings), so a real change in tempo is shown smaller than it is.";
   }
   return { ...common, verdict, mean_before: mean(a), mean_after: mean(b), difference, interval,

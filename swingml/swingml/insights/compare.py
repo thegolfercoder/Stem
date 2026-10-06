@@ -9,7 +9,7 @@ and camera, and does not cancel otherwise. That is why comparability is checked
 before anything is said, and why a verdict needs at least three swings a side.
 
 What this cannot do, and says so: a change smaller than the interval is reported
-as "no detectable change", never as "no change"; and tempo moves at roughly 0.44
+as "no detectable change", never as "no change"; and tempo moves at roughly 0.32
 of the real change on held-out swings, so a real change in tempo shows up smaller
 than it is.
 
@@ -35,6 +35,7 @@ from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict
 
 from swingml.insights.drills import Direction
+from swingml.insights.reference import TEMPO_COMPRESSION_SLOPE
 from swingml.pose.base import PoseSequence
 from swingml.skeleton import Landmark
 
@@ -302,8 +303,9 @@ def compare(
     }[verdict]
     if metric == "tempo_ratio" and verdict != "not_comparable":
         explanation += (
-            " Tempo readings move by less than the real change (about 0.44 of it on held-out "
-            "swings), so a real change in tempo is shown smaller than it is."
+            " Tempo readings move by less than the real change (about "
+            f"{TEMPO_COMPRESSION_SLOPE:.2f} of it on held-out swings), so a real change in tempo "
+            "is shown smaller than it is."
         )
     return Change(
         **_common(metric, direction, before, after, check),

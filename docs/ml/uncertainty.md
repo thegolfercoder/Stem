@@ -45,8 +45,8 @@ image models, once an image model exists) and would be re-tested the same way.
 
 ## Does the band hold for quick and slow tempos? (#18)
 
-Readings are compressed toward the middle (log-log slope 0.44,
-`tempo-experiments.md`). So the swings furthest from typical are the likeliest
+Readings are compressed toward the middle (log-log slope 0.44 when this was measured, at
+429fb30, `tempo-experiments.md`; 0.32 with the slow-motion rule that ships). So the swings furthest from typical are the likeliest
 to fall outside a band fitted to all swings at once. This checks the shipped
 band, ±27.4% (`swingml/data/event_calibration.json`), not refitted, one tempo
 level at a time:
