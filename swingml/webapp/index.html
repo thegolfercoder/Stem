@@ -253,6 +253,23 @@ h2.section{font-size:19px;margin:28px 0 4px;letter-spacing:-.01em}
 .metric-unit{font-size:13px;color:var(--ink-faint);margin-left:4px;font-weight:400}
 .metric-foot{padding-top:9px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .metric-hint{color:var(--ink-faint);font-size:12px}
+.scrubber{margin-top:16px;display:grid;gap:10px;max-width:640px}
+.scrub-view canvas{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;
+  border-radius:10px;background:#000}
+.scrub-controls{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.scrub-controls input[type=range]{width:100%;min-height:44px}
+.scrub-time{margin:0;color:var(--ink-dim);font-size:13px;font-variant-numeric:tabular-nums}
+.scrub-jumps{display:flex;flex-wrap:wrap;gap:6px}
+.scrub-jumps .btn{padding:6px 10px;font-size:13px}
+.scrub-jumps .btn[aria-current=true]{border-color:var(--accent);color:var(--accent)}
+.scrub-play{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--ink-dim);font-size:14px}
+.scrub-play select{min-height:36px;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);
+  border-radius:8px;padding:4px 8px;font:inherit}
+.scrub-show{display:flex;flex-wrap:wrap;gap:6px 14px;border:0;padding:0;margin:0;font-size:14px;color:var(--ink-dim)}
+.scrub-show legend{padding:0;margin-bottom:4px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint)}
+.scrub-show label{display:inline-flex;gap:6px;align-items:center;min-height:32px}
+.scrub-angles{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:14px}
+.scrub-angles li{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .prov{font-size:10.5px;padding:2px 7px;border-radius:999px;letter-spacing:.04em;
   text-transform:uppercase;border:1px solid var(--line);white-space:nowrap}
 .prov-measured{color:var(--good)}
@@ -562,6 +579,37 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
       by the club shaft being horizontal. A body-pose estimator does not see the club, so
       these two are placed from the body's motion rather than observed directly.</p>
     </details>
+    <details class="fold" data-fold="scrub" id="scrubber" hidden>
+    <summary><h2 class="section">Step through the swing</h2></summary>
+    <div class="scrubber">
+      <div class="scrub-view"><div id="scrub-canvas"></div></div>
+      <div class="scrub-controls">
+        <button class="btn" type="button" id="scrub-back" aria-label="One frame back">&#8722;1</button>
+        <input type="range" id="scrub-slider" min="0" max="0" step="1" value="0"
+          aria-label="Frame">
+        <button class="btn" type="button" id="scrub-next" aria-label="One frame on">+1</button>
+      </div>
+      <p class="scrub-time" id="scrub-time" aria-live="polite"></p>
+      <div class="scrub-jumps" id="scrub-jumps"></div>
+      <div class="scrub-play">
+        <button class="btn" type="button" id="scrub-play">Play</button>
+        <label>Speed <select id="scrub-speed">
+          <option value="0.25">0.25&times;</option><option value="0.5" selected>0.5&times;</option>
+          <option value="1">1&times;</option></select></label>
+      </div>
+      <fieldset class="scrub-show"><legend>Draw</legend>
+        <label><input type="checkbox" data-show="skeleton" checked> Skeleton</label>
+        <label><input type="checkbox" data-show="shoulders" checked> Shoulder line</label>
+        <label><input type="checkbox" data-show="hips" checked> Hip line</label>
+        <label><input type="checkbox" data-show="spine" checked> Spine line</label>
+        <label><input type="checkbox" data-show="head" checked> Head box at address</label>
+      </fieldset>
+      <ul class="scrub-angles" id="scrub-angles"></ul>
+      <p class="footnote">Angles are between a line drawn on the frame and the frame's own
+        level or upright: what this camera saw, not the body's angle in space. Another
+        camera spot reads differently.</p>
+    </div>
+    </details>
 
     <section id="read-section" hidden>
       <h2 class="section">Stem's read, from your measurements</h2>
@@ -657,6 +705,7 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
 /*__READ__*/
 /*__PROGRESS__*/
 /*__DRILLS__*/
+/*__OVERLAY__*/
 /*__APP__*/
 boot(/*__PAYLOAD__*/);
 </script>

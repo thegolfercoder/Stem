@@ -20,6 +20,7 @@ import { SwingWatcher, cameraConstraints, extensionFor, frameRateNote, framingVe
 import { cardText, stemRead, voiceCue } from "./read.js";
 import { MIN_SWINGS, localDay, progressSeries, progressSvg } from "./progress.js";
 import { ILLUSTRATION, drillDemoSvg, repLabel, repState } from "./drills.js";
+import { frameLines, headBox, headInside, lineLabels } from "./overlay.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 // Pinned to the version the analysis was measured with (#51; model.js).
@@ -1737,8 +1738,9 @@ function nearestFrame(sequence, time) {
   return best;
 }
 
-/* A tracked frame, exactly as it was tracked, with its pose drawn on. */
-async function frameCanvas(sequence, index) {
+/* A tracked frame, exactly as it was tracked, with its pose drawn on (unless
+ * `pose` is false). */
+async function frameCanvas(sequence, index, pose = true) {
   const blob = state.images && (await state.images[index]);
   const canvas = document.createElement("canvas");
   if (blob) {
@@ -1770,7 +1772,7 @@ async function frameCanvas(sequence, index) {
       canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
     }
   }
-  drawPose(canvas, sequence.xy[index], sequence.visibility[index]);
+  if (pose) drawPose(canvas, sequence.xy[index], sequence.visibility[index]);
   return canvas;
 }
 
@@ -1819,6 +1821,7 @@ async function renderFrames(sequence, decoded, metrics, detectionRate, quiet = f
     if (!quiet) progress(0.92 + 0.08 * ((e + 1) / 8));
   }
   state.frames = frames;
+  renderScrubber();
 
   showBandNote(state.payload.calibration, decoded);
   showMetrics(metrics, decoded, detectionRate, sequence);
@@ -2172,6 +2175,144 @@ function showMetrics(m, decoded, detectionRate, sequence) {
     a.download = "swing.json";
     a.click();
   };
+}
+
+/* Step through the swing (#58): any tracked frame, with the skeleton, the
+ * shoulder, hip and spine lines and a head box held where the head was at address
+ * (overlay.js). Frames come from what was kept while tracking, as the lightbox's
+ * do. A slow-motion clip plays back at the speed the swing happened. */
+const scrub = { index: 0, analysis: null, timer: null, ticket: 0,
+                show: { skeleton: true, shoulders: true, hips: true, spine: true, head: true } };
+const SCRUB_COLOURS = { shoulders: "#ffb84d", hips: "#5ad19a", spine: "#f48fb1", head: "#ffffff" };
+
+function renderScrubber() {
+  const analysis = state.analysis;
+  if (!analysis || !state.frames || !analysis.sequence) return;
+  const n = analysis.sequence.n;
+  el("scrub-slider").max = String(n - 1);
+  el("scrub-jumps").innerHTML = state.frames.map((f, e) =>
+    `<button class="btn" type="button" data-jump="${e}">${escapeHtml(f.label)}</button>`).join("");
+  if (scrub.analysis !== analysis) {
+    stopScrub();
+    scrub.analysis = analysis;
+    scrub.index = state.frames[0].index;
+  }
+  el("scrubber").hidden = false;
+  scrubTo(scrub.index);
+}
+
+function scrubFaceOn(sequence) {
+  const rules = state.payload.practice;
+  const camera = cameraSignature(sequence, state.frames[0].index);
+  if (!camera || !Number.isFinite(camera.shoulder_ratio) || !rules) return null;
+  return camera.shoulder_ratio >= rules.face_on_min_shoulder_ratio;
+}
+
+async function scrubTo(index) {
+  const analysis = state.analysis;
+  if (!analysis || !state.frames) return;
+  const sequence = analysis.sequence;
+  const n = sequence.n;
+  const i = Math.max(0, Math.min(n - 1, Math.round(index)));
+  scrub.index = i;
+  el("scrub-slider").value = String(i);
+  const ticket = ++scrub.ticket;
+  const canvas = await frameCanvas(sequence, i, scrub.show.skeleton);
+  if (ticket !== scrub.ticket) return;
+  const g = canvas.getContext("2d");
+  const lines = frameLines(sequence.xy[i], sequence.visibility[i], canvas.width, canvas.height);
+  const thick = Math.max(2, Math.round(Math.min(canvas.width, canvas.height) / 200));
+  const px = ([x, y]) => [x * canvas.width, y * canvas.height];
+  for (const key of ["shoulders", "hips", "spine"]) {
+    const line = lines[key];
+    if (!scrub.show[key] || !line) continue;
+    // Drawn past both ends so the angle is easy to see against the body.
+    const [ax, ay] = px(line.a), [bx, by] = px(line.b);
+    const dx = (bx - ax) * 0.35, dy = (by - ay) * 0.35;
+    for (const [colour, width] of [["rgba(0,0,0,0.75)", thick + 3], [SCRUB_COLOURS[key], thick]]) {
+      g.strokeStyle = colour;
+      g.lineWidth = width;
+      g.lineCap = "round";
+      g.beginPath(); g.moveTo(ax - dx, ay - dy); g.lineTo(bx + dx, by + dy); g.stroke();
+    }
+  }
+  const address = state.frames[0].index;
+  const box = headBox(sequence.xy[address], sequence.visibility[address]);
+  const inside = headInside(box, sequence.xy[i], sequence.visibility[i]);
+  if (scrub.show.head && box) {
+    g.setLineDash([thick * 3, thick * 2]);
+    for (const [colour, width] of [["rgba(0,0,0,0.75)", thick + 3],
+                                   [inside === false ? "#ffb84d" : SCRUB_COLOURS.head, thick]]) {
+      g.strokeStyle = colour;
+      g.lineWidth = width;
+      g.strokeRect(box.x * canvas.width, box.y * canvas.height, box.width * canvas.width, box.height * canvas.height);
+    }
+    g.setLineDash([]);
+  }
+  canvas.dataset.frame = String(i);
+  el("scrub-canvas").replaceChildren(canvas);
+
+  const time = sequence.times[i];
+  const at = state.frames.findIndex((f) => f.index === i);
+  const real = analysis.slowedBy && analysis.retimed !== false
+    ? ` \u00b7 about ${(time / analysis.slowedBy).toFixed(3)} s as the swing happened` : "";
+  el("scrub-time").textContent = `Frame ${i + 1} of ${n} \u00b7 ${time.toFixed(3)} s in the clip${real}` +
+    (at >= 0 ? ` \u00b7 ${state.frames[at].label}` : "");
+  for (const button of el("scrub-jumps").querySelectorAll("[data-jump]")) {
+    button.setAttribute("aria-current", String(Number(button.dataset.jump) === at));
+  }
+  const labels = lineLabels(lines, scrubFaceOn(sequence));
+  const rows = ["shoulders", "hips", "spine"].filter((k) => scrub.show[k] && labels[k]).map((k) =>
+    [k, labels[k].replace(/, in the picture$/, "")]);
+  if (scrub.show.head && inside !== null) {
+    rows.push(["head", inside ? "Head inside its address box" : "Head outside its address box"]);
+  }
+  el("scrub-angles").innerHTML = rows.map(([k, text]) =>
+    `<li data-line="${k}"><span style="color:${SCRUB_COLOURS[k] === "#ffffff" ? "inherit" : SCRUB_COLOURS[k]}">` +
+    `&#9632;</span>${escapeHtml(text)}<span class="prov prov-projected">in the picture</span></li>`).join("");
+}
+
+function stopScrub() {
+  if (scrub.timer) clearInterval(scrub.timer);
+  scrub.timer = null;
+  el("scrub-play").textContent = "Play";
+}
+
+function playScrub() {
+  const analysis = state.analysis;
+  if (!analysis) return;
+  const sequence = analysis.sequence;
+  const n = sequence.n;
+  if (scrub.index >= n - 1) scrub.index = 0;
+  // A slow-motion clip's frames are further apart than the swing's were.
+  const slowed = analysis.slowedBy && analysis.retimed !== false ? analysis.slowedBy : 1;
+  const speed = Number(el("scrub-speed").value) * slowed;
+  const from = sequence.times[scrub.index], started = performance.now();
+  el("scrub-play").textContent = "Pause";
+  scrub.timer = setInterval(() => {
+    const target = from + ((performance.now() - started) / 1000) * speed;
+    let i = scrub.index;
+    while (i < n - 1 && sequence.times[i + 1] <= target) i++;
+    if (i !== scrub.index) scrubTo(i);
+    if (i >= n - 1) stopScrub();
+  }, 40);
+}
+
+function wireScrubber() {
+  el("scrub-slider").addEventListener("input", (event) => { stopScrub(); scrubTo(Number(event.target.value)); });
+  el("scrub-back").addEventListener("click", () => { stopScrub(); scrubTo(scrub.index - 1); });
+  el("scrub-next").addEventListener("click", () => { stopScrub(); scrubTo(scrub.index + 1); });
+  el("scrub-jumps").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-jump]");
+    if (!button || !state.frames) return;
+    stopScrub();
+    scrubTo(state.frames[Number(button.dataset.jump)].index);
+  });
+  el("scrub-play").addEventListener("click", () => (scrub.timer ? stopScrub() : playScrub()));
+  el("scrub-speed").addEventListener("change", () => { if (scrub.timer) { stopScrub(); playScrub(); } });
+  for (const box of document.querySelectorAll("[data-show]")) {
+    box.addEventListener("change", () => { scrub.show[box.dataset.show] = box.checked; scrubTo(scrub.index); });
+  }
 }
 
 /* One position, full size, with the arrow keys to walk the swing.
@@ -2805,6 +2946,7 @@ function wireRecorder() {
   el("rec-session").onclick = () => startSession();
   wireVoice();
   wireDrills();
+  wireScrubber();
   el("rec-session-stop").onclick = () => stopSession();
   document.addEventListener("visibilitychange", () => {
     // A wake lock is released whenever the page is hidden; take it again on return.

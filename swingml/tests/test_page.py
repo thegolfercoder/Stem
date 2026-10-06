@@ -1314,3 +1314,79 @@ def test_a_golfer_asking_for_less_motion_sees_the_figure_held(landmark_json: str
             ".every((s) => s.animationsPaused())"  # fmt: skip
         assert page.evaluate(paused)
         browser.close()
+
+
+# -- stepping through the swing with lines on it (#58) --------------------------------
+
+
+def _scrub_state(page: Any) -> dict:
+    return dict(page.evaluate(
+        "() => ({ frame: Number(document.querySelector('#scrub-canvas canvas').dataset.frame),"
+        " slider: Number(document.getElementById('scrub-slider').value),"
+        " time: document.getElementById('scrub-time').textContent,"
+        " angles: [...document.querySelectorAll('#scrub-angles li')].map((li) => li.textContent) })"
+    ))  # fmt: skip
+
+
+@pytest.mark.parametrize("width", [390])
+def test_the_scrubber_steps_frames_and_redraws_the_lines(
+    landmark_json: str, clip: Path, width: int
+) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context(viewport={"width": width, "height": 900}).new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.goto(PAGE.resolve().as_uri())
+        _analyse(page, clip)
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        page.wait_for_selector("#scrubber:not([hidden])", state="attached")
+        if not page.evaluate("() => document.getElementById('scrubber').open"):
+            page.click("#scrubber > summary")  # folded on a phone, as every detail is
+        page.wait_for_selector("#scrub-canvas canvas")
+        times = page.evaluate("() => window.__swingRun.eventTimes")
+        names = ["Address", "Top", "Impact"]
+        # Each jump lands on the detected position: its frame's time is the event's.
+        for name, event in zip(names, (0, 3, 5), strict=True):
+            page.click(f"#scrub-jumps [data-jump='{event}']")
+            page.wait_for_function(
+                "() => document.querySelector('#scrub-canvas canvas').dataset.frame"
+                " === document.getElementById('scrub-slider').value"
+            )
+            state = _scrub_state(page)
+            shown = float(state["time"].split(" s in the clip")[0].split("·")[-1])
+            assert name in state["time"], state
+            assert shown == pytest.approx(times[event], abs=0.02), (name, state)
+            assert state["slider"] == state["frame"]
+            assert any("in the picture" in a and "from level" in a for a in state["angles"])
+            if SCREENS:
+                page.locator("#scrubber").screenshot(
+                    path=str(SCREENS / f"scrub-{name.lower()}-{width}.png")
+                )
+        # The slider moves the frame, and the lines are measured on the new frame.
+        top = _scrub_state(page)
+        page.evaluate(
+            "() => { const s = document.getElementById('scrub-slider');"
+            " s.value = String(Number(s.value) - 12); s.dispatchEvent(new Event('input')); }"
+        )
+        on_frame = "() => Number(document.querySelector('#scrub-canvas canvas').dataset.frame) === "
+        page.wait_for_function(on_frame + str(top["frame"] - 12))
+        moved = _scrub_state(page)
+        assert moved["angles"] != top["angles"], (moved, top)
+        page.click("#scrub-next")
+        page.wait_for_function(on_frame + str(top["frame"] - 11))
+        # Lines can be switched off; the head row says where the head is against address.
+        page.uncheck("[data-show='shoulders']")
+        page.wait_for_function(
+            "() => !document.querySelector(\"#scrub-angles li[data-line='shoulders']\")"
+        )
+        assert page.locator("#scrub-angles li[data-line='head']").count() == 1
+        assert all("in the picture" in a for a in _scrub_state(page)["angles"])
+        assert page.evaluate(NO_OVERFLOW), f"the scrubber scrolls sideways at {width} px"
+        assert errors == []
+        browser.close()

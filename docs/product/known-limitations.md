@@ -135,6 +135,14 @@ fixed, it moves to the changelog with the measurement that shows it.
     count drills are slowed down so the count can be read. The rep counter and its
     pace timer keep the count for the visit only. The desktop app and the iPhone app
     carry the same figure data in their payload but do not draw it yet.
+13e. **Stepping through the swing is browser-only (#58).** The browser steps through
+    every tracked frame with the skeleton, the shoulder, hip and spine lines and a
+    head box held where the head was at address. Each angle is between a line on the
+    frame and the frame's level or upright: what this camera saw, labelled "in the
+    picture", never a body angle, and it reads differently from another camera spot.
+    The lines join the pose estimator's points, which wander a little from frame to
+    frame. Frames are the ones kept while tracking (at most the tracking rate). The
+    desktop and iPhone apps do not have it yet.
 14. **The browser keeps its practice log in the browser.** Clearing site data, a
     private window, or another browser starts from nothing, and nothing moves between
     the desktop, the browser and the iPhone. The iPhone's practice screen builds in CI
