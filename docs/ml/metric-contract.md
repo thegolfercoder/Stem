@@ -66,7 +66,8 @@ under "What this analysis cannot tell you".
 
 ## Uncertainty the product states
 
-- Tempo: ±27% for 80% of held-out real swings (85.4% coverage measured on the test set).
+- Tempo: ±27% for 80% of held-out real swings (84.9% coverage measured on the test set with
+  the slow-motion rule that ships, `docs/audit/release-gate-slowmo-rule.json`; 85.4% before it).
 - Tempo compression: readings move at about 0.44 of the real change (95% CI 0.15-0.70).
 - Event bands: per event, frames at 60 Hz, 80% coverage on the calibration split.
 

@@ -55,11 +55,14 @@ each carrying a measured error band and a label saying how it was arrived at.
 
 On **real swings no model trained on** - 201 clips from GolfDB in 35 golfer/video
 groups, frozen as `swingml/swingml/manifests/golfdb-holdout-v1.json` - the shipped
-model places address, the top, mid-downswing and impact **within one frame 48.9% of
-the time** (95% CI 44.8-52.9) and within two 64.1%, with a median tempo error of
-**15.1%**. Its tempo band, **±27%**, contained the truth for 85.4% of those swings. It
-beats four simple baselines fitted on the same data (the best, a one-layer temporal
-classifier, scores 40.7%).
+model, with the slow-motion rule that ships, places address, the top, mid-downswing and
+impact **within one frame 49.0% of the time**, with a median tempo error of **15.3%**;
+its tempo band, **±27%**, contained the truth for 84.9% of those swings
+(`docs/audit/release-gate-slowmo-rule.json`, point estimates; that report gives no
+intervals). Measured before that rule, at commit 429fb30
+(`docs/audit/benchmark-baseline.json`): within one frame 48.9% (95% CI 44.8-52.9),
+within two 64.1%, tempo error 15.1%. It beats four simple baselines fitted on the same
+data, scored at 429fb30 (the best, a one-layer temporal classifier, 40.7%).
 
 Two weaknesses matter more than those averages. Tempo readings are **compressed
 toward about 3.3** (a true 2.35 reads 2.95, a true 5.12 reads 3.65), so a golfer's

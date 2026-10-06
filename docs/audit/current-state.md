@@ -60,7 +60,8 @@ Also since the audit:
   (after the fix in this audit, which also corrected the pictures of slow-motion
   clips).
 - **The model beats simple baselines on real held-out golfers.** Within one frame on
-  the four core events: network 48.9% [44.8, 52.9]; the best simple baseline (a
+  the four core events: network 48.9% [44.8, 52.9] (at 429fb30, before the slow-motion
+  rule; 49.0% with it, `release-gate-slowmo-rule.json`); the best simple baseline (a
   one-layer temporal classifier) 40.7%; hand-kinematic rules 26-33%; DTW
   templates 19%.
 - **Refusals are real.** No synthetic no-swing clip is read; 3 of 424 no-swing
@@ -96,7 +97,7 @@ Also since the audit:
 | Claim | Evidence | Holds? |
 |---|---|---|
 | 41.9% within one frame on 201 held-out real swings | breakdown | yes |
-| Tempo within ±27% for 80% of swings | 85.4% coverage on the holdout | yes, on broadcast footage |
+| Tempo within ±27% for 80% of swings | 85.4% coverage on the holdout before the slow-motion rule; 84.9% with the rule that ships (`release-gate-slowmo-rule.json`) | yes, on broadcast footage |
 | 0.9% of real swings refused | whole decision refused 38% | **no** (corrected) |
 | Works on the user's phone clip | it analyses; no truth exists | not an accuracy claim |
 | Real-fixture tempo | reads 3.20, truth 2.10 | the model is 52% high on the one phone truth |

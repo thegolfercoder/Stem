@@ -108,6 +108,6 @@ ramp the tempo is wrong, which is why it carries the assumption.
 |---|---|
 | "Within one frame 41.9% on 201 held-out real swings" (PR, README) | Yes: 41.85% (all 8 events). |
 | "0.9% of real swings refused" (PR) | **No**: confidence rule only; the whole decision refused 38%. Corrected. |
-| "Tempo band ±27%, 80% coverage" | Yes on the holdout: 85.4% of answered swings inside it. |
+| "Tempo band ±27%, 80% coverage" | Yes on the holdout: 85.4% of answered swings inside it before the slow-motion rule, 84.9% with the rule that ships (`release-gate-slowmo-rule.json`). |
 | "Tested on the user's phone clip" | It analyses (tempo 2.89); there is no truth for that clip, so no accuracy claim. |
 | iPhone app "builds" | Yes, on CI (simulator). Not run on a device. |

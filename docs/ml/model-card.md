@@ -48,13 +48,18 @@ disjoint from every training, selection and calibration clip. 41 face-on, 96
 down-the-line, 64 other angles; 82 slow-motion broadcast replays, 119 real time;
 23 left-handed. All figures below are on that set; intervals are 95% bootstrap by
 clip. Sources: `docs/audit/benchmark-baseline.json`, `docs/audit/error-breakdown.json`,
-`docs/audit/baselines.json`.
+`docs/audit/baselines.json`, all measured at commit 429fb30, before the slow-motion rule
+that ships (`docs/ml/slow-motion-rule.md`). The same weights with that rule were scored
+on the same 201 swings by the release gate (`docs/audit/release-gate-slowmo-rule.json`);
+its point estimates are given beside the figures they replace, without intervals, which
+that report does not record.
 
 | Measure | Value |
 |---|---|
-| Within 1 frame, 4 core events (address, top, mid-downswing, impact) | 48.9% [44.8, 52.9] |
+| Within 1 frame, 4 core events (address, top, mid-downswing, impact) | 48.9% [44.8, 52.9]; with the shipped slow-motion rule 49.0% |
 | Within 1 frame, all 8 events | 41.9% |
-| Tempo, median relative error | 15.1% [13.2, 17.5] |
+| Tempo, median relative error | 15.1% [13.2, 17.5]; with the shipped slow-motion rule 15.3% |
+| Tempo band (±27%) coverage | with the shipped slow-motion rule 84.9% (85.4% with the rule before it) |
 | Tempo sensitivity (slope of log read on log true tempo) | 0.44 [0.15, 0.70] |
 | Median error: address / top / impact / finish (frames at 60 Hz) | 7 / 2 / 1 / 29 |
 | Real swings answered through the app's decision (with slow-motion retry) | 199 / 201 |

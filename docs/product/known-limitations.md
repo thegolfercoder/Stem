@@ -11,9 +11,9 @@ fixed, it moves to the changelog with the measurement that shows it.
 2. **Tempo is compressed toward 3.3.** A golfer's distance from typical, and a
    golfer's change, show at about 0.44 of their real size (95% CI 0.15-0.70). A quick
    tempo can read as normal. `docs/audit/benchmark-baseline.json`.
-3. **Positions within one frame about half the time.** 48.9% for address, top,
-   mid-downswing and impact on held-out real swings; address is the worst (median 7
-   frames at 60 Hz).
+3. **Positions within one frame about half the time.** 49.0% for address, top,
+   mid-downswing and impact on held-out real swings with the slow-motion rule that ships
+   (48.9% before it); address is the worst (median 7 frames at 60 Hz, measured before it).
 4. **The finish is not measured.** It appears on the timeline, but no duration ends there.
 5. **Toe-up and mid-follow-through are guesses from the body.** They are defined by
    the club, which is not tracked.

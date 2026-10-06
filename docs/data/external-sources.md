@@ -45,7 +45,7 @@ in `docs/ml/annotation-guide.md`.
 **Conclusion.** None of these reports accuracy on held-out labelled swings, and
 the rule-based ones are the same family as the simple baselines Stem already
 measured and beats (`docs/audit/baselines.json`: kinematic rules 26-33% within one
-frame against the network's 48.9%). Nothing here would replace Stem's model. The
+frame against the network's 48.9%, both scored at 429fb30). Nothing here would replace Stem's model. The
 one potentially useful component is a club keypoint model, which depends on the
 GolfSwing data request.
 
