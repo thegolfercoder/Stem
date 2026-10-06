@@ -443,3 +443,38 @@ def test_a_baseline_clip_uploaded_for_its_plan_stays_a_baseline_swing(
     plan = store.plan(plan_id)
     assert outcome == "replaced" and swing_id == ids[0]
     assert plan is not None and plan["retest"] == [] and sorted(plan["baseline"]) == ids
+
+
+# -- the golfer's metric definitions say what the rule does (#76) ---------------------
+
+METRIC_DOC = Path(__file__).resolve().parents[2] / "docs" / "product" / "metric-definitions.md"
+
+
+def _compare_only_with(row: str) -> str:
+    for line in METRIC_DOC.read_text(encoding="utf-8").splitlines():
+        if line.startswith(f"| **{row}**"):
+            return line.rstrip(" |").rsplit("|", 1)[1].strip()
+    raise AssertionError(f"no {row} row in {METRIC_DOC.name}")
+
+
+@pytest.mark.parametrize("metric", ["tempo_ratio", "backswing_duration"])
+def test_the_metric_definitions_match_what_the_practice_loop_blocks(metric: str) -> None:
+    """The doc once said tempo compares with "anything"; the app refuses another
+    club, hand, orientation or camera angle, and only warns about a moved phone."""
+    tempo = _compare_only_with("Tempo").lower()
+    durations = _compare_only_with("Backswing, downswing").lower()
+    assert durations.startswith("as tempo") and "normal speed" in durations
+    base = point(1, 3.0)
+    changed = {
+        "same club": point(2, 3.0, club="driver"),
+        "same hand": base.model_copy(update={"swing_id": 2, "handedness": "left"}),
+        "orientation": point(2, 3.0, FACE_ON.model_copy(update={"orientation": "landscape"})),
+        "camera angle": point(2, 3.0, FACE_ON.model_copy(update={"shoulder_ratio": 0.3})),
+    }
+    for words, other in changed.items():
+        assert words in tempo, words
+        assert not comparability([base], [other], metric).comparable, words
+    nearer = point(2, 3.0, FACE_ON.model_copy(update={"body_height": 0.4, "centre_x": 0.3}))
+    moved = comparability([base], [nearer], metric)
+    assert moved.comparable and moved.warnings
+    assert "nearer, further or to one side" in tempo
