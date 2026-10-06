@@ -2198,7 +2198,9 @@ function renderScrubber() {
     scrub.index = state.frames[0].index;
   }
   el("scrubber").hidden = false;
-  scrubTo(scrub.index);
+  // Drawn when it can be seen, and never during a range session, whose queue of
+  // clips should not wait on a frame nobody is looking at.
+  if (el("scrubber").open && !session.active) scrubTo(scrub.index);
 }
 
 function scrubFaceOn(sequence) {
@@ -2299,6 +2301,9 @@ function playScrub() {
 }
 
 function wireScrubber() {
+  el("scrubber").addEventListener("toggle", () => {
+    if (el("scrubber").open && !session.active && state.frames) scrubTo(scrub.index);
+  });
   el("scrub-slider").addEventListener("input", (event) => { stopScrub(); scrubTo(Number(event.target.value)); });
   el("scrub-back").addEventListener("click", () => { stopScrub(); scrubTo(scrub.index - 1); });
   el("scrub-next").addEventListener("click", () => { stopScrub(); scrubTo(scrub.index + 1); });
@@ -3185,6 +3190,7 @@ function stopSession() {
   if (rec.stream && !rec.check) rec.check = setInterval(checkFraming, 400);
   renderSession(session.queue.length || session.working ? "Session stopped; finishing the analysis"
     : "Session stopped");
+  if (state.frames) renderScrubber();
 }
 
 async function keepAwake() {
