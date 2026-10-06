@@ -14,7 +14,7 @@ import { PoseSequence, resamplePose, extractFeatures, normalisePose,
 import { POSE_MODEL_URL, SwingEventModel, bandsVaryWithConfidence, checkPoseModel, decodeEvents,
   errorBand } from "./model.js";
 import { computeMetrics, implausible, readAtSpeeds, slowMotionCheck, slowedMetrics } from "./metrics.js";
-import { PracticeLog, cameraSignature, clipKey, formatG3, storedMetrics } from "./practice.js";
+import { PracticeLog, cameraSignature, clipKey, comparability, formatG3, storedMetrics } from "./practice.js";
 import { SwingWatcher, cameraConstraints, extensionFor, frameRateNote, framingVerdict, levelVerdict,
   recordingType } from "./capture.js";
 import { cardText, stemRead, voiceCue } from "./read.js";
@@ -23,6 +23,7 @@ import { ILLUSTRATION, drillDemoSvg, repLabel, repState } from "./drills.js";
 import { frameLines, headBox, headInside, lineLabels } from "./overlay.js";
 import { MIN_SESSION, sessionSummary } from "./session.js";
 import { wireOffline } from "./offline.js";
+import { ghostPoints, ghostTransform, nearestIndex, syncTime } from "./sync.js";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 // Pinned to the version the analysis was measured with (#51; model.js).
@@ -1635,6 +1636,11 @@ function releaseClip() {
   state.readInsight = null;
   state.readNote = null;
   if (state.clip && state.clip.url) URL.revokeObjectURL(state.clip.url);
+  // The swing being replaced stays for the compare view (#35): its tracked frames
+  // and pictures, not its video.
+  if (state.analysis && state.frames) {
+    state.previous = { analysis: state.analysis, frames: state.frames, images: state.images };
+  }
   state.clip = null;
   state.analysis = null;
   state.images = null;
@@ -1742,8 +1748,8 @@ function nearestFrame(sequence, time) {
 
 /* A tracked frame, exactly as it was tracked, with its pose drawn on (unless
  * `pose` is false). */
-async function frameCanvas(sequence, index, pose = true) {
-  const blob = state.images && (await state.images[index]);
+async function frameCanvas(sequence, index, pose = true, images = state.images) {
+  const blob = images && (await images[index]);
   const canvas = document.createElement("canvas");
   if (blob) {
     const bitmap = await createImageBitmap(blob);
@@ -1751,6 +1757,14 @@ async function frameCanvas(sequence, index, pose = true) {
     canvas.height = bitmap.height;
     canvas.getContext("2d").drawImage(bitmap, 0, 0);
     bitmap.close();
+  } else if (images !== state.images) {
+    // Another swing's frame with no picture kept: its pose on a plain ground.
+    const scale = Math.min(1, KEEP_LONG_SIDE / Math.max(sequence.width, sequence.height));
+    canvas.width = Math.round(sequence.width * scale);
+    canvas.height = Math.round(sequence.height * scale);
+    const g = canvas.getContext("2d");
+    g.fillStyle = "#3a3f47";
+    g.fillRect(0, 0, canvas.width, canvas.height);
   } else {
     // Nothing stored (a browser that would not encode it): find it again.
     const time = sequence.times[index];
@@ -1824,6 +1838,7 @@ async function renderFrames(sequence, decoded, metrics, detectionRate, quiet = f
   }
   state.frames = frames;
   renderScrubber();
+  renderCompare();
 
   showBandNote(state.payload.calibration, decoded);
   showMetrics(metrics, decoded, detectionRate, sequence);
@@ -2322,6 +2337,144 @@ function wireScrubber() {
   el("scrub-speed").addEventListener("change", () => { if (scrub.timer) { stopScrub(); playScrub(); } });
   for (const box of document.querySelectorAll("[data-show]")) {
     box.addEventListener("change", () => { scrub.show[box.dataset.show] = box.checked; scrubTo(scrub.index); });
+  }
+}
+
+/* This swing beside the previous one (#35), in step at their eight positions
+ * (sync.js), with the comparison rule's verdict on comparing their tempo. */
+const cmp = { index: 0, key: null, timer: null, ticket: 0, show: { skeleton: true, ghost: false } };
+
+function keptSwing(analysis) {
+  return state.log && analysis.logId ? state.log.swings.find((s) => s.id === analysis.logId) : null;
+}
+
+function comparePoint(analysis, frames, id) {
+  const kept = keptSwing(analysis);
+  return { swing_id: id, value: analysis.metrics.tempoRatio, handedness: String(analysis.handedness || ""),
+           club: (kept && kept.club) || null, camera: cameraSignature(analysis.sequence, frames[0].index) };
+}
+
+function renderCompare() {
+  const a = state.analysis, frames = state.frames, prev = state.previous;
+  const ready = Boolean(a && frames && prev && prev.frames && a.sequence && prev.analysis.sequence);
+  el("compare").hidden = !ready;
+  if (!ready) return;
+  el("compare-slider").max = String(a.sequence.n - 1);
+  el("compare-jumps").innerHTML = frames.map((f, e) =>
+    `<button class="btn" type="button" data-jump="${e}">${escapeHtml(f.label)}</button>`).join("");
+  el("compare").dataset.positions = JSON.stringify([frames.map((f) => f.index), prev.frames.map((f) => f.index)]);
+  if (cmp.key !== a) {
+    stopCompare();
+    cmp.key = a;
+    cmp.index = frames[0].index;
+  }
+  const tempo = (m) => (Number.isFinite(m.tempoRatio) ? m.tempoRatio.toFixed(2) : "no reading");
+  const rules = state.payload.practice;
+  const verdict = rules ? comparability(rules, [comparePoint(prev.analysis, prev.frames, 1)],
+                                        [comparePoint(a, frames, 2)], "tempo_ratio") : null;
+  el("compare-verdict").innerHTML =
+    `<p>Tempo: this swing <b>${tempo(a.metrics)}</b>, the previous one <b>${tempo(prev.analysis.metrics)}</b> ` +
+    "(backswing \u00f7 downswing).</p>" +
+    (!verdict ? "" : verdict.comparable
+      ? `<p class="compare-ok">Comparable: nothing it checks rules it out (hand, club, orientation, camera angle).${verdict.warnings.length
+          ? ` Note: ${escapeHtml(verdict.warnings.join("; "))}.` : ""}</p>`
+      : `<p class="compare-not">Not comparable: ${escapeHtml(verdict.blocking.join("; "))}. The two are shown ` +
+        "side by side anyway; their numbers do not say whether anything changed.</p>");
+  if (el("compare").open && !session.active) compareTo(cmp.index);
+}
+
+async function compareTo(index) {
+  const a = state.analysis, frames = state.frames, prev = state.previous;
+  if (!a || !frames || !prev) return;
+  const i = Math.max(0, Math.min(a.sequence.n - 1, Math.round(index)));
+  cmp.index = i;
+  el("compare-slider").value = String(i);
+  const ticket = ++cmp.ticket;
+  const sequenceB = prev.analysis.sequence;
+  const timeA = a.sequence.times[i];
+  const timeB = syncTime(frames.map((f) => f.time), prev.frames.map((f) => f.time), timeA);
+  const j = nearestIndex(sequenceB.times, timeB);
+  const [ca, cb] = await Promise.all([
+    frameCanvas(a.sequence, i, cmp.show.skeleton),
+    frameCanvas(sequenceB, j, cmp.show.skeleton, prev.images),
+  ]);
+  if (ticket !== cmp.ticket || state.analysis !== a || state.frames !== frames || state.previous !== prev) return;
+  if (cmp.show.ghost) {
+    const sizeA = [ca.width, ca.height], sizeB = [cb.width, cb.height];
+    const t = ghostTransform(a.sequence.xy[frames[0].index], sizeA,
+                             sequenceB.xy[prev.frames[0].index], sizeB);
+    if (t) {
+      const points = ghostPoints(sequenceB.xy[j], sizeB, sizeA, t);
+      const vis = sequenceB.visibility[j];
+      const g = ca.getContext("2d");
+      g.strokeStyle = "rgba(255,255,255,0.9)";
+      g.lineWidth = Math.max(2, Math.round(Math.min(ca.width, ca.height) / 220));
+      g.setLineDash([6, 4]);
+      for (const [p, q] of BONES) {
+        if (Math.min(vis[p], vis[q]) < 0.3) continue;
+        g.beginPath();
+        g.moveTo(points[p][0] * ca.width, points[p][1] * ca.height);
+        g.lineTo(points[q][0] * ca.width, points[q][1] * ca.height);
+        g.stroke();
+      }
+      g.setLineDash([]);
+    }
+  }
+  ca.dataset.frame = String(i);
+  cb.dataset.frame = String(j);
+  el("compare-a").replaceChildren(ca);
+  el("compare-b").replaceChildren(cb);
+  const at = (list, index) => list.findIndex((f) => f.index === index);
+  const label = (list, index) => (at(list, index) >= 0 ? ` \u00b7 ${list[at(list, index)].label}` : "");
+  el("compare-a-time").textContent = `${timeA.toFixed(3)} s${label(frames, i)}`;
+  el("compare-b-time").textContent = `${sequenceB.times[j].toFixed(3)} s${label(prev.frames, j)}`;
+  for (const button of el("compare-jumps").querySelectorAll("[data-jump]")) {
+    button.setAttribute("aria-current", String(Number(button.dataset.jump) === at(frames, i)));
+  }
+}
+
+function stopCompare() {
+  if (cmp.timer) clearInterval(cmp.timer);
+  cmp.timer = null;
+  el("compare-play").textContent = "Play both";
+}
+
+function playCompare() {
+  const a = state.analysis;
+  if (!a) return;
+  const n = a.sequence.n;
+  if (cmp.index >= n - 1) cmp.index = 0;
+  const slowed = a.slowedBy && a.retimed !== false ? a.slowedBy : 1;
+  const speed = Number(el("compare-speed").value) * slowed;
+  const from = a.sequence.times[cmp.index], started = performance.now();
+  el("compare-play").textContent = "Pause";
+  cmp.timer = setInterval(() => {
+    if (state.analysis !== a) { stopCompare(); return; }
+    const target = from + ((performance.now() - started) / 1000) * speed;
+    let i = cmp.index;
+    while (i < n - 1 && a.sequence.times[i + 1] <= target) i++;
+    if (i !== cmp.index) compareTo(i);
+    if (i >= n - 1) stopCompare();
+  }, 40);
+}
+
+function wireCompare() {
+  el("compare").addEventListener("toggle", () => {
+    if (el("compare").open && !session.active && state.frames) compareTo(cmp.index);
+  });
+  el("compare-slider").addEventListener("input", (event) => { stopCompare(); compareTo(Number(event.target.value)); });
+  el("compare-back").addEventListener("click", () => { stopCompare(); compareTo(cmp.index - 1); });
+  el("compare-next").addEventListener("click", () => { stopCompare(); compareTo(cmp.index + 1); });
+  el("compare-jumps").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-jump]");
+    if (!button || !state.frames) return;
+    stopCompare();
+    compareTo(state.frames[Number(button.dataset.jump)].index);
+  });
+  el("compare-play").addEventListener("click", () => (cmp.timer ? stopCompare() : playCompare()));
+  el("compare-speed").addEventListener("change", () => { if (cmp.timer) { stopCompare(); playCompare(); } });
+  for (const box of document.querySelectorAll("[data-compare-show]")) {
+    box.addEventListener("change", () => { cmp.show[box.dataset.compareShow] = box.checked; compareTo(cmp.index); });
   }
 }
 
@@ -2958,6 +3111,7 @@ function wireRecorder() {
   wireDrills();
   wireScrubber();
   wireSessionSummary();
+  wireCompare();
   wireOffline(LOCAL, { status: el("offline-status"), update: el("offline-update"), reload: el("offline-reload") });
   el("rec-session-stop").onclick = () => stopSession();
   document.addEventListener("visibilitychange", () => {
@@ -3197,7 +3351,7 @@ function stopSession() {
   if (rec.stream && !rec.check) rec.check = setInterval(checkFraming, 400);
   renderSession(session.queue.length || session.working ? "Session stopped; finishing the analysis"
     : "Session stopped");
-  if (state.frames) renderScrubber();
+  if (state.frames) { renderScrubber(); renderCompare(); }
 }
 
 async function keepAwake() {

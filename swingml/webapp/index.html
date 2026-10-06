@@ -284,6 +284,15 @@ h2.section{font-size:19px;margin:28px 0 4px;letter-spacing:-.01em}
 .session-picks{display:grid;gap:6px;margin:0 0 8px;padding:0;list-style:none}
 .session-picks .btn-link{min-height:32px}
 .kept li.found{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.compare{display:grid;gap:10px}
+.compare-verdict p{margin:0 0 6px;font-size:14px}
+.compare-verdict .compare-not{color:var(--warn)}
+.compare-verdict .compare-ok{color:var(--ink-dim)}
+.compare-view{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:600px){.compare-view{grid-template-columns:1fr}}
+.compare-view figure{margin:0}
+.compare-view canvas{display:block;width:100%;height:auto;max-height:60vh;object-fit:contain;border-radius:10px;background:#000}
+.compare-view figcaption{display:flex;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--ink-dim);margin-top:4px;font-variant-numeric:tabular-nums}
 .prov{font-size:10.5px;padding:2px 7px;border-radius:999px;letter-spacing:.04em;
   text-transform:uppercase;border:1px solid var(--line);white-space:nowrap}
 .prov-measured{color:var(--good)}
@@ -629,6 +638,40 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
         camera spot reads differently.</p>
     </div>
     </details>
+    <details class="fold" data-fold="compare" id="compare" hidden>
+    <summary><h2 class="section">Beside your previous swing</h2></summary>
+    <div class="compare">
+      <div class="compare-verdict" id="compare-verdict"></div>
+      <div class="compare-view">
+        <figure><div id="compare-a"></div><figcaption><b>This swing</b>
+          <span id="compare-a-time"></span></figcaption></figure>
+        <figure><div id="compare-b"></div><figcaption><b>Previous swing</b>
+          <span id="compare-b-time"></span></figcaption></figure>
+      </div>
+      <div class="scrub-controls">
+        <button class="btn" type="button" id="compare-back" aria-label="One frame back">&#8722;1</button>
+        <input type="range" id="compare-slider" min="0" max="0" step="1" value="0" aria-label="Frame">
+        <button class="btn" type="button" id="compare-next" aria-label="One frame on">+1</button>
+      </div>
+      <div class="scrub-jumps" id="compare-jumps"></div>
+      <div class="scrub-play">
+        <button class="btn" type="button" id="compare-play">Play both</button>
+        <label>Speed <select id="compare-speed">
+          <option value="0.25">0.25&times;</option><option value="0.5" selected>0.5&times;</option>
+          <option value="1">1&times;</option></select></label>
+      </div>
+      <fieldset class="scrub-show"><legend>Draw</legend>
+        <label><input type="checkbox" data-compare-show="skeleton" checked> Skeletons</label>
+        <label><input type="checkbox" data-compare-show="ghost"> Previous swing as a ghost on this one</label>
+      </fieldset>
+      <p class="footnote">The two are kept in step at their eight detected positions, so address,
+        the top and impact line up however long each part took. The ghost is the previous
+        swing's skeleton placed over this one, hips on hips at address and scaled to the same
+        torso length: a picture to compare shapes with, not a measurement. Only the swing
+        analysed just before this one, in this visit, can be shown: earlier swings are kept as
+        numbers only.</p>
+    </div>
+    </details>
 
     <section id="read-section" hidden>
       <h2 class="section">Stem's read, from your measurements</h2>
@@ -732,6 +775,7 @@ footer{max-width:1120px;margin:0 auto;padding:22px 20px 40px;color:var(--ink-fai
 /*__OVERLAY__*/
 /*__SESSION__*/
 /*__OFFLINE__*/
+/*__SYNC__*/
 /*__APP__*/
 boot(/*__PAYLOAD__*/);
 </script>

@@ -162,6 +162,15 @@ fixed, it moves to the changelog with the measurement that shows it.
     until the golfer chooses "Reload for it". The one-file page, a page opened from
     disk, and any host that does not allow service workers work online only, as
     before, and say nothing about offline use. The first load needs about 50 MB.
+13h. **Comparing swings side by side is browser-only, and only with the swing
+    before (#35).** The browser shows the swing just analysed beside the one analysed
+    before it in the same visit, kept in step at their eight detected positions, with
+    both tempos and the practice loop's verdict on whether they may be compared (shown
+    either way). The ghost lays the previous swing's skeleton over this one, hips on
+    hips at address and scaled by torso length: a picture, not a measurement. Earlier
+    swings in the practice log are numbers only, so they cannot be shown; picking any
+    two kept swings would need their frames kept too. The desktop and iPhone apps do
+    not have a compare view yet.
 14. **The browser keeps its practice log in the browser.** Clearing site data, a
     private window, or another browser starts from nothing, and nothing moves between
     the desktop, the browser and the iPhone. The iPhone's practice screen builds in CI

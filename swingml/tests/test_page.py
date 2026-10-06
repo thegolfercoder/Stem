@@ -1651,3 +1651,66 @@ def test_a_new_version_waits_for_the_golfer_to_reload(offline_site: Path, tmp_pa
         )
         assert page.locator("#offline-update").is_hidden()
         browser.close()
+
+
+# -- this swing beside the previous one (#35) ----------------------------------------
+
+
+@pytest.mark.parametrize("width", [390, 1280])
+def test_two_swings_play_in_step_at_their_positions(
+    landmark_json: str, clip: Path, slowed_clip: Path, width: int
+) -> None:
+    """The fixture, then the same swing slowed twice: every position of one lands
+    on the same position of the other, within a frame."""
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_context(viewport={"width": width, "height": 900}).new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.route(
+            "**/vision_bundle.mjs",
+            lambda route: route.fulfill(status=200, content_type="text/javascript", body=STUB),
+        )
+        page.add_init_script(f"window.__LANDMARKS__ = {landmark_json};")
+        page.goto(PAGE.resolve().as_uri())
+        _analyse(page, clip)
+        assert page.locator("#compare").is_hidden()  # nothing to compare with yet
+        _analyse(page, slowed_clip)
+        assert page.locator("#results").is_visible(), page.text_content("#refusal-reason")
+        page.wait_for_selector("#compare:not([hidden])", state="attached")
+        if not page.evaluate("() => document.getElementById('compare').open"):
+            page.click("#compare > summary")
+        page.wait_for_selector("#compare-a canvas")
+        mine, previous = json.loads(page.get_attribute("#compare", "data-positions") or "[]")
+        assert "Tempo: this swing" in (page.text_content("#compare-verdict") or "")
+        drawn = "() => [document.querySelector('#compare-a canvas').dataset.frame," \
+            " document.querySelector('#compare-b canvas').dataset.frame].map(Number)"  # fmt: skip
+        for event in range(8):
+            page.click(f"#compare-jumps [data-jump='{event}']")
+            page.wait_for_function(f"() => ({drawn})()[0] === {mine[event]}")
+            _, b = page.evaluate(drawn)
+            assert abs(b - previous[event]) <= 1, (event, b, previous[event])
+            if SCREENS and event in (0, 3, 5) and width == 390:
+                page.locator("#compare").screenshot(
+                    path=str(SCREENS / f"compare-{event}-{width}.png")
+                )
+        # The slider moves both.
+        page.evaluate(
+            "() => { const s = document.getElementById('compare-slider');"
+            " s.value = String(Number(s.value) - 20); s.dispatchEvent(new Event('input')); }"
+        )
+        page.wait_for_function(f"() => ({drawn})()[0] === {mine[7] - 20}")
+        _, b = page.evaluate(drawn)
+        assert b < previous[7]
+        # The ghost and the skeletons can be switched.
+        picture = "() => document.querySelector('#compare-a canvas').toDataURL()"
+        before = page.evaluate(picture)
+        page.check("[data-compare-show='ghost']")
+        page.wait_for_function(f"() => ({picture})() !== {json.dumps(before)}")
+        page.uncheck("[data-compare-show='skeleton']")
+        page.wait_for_function(f"() => ({picture})() !== {json.dumps(before)}")
+        assert page.evaluate(NO_OVERFLOW), f"the compare view scrolls sideways at {width} px"
+        if SCREENS:
+            page.locator("#compare").screenshot(path=str(SCREENS / f"compare-ghost-{width}.png"))
+        assert errors == []
+        browser.close()

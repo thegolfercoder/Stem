@@ -32,6 +32,7 @@ MODULES = (
     "overlay.js",
     "session.js",
     "offline.js",
+    "sync.js",
     "app.js",
 )
 # Where each module goes in index.html, in the same order.
