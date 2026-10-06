@@ -478,3 +478,13 @@ def test_the_metric_definitions_match_what_the_practice_loop_blocks(metric: str)
     moved = comparability([base], [nearer], metric)
     assert moved.comparable and moved.warnings
     assert "nearer, further or to one side" in tempo
+
+
+def test_the_tempo_priority_says_what_the_comparison_rule_needs() -> None:
+    """#76: the summary told golfers tempo did not depend on where the camera stood,
+    while the rule refuses a changed camera angle; it now says what the doc says."""
+    low = TOUR_TEMPO_READINGS.p10 - 0.4
+    summary = choose([recent(3, low), recent(2, low - 0.1), recent(1, low + 0.1)]).summary
+    assert "does not depend on where the camera" not in summary
+    assert "nearer or further does not change it" in summary
+    assert "camera angle the same" in summary and "club" in summary

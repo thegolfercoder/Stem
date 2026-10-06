@@ -225,7 +225,8 @@ def choose(recent: Sequence[RecentSwing]) -> Insight:
                 f"Your average tempo reading over {len(comparable)} comparable swings is "
                 f"{mean:.2f}, {'below' if quick else 'above'} the range the same analysis reads "
                 f"for 80% of tour swings ({reference.p10:.2f} to {reference.p90:.2f}). "
-                "Tempo is a ratio of two durations and does not depend on where the camera stood."
+                "Tempo is a ratio of two durations, so moving the phone nearer or further "
+                "does not change it; keep the club and the camera angle the same."
             ),
             evidence=evidence,
             confidence="moderate" if all_outside else "low",

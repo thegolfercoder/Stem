@@ -293,7 +293,8 @@ export function choosePriority(rules, recent) {
       summary: `Your average tempo reading over ${comparable.length} comparable swings is ` +
         `${fixed(average, 2)}, ${quick ? "below" : "above"} the range the same analysis reads ` +
         `for 80% of tour swings (${fixed(reference.p10, 2)} to ${fixed(reference.p90, 2)}). ` +
-        "Tempo is a ratio of two durations and does not depend on where the camera stood.",
+        "Tempo is a ratio of two durations, so moving the phone nearer or further does not " +
+        "change it; keep the club and the camera angle the same.",
       evidence, confidence: allOutside ? "moderate" : "low", limitations: limits, drill,
       retest: "Practise the drill, then record 5 swings from the same spot with the same club.",
       success: drill.what_counts,
