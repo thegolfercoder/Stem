@@ -66,6 +66,7 @@ for (const entry of entries) {
       caps: v.caps,
       paintHow: v.parts.paintHow,
       paintNote: v.parts.paintNote,
+      openings: v.parts.openings,
       size: v.size.toArray().map((n) => +n.toFixed(2)),
       triangles: v.info.triangles,
       lengthSource: v.info.lengthSource,

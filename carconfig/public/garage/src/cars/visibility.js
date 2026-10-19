@@ -32,12 +32,15 @@ export const VIEWS = [
 /**
  * The window lines. From each side, the columns of the middle of the car and,
  * in each column, the part of its height where the windows are: 58-90% from
- * the side; from the front and back, 60-93% (the windscreen and rear window
- * sit between the bonnet or boot and the roof).
+ * the side, in columns at least 80% as tall as the cabin (not a pickup's bed); from the front and back, 60-93% (the windscreen and rear
+ * window sit between the bonnet or boot and the roof). The door line is the
+ * lower middle of the doors, which on nearly every car is body colour.
  */
 export const LINES = {
-  side: { views: ["left", "right"], axis: "z", middle: 0.3, band: [0.58, 0.9] },
+  side: { views: ["left", "right"], axis: "z", middle: 0.3, band: [0.58, 0.9], cabin: 0.8 },
   ends: { views: ["front", "rear"], axis: "x", middle: 0.3, band: [0.6, 0.93] },
+  // The door skins: whatever covers them is the body colour on nearly every car.
+  doors: { views: ["left", "right"], axis: "z", middle: 0.2, band: [0.25, 0.55] },
 };
 
 /**
@@ -211,43 +214,37 @@ export function visibleTriangles(raster) {
  * car's length or width it reaches on its better side (reach), how much of
  * the band's height it fills where it appears (cover: a window fills it, a
  * trim strip does not), how far in metres it sits inside the body below it
- * (inset), and how far behind the roof edge above it (behind).
+ * (inset), how far behind the roof edge above it (behind), and how much of the
+ * band it covers flush with that edge (flushShare: glass or body, not a seat
+ * seen through an open window). `roofline` is how high the cabin reaches
+ * against the whole car.
  */
 export function windowBand(raster, carBox, groupOf, line = LINES.side) {
-  const extent = line.axis === "z" ? carBox.max.z - carBox.min.z : carBox.max.x - carBox.min.x;
   const groups = new Map();
   const get = (key) => {
     let g = groups.get(key);
-    if (!g) groups.set(key, (g = { key, band: 0, own: 0, insetSum: 0, insetCount: 0, behindSum: 0, bandRows: 0, columns: {} }));
+    if (!g) groups.set(key, (g = { key, band: 0, own: 0, flush: 0, insetSum: 0, insetCount: 0, behindSum: 0, bandRows: 0, columns: {} }));
     return g;
   };
   let bandTotal = 0;
   const columnTotal = {};
+  const roofline = [];
   for (const v of raster.views) {
     if (!line.views.includes(v.line)) continue;
-    const { width, height, ids, depth, scale, minX } = v;
-    columnTotal[v.line] = 0;
-    for (let x = 0; x < width; x++) {
-      const along = (x + 0.5) / scale + minX;
-      if (Math.abs(along) > extent * line.middle) continue;
-      let top = -1, bottom = -1;
-      for (let y = 0; y < height; y++) {
-        if (ids[y * width + x] < 0) continue;
-        if (bottom < 0) bottom = y;
-        top = y;
-      }
-      if (top < 0) continue;
-      columnTotal[v.line]++;
+    const { width, ids, depth } = v;
+    const { columns, roof } = lineColumns(v, carBox, line);
+    roofline.push(roof);
+    columnTotal[v.line] = columns.length;
+    for (const { x, top, bottom, lo, hi } of columns) {
       const h = top - bottom + 1;
-      const lo = bottom + Math.floor(line.band[0] * h), hi = bottom + Math.ceil(line.band[1] * h);
       // How far out the body reaches below the band, to measure how deep
       // inside the car each part of the band sits.
       let below = -Infinity;
       for (let y = bottom + Math.floor(0.3 * h); y < lo; y++) if (ids[y * width + x] >= 0) below = Math.max(below, depth[y * width + x]);
       // And the roof edge above it: a window meets the roof and leans out from
       // it, while a seat seen through an empty window sits well behind it.
-      let roof = depth[top * width + x];
-      for (let y = hi + 1; y <= top; y++) if (ids[y * width + x] >= 0) roof = Math.max(roof, depth[y * width + x]);
+      let edge = depth[top * width + x];
+      for (let y = hi + 1; y <= top; y++) if (ids[y * width + x] >= 0) edge = Math.max(edge, depth[y * width + x]);
       const seen = new Set();
       for (let y = bottom; y <= top; y++) {
         const t = ids[y * width + x];
@@ -261,7 +258,8 @@ export function windowBand(raster, carBox, groupOf, line = LINES.side) {
           g.insetSum += below - depth[y * width + x];
           g.insetCount++;
         }
-        g.behindSum += roof - depth[y * width + x];
+        g.behindSum += edge - depth[y * width + x];
+        if (edge - depth[y * width + x] <= 0.1) g.flush++;
         seen.add(g);
       }
       for (const g of seen) {
@@ -277,8 +275,73 @@ export function windowBand(raster, carBox, groupOf, line = LINES.side) {
     g.cover = g.bandRows ? g.band / g.bandRows : 0;
     g.inset = g.insetCount ? g.insetSum / g.insetCount : 0;
     g.behind = g.band ? g.behindSum / g.band : 0;
+    g.flushShare = bandTotal ? g.flush / bandTotal : 0;
   }
-  return { bandTotal, groups };
+  return { bandTotal, groups, roofline: roofline.length ? Math.min(...roofline) : 0 };
+}
+
+/**
+ * The columns of one view that a line reads: those over the middle of the
+ * car (and, for the side line, as tall as the cabin), each with its first and
+ * last row and the rows of the band. `roof` is how high the cabin reaches
+ * against the whole car: a convertible's doors stop well short of its
+ * windscreen.
+ */
+function lineColumns(view, carBox, line) {
+  const { width, height, ids, scale, minX } = view;
+  const extent = line.axis === "z" ? carBox.max.z - carBox.min.z : carBox.max.x - carBox.min.x;
+  const middle = (x) => Math.abs((x + 0.5) / scale + minX) <= extent * line.middle;
+  const tops = new Int32Array(width).fill(-1), bottoms = new Int32Array(width).fill(-1);
+  const heights = [];
+  let overall = 0;
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      if (ids[y * width + x] < 0) continue;
+      if (bottoms[x] < 0) bottoms[x] = y;
+      tops[x] = y;
+    }
+    if (tops[x] < 0) continue;
+    overall = Math.max(overall, tops[x] + 1);
+    if (middle(x)) heights.push(tops[x] + 1);
+  }
+  // The cabin's height: most middle columns reach it; a roof aerial or a wing does not count.
+  heights.sort((a, b) => a - b);
+  const cabin = heights.length ? heights[Math.floor(heights.length * 0.75)] : 0;
+  const columns = [];
+  for (let x = 0; x < width; x++) {
+    const top = tops[x], bottom = bottoms[x];
+    if (top < 0 || !middle(x) || (line.cabin && top + 1 < line.cabin * cabin)) continue;
+    const h = top - bottom + 1;
+    columns.push({ x, top, bottom, lo: bottom + Math.floor(line.band[0] * h), hi: bottom + Math.ceil(line.band[1] * h) });
+  }
+  return { columns, roof: overall ? cabin / overall : 0 };
+}
+
+/**
+ * Of the cabin columns seen from the sides, the share whose window line has
+ * an opening: a run of pixels, at least a sixth of the band's height, that
+ * are not `solid` (glass, a seat seen through an empty frame, or sky).
+ * Windows that are part of the paint leave no opening.
+ */
+function windowOpenings(raster, carBox, solid) {
+  let columns = 0, open = 0;
+  for (const v of raster.views) {
+    if (!LINES.side.views.includes(v.line)) continue;
+    for (const { x, lo, hi } of lineColumns(v, carBox, LINES.side).columns) {
+      columns++;
+      const need = Math.max(2, Math.ceil((hi - lo + 1) / 6));
+      let run = 0;
+      for (let y = lo; y <= hi; y++) {
+        const t = v.ids[y * v.width + x];
+        run = t >= 0 && solid(t) ? 0 : run + 1;
+        if (run >= need) {
+          open++;
+          break;
+        }
+      }
+    }
+  }
+  return columns ? open / columns : 0;
 }
 
 /** Joins the triangles of the given slots into connected pieces (sharing a corner within half a millimetre). */
@@ -331,8 +394,9 @@ function connectedPieces(raster, slots) {
 
 /**
  * What the views say about a car, per slot and per material: the share of
- * everything visible from outside that it makes up (vis), and its figures on
- * the side window line (band) and the front and rear one (ends). `pieces`
+ * everything visible from outside that it makes up (vis), its figures on the
+ * side window line (band) and the front and rear one (ends), and, per
+ * material, its share of the door skins (doors). `pieces`
  * reads chosen slots piece by piece in the same way. `throughGlass` draws the
  * car again without the given slots, to find what is only seen through them.
  */
@@ -349,6 +413,7 @@ export function survey(root) {
   const ends = windowBand(raster, box, (t) => keyOfSlot[triangleSlot[t]], LINES.ends);
   const sideM = windowBand(raster, box, (t) => list[triangleSlot[t]].material, LINES.side);
   const endsM = windowBand(raster, box, (t) => list[triangleSlot[t]].material, LINES.ends);
+  const doorsM = windowBand(raster, box, (t) => list[triangleSlot[t]].material, LINES.doors);
 
   const slots = new Map();
   const materials = new Map();
@@ -361,7 +426,7 @@ export function survey(root) {
     slot.vis += vis;
     slot.parts.push(s);
     slots.set(key, slot);
-    const m = materials.get(s.material) ?? { vis: 0, band: sideM.groups.get(s.material), ends: endsM.groups.get(s.material) };
+    const m = materials.get(s.material) ?? { vis: 0, band: sideM.groups.get(s.material), ends: endsM.groups.get(s.material), doors: doorsM.groups.get(s.material)?.bandShare ?? 0 };
     m.vis += vis;
     materials.set(s.material, m);
   });
@@ -370,10 +435,15 @@ export function survey(root) {
     triangles: raster.triangleCount,
     bandTotal: side.bandTotal,
     endsTotal: ends.bandTotal,
+    roofline: side.roofline,
     slots,
     materials,
     slot: (mesh, index) => slots.get(slotKey(mesh, index)),
     material: (m) => materials.get(m),
+    /** The slot key of a triangle, by its global number. */
+    keyOfTriangle: (t) => keyOfSlot[triangleSlot[t]],
+    /** See windowOpenings: `solid(t)` says whether triangle t is paint. */
+    openings: (solid) => windowOpenings(raster, box, solid),
     /** The connected pieces of the given slots, each with its own vis, band and ends figures. */
     pieces(chosen) {
       const { pieceOf, pieces } = connectedPieces(raster, chosen.flatMap((s) => s.parts));

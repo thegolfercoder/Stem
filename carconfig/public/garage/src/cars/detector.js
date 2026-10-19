@@ -78,8 +78,9 @@ export function materialStats(root) {
  * surface that makes up most of the outside of the car and runs most of its
  * length at body height, plus any plain materials of exactly the same colour.
  * "Most of the outside" is the share of what the views see (`vis`) when the
- * car has been surveyed, and the share of area otherwise. Materials marked
- * `window` fill the window line, and are never paint.
+ * car has been surveyed, and the share of area otherwise; `doors` is the share
+ * of the door skins, which settles it when black trim outweighs the body.
+ * Materials marked `window` fill the window line, and are never paint.
  */
 export function choosePaint(stats) {
   const total = stats.reduce((s, m) => s + m.area, 0);
@@ -88,12 +89,19 @@ export function choosePaint(stats) {
   const seen = (m) => m.vis ?? share(m);
   const visible = (m, least) => m.vis === undefined || m.vis >= least;
   const usable = (m) => m.kind === null && !m.window;
-  const named = stats.filter((m) => usable(m) && paintNameSays(m.name) === "paint" && share(m) > 0.02 && (lum(m.rgb) > 0.04 || share(m) > 0.08) && visible(m, 0.01));
-  if (named.length) return { how: "named", ids: named.map((m) => m.id) };
+  let named = stats.filter((m) => usable(m) && paintNameSays(m.name) === "paint" && share(m) > 0.02 && (lum(m.rgb) > 0.04 || share(m) > 0.08) && visible(m, 0.01));
+  // A textured "body" material that stays off the doors while a plain one
+  // covers them is an atlas of details (windows, badges), not the paint.
+  if (named.some((m) => !m.hasMap && (m.doors ?? 0) >= 0.5)) named = named.filter((m) => !m.hasMap || (m.doors ?? 1) >= 0.1);
+  // Something named paint that makes up hardly any of the outside is a detail.
+  if (named.length && named.reduce((n, m) => n + seen(m), 0) >= 0.15) return { how: "named", ids: named.map((m) => m.id) };
   const surfaces = stats.filter((m) => usable(m) && paintNameSays(m.name) !== "other" && m.opacity >= 0.95 && m.height >= 0.25 && m.height <= 0.8);
   const panels = surfaces.filter((m) => m.span >= 0.55);
   if (!panels.length) return { how: "none", ids: [] };
-  const best = panels.reduce((x, y) => (seen(y) > seen(x) ? y : x));
+  let best = panels.reduce((x, y) => (seen(y) > seen(x) ? y : x));
+  // Black roofs, flares and bumpers can outweigh the body; the doors cannot.
+  const doors = panels.filter((m) => (m.doors ?? 0) >= 0.5 && seen(m) >= 0.2);
+  if ((best.doors ?? 1) < 0.2 && doors.length) best = doors.reduce((x, y) => (y.doors > x.doors ? y : x));
   if (seen(best) < 0.12 || share(best) > 0.85) return { how: "none", ids: [] };
   if (best.hasMap && /\b(atlas|baked?)\b/.test(nameWords(best.name))) return { how: "none", ids: [] };
   const dist = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
@@ -146,7 +154,8 @@ const windowOnItsOwn = (x, low, H) =>
  * and lie above the doors.
  */
 export function findGlass(root, sv, { inWheel, both }) {
-  const named = slotsWhere(root, (m) => kindOf(m.name) === "glass");
+  // A tyre whose material is called glass is still a tyre.
+  const named = slotsWhere(root, (m, mesh) => kindOf(m.name) === "glass" && !inWheel(mesh));
   const bandOf = (slots) => slots.reduce((s, x) => s + (sv.slot(x.mesh, x.index)?.band?.band ?? 0), 0) / (sv.bandTotal || 1);
   if (bandOf(named) >= WINDOW.bandShare) return named.map((s) => ({ ...s, how: "named" }));
 
@@ -223,6 +232,15 @@ export function tyreZones(pieces, box) {
   return zones;
 }
 
+/**
+ * On a car with a roof, glass (or the cabin seen through an empty frame)
+ * opens most columns of the side window line. Paint that leaves fewer than
+ * this share of them open holds the windows.
+ */
+export const OPENINGS = 0.35;
+/** Metres the window line sits in from the door below it, beyond which it is a greenhouse and not a van's side wall. */
+export const TUMBLEHOME = 0.08;
+
 /** What a piece of a mesh becomes when the mesh is split. */
 export const PIECE = { rest: 0, paint: 1, glass: 2, fl: 3, fr: 4, rl: 5, rr: 6 };
 const PIECE_CORNERS = ["fl", "fr", "rl", "rr"];
@@ -236,11 +254,14 @@ const PIECE_CORNERS = ["fl", "fr", "rl", "rr"];
  * were not found, they are left alone); windows fill a window line on their
  * own; the rest of a shell is paint where it is seen from outside.
  */
-export function classifyPieces(pieces, roleOf, { wheels, box }) {
+export function classifyPieces(pieces, roleOf, { wheels, box, tyres = [] }) {
   const H = box.max.y - box.min.y;
-  const zones = wheels
-    ? wheels.map((w) => ({ cls: PIECE[w.corner], box: w.box.clone().expandByScalar(0.03) }))
-    : tyreZones(pieces, box).map((z) => ({ cls: PIECE.rest, box: z }));
+  // The wheels, then any further tyres among the pieces (a dually's outer
+  // wheels, or every tyre when the wheels were not found).
+  const zones = [
+    ...(wheels ?? []).map((w) => ({ cls: PIECE[w.corner], box: w.box.clone().expandByScalar(0.03) })),
+    ...[...tyres, ...tyreZones(pieces, box)].map((z) => ({ cls: PIECE.rest, box: z })),
+  ];
   const out = new Int8Array(pieces.length);
   for (const p of pieces) {
     const role = roleOf(p);
@@ -618,6 +639,7 @@ export function detectParts(root, wheels) {
   materials.forEach((m, i) => {
     const x = sv.material(m);
     stats[i].vis = x?.vis ?? 0;
+    stats[i].doors = x?.doors ?? 0;
     stats[i].window = fillsWindowLine(x?.band) || fillsWindowLine(x?.ends, WINDOW_ENDS);
   });
   const choice = choosePaint(stats);
@@ -626,31 +648,52 @@ export function detectParts(root, wheels) {
   let paintNote = null;
   let paint = slotsWhere(root, (m, mesh, index) => paintMats.has(m) && !inWheel(mesh) && !glassKeys.has(slotKey(mesh, index)) && !insideOnly(mesh, index));
 
+  // Paint that leaves no opening in the window line of a car with a roof has
+  // the windows in it: read it piece by piece like a shell, or leave it.
+  // A van's side wall carries on straight up from the doors, while windows,
+  // even fused ones, are set in from them.
+  const hasRoof = sv.roofline >= 0.85;
+  const setIn = (groups) => {
+    const n = groups.reduce((s, g) => s + (g?.insetCount ?? 0), 0);
+    return n ? groups.reduce((s, g) => s + (g?.insetSum ?? 0), 0) / n : 0;
+  };
+  const paintNow = new Set(paint.map(keyOf));
+  const fused = paint.length > 0 && hasRoof && setIn(paint.map((s) => sv.slot(s.mesh, s.index)?.band)) >= TUMBLEHOME && sv.openings((t) => paintNow.has(sv.keyOfTriangle(t))) < OPENINGS;
+
   // Mixed parts are read piece by piece: paint meshes that also hold the rims,
   // window meshes that also hold trim and, when no material is the paint on
   // its own, every part of the material that makes up the outside.
   const roles = new Map();
   const wheelBoxes = (wheels ?? []).map((w) => w.box);
+  // Without wheels, the tyres are found among the pieces that stand on the ground.
   const nearGround = (mesh) => boxOf(mesh).min.y - sv.box.min.y < Math.max(0.08, 0.05 * H);
-  for (const s of paint) if (wheels ? wheelBoxes.some((b) => b.intersectsBox(boxOf(s.mesh))) : nearGround(s.mesh)) roles.set(keyOf(s), "paint");
+  const groundTyres = wheels ? [] : tyreZones(sv.pieces([...sv.slots.values()].filter((s) => nearGround(s.mesh))).pieces, sv.box);
+  const zones = [...wheelBoxes, ...groundTyres];
+  for (const s of paint) if (nearGround(s.mesh) || zones.some((b) => b.intersectsBox(boxOf(s.mesh)))) roles.set(keyOf(s), "paint");
   for (const s of glass) if (s.how !== "named" && boxOf(s.mesh).min.y - sv.box.min.y < 0.35 * H) roles.set(keyOf(s), "glass");
-  const found = paint.length ? null : shellMaterial(sv);
-  const shell = found?.material;
-  if (shell) for (const s of sv.slots.values()) if (s.material === shell && !inWheel(s.mesh) && !glassKeys.has(s.key)) roles.set(s.key, "shell");
-  if (found) paintNote = found.reason;
+  const found = paint.length && !fused ? null : shellMaterial(sv);
+  let shell = found?.material;
+  if (fused) {
+    // The paint material itself is the shell to read.
+    shell = paint[0].original;
+    for (const s of paint) roles.set(keyOf(s), "shell");
+    paint = [];
+  } else if (shell) for (const s of sv.slots.values()) if (s.material === shell && !inWheel(s.mesh) && !glassKeys.has(s.key)) roles.set(s.key, "shell");
+  if (found) paintNote = fused ? null : found.reason;
   if (roles.size) {
     let chosen = [...roles.keys()].map((k) => sv.slots.get(k)).filter(Boolean);
     const { pieceOf, pieces } = sv.pieces(chosen);
-    const classes = classifyPieces(pieces, (p) => roles.get(p.slotKey), { wheels, box: sv.box });
+    const classes = classifyPieces(pieces, (p) => roles.get(p.slotKey), { wheels, box: sv.box, tyres: groundTyres });
     if (shell) {
       // The shell is only paint when its windows are parts of their own, its
       // outer parts are a real share of the car, and they leave the window line.
       const own = pieces.filter((p) => roles.get(p.slotKey) === "shell");
       const outer = own.filter((p) => classes[p.id] === PIECE.paint);
       const seen = outer.reduce((n, p) => n + p.vis, 0);
-      const band = outer.reduce((n, p) => n + (p.band?.band ?? 0), 0) / (sv.bandTotal || 1);
       const windows = glass.length + own.filter((p) => classes[p.id] === PIECE.glass).length;
-      paintNote = !windows ? "windows not separate" : seen < 0.25 ? "outer parts too small" : band > 0.8 ? "windows part of the body" : null;
+      const solid = (k) => pieceOf[k] >= 0 && classes[pieceOf[k]] === PIECE.paint;
+      const closed = hasRoof && setIn(outer.map((p) => p.band)) >= TUMBLEHOME && sv.openings(solid) < OPENINGS;
+      paintNote = !hasRoof ? "open car: the cabin shares the body material" : !windows ? "windows not separate" : seen < 0.25 ? "outer parts too small" : closed ? "windows part of the body" : null;
       if (paintNote) {
         for (const [k, role] of roles) if (role === "shell") roles.delete(k);
         chosen = chosen.filter((s) => roles.has(s.key));
@@ -681,6 +724,7 @@ export function detectParts(root, wheels) {
   }
   if (!paint.length) paintHow = "none";
   else paintNote = null;
+  const openings = hasRoof ? sv.openings((k) => paintNow.has(sv.keyOfTriangle(k))) : null;
   wheelMeshes.clear();
   for (const w of wheels ?? []) for (const m of w.meshes) wheelMeshes.add(m);
   const finalGlass = new Set(glass.map(keyOf));
@@ -693,7 +737,8 @@ export function detectParts(root, wheels) {
   const lamps = slotsWhere(root, (m, mesh, index) => {
     if (isPaint(mesh, index) || inWheel(mesh)) return false;
     const l = both(m, mesh);
-    return LAMP_RE.test(l) && !LAMP_EXCLUDE_RE.test(l);
+    // "DiskMetalLight" is a brake disc, not a lamp.
+    return LAMP_RE.test(l) && !LAMP_EXCLUDE_RE.test(l) && !WHEEL_RE.test(l);
   }).map((s) => {
     const c = centreOf(s.mesh);
     const rear = c.z < 0 || REAR_LAMP_RE.test(both(s.original, s.mesh));
@@ -770,6 +815,7 @@ export function detectParts(root, wheels) {
   return {
     paintHow,
     paintNote,
+    openings,
     paint,
     glass,
     lenses,
