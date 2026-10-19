@@ -1,0 +1,422 @@
+{
+ "acura/rsx": {
+  "39bb2574f022463eab7c91e80d1dfcd0": {
+   "name": "Acura Rsx 2004",
+   "reason": "two cars in a showroom scene"
+  }
+ },
+ "audi/a3": {
+  "5856963f5c664e01b3181eaa75523f5f": {
+   "name": "Audi A3 2022",
+   "reason": "an engine bay, not the car"
+  }
+ },
+ "audi/e-tron": {
+  "b115a32f65704139b79d7e4643fbc5d2": {
+   "name": "Audi RS Q e-tron",
+   "reason": "a toy-like rover, not an e-tron"
+  }
+ },
+ "bmw/325i": {
+  "cdecb19ff2af407f85c16cb12dfe259c": {
+   "name": "1991 BMW 325i M20 MAF",
+   "reason": "an engine part (the airflow meter)"
+  }
+ },
+ "bmw/i4": {
+  "bbf27926ca03463ea4c71811c2f3385c": {
+   "name": "Bmw I4 2021",
+   "reason": "an unfinished body shell"
+  }
+ },
+ "chevrolet/blazer": {
+  "3bc1351ff6f441a4a649aecfa586e76f": {
+   "name": "Old Chevrolet Blazer",
+   "reason": "a wreck"
+  }
+ },
+ "chevrolet/express": {
+  "38ec8ae6c7da4e1e8d5935e38dcfffe0": {
+   "name": "277: Chevy Express",
+   "reason": "a weathered scan of a damaged van"
+  }
+ },
+ "chevrolet/metro": {
+  "8b389d99a7da4e3499f0f84c2123b6d0": {
+   "name": "D.C. Metro Police Chevy Tahoe",
+   "reason": "a police Chevrolet Tahoe"
+  }
+ },
+ "chevrolet/silverado": {
+  "861d5962a4eb48a5a5c8f9e6faf478e7": {
+   "name": "Chevrolet Silverado",
+   "reason": "a bare body shell"
+  }
+ },
+ "chevrolet/ss": {
+  "52a8e833445142eebd6e0cae8b72cfc6": {
+   "name": "Chevrolet Camaro SS 2016",
+   "reason": "a Camaro SS, a different car"
+  }
+ },
+ "dodge/magnum": {
+  "31526c1d4efb454d9bed620dfce1b0e0": {
+   "name": "DODGE CHALLENGER 383 MAGNUM",
+   "reason": "a Dodge Challenger"
+  }
+ },
+ "ford/e-150": {
+  "973a0057707345d78a818f4c8fde82d4": {
+   "name": "'95 Ford F-150 prerunner baja truck",
+   "reason": "an F-150 pickup, not the van"
+  }
+ },
+ "ford/escape": {
+  "57958c14eeab409699f7907dc4760b9e": {
+   "name": "Ford Escape Dashboard",
+   "reason": "a dashboard only"
+  }
+ },
+ "ford/escort": {
+  "2bf369404d044157ab3efbb13d9506a5": {
+   "name": "1990s Ford Escort Coupes (Free Raw Scan)",
+   "reason": "two wrecks in a raw scan"
+  }
+ },
+ "ford/f-750": {
+  "432dbc519e0e4a5db5100fe71664ceaa": {
+   "name": "imola 750 for download",
+   "reason": "a motorcycle"
+  }
+ },
+ "gmc/yukon": {
+  "8b5f0ec7f5d747889e0969b926b16539": {
+   "name": "GMC Yukon SLT",
+   "reason": "includes a building backdrop"
+  }
+ },
+ "honda/cr-v": {
+  "71d65e8fba86493bb467e1d897ec0a96": {
+   "name": "Honda CRV Waterpump",
+   "reason": "a water pump, not the car"
+  }
+ },
+ "jaguar/xj": {
+  "50f5cb8779f74b0790b68a709d97447b": {
+   "name": "Jaguar/Daimler XJ X308 Pack",
+   "reason": "several cars in one model"
+  }
+ },
+ "jaguar/xk": {
+  "96a02fdf15e448768c6115bb6711a8b7": {
+   "name": "2010 Jaguar XK Coupe",
+   "reason": "a scan including its surroundings"
+  }
+ },
+ "lamborghini/murcielago": {
+  "4263293f04ec4534a67be725853dc5c3": {
+   "name": "Lamborghini Murcielago SV (unfinished)",
+   "reason": "unfinished"
+  }
+ },
+ "land-rover/defender": {
+  "6dd6dcc8074c4f3b81982d58d317b0a4": {
+   "name": "Landrover Defender",
+   "reason": "a diorama on a rock base"
+  }
+ },
+ "land-rover/range-rover": {
+  "419f62ef87994a1cbd9b5145d8d68ebf": {
+   "name": "car Range Rover small Red",
+   "reason": "a children's ride-on toy"
+  }
+ },
+ "lotus/elise": {
+  "ba7d409c49c444989f0ea2782bbbe2b7": {
+   "name": "Lotus elise 2008",
+   "reason": "a scene with a stage"
+  }
+ },
+ "mazda/mazda2": {
+  "e88b9a72d8ab40f7979cbc6a9eae0465": {
+   "name": "Mazda2 014",
+   "reason": "not a Mazda2"
+  }
+ },
+ "mazda/protege": {
+  "d777dc5d967f4c409656506fbe0c1eb0": {
+   "name": "Mazda Protege5 - Remake Test 2",
+   "reason": "a room scene"
+  }
+ },
+ "mclaren/mp4-12c": {
+  "e9f91c854e83470cb9852e20e24c80de": {
+   "name": "Mclaren-mp4-12c-vray",
+   "reason": "a tiny model on a large stage"
+  }
+ },
+ "mini/cooper": {
+  "79e5955e18a74beca659313911b0bdd0": {
+   "name": "F1 Mini Cooper",
+   "reason": "a stylised build, not a Cooper"
+  }
+ },
+ "nissan/altima": {
+  "94881b4e3c2b49b9a22cb23f9b60fa30": {
+   "name": "Nissan-altima 2020",
+   "reason": "not an Altima"
+  }
+ },
+ "nissan/juke": {
+  "d0649b08bdaf4348a8dffcfb8e27bab5": {
+   "name": "Nissan Juke 2011",
+   "reason": "two cars in one model"
+  }
+ },
+ "porsche/718-spyder": {
+  "412d72554679474dafe262da8b9abec8": {
+   "name": "Porsche - 718 RS60 Spyder",
+   "reason": "a 1960 718 RS60, not the current 718 Spyder"
+  }
+ },
+ "porsche/macan": {
+  "5d57f6dcabe7473f91b160595a3eb0cc": {
+   "name": "Porsche Macan - Kaban",
+   "reason": "a cartoon"
+  }
+ },
+ "rolls-royce/phantom": {
+  "676190b0cb4042eb9b548e31f3552ead": {
+   "name": "Rolls Royce Phantom",
+   "reason": "stands in a curved backdrop"
+  },
+  "6beee7b5f9a94a9fa8fc5483d4ad5095": {
+   "name": "Classic Rolls Royce Phantom Black and White",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "subaru/forester": {
+  "1f036ca0288f4a0dadfee7a8f8217b86": {
+   "name": "Dash 3DScan Subaru Forester 2017",
+   "reason": "a dashboard scan"
+  },
+  "f450db68bb714258bf65c18c470b091c": {
+   "name": "2008 Subaru Forester 2.0XS",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "subaru/legacy": {
+  "af6ca49f8e244b78a1c26781d4e82a5d": {
+   "name": "Subaru legacy 2.5 GT",
+   "reason": "a road scene"
+  }
+ },
+ "tesla/cybertruck": {
+  "657e71b3e2ad468196668e9c9df708fb": {
+   "name": "Tesla Cybertruck",
+   "reason": "two trucks in one model"
+  }
+ },
+ "toyota/camry": {
+  "5acd78901600494e879fc2008a2cd021": {
+   "name": "LidarScan | Toyota Camry V6",
+   "reason": "a scan including the ground and leaves"
+  },
+  "e1c67c3f8caa4f749a102adeca30cf83": {
+   "name": "Kyle Busch #18 Toyota Camry",
+   "reason": "a NASCAR race car"
+  }
+ },
+ "toyota/tundra": {
+  "6a1e7fe7db92404e906dad8ac9739406": {
+   "name": "Toyota Tundra",
+   "reason": "several vehicles in one model"
+  }
+ },
+ "volvo/s70": {
+  "26d2199bd0e54ae69dc2e0852a3f4dc9": {
+   "name": "294: Volvo S70",
+   "reason": "a wreck"
+  }
+ },
+ "bmw/m3": {
+  "85b31e7e54b74bcc92fdf9bf5dddd4cf": {
+   "name": "BMW M3™",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "mazda/mx-5": {
+  "424917fae3554cc183a31c89e9bf6d87": {
+   "name": "2002 Mazda Miata MX-5",
+   "reason": "no longer published on Sketchfab"
+  },
+  "c2f31dd890cd4970bde2a1dd34b6c59f": {
+   "name": "Mazda Mx-5",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "nissan/nissan-z": {
+  "ce1d0c30770244289a8c64c41cd46984": {
+   "name": "Nissan 350 Z",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "subaru/wrx": {
+  "0dde4adb4c7e4bd099b9cc7d996899df": {
+   "name": "Subaru WRX STI",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "volkswagen/golf-r": {
+  "74581ab4a1ac46e1a3a22d3575978dea": {
+   "name": "2018 Volkswagen Golf R",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "acura/integra": {
+  "e33e35f643334b8fa5861c14fde1edc1": {
+   "name": "2001 Acura Integra GSR",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "acura/tsx": {
+  "c27e5211c1f4455e9a5b0d73040bd029": {
+   "name": "(FREE) Acura TSX",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "aston-martin/rapide": {
+  "74b4dba60dea4b0996dba75b1e29ee21": {
+   "name": "Aston Martin Rapide",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "audi/a8": {
+  "b76d700cd0f14d09855744cf934f33d4": {
+   "name": "AUDI A8 (2014)",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "audi/s4": {
+  "5357410a5ad34b64986f493f50b512c1": {
+   "name": "Audi S4 2000",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "audi/s5": {
+  "438530b19a2e49a29a75d136d64e11c2": {
+   "name": "Audi S5 MKS",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "bmw/x4": {
+  "ad5775470de04eebbbde01ce5575cec2": {
+   "name": "BMW X4-2020",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "chevrolet/spark": {
+  "362a0b082b29442c844825406d644e2f": {
+   "name": "Chevrolet Spark M300",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "chevrolet/trailblazer": {
+  "4594e441878f4a6b95ce91f4aaee8901": {
+   "name": "Chevrolet Trailblazer",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "ferrari/la-ferrari": {
+  "f94a48ce9200403f9b0d56a29a0661bf": {
+   "name": "LaFerrari 2013",
+   "reason": "no longer published on Sketchfab"
+  },
+  "d2402e4651544341937c98ceab989f53": {
+   "name": "Ferrari La Ferrari",
+   "reason": "no longer published on Sketchfab"
+  },
+  "fe550965b98e4d419ebccd0507dfe0cb": {
+   "name": "La Ferrari",
+   "reason": "no longer published on Sketchfab"
+  },
+  "63b3afd3b7c54160afc2aacac387492c": {
+   "name": "Laferrari 3D Build Animation",
+   "reason": "no longer published on Sketchfab"
+  },
+  "b9d276d098e543beaa1ff76d302cd842": {
+   "name": "Ferrari-laferrari",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "honda/s2000": {
+  "d9c29f53d41c42548673fd54650d22ca": {
+   "name": "Honda S2000",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "hyundai/venue": {
+  "90472979c9a24f31a432b58c06381085": {
+   "name": "2020 Hyundai Venue",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "mercury/montego": {
+  "96b128d2d66e47ec944114d2aeb705ec": {
+   "name": "1970 Mercury Montego",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "mitsubishi/mirage": {
+  "35965c7eb6804ce9884e39ae353b68f2": {
+   "name": "2020 Mitsubishi Mirage Facelift",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "pontiac/bonneville": {
+  "152f2ab0b82c4d02ab59e2307cff29df": {
+   "name": "1968 Pontiac Bonneville Custom",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "toyota/86": {
+  "87e2581386404aaaa08226b45abed511": {
+   "name": "Toyota AE-86",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "volkswagen/golf": {
+  "74581ab4a1ac46e1a3a22d3575978dea": {
+   "name": "2018 Volkswagen Golf R",
+   "reason": "no longer published on Sketchfab"
+  },
+  "d03e403834e84095b30982b59ec3fde7": {
+   "name": "volkswagen golf 1974",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "volkswagen/golf-gti": {
+  "877b82ed48954e08a234dae968b70704": {
+   "name": "Volkswagen Golf Gti 16V",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "volkswagen/phaeton": {
+  "0c1bf8bac1e54d9d80aa78a218c720e4": {
+   "name": "2004 Volkswagen Phaeton",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "volvo/vnl": {
+  "1009b47fc43a4d8fa246e71699b94e24": {
+   "name": "Volvo VNL 430",
+   "reason": "no longer published on Sketchfab"
+  }
+ },
+ "volvo/xc90": {
+  "10f799e0228d4720837b10746fb7669b": {
+   "name": "Volvo XC90",
+   "reason": "no longer published on Sketchfab"
+  }
+ }
+}

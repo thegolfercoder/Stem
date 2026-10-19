@@ -1,0 +1,53 @@
+{
+  "name": "carconfig",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vehicle + aftermarket parts compatibility database and build configurator.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "fetch-model": "node scripts/fetch-model.mjs",
+    "find-models": "node scripts/find-models.mjs",
+    "find-objaverse-models": "node scripts/find-objaverse-models.mjs",
+    "fetch-all-models": "node scripts/fetch-all-models.mjs",
+    "check-model": "node scripts/check-model.mjs",
+    "build-model": "node scripts/build-model.mjs",
+    "garage:catalog": "node scripts/build-garage-catalog.mjs",
+    "garage:audit": "node scripts/garage-audit.mjs",
+    "garage:artifact": "node scripts/build-garage-artifact.mjs"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "@react-three/postprocessing": "^3.1.2",
+    "next": "^16.3.5",
+    "postprocessing": "^6.39.5",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "three": "^0.186.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@gltf-transform/cli": "^4.5.0",
+    "@gltf-transform/core": "^4.5.0",
+    "@gltf-transform/extensions": "^4.5.0",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/three": "^0.186.0",
+    "draco3dgltf": "^1.5.7",
+    "eslint": "^9.39.0",
+    "eslint-config-next": "^16.3.5",
+    "meshoptimizer": "^1.1.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.1"
+  }
+}

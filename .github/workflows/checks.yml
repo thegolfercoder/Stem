@@ -73,3 +73,48 @@ jobs:
         run: mypy -p launchmon
       - name: tests
         run: pytest -q
+
+  carconfig:
+    name: car configurator
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: carconfig
+    # Postgres is here to check one thing the application cannot: that
+    # db/schema.sql still applies. The app reads its catalogue from seed
+    # modules, so nothing else in this job needs a database - but the schema is
+    # the data model's source of truth and an unapplied schema rots silently.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: carconfig/package-lock.json
+      - name: install
+        run: npm ci
+      - name: schema applies
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f db/schema.sql
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+          PGPASSWORD: postgres
+      - name: lint
+        run: npm run lint
+      - name: types
+        run: npm run typecheck
+      - name: tests
+        run: npm test
+      - name: build
+        run: npm run build
