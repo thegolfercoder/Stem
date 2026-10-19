@@ -6,8 +6,9 @@
 import * as THREE from "three";
 import {
   kindOf, label, nodeLabel, nameWords, materialsOf, paintNameSays,
-  LAMP_RE, REAR_LAMP_RE, LAMP_EXCLUDE_RE, WHEEL_RE, WHEEL_EXCLUDE_RE, PART,
+  LAMP_RE, REAR_LAMP_RE, LAMP_EXCLUDE_RE, WHEEL_RE, WHEEL_EXCLUDE_RE, INTERIOR_RE, PART,
 } from "./names.js";
+import { survey, slotKey } from "./visibility.js";
 
 const box3 = (o) => new THREE.Box3().setFromObject(o);
 const lum = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
@@ -74,20 +75,26 @@ export function materialStats(root) {
 
 /**
  * Which materials are the body paint: those named as paint, or else the
- * largest opaque surface that runs most of the car's length at body height,
- * plus any plain materials of exactly the same colour.
+ * surface that makes up most of the outside of the car and runs most of its
+ * length at body height, plus any plain materials of exactly the same colour.
+ * "Most of the outside" is the share of what the views see (`vis`) when the
+ * car has been surveyed, and the share of area otherwise. Materials marked
+ * `window` fill the window line, and are never paint.
  */
 export function choosePaint(stats) {
   const total = stats.reduce((s, m) => s + m.area, 0);
   if (total <= 0) return { how: "none", ids: [] };
   const share = (m) => m.area / total;
-  const named = stats.filter((m) => m.kind === null && paintNameSays(m.name) === "paint" && share(m) > 0.02 && (lum(m.rgb) > 0.04 || share(m) > 0.08));
+  const seen = (m) => m.vis ?? share(m);
+  const visible = (m, least) => m.vis === undefined || m.vis >= least;
+  const usable = (m) => m.kind === null && !m.window;
+  const named = stats.filter((m) => usable(m) && paintNameSays(m.name) === "paint" && share(m) > 0.02 && (lum(m.rgb) > 0.04 || share(m) > 0.08) && visible(m, 0.01));
   if (named.length) return { how: "named", ids: named.map((m) => m.id) };
-  const surfaces = stats.filter((m) => m.kind === null && paintNameSays(m.name) !== "other" && m.opacity >= 0.95 && m.height >= 0.25 && m.height <= 0.8);
+  const surfaces = stats.filter((m) => usable(m) && paintNameSays(m.name) !== "other" && m.opacity >= 0.95 && m.height >= 0.25 && m.height <= 0.8);
   const panels = surfaces.filter((m) => m.span >= 0.55);
   if (!panels.length) return { how: "none", ids: [] };
-  const best = panels.reduce((x, y) => (y.area > x.area ? y : x));
-  if (share(best) < 0.12 || share(best) > 0.85) return { how: "none", ids: [] };
+  const best = panels.reduce((x, y) => (seen(y) > seen(x) ? y : x));
+  if (seen(best) < 0.12 || share(best) > 0.85) return { how: "none", ids: [] };
   if (best.hasMap && /\b(atlas|baked?)\b/.test(nameWords(best.name))) return { how: "none", ids: [] };
   const dist = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
   const isDefault = (c) => [1, 0.8].some((v) => c.every((x) => Math.abs(x - v) < 1e-3));
@@ -102,8 +109,214 @@ export function choosePaint(stats) {
     const c = hsl(m.rgb);
     return c.s > 0.25 && hueGap(c.h, b.h) < 0.035 && Math.abs(c.l - b.l) < 0.25;
   };
-  const siblings = best.hasMap || isDefault(best.rgb) ? [] : surfaces.filter((m) => m !== best && !m.hasMap && (m.span >= 0.15 || share(m) > 0.01) && (dist(m.rgb, best.rgb) < 0.03 || sameHue(m)));
+  const siblings = best.hasMap || isDefault(best.rgb) ? [] : surfaces.filter((m) => m !== best && !m.hasMap && visible(m, 0.002) && (m.span >= 0.15 || share(m) > 0.01) && (dist(m.rgb, best.rgb) < 0.03 || sameHue(m)));
   return { how: "largest", ids: [best.id, ...siblings.map((m) => m.id)] };
+}
+
+// ---------------------------------------------------------------- windows
+
+/**
+ * Window-line figures (see visibility.js) of the windows. From the side: most
+ * of the part lies in the window line, fills a good part of its height where
+ * it appears (trim strips and pillars do not), runs along much of the car,
+ * and makes up a real share of the line. From the front or back, the same
+ * for the windscreen and rear window, which span the car's width.
+ */
+export const WINDOW = { inBand: 0.7, reach: 0.3, bandShare: 0.1, cover: 0.28 };
+export const WINDOW_ENDS = { inBand: 0.6, reach: 0.6, bandShare: 0.15, cover: 0.35 };
+/** A single part or piece, judged without the rest of its material, has to fill a line more clearly. */
+export const WINDOW_PART = { inBand: 0.85, reach: 0.2, bandShare: 0.03, cover: 0.4 };
+export const WINDOW_ENDS_PART = { inBand: 0.75, reach: 0.5, bandShare: 0.08, cover: 0.35 };
+
+/** Windows meet the roof and lean out from it; what is seen through an empty window frame sits behind it. */
+export const ROOF_GAP = 0.08;
+
+export const fillsWindowLine = (band, t = WINDOW) =>
+  Boolean(band) && band.inBand >= t.inBand && band.reach >= t.reach && band.bandShare >= t.bandShare && band.cover >= t.cover && band.behind <= ROOF_GAP;
+
+/** A part (or piece) that is a window on its own: it fills a window line and lies above the doors. */
+const windowOnItsOwn = (x, low, H) =>
+  low >= 0.35 * H && (fillsWindowLine(x.band, WINDOW_PART) || fillsWindowLine(x.ends, WINDOW_ENDS_PART));
+
+/**
+ * The windows. Parts named as glass come first; when they do not fill the
+ * window line (lamp glass only, or nothing named at all), the window lines
+ * themselves are read: a whole material whose parts fill a line, with the
+ * other windows that share it; or single parts that fill a line on their own
+ * and lie above the doors.
+ */
+export function findGlass(root, sv, { inWheel, both }) {
+  const named = slotsWhere(root, (m) => kindOf(m.name) === "glass");
+  const bandOf = (slots) => slots.reduce((s, x) => s + (sv.slot(x.mesh, x.index)?.band?.band ?? 0), 0) / (sv.bandTotal || 1);
+  if (bandOf(named) >= WINDOW.bandShare) return named.map((s) => ({ ...s, how: "named" }));
+
+  const { box } = sv;
+  const H = box.max.y - box.min.y, W = box.max.x - box.min.x;
+  const boxes = new Map();
+  const boxOf = (mesh) => boxes.get(mesh) ?? boxes.set(mesh, box3(mesh)).get(mesh);
+  const usable = (m, mesh) => {
+    if (inWheel(mesh) || kindOf(m.name) !== null || paintNameSays(m.name) === "paint") return false;
+    const l = both(m, mesh);
+    return !LAMP_RE.test(l) && !INTERIOR_RE.test(l);
+  };
+  const chosen = new Map(named.map((s) => [slotKey(s.mesh, s.index), { ...s, how: "named" }]));
+  const add = (s, how) => chosen.has(slotKey(s.mesh, s.index)) || chosen.set(slotKey(s.mesh, s.index), { ...s, how });
+
+  // A part of a window material is a window when it is in a window line, or
+  // spans the car high up (a glass roof).
+  const windowPlace = (mesh, index) => {
+    const b = boxOf(mesh), x = sv.slot(mesh, index);
+    if (b.max.y - box.min.y < 0.5 * H) return false;
+    const inLine = (band, reach) => band && band.inBand >= 0.5 && band.reach >= reach && band.cover >= 0.25 && band.behind <= ROOF_GAP;
+    if (inLine(x?.band, 0.1) || inLine(x?.ends, 0.3)) return true;
+    const across = b.min.x < -0.25 * W && b.max.x > 0.25 * W;
+    return across && b.min.y - box.min.y >= 0.35 * H && b.max.y - box.min.y >= 0.75 * H;
+  };
+  for (const [m, x] of sv.materials) {
+    if (!fillsWindowLine(x.band, WINDOW) && !fillsWindowLine(x.ends, WINDOW_ENDS)) continue;
+    for (const s of slotsWhere(root, (mm, mesh, index) => mm === m && usable(mm, mesh) && windowPlace(mesh, index))) add(s, "window line");
+  }
+  for (const s of sv.slots.values()) {
+    if (!usable(s.material, s.mesh) || !windowOnItsOwn(s, boxOf(s.mesh).min.y - box.min.y, H)) continue;
+    add({ mesh: s.mesh, index: s.index, original: s.material }, "window part");
+  }
+  return [...chosen.values()];
+}
+
+/**
+ * The material that makes up most of the outside, when paint could not be
+ * chosen by material: a clay model, or a body material also used for the
+ * cabin, wheels or windows. Its parts are then read piece by piece.
+ */
+export function shellMaterial(sv) {
+  let best = null;
+  for (const [m, x] of sv.materials) {
+    const kind = kindOf(m.name);
+    // A tyre material cannot make up most of a car's outside: such a name is wrong.
+    if (kind && !(kind === "tyre" && x.vis > 0.5)) continue;
+    if (!best || x.vis > best.vis) best = { material: m, vis: x.vis };
+  }
+  if (!best || best.vis < 0.3) return { material: null, reason: "no material makes up the outside" };
+  // A texture that colours the whole car (an atlas, a scan) holds the lamps,
+  // grille and badges too: painting over it would wipe them out.
+  if (best.material.map) return { material: null, reason: "the body colour comes from a texture" };
+  return { material: best.material, reason: null };
+}
+
+/**
+ * Boxes around the tyres among the given pieces: round, upright, standing on
+ * the ground at the car's sides. Used to keep tyres (and the rims inside
+ * them) out of the paint when the wheels were not found as parts.
+ */
+export function tyreZones(pieces, box) {
+  const W = box.max.x - box.min.x, H = box.max.y - box.min.y;
+  const zones = [];
+  for (const p of pieces) {
+    const s = p.box.getSize(new THREE.Vector3()), c = p.box.getCenter(new THREE.Vector3());
+    const round = s.y > 0.42 && s.y < 1.3 && Math.abs(s.z - s.y) / s.y < 0.22 && s.x > 0.06 && s.x < s.y * 0.7;
+    if (!round || p.box.min.y - box.min.y > Math.max(0.08, 0.05 * H) || Math.abs(c.x) < W * 0.2) continue;
+    const zone = p.box.clone();
+    zone.min.x -= 0.12;
+    zone.max.x += 0.12;
+    zones.push(zone.expandByScalar(0.03));
+  }
+  return zones;
+}
+
+/** What a piece of a mesh becomes when the mesh is split. */
+export const PIECE = { rest: 0, paint: 1, glass: 2, fl: 3, fr: 4, rl: 5, rr: 6 };
+const PIECE_CORNERS = ["fl", "fr", "rl", "rr"];
+
+/**
+ * Decides, piece by piece, what parts of mixed slots are: `role` is "paint"
+ * (a body material whose meshes also hold the rims), "glass" (a window
+ * material whose meshes also hold trim) or "shell" (anything: the body, the
+ * windows, the rims and the cabin in one material). Pieces inside a wheel
+ * belong to that wheel (inside a tyre found among the pieces, when the wheels
+ * were not found, they are left alone); windows fill a window line on their
+ * own; the rest of a shell is paint where it is seen from outside.
+ */
+export function classifyPieces(pieces, roleOf, { wheels, box }) {
+  const H = box.max.y - box.min.y;
+  const zones = wheels
+    ? wheels.map((w) => ({ cls: PIECE[w.corner], box: w.box.clone().expandByScalar(0.03) }))
+    : tyreZones(pieces, box).map((z) => ({ cls: PIECE.rest, box: z }));
+  const out = new Int8Array(pieces.length);
+  for (const p of pieces) {
+    const role = roleOf(p);
+    const zone = zones.find((z) => z.box.containsBox(p.box));
+    const isWindow = windowOnItsOwn(p, p.box.min.y - box.min.y, H);
+    let c = PIECE.rest;
+    if (role === "paint") c = zone ? zone.cls : PIECE.paint;
+    else if (role === "glass") c = isWindow ? PIECE.glass : PIECE.rest;
+    else if (role === "shell") c = zone ? zone.cls : isWindow ? PIECE.glass : p.vis > 0 ? PIECE.paint : PIECE.rest;
+    out[p.id] = c;
+  }
+  return out;
+}
+
+/**
+ * Splits a mesh into one mesh per class of its triangles (`classes[k]` for
+ * its k-th triangle), copying each triangle's raw attribute values. The new
+ * meshes take the old one's place, transform and materials, and keep the
+ * groups of a multi-material mesh. Returns the new meshes by class, or null
+ * when the mesh is all one class or cannot be split.
+ */
+export function splitMesh(mesh, classes, nameOf = (c) => `${mesh.name} ${c}`) {
+  const src = mesh.geometry;
+  if (!mesh.parent || mesh.isSkinnedMesh || Object.keys(src.morphAttributes).length) return null;
+  const tris = classes.length;
+  const byClass = new Map();
+  for (let k = 0; k < tris; k++) {
+    let list = byClass.get(classes[k]);
+    if (!list) byClass.set(classes[k], (list = []));
+    list.push(k);
+  }
+  if (byClass.size < 2) return null;
+  const multi = Array.isArray(mesh.material) && src.groups.length > 0;
+  const materialOf = new Int32Array(tris);
+  if (multi) for (const grp of src.groups) for (let k = grp.start / 3; k < Math.min(tris, (grp.start + grp.count) / 3); k++) materialOf[k] = grp.materialIndex ?? 0;
+  const g = src.index ? src.toNonIndexed() : src;
+  const out = new Map();
+  for (const [c, list] of byClass) {
+    if (multi) list.sort((a, b) => materialOf[a] - materialOf[b] || a - b);
+    const geo = new THREE.BufferGeometry();
+    for (const [name, attr] of Object.entries(g.attributes)) {
+      const inter = attr.isInterleavedBufferAttribute, from = inter ? attr.data.array : attr.array;
+      const stride = inter ? attr.data.stride : attr.itemSize, offset = inter ? attr.offset : 0, size = attr.itemSize;
+      const to = new from.constructor(list.length * 3 * size);
+      let w = 0;
+      for (const k of list) {
+        for (let v = 0; v < 3; v++) {
+          const base = (k * 3 + v) * stride + offset;
+          for (let i = 0; i < size; i++) to[w++] = from[base + i];
+        }
+      }
+      geo.setAttribute(name, new THREE.BufferAttribute(to, size, attr.normalized));
+    }
+    if (multi) {
+      let start = 0;
+      for (let i = 1; i <= list.length; i++) {
+        if (i < list.length && materialOf[list[i]] === materialOf[list[start]]) continue;
+        geo.addGroup(start * 3, (i - start) * 3, materialOf[list[start]]);
+        start = i;
+      }
+    }
+    geo.computeBoundingBox();
+    geo.computeBoundingSphere();
+    const piece = new THREE.Mesh(geo, mesh.material);
+    piece.name = nameOf(c);
+    piece.position.copy(mesh.position);
+    piece.quaternion.copy(mesh.quaternion);
+    piece.scale.copy(mesh.scale);
+    piece.visible = mesh.visible;
+    mesh.parent.add(piece);
+    out.set(c, piece);
+  }
+  mesh.removeFromParent();
+  if (g !== src) g.dispose();
+  src.dispose();
+  return out;
 }
 
 // ----------------------------------------------------------------- wheels
@@ -178,47 +391,13 @@ function triangleQuadrants(mesh) {
 
 /**
  * Splits a mesh that holds the wheels of two or more corners into one mesh per
- * corner, copying each triangle's raw attribute values (texture coordinates
- * and normals included) into the piece for the corner it sits in. Returns the
- * pieces by corner, or null when the mesh is already in one corner.
+ * corner. Returns the pieces by corner, or null when the mesh is already in
+ * one corner.
  */
 export function splitAcrossCorners(mesh, known = triangleQuadrants(mesh)) {
-  if (Array.isArray(mesh.material) || !mesh.parent || !known) return null;
-  const { quad, counts, tris } = known;
-  if (counts.filter((n) => n > 0).length < 2) return null;
-  const g = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry;
-  const pieces = new Map();
-  for (let q = 0; q < 4; q++) {
-    if (!counts[q]) continue;
-    const geo = new THREE.BufferGeometry();
-    for (const [name, attr] of Object.entries(g.attributes)) {
-      const inter = attr.isInterleavedBufferAttribute, src = inter ? attr.data.array : attr.array;
-      const stride = inter ? attr.data.stride : attr.itemSize, offset = inter ? attr.offset : 0, size = attr.itemSize;
-      const out = new src.constructor(counts[q] * 3 * size);
-      let w = 0;
-      for (let t = 0; t < tris; t++) {
-        if (quad[t] !== q) continue;
-        for (let k = 0; k < 3; k++) {
-          const base = (t * 3 + k) * stride + offset;
-          for (let i = 0; i < size; i++) out[w++] = src[base + i];
-        }
-      }
-      geo.setAttribute(name, new THREE.BufferAttribute(out, size, attr.normalized));
-    }
-    geo.computeBoundingBox();
-    geo.computeBoundingSphere();
-    const piece = new THREE.Mesh(geo, mesh.material);
-    piece.name = `${mesh.name} ${QUADRANT[q]}`;
-    piece.position.copy(mesh.position);
-    piece.quaternion.copy(mesh.quaternion);
-    piece.scale.copy(mesh.scale);
-    mesh.parent.add(piece);
-    pieces.set(QUADRANT[q], piece);
-  }
-  mesh.removeFromParent();
-  if (g !== mesh.geometry) g.dispose();
-  mesh.geometry.dispose();
-  return pieces;
+  if (Array.isArray(mesh.material) || !known) return null;
+  const pieces = splitMesh(mesh, known.quad, (q) => `${mesh.name} ${QUADRANT[q]}`);
+  return pieces && new Map([...pieces].map(([q, piece]) => [QUADRANT[q], piece]));
 }
 
 const isWheelPart = (o, dominant) => {
@@ -372,13 +551,46 @@ function slotsWhere(root, test) {
   root.traverse((o) => {
     if (!o.isMesh) return;
     materialsOf(o).forEach((m, i) => {
-      if (m && test(m, o)) slots.push({ mesh: o, index: Array.isArray(o.material) ? i : null, original: m });
+      const index = Array.isArray(o.material) ? i : null;
+      if (m && test(m, o, index)) slots.push({ mesh: o, index, original: m });
     });
   });
   return slots;
 }
 
 const centreOf = (o) => box3(o).getCenter(new THREE.Vector3());
+
+/** Triangles of a mesh's own material groups that were not read piece by piece. */
+const UNTOUCHED = 7;
+const CLASS_NAMES = ["rest", "paint", "glass", ...PIECE_CORNERS, "kept"];
+
+/**
+ * Splits the meshes of the given slots by the classes of their pieces.
+ * Returns the new meshes by old mesh and class; `uniform` holds, for meshes
+ * left whole because they are all one class, that class.
+ */
+function splitByPieces(slots, pieceOf, classes) {
+  const perMesh = new Map();
+  for (const s of slots) {
+    for (const part of s.parts) {
+      let cls = perMesh.get(part.mesh);
+      if (!cls) {
+        const g = part.mesh.geometry;
+        cls = new Int8Array(Math.floor((g.index ? g.index.count : g.attributes.position.count) / 3)).fill(UNTOUCHED);
+        perMesh.set(part.mesh, cls);
+      }
+      for (let k = 0; k < part.count; k++) cls[part.local + k] = classes[pieceOf[part.first + k]];
+    }
+  }
+  const moved = new Map();
+  moved.uniform = new Map();
+  for (const [mesh, cls] of perMesh) {
+    const out = splitMesh(mesh, cls, (c) => `${mesh.name} ${CLASS_NAMES[c]}`);
+    if (out) moved.set(mesh, out);
+    else moved.uniform.set(mesh, cls[0]);
+  }
+  return moved;
+}
 
 /**
  * Looks at a normalised car (nose +z, on y = 0) and reports what it has.
@@ -387,20 +599,99 @@ const centreOf = (o) => box3(o).getCenter(new THREE.Vector3());
 export function detectParts(root, wheels) {
   const { materials, stats } = materialStats(root);
   const area = new Map(materials.map((m, i) => [m, stats[i].area]));
-  const choice = choosePaint(stats);
-  const paintSet = new Set(choice.ids.map((i) => materials[i]));
   const wheelMeshes = new Set(wheels ? wheels.flatMap((w) => w.meshes) : []);
   const inWheel = (mesh) => wheelMeshes.has(mesh);
   const words = (m) => nameWords(m.name);
   const both = (m, mesh) => `${nodeLabel(mesh)} ${words(m)}`;
 
-  const paint = slotsWhere(root, (m) => paintSet.has(m));
-  const glass = slotsWhere(root, (m) => !paintSet.has(m) && kindOf(m.name) === "glass");
+  // What is seen from outside, and what fills the window lines.
+  const sv = survey(root);
+  const H = sv.box.max.y - sv.box.min.y;
+  const boxes = new Map();
+  const boxOf = (mesh) => boxes.get(mesh) ?? boxes.set(mesh, box3(mesh)).get(mesh);
+  let glass = findGlass(root, sv, { inWheel, both });
+  const keyOf = (s) => slotKey(s.mesh, s.index);
+  const glassKeys = new Set(glass.map(keyOf));
+  let inside = null;
+  const insideOnly = (mesh, index) => (inside ??= sv.throughGlass(glassKeys)).has(slotKey(mesh, index));
+
+  materials.forEach((m, i) => {
+    const x = sv.material(m);
+    stats[i].vis = x?.vis ?? 0;
+    stats[i].window = fillsWindowLine(x?.band) || fillsWindowLine(x?.ends, WINDOW_ENDS);
+  });
+  const choice = choosePaint(stats);
+  const paintMats = new Set(choice.ids.map((i) => materials[i]));
+  let paintHow = choice.how;
+  let paintNote = null;
+  let paint = slotsWhere(root, (m, mesh, index) => paintMats.has(m) && !inWheel(mesh) && !glassKeys.has(slotKey(mesh, index)) && !insideOnly(mesh, index));
+
+  // Mixed parts are read piece by piece: paint meshes that also hold the rims,
+  // window meshes that also hold trim and, when no material is the paint on
+  // its own, every part of the material that makes up the outside.
+  const roles = new Map();
+  const wheelBoxes = (wheels ?? []).map((w) => w.box);
+  const nearGround = (mesh) => boxOf(mesh).min.y - sv.box.min.y < Math.max(0.08, 0.05 * H);
+  for (const s of paint) if (wheels ? wheelBoxes.some((b) => b.intersectsBox(boxOf(s.mesh))) : nearGround(s.mesh)) roles.set(keyOf(s), "paint");
+  for (const s of glass) if (s.how !== "named" && boxOf(s.mesh).min.y - sv.box.min.y < 0.35 * H) roles.set(keyOf(s), "glass");
+  const found = paint.length ? null : shellMaterial(sv);
+  const shell = found?.material;
+  if (shell) for (const s of sv.slots.values()) if (s.material === shell && !inWheel(s.mesh) && !glassKeys.has(s.key)) roles.set(s.key, "shell");
+  if (found) paintNote = found.reason;
+  if (roles.size) {
+    let chosen = [...roles.keys()].map((k) => sv.slots.get(k)).filter(Boolean);
+    const { pieceOf, pieces } = sv.pieces(chosen);
+    const classes = classifyPieces(pieces, (p) => roles.get(p.slotKey), { wheels, box: sv.box });
+    if (shell) {
+      // The shell is only paint when its windows are parts of their own, its
+      // outer parts are a real share of the car, and they leave the window line.
+      const own = pieces.filter((p) => roles.get(p.slotKey) === "shell");
+      const outer = own.filter((p) => classes[p.id] === PIECE.paint);
+      const seen = outer.reduce((n, p) => n + p.vis, 0);
+      const band = outer.reduce((n, p) => n + (p.band?.band ?? 0), 0) / (sv.bandTotal || 1);
+      const windows = glass.length + own.filter((p) => classes[p.id] === PIECE.glass).length;
+      paintNote = !windows ? "windows not separate" : seen < 0.25 ? "outer parts too small" : band > 0.8 ? "windows part of the body" : null;
+      if (paintNote) {
+        for (const [k, role] of roles) if (role === "shell") roles.delete(k);
+        chosen = chosen.filter((s) => roles.has(s.key));
+      }
+    }
+    const moved = splitByPieces(chosen, pieceOf, classes);
+    const placed = (cls) => {
+      const out = [];
+      for (const s of chosen) for (const part of s.parts) {
+        const split = moved.get(part.mesh);
+        const mesh = split ? split.get(cls) : moved.uniform.get(part.mesh) === cls ? part.mesh : null;
+        if (mesh && !out.some((x) => x.mesh === mesh && x.index === part.index)) out.push({ mesh, index: part.index, original: part.material });
+      }
+      return out;
+    };
+    // Slots outside the pieces keep their roles, on whatever mesh now holds them.
+    const kept = (s) => {
+      if (roles.has(keyOf(s))) return [];
+      const split = moved.get(s.mesh);
+      if (!split) return [s];
+      const mesh = split.get(UNTOUCHED);
+      return mesh ? [{ ...s, mesh }] : [];
+    };
+    glass = [...glass.flatMap(kept), ...placed(PIECE.glass).map((s) => ({ ...s, how: "piece" }))];
+    paint = [...paint.flatMap(kept), ...placed(PIECE.paint)];
+    if (shell && !paintNote && paint.length) paintHow = "shell";
+    for (const w of wheels ?? []) for (const s of placed(PIECE[w.corner])) if (!w.meshes.includes(s.mesh)) w.meshes.push(s.mesh);
+  }
+  if (!paint.length) paintHow = "none";
+  else paintNote = null;
+  wheelMeshes.clear();
+  for (const w of wheels ?? []) for (const m of w.meshes) wheelMeshes.add(m);
+  const finalGlass = new Set(glass.map(keyOf));
+  const paintKeys = new Set(paint.map(keyOf));
+  const isPaint = (mesh, index) => paintKeys.has(slotKey(mesh, index));
+  const isGlass = (mesh, index) => finalGlass.has(slotKey(mesh, index));
   const lenses = slotsWhere(root, (m) => kindOf(m.name) === "lens");
 
   // Lamps: anything named as a light that is not paint, interior, or a switch.
-  const lamps = slotsWhere(root, (m, mesh) => {
-    if (paintSet.has(m) || inWheel(mesh)) return false;
+  const lamps = slotsWhere(root, (m, mesh, index) => {
+    if (isPaint(mesh, index) || inWheel(mesh)) return false;
     const l = both(m, mesh);
     return LAMP_RE.test(l) && !LAMP_EXCLUDE_RE.test(l);
   }).map((s) => {
@@ -451,17 +742,17 @@ export function detectParts(root, wheels) {
   }
   // Calipers are sometimes modelled apart from the wheels, attached to the body.
   const caliperSet = new Set(calipers.map((s) => s.mesh));
-  calipers.push(...slotsWhere(root, (m, mesh) => !caliperSet.has(mesh) && !paintSet.has(m) && PART.caliper.test(both(m, mesh)) && centreOf(mesh).y < 0.75));
+  calipers.push(...slotsWhere(root, (m, mesh, index) => !caliperSet.has(mesh) && !isPaint(mesh, index) && PART.caliper.test(both(m, mesh)) && centreOf(mesh).y < 0.75));
 
-  const excluded = (m, mesh) => paintSet.has(m) || inWheel(mesh) || kindOf(m.name) === "glass" || kindOf(m.name) === "lens" || LAMP_RE.test(words(m));
+  const excluded = (m, mesh, index) => isPaint(mesh, index) || isGlass(mesh, index) || inWheel(mesh) || kindOf(m.name) === "glass" || kindOf(m.name) === "lens" || LAMP_RE.test(words(m));
   const carbon = slotsWhere(root, (m, mesh) => !inWheel(mesh) && kindOf(m.name) === "carbon");
-  const trim = slotsWhere(root, (m, mesh) => !excluded(m, mesh) && !PART.mirrorGlass.test(both(m, mesh)) && (kindOf(m.name) === "chrome" || /\b(trim|window ?surround|beltline)\b/.test(words(m))));
+  const trim = slotsWhere(root, (m, mesh, index) => !excluded(m, mesh, index) && !PART.mirrorGlass.test(both(m, mesh)) && (kindOf(m.name) === "chrome" || /\b(trim|window ?surround|beltline)\b/.test(words(m))));
 
-  const mirrors = slotsWhere(root, (m, mesh) => {
+  const mirrors = slotsWhere(root, (m, mesh, index) => {
     const l = nodeLabel(mesh);
     if (!PART.mirror.test(l) || PART.mirrorGlass.test(both(m, mesh)) || /\b(interior|inside|rear ?view|rearview)\b/.test(l)) return false;
     if (kindOf(m.name) === "glass" || kindOf(m.name) === "chrome" || (m.metalness >= 0.9 && m.roughness <= 0.1)) return false;
-    return paintSet.has(m) || /\b(caps?|covers?|housing|shell|body)\b/.test(both(m, mesh));
+    return isPaint(mesh, index) || /\b(caps?|covers?|housing|shell|body)\b/.test(both(m, mesh));
   });
 
   const spoiler = slotsWhere(root, (m, mesh) => {
@@ -471,13 +762,14 @@ export function detectParts(root, wheels) {
     return centreOf(mesh).z < 0;
   });
 
-  const exhaust = slotsWhere(root, (m, mesh) => PART.exhaust.test(both(m, mesh)) && centreOf(mesh).z < 0 && !paintSet.has(m) && kindOf(m.name) !== "glass");
+  const exhaust = slotsWhere(root, (m, mesh, index) => PART.exhaust.test(both(m, mesh)) && centreOf(mesh).z < 0 && !isPaint(mesh, index) && !isGlass(mesh, index) && kindOf(m.name) !== "glass");
 
   const frontLamps = lamps.filter((l) => !l.rear);
   const rearLamps = lamps.filter((l) => l.rear);
 
   return {
-    paintHow: choice.how,
+    paintHow,
+    paintNote,
     paint,
     glass,
     lenses,

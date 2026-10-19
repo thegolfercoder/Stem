@@ -75,6 +75,9 @@ export function paintNameSays(name) {
   return null;
 }
 
+/** Parts of the cabin, which are never paint or windows. */
+export const INTERIOR_RE = /\b(interior|interni|interieur|innen\w*|inside|inner|cabin|cockpit|seats?|sitz|sedile|asiento|siege|dash\w*|steering|console|headliner|carpet|leather|fabric|cloth)\b/;
+
 export const LAMP_RE = /\b(head ?lights?|head ?lamps?|headlamps?|tail ?lights?|tail ?lamps?|taillamps?|brake ?lights?|drl|leds?|lights?|lamps?|phares?|faros?|feux|fanali|scheinwerfer|licht|leuchten?|indicators?|blinkers?)\b/;
 export const REAR_LAMP_RE = /\b(tail|rear|back|brake|stop|reverse|arriere|posteriore|trasero|heck|rueck|ruck)\b/;
 export const LAMP_EXCLUDE_RE = /\b(interior|inside|cabin|dash\w*|ceiling|dome|switch|button|screen)\b/;

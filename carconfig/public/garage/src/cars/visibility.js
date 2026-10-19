@@ -1,32 +1,52 @@
 // What of a car can be seen from outside, and where.
 //
 // A tiny software rasteriser: the car is drawn from a ring of directions into
-// small depth buffers that record, for every pixel, which part of which mesh
-// is nearest. It needs no GPU and runs the same in the browser and in Node,
-// so the detection rules built on it can be tested without a browser.
+// small depth buffers that record, for every pixel, the nearest triangle. It
+// needs no GPU and runs the same in the browser and in Node, so the detection
+// rules built on it can be tested without a browser.
 //
-// It answers questions names cannot: which meshes form the outer body shell,
+// It answers questions names cannot: which parts form the outer body shell,
 // which parts fill the window line when nothing is called "glass", and
-// whether the windows are separate parts at all.
+// whether the windows are separate parts at all. Because every pixel keeps its
+// triangle, the same views can be read part by part, material by material, or
+// piece by piece (the connected pieces of one mesh), without drawing again.
 import * as THREE from "three";
 import { materialsOf } from "./names.js";
 
 const deg = THREE.MathUtils.degToRad;
 
-/** Directions to look from: a low ring, a high ring, the top, and two exact side views. */
+/** One name for a place a material is used: a mesh, and which of its materials. */
+export const slotKey = (mesh, index) => `${mesh.uuid}|${index ?? -1}`;
+
+/** Directions to look from: a low ring, a high ring, the top, and the window lines. */
 export const VIEWS = [
   ...Array.from({ length: 12 }, (_, i) => ({ az: i * 30, el: 8 })),
   ...Array.from({ length: 8 }, (_, i) => ({ az: i * 45 + 22.5, el: 40 })),
   { az: 0, el: 89.9 },
-  { az: 90, el: 0, side: "left", size: 192 },
-  { az: 270, el: 0, side: "right", size: 192 },
+  { az: 90, el: 0, line: "left", size: 192 },
+  { az: 270, el: 0, line: "right", size: 192 },
+  { az: 0, el: 4, line: "front", size: 160 },
+  { az: 180, el: 4, line: "rear", size: 160 },
 ];
 
 /**
- * The parts of a car as rasterisable slots: one per mesh and material. Slot
- * ids index `slots`; each slot names its mesh, material index and material.
+ * The window lines. From each side, the columns of the middle of the car and,
+ * in each column, the part of its height where the windows are: 58-90% from
+ * the side; from the front and back, 60-93% (the windscreen and rear window
+ * sit between the bonnet or boot and the roof).
  */
-function collect(root) {
+export const LINES = {
+  side: { views: ["left", "right"], axis: "z", middle: 0.3, band: [0.58, 0.9] },
+  ends: { views: ["front", "rear"], axis: "x", middle: 0.3, band: [0.6, 0.93] },
+};
+
+/**
+ * The parts of a car as rasterisable slots: one per mesh and material. Every
+ * triangle of the car gets one global number; each slot knows its range.
+ * Fully transparent materials are drawn a little behind where they are, so a
+ * hidden duplicate of a surface never wins against the surface itself.
+ */
+function collect(root, skip) {
   root.updateMatrixWorld(true);
   const slots = [];
   const chunks = [];
@@ -40,24 +60,30 @@ function collect(root) {
     const index = g.index;
     const count = index ? index.count : pos.count;
     const groups = Array.isArray(o.material) && g.groups.length ? g.groups : [{ start: 0, count, materialIndex: 0 }];
-    const world = new Float32Array(pos.count * 3);
-    for (let i = 0; i < pos.count; i++) {
-      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-      world[i * 3] = v.x;
-      world[i * 3 + 1] = v.y;
-      world[i * 3 + 2] = v.z;
-    }
+    let world = null;
+    const base = vertexCount;
     for (const grp of groups) {
       const material = mats[grp.materialIndex ?? 0];
-      if (!material) continue;
-      const id = slots.length;
-      slots.push({ id, mesh: o, index: Array.isArray(o.material) ? grp.materialIndex ?? 0 : null, material });
+      const slotIndex = Array.isArray(o.material) ? grp.materialIndex ?? 0 : null;
+      if (!material || skip?.has(slotKey(o, slotIndex))) continue;
+      if (!world) {
+        world = new Float32Array(pos.count * 3);
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+          world[i * 3] = v.x;
+          world[i * 3 + 1] = v.y;
+          world[i * 3 + 2] = v.z;
+        }
+        vertexCount += pos.count;
+      }
       const end = Math.min(grp.start + grp.count, count);
       const tris = Math.max(0, Math.floor((end - grp.start) / 3));
-      chunks.push({ world, index, start: grp.start, tris, base: vertexCount, id });
+      const id = slots.length;
+      const hidden = material.transparent && material.opacity < 0.05;
+      slots.push({ id, mesh: o, index: slotIndex, material, first: triangleCount, count: tris, local: Math.floor(grp.start / 3), bias: hidden ? 0.03 : 0 });
+      chunks.push({ world, index, start: grp.start, tris, base, id });
       triangleCount += tris;
     }
-    vertexCount += pos.count;
   });
 
   // One flat vertex array and one flat triangle list for the whole car.
@@ -83,9 +109,9 @@ function collect(root) {
   return { slots, positions, triangles, triangleSlot };
 }
 
-/** Draws every triangle from one direction, keeping the nearest slot per pixel. */
+/** Draws every triangle from one direction, keeping the nearest triangle per pixel. */
 function rasterise(scene, view, defaultSize) {
-  const { positions, triangles, triangleSlot } = scene;
+  const { positions, triangles, triangleSlot, slots } = scene;
   const dir = new THREE.Vector3().setFromSphericalCoords(1, Math.PI / 2 - deg(view.el), deg(view.az));
   const forward = dir.clone().negate();
   const worldUp = Math.abs(forward.y) > 0.99 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
@@ -132,8 +158,8 @@ function rasterise(scene, view, defaultSize) {
     if (x1 >= width) x1 = width - 1;
     if (y1 >= height) y1 = height - 1;
     const inv = 1 / area;
-    const ta = T[a], tb = T[b], tc = T[c];
-    const slot = triangleSlot[t];
+    const bias = slots[triangleSlot[t]].bias;
+    const ta = T[a] - bias, tb = T[b] - bias, tc = T[c] - bias;
     for (let y = y0; y <= y1; y++) {
       const py = y + 0.5;
       for (let x = x0; x <= x1; x++) {
@@ -146,7 +172,7 @@ function rasterise(scene, view, defaultSize) {
         const p = y * width + x;
         if (d > depth[p]) {
           depth[p] = d;
-          ids[p] = slot;
+          ids[p] = t;
         }
       }
     }
@@ -156,51 +182,54 @@ function rasterise(scene, view, defaultSize) {
 
 /**
  * Renders the car from every view. Big models are drawn from fewer
- * directions so preparing them stays quick.
- * @returns {{slots: object[], views: object[], triangles: number}}
+ * directions so preparing them stays quick. Slots whose keys are in `skip`
+ * are left out, to look through them. Pixels hold global triangle numbers.
  */
-export function renderViews(root, { size = 112, views = VIEWS } = {}) {
-  const scene = collect(root);
+export function renderViews(root, { size = 112, views = VIEWS, skip = null } = {}) {
+  const scene = collect(root, skip);
   const tris = scene.triangleSlot.length;
-  const chosen = tris > 600000 ? views.filter((v, i) => v.side || i % 2 === 0) : views;
-  return { slots: scene.slots, triangles: tris, views: chosen.map((v) => rasterise(scene, v, size)) };
+  const chosen = tris > 600000 ? views.filter((v, i) => v.line || i % 2 === 0) : views;
+  return { ...scene, triangleCount: tris, views: chosen.map((v) => rasterise(scene, v, size)) };
 }
 
-/** Pixels each slot covers across the views that see the car from above the ground. */
-export function visiblePixels(raster) {
-  const counts = new Float64Array(raster.slots.length);
+/** Pixels each triangle covers across the views that see the car from above the ground. */
+export function visibleTriangles(raster) {
+  const counts = new Uint32Array(raster.triangleCount);
   for (const v of raster.views) {
     if (v.el < 0) continue;
-    for (const id of v.ids) if (id >= 0) counts[id]++;
+    for (const t of v.ids) if (t >= 0) counts[t]++;
   }
   return counts;
 }
 
 /**
- * The window line seen from each side: for every column of the middle part of
- * the car, the pixels between 58% and 90% of that column's height. For each
- * group of slots (by default each slot; pass `groupOf` to group by material),
- * how much of that band it covers, how much of its own side-view area lies in
- * it, and how much of the car's length it reaches on its better side.
+ * One window line, read for groups of triangles (`groupOf` maps a triangle
+ * number to a key: its slot, its material, its piece). For every column of
+ * the middle of the car, the pixels in the line's band of that column's
+ * height. For each group: how much of the band it covers (bandShare), how much
+ * of its own area in these views lies in the band (inBand), how much of the
+ * car's length or width it reaches on its better side (reach), how much of
+ * the band's height it fills where it appears (cover: a window fills it, a
+ * trim strip does not), how far in metres it sits inside the body below it
+ * (inset), and how far behind the roof edge above it (behind).
  */
-export function windowBand(raster, carBox, groupOf = (slot) => slot.id) {
-  const L = carBox.max.z - carBox.min.z;
+export function windowBand(raster, carBox, groupOf, line = LINES.side) {
+  const extent = line.axis === "z" ? carBox.max.z - carBox.min.z : carBox.max.x - carBox.min.x;
   const groups = new Map();
   const get = (key) => {
     let g = groups.get(key);
-    if (!g) groups.set(key, (g = { key, slots: [], band: 0, side: 0, columns: { left: 0, right: 0 } }));
+    if (!g) groups.set(key, (g = { key, band: 0, own: 0, insetSum: 0, insetCount: 0, behindSum: 0, bandRows: 0, columns: {} }));
     return g;
   };
-  for (const s of raster.slots) get(groupOf(s)).slots.push(s);
-  const keyOf = raster.slots.map((s) => groupOf(s));
   let bandTotal = 0;
-  const columnTotal = { left: 0, right: 0 };
+  const columnTotal = {};
   for (const v of raster.views) {
-    if (!v.side) continue;
-    const { width, height, ids, right, scale, minX } = v;
+    if (!line.views.includes(v.line)) continue;
+    const { width, height, ids, depth, scale, minX } = v;
+    columnTotal[v.line] = 0;
     for (let x = 0; x < width; x++) {
       const along = (x + 0.5) / scale + minX;
-      if (Math.abs(along * right.z) > L * 0.3) continue;
+      if (Math.abs(along) > extent * line.middle) continue;
       let top = -1, bottom = -1;
       for (let y = 0; y < height; y++) {
         if (ids[y * width + x] < 0) continue;
@@ -208,27 +237,172 @@ export function windowBand(raster, carBox, groupOf = (slot) => slot.id) {
         top = y;
       }
       if (top < 0) continue;
-      columnTotal[v.side]++;
+      columnTotal[v.line]++;
       const h = top - bottom + 1;
-      const lo = bottom + Math.floor(0.58 * h), hi = bottom + Math.ceil(0.9 * h);
+      const lo = bottom + Math.floor(line.band[0] * h), hi = bottom + Math.ceil(line.band[1] * h);
+      // How far out the body reaches below the band, to measure how deep
+      // inside the car each part of the band sits.
+      let below = -Infinity;
+      for (let y = bottom + Math.floor(0.3 * h); y < lo; y++) if (ids[y * width + x] >= 0) below = Math.max(below, depth[y * width + x]);
+      // And the roof edge above it: a window meets the roof and leans out from
+      // it, while a seat seen through an empty window sits well behind it.
+      let roof = depth[top * width + x];
+      for (let y = hi + 1; y <= top; y++) if (ids[y * width + x] >= 0) roof = Math.max(roof, depth[y * width + x]);
       const seen = new Set();
       for (let y = bottom; y <= top; y++) {
-        const id = ids[y * width + x];
-        if (id < 0) continue;
-        const g = get(keyOf[id]);
-        g.side++;
+        const t = ids[y * width + x];
+        if (t < 0) continue;
+        const g = get(groupOf(t));
+        g.own++;
         if (y < lo || y > hi) continue;
         g.band++;
         bandTotal++;
+        if (below > -Infinity) {
+          g.insetSum += below - depth[y * width + x];
+          g.insetCount++;
+        }
+        g.behindSum += roof - depth[y * width + x];
         seen.add(g);
       }
-      for (const g of seen) g.columns[v.side]++;
+      for (const g of seen) {
+        g.columns[v.line] = (g.columns[v.line] ?? 0) + 1;
+        g.bandRows += hi - lo + 1;
+      }
     }
   }
   for (const g of groups.values()) {
     g.bandShare = bandTotal ? g.band / bandTotal : 0;
-    g.inBand = g.side ? g.band / g.side : 0;
-    g.reach = Math.max(g.columns.left / (columnTotal.left || 1), g.columns.right / (columnTotal.right || 1));
+    g.inBand = g.own ? g.band / g.own : 0;
+    g.reach = Math.max(0, ...Object.entries(g.columns).map(([k, n]) => n / (columnTotal[k] || 1)));
+    g.cover = g.bandRows ? g.band / g.bandRows : 0;
+    g.inset = g.insetCount ? g.insetSum / g.insetCount : 0;
+    g.behind = g.band ? g.behindSum / g.band : 0;
   }
   return { bandTotal, groups };
+}
+
+/** Joins the triangles of the given slots into connected pieces (sharing a corner within half a millimetre). */
+function connectedPieces(raster, slots) {
+  const { positions, triangles } = raster;
+  const pieceOf = new Int32Array(raster.triangleCount).fill(-1);
+  const pieces = [];
+  const q = 2000; // half a millimetre
+  const corner = new THREE.Vector3();
+  for (const s of slots) {
+    const parent = new Int32Array(s.count).map((_, i) => i);
+    const find = (i) => {
+      while (parent[i] !== i) i = parent[i] = parent[parent[i]];
+      return i;
+    };
+    const firstAt = new Map();
+    for (let k = 0; k < s.count; k++) {
+      const t = s.first + k;
+      for (let c = 0; c < 3; c++) {
+        const p = triangles[t * 3 + c] * 3;
+        const key = (Math.round(positions[p] * q) + 2 ** 15) * 2 ** 32 + (Math.round(positions[p + 1] * q) + 2 ** 15) * 2 ** 16 + (Math.round(positions[p + 2] * q) + 2 ** 15);
+        const other = firstAt.get(key);
+        if (other === undefined) firstAt.set(key, k);
+        else {
+          const a = find(k), b = find(other);
+          if (a !== b) parent[a] = b;
+        }
+      }
+    }
+    const idOfRoot = new Map();
+    for (let k = 0; k < s.count; k++) {
+      const r = find(k);
+      let id = idOfRoot.get(r);
+      if (id === undefined) {
+        id = pieces.length;
+        idOfRoot.set(r, id);
+        pieces.push({ id, slot: s, triangles: 0, box: new THREE.Box3() });
+      }
+      pieceOf[s.first + k] = id;
+      const piece = pieces[id];
+      piece.triangles++;
+      for (let c = 0; c < 3; c++) {
+        const p = triangles[(s.first + k) * 3 + c] * 3;
+        piece.box.expandByPoint(corner.set(positions[p], positions[p + 1], positions[p + 2]));
+      }
+    }
+  }
+  return { pieceOf, pieces };
+}
+
+/**
+ * What the views say about a car, per slot and per material: the share of
+ * everything visible from outside that it makes up (vis), and its figures on
+ * the side window line (band) and the front and rear one (ends). `pieces`
+ * reads chosen slots piece by piece in the same way. `throughGlass` draws the
+ * car again without the given slots, to find what is only seen through them.
+ */
+export function survey(root) {
+  const raster = renderViews(root);
+  const box = new THREE.Box3().setFromObject(root);
+  const counts = visibleTriangles(raster);
+  let total = 0;
+  for (const c of counts) total += c;
+  total ||= 1;
+  const { slots: list, triangleSlot } = raster;
+  const keyOfSlot = list.map((s) => slotKey(s.mesh, s.index));
+  const side = windowBand(raster, box, (t) => keyOfSlot[triangleSlot[t]], LINES.side);
+  const ends = windowBand(raster, box, (t) => keyOfSlot[triangleSlot[t]], LINES.ends);
+  const sideM = windowBand(raster, box, (t) => list[triangleSlot[t]].material, LINES.side);
+  const endsM = windowBand(raster, box, (t) => list[triangleSlot[t]].material, LINES.ends);
+
+  const slots = new Map();
+  const materials = new Map();
+  list.forEach((s, i) => {
+    const key = keyOfSlot[i];
+    let vis = 0;
+    for (let t = s.first; t < s.first + s.count; t++) vis += counts[t];
+    vis /= total;
+    const slot = slots.get(key) ?? { key, mesh: s.mesh, index: s.index, material: s.material, vis: 0, parts: [], band: side.groups.get(key), ends: ends.groups.get(key) };
+    slot.vis += vis;
+    slot.parts.push(s);
+    slots.set(key, slot);
+    const m = materials.get(s.material) ?? { vis: 0, band: sideM.groups.get(s.material), ends: endsM.groups.get(s.material) };
+    m.vis += vis;
+    materials.set(s.material, m);
+  });
+  return {
+    box,
+    triangles: raster.triangleCount,
+    bandTotal: side.bandTotal,
+    endsTotal: ends.bandTotal,
+    slots,
+    materials,
+    slot: (mesh, index) => slots.get(slotKey(mesh, index)),
+    material: (m) => materials.get(m),
+    /** The connected pieces of the given slots, each with its own vis, band and ends figures. */
+    pieces(chosen) {
+      const { pieceOf, pieces } = connectedPieces(raster, chosen.flatMap((s) => s.parts));
+      const pb = windowBand(raster, box, (t) => pieceOf[t], LINES.side);
+      const pe = windowBand(raster, box, (t) => pieceOf[t], LINES.ends);
+      const vis = new Float64Array(pieces.length);
+      for (const s of new Set(pieces.map((p) => p.slot))) for (let t = s.first; t < s.first + s.count; t++) vis[pieceOf[t]] += counts[t];
+      for (const p of pieces) {
+        p.vis = vis[p.id] / total;
+        p.band = pb.groups.get(p.id);
+        p.ends = pe.groups.get(p.id);
+        p.slotKey = slotKey(p.slot.mesh, p.slot.index);
+      }
+      return { pieceOf, pieces, bandTotal: pb.bandTotal, endsTotal: pe.bandTotal };
+    },
+    /** Slot keys seen when the `hidden` slots are taken away, that were not seen before. */
+    throughGlass(hidden) {
+      if (!hidden.size) return new Set();
+      const views = VIEWS.filter((v) => v.el > 0 && !v.line);
+      const again = renderViews(root, { views, skip: hidden });
+      const seen = visibleTriangles(again);
+      const out = new Set();
+      for (const s of again.slots) {
+        const key = slotKey(s.mesh, s.index);
+        let n = 0;
+        for (let t = s.first; t < s.first + s.count; t++) n += seen[t];
+        if (n > 0 && !(slots.get(key)?.vis > 0)) out.add(key);
+      }
+      return out;
+    },
+  };
 }

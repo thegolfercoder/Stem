@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { normalize, groundOnWheels } from "./normalizer.js";
 import { detectParts, wheelsByName, wheelsByShape, dominantMaterials } from "./detector.js";
 import { materialsOf, kindOf } from "./names.js";
+import { slotKey } from "./visibility.js";
 import { factoryPaint, paintMaterial } from "../materials/paint.js";
 import { factoryGlass, glassMaterial, lensMaterial } from "../materials/glass.js";
 import { rimMaterial, caliperMaterial, factoryTyre, finishMaterial, carbonMaterial, forgetMaterialsOf } from "../materials/wheels.js";
@@ -61,28 +62,41 @@ export class Vehicle {
     this.object.updateMatrixWorld(true);
     if (wheels) for (const w of wheels) for (const m of w.meshes) this.wheels.attach(m);
 
-    // Factory look: each original material replaced once by its upgraded version.
+    // Factory look: each original material upgraded once for each role it plays
+    // (one clay material can be the body on the shell and plain clay inside).
     this.factory = new Map();
-    const paintMats = new Set(this.parts.paint.map((s) => s.original));
-    const tyreMats = new Set(this.parts.tyres.map((s) => s.original));
-    const glassMats = new Set(this.parts.glass.map((s) => s.original));
-    const lensMats = new Set(this.parts.lenses.map((s) => s.original));
-    const upgrade = (m) => {
+    this.originals = new Set();
+    this.factorySlots = new Map();
+    const roles = new Map();
+    const mark = (slots, role) => slots.forEach((s) => roles.set(slotKey(s.mesh, s.index), role));
+    mark(this.parts.lenses, "lens");
+    mark(this.parts.glass, "glass");
+    mark(this.parts.tyres, "tyre");
+    mark(this.parts.paint, "paint");
+    const upgrade = (m, role) => {
       if (!m) return m;
-      let u = this.factory.get(m);
+      const key = `${m.uuid}|${role}`;
+      let u = this.factory.get(key);
       if (u) return u;
-      if (paintMats.has(m)) u = factoryPaint(m);
-      else if (tyreMats.has(m)) u = factoryTyre(m);
-      else if (glassMats.has(m)) u = factoryGlass(m);
-      else if (lensMats.has(m) || kindOf(m.name) === "lens") u = lensMaterial(m);
+      if (role === "paint") u = factoryPaint(m);
+      else if (role === "tyre") u = factoryTyre(m);
+      else if (role === "glass") u = factoryGlass(m);
+      else if (role === "lens" || kindOf(m.name) === "lens") u = lensMaterial(m);
       else u = upgradeSurface(m);
       sharpenTextures(u, anisotropy);
-      this.factory.set(m, u);
+      this.factory.set(key, u);
+      this.originals.add(m);
       return u;
     };
     this.object.traverse((o) => {
       if (!o.isMesh) return;
-      o.material = Array.isArray(o.material) ? o.material.map(upgrade) : upgrade(o.material);
+      const own = (m, index) => {
+        const key = slotKey(o, index);
+        const u = upgrade(m, roles.get(key) ?? "surface");
+        this.factorySlots.set(key, u);
+        return u;
+      };
+      o.material = Array.isArray(o.material) ? o.material.map((m, i) => own(m, i)) : own(o.material, null);
       o.layers.enable(CAR_LAYER);
       o.castShadow = o.receiveShadow = false;
     });
@@ -95,6 +109,7 @@ export class Vehicle {
       floorsRemoved,
       groundShift,
       paintHow: this.parts.paintHow,
+      paintNote: this.parts.paintNote,
       triangles: this.countTriangles(),
       measured: { length: this.size.z, width: this.size.x, height: this.size.y },
     };
@@ -123,7 +138,7 @@ export class Vehicle {
   }
 
   factoryOf(slot) {
-    return this.factory.get(slot.original) ?? slot.original;
+    return this.factorySlots.get(slotKey(slot.mesh, slot.index)) ?? slot.original;
   }
 
   /** Puts slots back to their factory look, or gives them `make(slot)`. */
@@ -213,10 +228,8 @@ export class Vehicle {
       geometries.add(o.geometry);
       materialsOf(o).forEach((m) => m && materials.add(m));
     });
-    for (const [orig, up] of this.factory) {
-      materials.add(orig);
-      materials.add(up);
-    }
+    for (const m of this.originals) materials.add(m);
+    for (const m of this.factory.values()) materials.add(m);
     for (const m of this.lit?.values() ?? []) materials.add(m);
     const textures = new Set();
     for (const m of materials) {
@@ -224,7 +237,7 @@ export class Vehicle {
       texturesOf(m).forEach((t) => textures.add(t));
       m.dispose();
     }
-    forgetMaterialsOf(new Set(this.factory.keys()));
+    forgetMaterialsOf(this.originals);
     geometries.forEach((g) => g.dispose());
     textures.forEach((t) => t.dispose());
     this.object.removeFromParent();
