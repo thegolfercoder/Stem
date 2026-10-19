@@ -2,7 +2,7 @@
 // materials upgraded, and able to take a build (paint, wheels, glass...).
 import * as THREE from "three";
 import { normalize, groundOnWheels } from "./normalizer.js";
-import { detectParts, wheelsByName, wheelsByShape } from "./detector.js";
+import { detectParts, wheelsByName, wheelsByShape, dominantMaterials } from "./detector.js";
 import { materialsOf, kindOf } from "./names.js";
 import { factoryPaint, paintMaterial } from "../materials/paint.js";
 import { factoryGlass, glassMaterial, lensMaterial } from "../materials/glass.js";
@@ -43,7 +43,7 @@ export class Vehicle {
 
     const { root, orient, lengthSource, floorsRemoved } = normalize(model, entry);
     const length = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3()).z;
-    const wheels = wheelsByName(root, length) ?? wheelsByShape(root);
+    const wheels = wheelsByName(root, length, dominantMaterials(root)) ?? wheelsByShape(root);
     const groundShift = groundOnWheels(root, orient, wheels);
     this.parts = detectParts(root, wheels);
     this.caps = this.parts.capabilities;

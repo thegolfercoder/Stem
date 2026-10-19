@@ -30,17 +30,28 @@ const LAMP_WORDS = "head ?lights?|tail ?lights?|lamps?|lights?|indicators?|blink
 
 /** Surface kinds recognisable from a material's name alone. Order matters. */
 export const KINDS = [
-  ["lens", new RegExp(`\\b(${LAMP_WORDS}) ?(glass|lens|cover|vitre|verre|vetro|vidrio|glas)|\\blens(es)?\\b`)],
-  ["glass", /\b(glass|windows?|windscreen|windshield|backlight|vitres?|verre|vetro|vetri\w*|vidrios?|cristal(es)?|glas|scheiben?|ventanas?|finestrini)\b/],
+  // Lamp covers, including run-together names like "redglass" or "clearglass".
+  ["lens", new RegExp(`\\b(${LAMP_WORDS}) ?(glass|lens|cover|vitre|verre|vetro|vidrio|glas)|\\blens(es)?\\b|\\b(red|orange|amber|yellow|clear|light|lamp|head|tail|signal|indicator|blinker|led|fog|brake|stop|turn)(glass|lens)\\b`)],
+  // Mirror glass reflects; it is not a window.
+  ["mirror", /\b(mirrors? ?(glass|surface|reflect\w*)|mirrorglass|reflect\w*|spiegelglas)\b/],
+  // Windows, including "windowglass", Polish "szkło"/"szyba", Czech "sklo", Portuguese "vidro".
+  ["glass", /\b(\w*glass\w*|windows?|windscreen|windshield|backlight|vitres?|verre|vetro|vetri\w*|vidrios?|vidros?|cristal(es)?|glas|scheiben?|ventanas?|finestrini|szk[lł]?o|szyb\w*|sklo|steklo|\w*windows?)\b/],
   ["tyre", /\b(tyres?|tires?|rubber|tread|sidewall|pneus?|pneumatici|gomma|gomme|goma|neumaticos?|reifen)\b/],
   ["carbon", /\b(carbon|cfrp|carbone|carbono)\b/],
   ["chrome", /\b(chrome|chromed|polished|chromo|cromo|cromato|chrom)\b/],
   ["plastic", /\b(plastic|trim ?black|black ?trim|textured|matte ?black|grille|grill|plastique|plastica|plastico|kunststoff)\b/],
 ];
 
+/** Parts named after the window they surround, not the glass itself. */
+const WINDOW_SURROUND = /\b(frames?|surrounds?|seals?|trims?|gaskets?|mouldings?|moldings?|regulators?|switch\w*|tint\w*film)\b/;
+
 export function kindOf(name) {
   const w = nameWords(name);
-  for (const [k, re] of KINDS) if (re.test(w)) return k;
+  for (const [k, re] of KINDS) {
+    if (!re.test(w)) continue;
+    if (k === "glass" && WINDOW_SURROUND.test(w)) return null;
+    return k;
+  }
   return null;
 }
 

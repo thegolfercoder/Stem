@@ -111,48 +111,93 @@ export function choosePaint(stats) {
 const CORNERS = ["fl", "fr", "rl", "rr"];
 /** Corner of a point: the car's nose is +z and its left side is +x. */
 const cornerKey = (c) => `${c.z > 0 ? "f" : "r"}${c.x > 0 ? "l" : "r"}`;
+/** Quadrant index (x > 0 is left, z > 0 is front) to corner. */
+const QUADRANT = ["rr", "rl", "fr", "fl"];
+const quadrantOf = (x, z) => (x > 0 ? 1 : 0) | (z > 0 ? 2 : 0);
 
-function sane(groups) {
-  const found = CORNERS.map((k) => groups.get(k));
-  const ok = found.every((g) => {
-    if (!g) return false;
-    const s = g.box.getSize(new THREE.Vector3());
-    const r = s.y / 2;
-    return r > 0.2 && r < 0.62 && Math.abs(s.z - s.y) / s.y < 0.32;
-  });
-  return ok ? found.map((g, i) => ({ ...g, corner: CORNERS[i] })) : null;
+/**
+ * Materials too common to be the tyres or rims, whatever they are called. A
+ * model whose whole body uses a material named "tire" must not be read as
+ * all wheel.
+ */
+export function dominantMaterials(root, limit = 0.35) {
+  const { materials, stats } = materialStats(root);
+  const total = stats.reduce((s, m) => s + m.area, 0) || 1;
+  return new Set(materials.filter((m, i) => stats[i].area / total > limit));
 }
 
 /**
- * Splits one mesh that holds all four wheels into four, one per corner, by
- * copying each triangle's raw attribute values (texture coordinates and
- * normals included) into the piece for the corner it sits in.
+ * Checks that four wheel boxes are a believable set: one per corner, round,
+ * on two axles, symmetric left to right, alike in size, and far enough apart.
  */
-export function splitAcrossCorners(mesh) {
-  if (Array.isArray(mesh.material) || !mesh.parent) return;
-  const g = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry;
+export function wheelSetIsSane(boxes, carLength, carWidth, { sizeRatio = 1.3 } = {}) {
+  if (!boxes.every(Boolean)) return false;
+  const s = boxes.map((b) => b.getSize(new THREE.Vector3()));
+  const c = boxes.map((b) => b.getCenter(new THREE.Vector3()));
+  const [fl, fr, rl, rr] = c;
+  const round = s.every((x) => x.y / 2 > 0.2 && x.y / 2 < 0.65 && Math.abs(x.z - x.y) / x.y < 0.32);
+  const corners = fl.x > 0 && fl.z > 0 && fr.x < 0 && fr.z > 0 && rl.x > 0 && rl.z < 0 && rr.x < 0 && rr.z < 0;
+  const axles = Math.abs(fl.z - fr.z) < 0.08 * carLength && Math.abs(rl.z - rr.z) < 0.08 * carLength;
+  const wheelbase = (fl.z + fr.z) / 2 - (rl.z + rr.z) / 2 > 0.4 * carLength;
+  const symmetric = Math.abs(fl.x + fr.x) < 0.12 * carWidth && Math.abs(rl.x + rr.x) < 0.12 * carWidth;
+  const d = s.map((x) => x.y);
+  const alike = Math.max(...d) / Math.min(...d) < sizeRatio;
+  return round && corners && axles && wheelbase && symmetric && alike;
+}
+
+function sane(groups, carLength, carWidth, options) {
+  const found = CORNERS.map((k) => groups.get(k));
+  if (!found.every(Boolean)) return null;
+  return wheelSetIsSane(found.map((g) => g.box), carLength, carWidth, options) ? found.map((g, i) => ({ ...g, corner: CORNERS[i] })) : null;
+}
+
+/** Which quadrant each triangle of a mesh sits in, by its centre in world space. */
+function triangleQuadrants(mesh) {
+  const g = mesh.geometry;
   const pos = g.attributes.position;
-  if (!pos) return;
-  const tris = Math.floor(pos.count / 3), corner = new Uint8Array(tris), counts = [0, 0, 0, 0];
-  const v = new THREE.Vector3(), c = new THREE.Vector3();
-  mesh.updateMatrixWorld(true);
+  if (!pos) return null;
+  const index = g.index;
+  const tris = Math.floor((index ? index.count : pos.count) / 3);
+  const quad = new Uint8Array(tris);
+  const boxes = [new THREE.Box3(), new THREE.Box3(), new THREE.Box3(), new THREE.Box3()];
+  const counts = [0, 0, 0, 0];
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  mesh.updateWorldMatrix(true, false);
   for (let t = 0; t < tris; t++) {
-    c.set(0, 0, 0);
-    for (let k = 0; k < 3; k++) c.add(v.fromBufferAttribute(pos, t * 3 + k).applyMatrix4(mesh.matrixWorld));
-    const key = (c.x > 0 ? 1 : 0) | (c.z > 0 ? 2 : 0);
-    corner[t] = key;
-    counts[key]++;
+    const i = t * 3;
+    a.fromBufferAttribute(pos, index ? index.getX(i) : i).applyMatrix4(mesh.matrixWorld);
+    b.fromBufferAttribute(pos, index ? index.getX(i + 1) : i + 1).applyMatrix4(mesh.matrixWorld);
+    c.fromBufferAttribute(pos, index ? index.getX(i + 2) : i + 2).applyMatrix4(mesh.matrixWorld);
+    const q = quadrantOf((a.x + b.x + c.x) / 3, (a.z + b.z + c.z) / 3);
+    quad[t] = q;
+    counts[q]++;
+    boxes[q].expandByPoint(a).expandByPoint(b).expandByPoint(c);
   }
-  if (counts.some((n) => n === 0)) return;
-  for (let key = 0; key < 4; key++) {
+  return { quad, boxes, counts, tris };
+}
+
+/**
+ * Splits a mesh that holds the wheels of two or more corners into one mesh per
+ * corner, copying each triangle's raw attribute values (texture coordinates
+ * and normals included) into the piece for the corner it sits in. Returns the
+ * pieces by corner, or null when the mesh is already in one corner.
+ */
+export function splitAcrossCorners(mesh, known = triangleQuadrants(mesh)) {
+  if (Array.isArray(mesh.material) || !mesh.parent || !known) return null;
+  const { quad, counts, tris } = known;
+  if (counts.filter((n) => n > 0).length < 2) return null;
+  const g = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry;
+  const pieces = new Map();
+  for (let q = 0; q < 4; q++) {
+    if (!counts[q]) continue;
     const geo = new THREE.BufferGeometry();
     for (const [name, attr] of Object.entries(g.attributes)) {
       const inter = attr.isInterleavedBufferAttribute, src = inter ? attr.data.array : attr.array;
       const stride = inter ? attr.data.stride : attr.itemSize, offset = inter ? attr.offset : 0, size = attr.itemSize;
-      const out = new src.constructor(counts[key] * 3 * size);
+      const out = new src.constructor(counts[q] * 3 * size);
       let w = 0;
       for (let t = 0; t < tris; t++) {
-        if (corner[t] !== key) continue;
+        if (quad[t] !== q) continue;
         for (let k = 0; k < 3; k++) {
           const base = (t * 3 + k) * stride + offset;
           for (let i = 0; i < size; i++) out[w++] = src[base + i];
@@ -163,94 +208,160 @@ export function splitAcrossCorners(mesh) {
     geo.computeBoundingBox();
     geo.computeBoundingSphere();
     const piece = new THREE.Mesh(geo, mesh.material);
-    piece.name = `${mesh.name} ${key}`;
+    piece.name = `${mesh.name} ${QUADRANT[q]}`;
     piece.position.copy(mesh.position);
     piece.quaternion.copy(mesh.quaternion);
     piece.scale.copy(mesh.scale);
     mesh.parent.add(piece);
+    pieces.set(QUADRANT[q], piece);
   }
   mesh.removeFromParent();
   if (g !== mesh.geometry) g.dispose();
   mesh.geometry.dispose();
+  return pieces;
 }
 
-const isWheelPart = (o) => {
-  const l = label(o);
-  return WHEEL_RE.test(l) && !WHEEL_EXCLUDE_RE.test(l);
+const isWheelPart = (o, dominant) => {
+  const named = `${nodeLabel(o)} ${materialsOf(o).filter((m) => m && !dominant.has(m)).map((m) => nameWords(m.name)).join(" ")}`;
+  return WHEEL_RE.test(named) && !WHEEL_EXCLUDE_RE.test(label(o));
 };
 
-/** The four wheels from their names, splitting a mesh that holds all of them. */
-export function wheelsByName(root, carLength) {
-  const merged = [];
-  root.traverse((o) => {
-    if (!o.isMesh || !isWheelPart(o)) return;
+function meshesOf(root) {
+  const out = [];
+  root.traverse((o) => o.isMesh && out.push(o));
+  return out;
+}
+
+/** The four wheels from their names, splitting meshes that hold more than one. */
+export function wheelsByName(root, carLength, dominant = new Set()) {
+  const whole = box3(root);
+  const width = whole.max.x - whole.min.x;
+  for (const o of meshesOf(root)) {
+    if (!isWheelPart(o, dominant)) continue;
     const b = box3(o), bs = b.getSize(new THREE.Vector3()), bc = b.getCenter(new THREE.Vector3());
-    if (bs.y <= 1.2 && bc.y <= 0.7 && bs.x > 0.6 && bs.z > carLength * 0.4) merged.push(o);
-  });
-  merged.forEach(splitAcrossCorners);
+    if (bs.y > 1.3 || bc.y > 0.75) continue;
+    const acrossX = b.min.x < 0 && b.max.x > 0 && bs.x > 0.6;
+    const acrossZ = b.min.z < 0 && b.max.z > 0 && bs.z > carLength * 0.4;
+    if (acrossX || acrossZ) splitAcrossCorners(o);
+  }
   root.updateMatrixWorld(true);
   const groups = new Map();
   let tangled = false;
-  root.traverse((o) => {
-    if (!o.isMesh || !isWheelPart(o)) return;
+  for (const o of meshesOf(root)) {
+    if (!isWheelPart(o, dominant)) continue;
     const b = box3(o), bs = b.getSize(new THREE.Vector3()), bc = b.getCenter(new THREE.Vector3());
-    if (bs.y > 1.25 || bc.y > 0.75) return;
+    if (bs.y > 1.3 || bc.y > 0.75) continue;
     if ((b.min.x < 0 && b.max.x > 0 && bs.x > 0.6) || (b.min.z < 0 && b.max.z > 0 && bs.z > carLength * 0.4)) tangled = true;
-    if (Math.abs(bc.x) < 0.15) return;
+    if (Math.abs(bc.x) < 0.15) continue;
     const key = cornerKey(bc), g = groups.get(key);
     if (g) {
       g.box.union(b);
       g.meshes.push(o);
-    }    else groups.set(key, { box: b, meshes: [o] });
-  });
-  return tangled ? null : sane(absorbInside(root, groups));
+    } else groups.set(key, { box: b, meshes: [o] });
+  }
+  return tangled ? null : sane(absorbInside(root, groups), carLength, width, { sizeRatio: 1.5 });
 }
 
 /**
  * Adds unnamed parts that sit wholly inside a wheel (a rim called "Object_12",
  * a hub cap) to that wheel, so the wheel moves and is finished as one piece.
+ * Parts that hold pieces of several wheels at once (four rims in one mesh) are
+ * split first, when every piece lies inside its own wheel.
  */
-function absorbInside(root, groups) {
+function absorbInside(root, groups, margin = 0.01) {
   const taken = new Set([...groups.values()].flatMap((g) => g.meshes));
-  const zones = [...groups.values()].map((g) => ({ g, zone: g.box.clone().expandByScalar(0.01) }));
-  root.traverse((o) => {
-    if (!o.isMesh || taken.has(o)) return;
+  const zones = new Map([...groups].map(([k, g]) => [k, g.box.clone().expandByScalar(margin)]));
+  for (const o of meshesOf(root)) {
+    if (taken.has(o)) continue;
     const b = box3(o);
-    const hit = zones.find(({ zone }) => zone.containsBox(b));
-    if (hit) {
-      hit.g.meshes.push(o);
+    const corner = [...zones].find(([, zone]) => zone.containsBox(b))?.[0];
+    if (corner) {
+      groups.get(corner).meshes.push(o);
       taken.add(o);
+      continue;
     }
-  });
+    // A mesh reaching into two or more wheels and nowhere else.
+    if (Array.isArray(o.material) || ![...zones.values()].some((z) => z.intersectsBox(b))) continue;
+    const known = triangleQuadrants(o);
+    if (!known) continue;
+    const used = known.counts.map((n, q) => (n ? q : -1)).filter((q) => q >= 0);
+    if (used.length < 2 || !used.every((q) => zones.get(QUADRANT[q])?.containsBox(known.boxes[q]))) continue;
+    const pieces = splitAcrossCorners(o, known);
+    for (const [corner, piece] of pieces ?? []) {
+      groups.get(corner).meshes.push(piece);
+      taken.add(piece);
+    }
+  }
   return groups;
 }
 
-/** The four wheels from their shape: round, upright, at the corners, touching the ground. */
+/**
+ * The four wheels from their shape: a round, upright part at each corner that
+ * touches the ground. Meshes holding several wheels (an axle's two tyres, or
+ * all four) are examined corner by corner and split when that finds them.
+ */
 export function wheelsByShape(root) {
   root.updateMatrixWorld(true);
-  const whole = box3(root), width = whole.getSize(new THREE.Vector3()).x;
-  const meshes = [];
-  root.traverse((o) => o.isMesh && meshes.push({ o, box: box3(o) }));
-  const tyres = new Map();
-  for (const m of meshes) {
-    const s = m.box.getSize(new THREE.Vector3()), c = m.box.getCenter(new THREE.Vector3());
-    if (!(Math.abs(s.z - s.y) / s.y < 0.2 && s.y > 0.45 && s.y < 1.2 && s.x < s.y * 0.6 && m.box.min.y - whole.min.y < 0.06 && Math.abs(c.x) > width * 0.2)) continue;
-    const key = cornerKey(c), prev = tyres.get(key);
-    if (!prev || s.y > prev.box.getSize(new THREE.Vector3()).y) tyres.set(key, m);
+  const whole = box3(root);
+  const W = whole.max.x - whole.min.x, L = whole.max.z - whole.min.z, H = whole.max.y - whole.min.y;
+  const ground = whole.min.y;
+  const tyreLike = (b) => {
+    const s = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
+    return (
+      s.y > 0.42 && s.y < 1.3 &&
+      Math.abs(s.z - s.y) / s.y < 0.22 &&
+      s.x < s.y * 0.7 && s.x > 0.06 &&
+      b.min.y - ground < Math.max(0.08, 0.05 * H) &&
+      Math.abs(c.x) > W * 0.2
+    );
+  };
+  const best = new Map();
+  const consider = (corner, mesh, box, known) => {
+    const prev = best.get(corner);
+    const h = box.max.y - box.min.y;
+    if (!prev || h > prev.box.max.y - prev.box.min.y) best.set(corner, { mesh, box, known });
+  };
+  for (const o of meshesOf(root)) {
+    const b = box3(o);
+    if (b.min.y - ground > Math.max(0.08, 0.05 * H) || b.max.y - ground > 0.8 * H) continue;
+    if (tyreLike(b)) {
+      consider(cornerKey(b.getCenter(new THREE.Vector3())), o, b, null);
+      continue;
+    }
+    // Wide or long low meshes may hold several tyres.
+    if (Array.isArray(o.material) || (b.max.x - b.min.x < 0.6 && b.max.z - b.min.z < 0.4 * L)) continue;
+    const known = triangleQuadrants(o);
+    if (!known) continue;
+    known.boxes.forEach((qb, q) => {
+      if (known.counts[q] && tyreLike(qb)) consider(QUADRANT[q], o, qb, known);
+    });
   }
-  if (tyres.size !== 4) return null;
+  if (CORNERS.some((k) => !best.has(k))) return null;
+  if (!wheelSetIsSane(CORNERS.map((k) => best.get(k).box), L, W)) return null;
+
+  // Split the meshes the tyres were found in, and collect each wheel.
   const groups = new Map();
-  for (const [key, tyre] of tyres) {
-    const zone = tyre.box.clone();
+  const split = new Map();
+  for (const corner of CORNERS) {
+    const { mesh, box, known } = best.get(corner);
+    let tyre = mesh;
+    if (known) {
+      if (!split.has(mesh)) split.set(mesh, splitAcrossCorners(mesh, known));
+      tyre = split.get(mesh)?.get(corner);
+      if (!tyre) return null;
+    }
+    const zone = box.clone();
     zone.min.x -= 0.12;
     zone.max.x += 0.12;
-    zone.expandByScalar(0.01);
-    const parts = meshes.filter((m) => m === tyre || zone.containsBox(m.box)).map((m) => m.o);
-    const box = new THREE.Box3();
-    parts.forEach((p) => box.expandByObject(p));
-    groups.set(key, { box, meshes: parts, tyreMesh: tyre.o });
+    groups.set(corner, { box: zone, meshes: [tyre], tyreMesh: tyre, tyreBox: box });
   }
-  return sane(groups);
+  root.updateMatrixWorld(true);
+  absorbInside(root, groups);
+  for (const g of groups.values()) {
+    g.box = new THREE.Box3();
+    g.meshes.forEach((m) => g.box.expandByObject(m));
+  }
+  return sane(groups, L, W);
 }
 
 // ------------------------------------------------------------------ slots
