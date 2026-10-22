@@ -70,6 +70,7 @@
         screenshot: false,
       })),
       notes: { picks: ["", "", ""], reflections: {} },
+      positionsImport: null,
       ips: { team: "", title: "Investment Policy Statement: Laura Gao", pitch: "", body: "" },
       deadlines: [
         { id: "trading-begins", label: "Trading began", date: "2026-09-28" },
@@ -184,7 +185,7 @@
       a.remove();
     }, 0);
   }
-  function pickFile(accept) {
+  function pickFile(accept, withName) {
     return new Promise((resolve) => {
       const i = document.createElement("input");
       i.type = "file";
@@ -192,7 +193,7 @@
       i.onchange = () => {
         const f = i.files[0];
         if (!f) return resolve(null);
-        f.text().then(resolve);
+        f.text().then((text) => resolve(withName ? { text, name: f.name } : text));
       };
       i.click();
     });
@@ -275,6 +276,60 @@
 
   const views = {};
 
+  function reconcileCard() {
+    const imp = state.positionsImport;
+    if (!imp) return "";
+    const rows = C.reconcilePositions(imp.positions, state.trades);
+    const cost = imp.positions.reduce((a, p) => a + (p.pricePaid !== null ? p.pricePaid * p.quantity : p.marketValue || 0), 0);
+    const mv = imp.positions.reduce((a, p) => a + (p.marketValue !== null ? p.marketValue : (p.lastPrice || 0) * p.quantity), 0);
+    const start = C.num(state.settings.startingCash) || 0;
+    const notes = [];
+    if (start < cost)
+      notes.push({ level: "critical", text: `Starting cash is set to ${money(start)}, but WInS shows ${money(cost)} invested at cost, so the real starting cash is higher. Weights here are wrong until you enter it in Settings.` });
+    const fixable = rows.filter((r) => !r.unknownShares);
+    const body = rows
+      .map(
+        (r) => `<tr><td><strong>${esc(r.symbol)}</strong></td><td class="num">${r.wins}</td><td class="num">${r.logged}${r.unknownShares ? ' <span class="badge warn">shares missing</span>' : ""}</td>
+        <td class="num">${r.diff > 0 ? "+" : ""}${r.diff}</td>
+        <td>${r.unknownShares ? '<span class="small muted">Add share counts on the Trades tab</span>' : `<button class="small" data-action="reconcile-one" data-id="${esc(r.symbol)}">Log it</button>`}</td></tr>`,
+      )
+      .join("");
+    return `<div class="card">
+      <div class="row"><h3 style="margin:0">WInS positions, ${esc(imp.date)}</h3><span class="spacer"></span>
+        ${fixable.length ? `<button class="small primary" data-action="reconcile-all">Log all ${fixable.length} differences</button>` : ""}
+        <button class="small link" data-action="clear-positions">Dismiss</button></div>
+      <p class="small muted">From ${esc(imp.file || "an export")}: ${imp.positions.length} positions, market value ${money(mv)}, cost ${money(cost)}. Prices on this page were updated from it. WInS cash is not in the export.</p>
+      ${alertsHTML(notes)}
+      ${rows.length
+        ? `<p class="small">The trade log does not match WInS for these tickers. <strong>Log it</strong> confirms a matching planned trade if there is one, otherwise adds a confirmed trade at the WInS average price paid. Each entry counts as one trade, and WInS may count more if the position was built in several orders. Paste each Trading Note afterwards.</p>
+          <div class="table-wrap"><table><thead><tr><th>Ticker</th><th class="num">WInS shares</th><th class="num">Logged shares</th><th class="num">Difference</th><th></th></tr></thead><tbody>${body}</tbody></table></div>`
+        : alertsHTML([], "The trade log matches WInS share for share.")}
+    </div>`;
+  }
+
+  // Bring the log in line with WInS for one ticker. Prefers ticking off a planned trade.
+  function reconcileRow(r, date) {
+    const p = r.position;
+    if (r.diff > 0) {
+      const price = p && (p.pricePaid !== null ? p.pricePaid : p.lastPrice);
+      const planned = state.trades
+        .filter((t) => !t.confirmed && t.side === "buy" && C.normaliseSymbol(t.ticker) === r.symbol)
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)))[0];
+      const fill = { shares: r.diff, price, dollars: price === null || price === undefined ? null : Math.round(r.diff * price * 100) / 100, confirmed: true };
+      if (planned) Object.assign(planned, fill, { source: "WInS positions import" });
+      else
+        state.trades.push(Object.assign({ id: uid(), date, ticker: r.symbol, side: "buy", bucket: (state.tickers[r.symbol] || {}).bucket || "stocks", note: "", screenshot: false, source: "WInS positions import" }, fill));
+    } else if (r.diff < 0) {
+      const info = state.tickers[r.symbol] || {};
+      const price = C.num(info.mark);
+      state.trades.push({
+        id: uid(), date, ticker: r.symbol, side: "sell", shares: -r.diff, price,
+        dollars: price === null ? null : Math.round(-r.diff * price * 100) / 100,
+        bucket: info.bucket || "stocks", note: "", confirmed: true, screenshot: false, source: "WInS positions import",
+      });
+    }
+  }
+
   views.dashboard = function () {
     const s = state.settings;
     const h = holdings(s.includePlanned);
@@ -324,13 +379,14 @@
         <div class="tile"><div class="label">Next deadline</div><div class="value">${nd ? dueText(daysUntil(nd.date)) : "none"}</div><div class="hint">${nd ? esc(nd.label) : ""}</div></div>
       </div>
       <div class="card"><h3>Checks</h3>${alertsHTML(warn, "No rule breaches on current holdings.")}</div>
+      ${reconcileCard()}
       <div class="grid">
         <div class="card"><h3>By bucket: actual vs target</h3><div class="bars">${bucketBars}</div>
           <div class="legend"><span><span class="sw"></span>actual % of portfolio</span><span><span class="tk"></span>target</span><span>hatched = over a rule</span></div></div>
         <div class="card"><h3>By ticker</h3>${tickerBars ? `<div class="bars">${tickerBars}</div>` : '<p class="muted">No confirmed holdings yet. Tick "confirmed in WInS" on the Trades tab, or include planned trades above.</p>'}</div>
       </div>
       <div class="card" style="margin-top:1rem">
-        <div class="row"><h3 style="margin:0">Positions</h3><span class="spacer"></span><button class="small" data-action="export-holdings">Export holdings CSV</button></div>
+        <div class="row"><h3 style="margin:0">Positions</h3><span class="spacer"></span><button class="small" data-action="import-positions">Import WInS positions CSV</button><button class="small" data-action="export-holdings">Export holdings CSV</button></div>
         <p class="muted small">Type the latest price from WInS into a price box; values update when you leave the box. Without a price a position is carried at cost.</p>
         <div class="table-wrap"><table><thead><tr><th>Ticker</th><th>Bucket</th><th class="num">Shares</th><th class="num">Price</th><th class="num">Value</th><th class="num">% port.</th><th class="num">Target</th></tr></thead>
         <tbody>${rowsHTML || '<tr><td colspan="7" class="muted">Nothing held.</td></tr>'}
@@ -759,6 +815,7 @@
           <button data-action="import-json">Import JSON backup</button>
           <button data-action="export-trades">Export trades CSV</button>
           <button data-action="import-trades">Import trades CSV</button>
+          <button data-action="import-positions">Import WInS positions CSV</button>
           <span class="spacer"></span>
           <button class="danger" data-action="reset">Reset to seed data</button>
         </div></div>`;
@@ -975,6 +1032,57 @@
         if (!t.bucket) t.bucket = state.tickers[t.ticker].bucket;
       }
       state.trades = replace ? trades : state.trades.concat(trades);
+      save();
+      render();
+    },
+    "import-positions": async () => {
+      const f = await pickFile(".csv,text/csv", true);
+      if (f === null) return;
+      let positions;
+      try {
+        positions = C.positionsFromCSV(f.text);
+      } catch (e) {
+        alert("Could not import: " + e.message);
+        return;
+      }
+      const date = C.dateFromPositionsFilename(f.name) || todayISO();
+      let added = 0;
+      for (const p of positions) {
+        if (!p.symbol) continue;
+        let t = state.tickers[p.symbol];
+        if (!t) {
+          t = state.tickers[p.symbol] = { bucket: p.bucket, kind: p.kind, target: null, mark: null, markDate: "", name: p.description };
+          added++;
+        }
+        if (!t.name) t.name = p.description;
+        if (p.lastPrice !== null) {
+          t.mark = p.lastPrice;
+          t.markDate = date;
+        }
+      }
+      state.positionsImport = { date, file: f.name, positions };
+      save();
+      if (location.hash !== "#dashboard") location.hash = "#dashboard";
+      else render();
+      alert(`${positions.length} positions read; prices updated as of ${date}.` + (added ? `\n\n${added} new ticker(s) were added. Check their bucket and type in Settings: the guess is "stocks" for anything that is not a Treasury or TIPS fund.` : ""));
+    },
+    "reconcile-one": (sym) => {
+      const imp = state.positionsImport;
+      const r = C.reconcilePositions(imp.positions, state.trades).find((x) => x.symbol === sym);
+      if (r && !r.unknownShares) reconcileRow(r, imp.date);
+      save();
+      render();
+    },
+    "reconcile-all": () => {
+      const imp = state.positionsImport;
+      const rows = C.reconcilePositions(imp.positions, state.trades).filter((r) => !r.unknownShares);
+      if (!confirm(`Log ${rows.length} trade(s) so the log matches WInS on ${imp.date}? Planned trades are confirmed where they match; the rest are added as confirmed trades with no Trading Note yet.`)) return;
+      rows.forEach((r) => reconcileRow(r, imp.date));
+      save();
+      render();
+    },
+    "clear-positions": () => {
+      state.positionsImport = null;
       save();
       render();
     },

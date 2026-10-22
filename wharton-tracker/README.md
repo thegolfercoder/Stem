@@ -33,6 +33,13 @@ Everything is saved in the browser's `localStorage` under the key
   log or add to it.
 - **Export holdings CSV** (on the Dashboard) saves the current positions and
   weights.
+- **Import WInS positions CSV** (Dashboard or Settings) reads the
+  `OpenPosition_MM_DD_YYYY.csv` that WInS exports. It sets every price from
+  `LastPrice`, adds any tickers it hasn't seen, and lists each ticker where the
+  trade log's share count differs from WInS. **Log it** confirms a matching
+  planned trade, or adds a confirmed trade at the WInS average price paid. You
+  still paste the Trading Notes yourself. The export has no cash balance, so
+  set the starting cash in Settings.
 
 ## What's in it
 

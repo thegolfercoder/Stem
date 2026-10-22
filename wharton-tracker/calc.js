@@ -399,6 +399,77 @@
     });
   }
 
+  /* ---------- WInS open-positions export ---------- */
+
+  const SAFE_HINT = /^(IEF|IEI|SGOV|SHY|SHV|BIL|GOVT|VGIT|VGSH|SCHR|SCHO|TLT|VGLT|SPTI|SPTS)$/;
+  const TIPS_HINT = /^(TIP|SCHP|VTIP|STIP)$/;
+  const FUND_HINT = /\b(ETF|ETN|Trust|Fund|Index)\b/i;
+
+  // WInS writes Berkshire as BRK/B; the app uses BRK.B.
+  function normaliseSymbol(s) {
+    return String(s || "").trim().toUpperCase().replace("/", ".");
+  }
+
+  // Columns as WInS exports them (OpenPosition_MM_DD_YYYY.csv):
+  // Symbol, Description, Quantity, Currency, LastPrice, PricePaid, DayChange,
+  // ProfitLoss, MarketValue, ProfitLossPercentage. Only Symbol and Quantity are required.
+  function positionsFromCSV(text) {
+    const rows = parseCSV(text);
+    if (!rows.length) return [];
+    const head = rows[0].map((h) => h.trim().toLowerCase());
+    const col = (name) => head.indexOf(name);
+    if (col("symbol") < 0 || col("quantity") < 0) throw new Error("Not a WInS positions export: needs Symbol and Quantity columns.");
+    const get = (r, name) => (col(name) < 0 ? "" : r[col(name)]);
+    return rows.slice(1).map((r) => {
+      const symbol = normaliseSymbol(get(r, "symbol"));
+      const description = String(get(r, "description") || "").trim();
+      return {
+        symbol,
+        description,
+        quantity: num(get(r, "quantity")) || 0,
+        lastPrice: num(get(r, "lastprice")),
+        pricePaid: num(get(r, "pricepaid")),
+        marketValue: num(get(r, "marketvalue")),
+        bucket: SAFE_HINT.test(symbol) ? "safe" : TIPS_HINT.test(symbol) ? "tips" : "stocks",
+        kind: SAFE_HINT.test(symbol) || TIPS_HINT.test(symbol) || FUND_HINT.test(description) ? "etf" : "stock",
+      };
+    });
+  }
+
+  // "OpenPosition_10_22_2026.csv" -> "2026-10-22"
+  function dateFromPositionsFilename(name) {
+    const m = String(name || "").match(/(\d{1,2})_(\d{1,2})_(\d{4})/);
+    return m ? `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}` : null;
+  }
+
+  // Share counts in WInS vs share counts implied by confirmed trades.
+  // Returns one row per ticker that differs.
+  function reconcilePositions(positions, trades) {
+    const logged = {};
+    for (const raw of trades) {
+      if (!raw.confirmed) continue;
+      const t = completeTrade(raw);
+      const s = num(t.shares);
+      const k = normaliseSymbol(t.ticker);
+      if (!logged[k]) logged[k] = { shares: 0, unknown: false };
+      if (s === null) logged[k].unknown = true;
+      else logged[k].shares += t.side === "sell" ? -s : s;
+    }
+    const out = [];
+    const seen = new Set();
+    for (const p of positions) {
+      seen.add(p.symbol);
+      const l = logged[p.symbol] || { shares: 0, unknown: false };
+      const diff = round4(p.quantity - l.shares);
+      if (Math.abs(diff) > 1e-6 || l.unknown) out.push({ symbol: p.symbol, wins: p.quantity, logged: round4(l.shares), diff, unknownShares: l.unknown, position: p });
+    }
+    for (const [k, l] of Object.entries(logged)) {
+      if (seen.has(k) || (Math.abs(l.shares) < 1e-6 && !l.unknown)) continue;
+      out.push({ symbol: k, wins: 0, logged: round4(l.shares), diff: round4(-l.shares), unknownShares: l.unknown, position: null });
+    }
+    return out;
+  }
+
   const Calc = {
     BUCKETS,
     BUCKET_LABELS,
@@ -419,6 +490,10 @@
     toCSV,
     parseCSV,
     tradesFromCSV,
+    normaliseSymbol,
+    positionsFromCSV,
+    dateFromPositionsFilename,
+    reconcilePositions,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = Calc;

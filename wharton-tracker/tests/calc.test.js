@@ -171,3 +171,48 @@ test("Monte Carlo glide path never leaves more in stocks than was put in", () =>
   // Total is at most safe-locked plus stocks principal grown... and never below safe-locked.
   assert.ok(r.p10 >= lockedSafe);
 });
+
+const WINS_EXPORT = [
+  "Symbol,Description,Quantity,Currency,LastPrice,PricePaid,DayChange,ProfitLoss,MarketValue,ProfitLossPercentage",
+  "BRK/B,Berkshire Hathaway Inc. - Ordinary Shares - Class B,9,USD,545.25,528.85,6.26,147.60,4907.25,3.10",
+  "IEF,BlackRock Institutional Trust Company N.A. - iShares 7-10 Year Treasury Bond ETF,221,USD,90.82,90.38,0.59,97.24,20071.22,0.49",
+  "TIP,BlackRock Institutional Trust Company N.A. - iShares TIPS Bond ETF,48,USD,105.985,105.33,0.44,31.44,5087.28,0.62",
+  "QQQ,Invesco Capital Management LLC - Invesco QQQ Trust Series 1,27,USD,714.84,724.91,-10.36,-271.89,19300.68,-1.39",
+  "NVDA,NVIDIA Corp,46,USD,216.775,218.915,-5.20,-98.44,9971.65,-0.98",
+].join("\n");
+
+test("WInS positions export: symbols, buckets and fund detection", () => {
+  const ps = C.positionsFromCSV(WINS_EXPORT);
+  assert.equal(ps.length, 5);
+  const by = Object.fromEntries(ps.map((p) => [p.symbol, p]));
+  assert.ok(by["BRK.B"], "BRK/B is normalised to BRK.B");
+  assert.equal(by.IEF.bucket, "safe");
+  assert.equal(by.TIP.bucket, "tips");
+  assert.equal(by.QQQ.bucket, "stocks");
+  assert.equal(by.QQQ.kind, "etf");
+  assert.equal(by.NVDA.kind, "stock");
+  assert.equal(by.IEF.quantity, 221);
+  assert.equal(by.IEF.pricePaid, 90.38);
+  assert.throws(() => C.positionsFromCSV("Ticker,Shares\nX,1\n"), /Symbol and Quantity/);
+  assert.equal(C.dateFromPositionsFilename("OpenPosition_10_22_2026.csv"), "2026-10-22");
+  assert.equal(C.dateFromPositionsFilename("export.csv"), null);
+});
+
+test("reconciliation lists only tickers whose share counts differ", () => {
+  const ps = C.positionsFromCSV(WINS_EXPORT);
+  const trades = [
+    { date: "2026-10-06", ticker: "IEF", side: "buy", shares: 221, price: 90.38, confirmed: true },
+    { date: "2026-10-06", ticker: "NVDA", side: "buy", shares: 23, price: 218, confirmed: true },
+    { date: "2026-10-06", ticker: "TIP", side: "buy", dollars: 5000, confirmed: true }, // no shares
+    { date: "2026-10-06", ticker: "AAPL", side: "buy", shares: 14, price: 344.6, confirmed: true }, // sold in WInS
+    { date: "2026-10-06", ticker: "QQQ", side: "buy", shares: 27, confirmed: false }, // planned only
+  ];
+  const r = Object.fromEntries(C.reconcilePositions(ps, trades).map((x) => [x.symbol, x]));
+  assert.equal(r.IEF, undefined);
+  assert.equal(r.NVDA.diff, 23);
+  assert.equal(r.TIP.unknownShares, true);
+  assert.equal(r.AAPL.diff, -14);
+  assert.equal(r.AAPL.wins, 0);
+  assert.equal(r.QQQ.diff, 27, "planned trades do not count as held");
+  assert.equal(r["BRK.B"].diff, 9);
+});
