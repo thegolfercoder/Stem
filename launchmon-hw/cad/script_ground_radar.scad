@@ -49,6 +49,8 @@
 
 /* [Render] */
 part            = "assembly";   // [assembly, shell, lid, esp32_clamp_tab, stand, print_plate, section]
+// Also: "in_place:shell|lid|tab0|tab1|stand" and "ghost:<name>" export one
+// part in its assembled position (used by cad/blender/).
 show_components = true;         // ghost components in the assembly view
 explode         = 0;            // [0:1:40] pull the lid back in the assembly view
 $fn             = 64;
@@ -504,37 +506,50 @@ module stand() {
 // ----------------------------------------------------------------------------
 //  Ghost components (assembly view only)
 // ----------------------------------------------------------------------------
-module ghosts() {
-    // LiPo
-    color("SteelBlue", 0.45)
+// Each component is a named ghost so other tools can export them one at a
+// time: `part = "ghost:battery"` exports just the cell, in place. The Blender
+// scenes in cad/blender/ are built that way.
+ghost_names = ["battery", "tp4056", "mt3608", "esp32", "lm358", "radar", "switch", "led", "boresight"];
+
+module ghosts() { for (n = ghost_names) ghost(n); }
+
+module ghost(name) {
+    if (name == "battery") color("SteelBlue", 0.45)
         translate([batt_pos[0] + batt_clear, y_front, batt_pos[1] + batt_clear])
             cube([batt[0], batt[2], batt[1]]);
     // TP4056 + receptacle
-    color("RoyalBlue", 0.6) translate([tp_x, y_front + tp_pad_h, z_floor - 0.6]) {
+    if (name == "tp4056") color("RoyalBlue", 0.6) translate([tp_x, y_front + tp_pad_h, z_floor - 0.6]) {
         cube([tp_pcb[0], tp_pcb[2], tp_pcb[1]]);
         translate([tp_pcb[0] / 2 - esp_usb[0] / 2, tp_pcb[2], 0]) cube([esp_usb[0], tp_usb_h, 7.3]);
     }
     // MT3608 on the lid
-    color("MediumPurple", 0.6) translate([mt_pos[0], y_back - mt_pcb[2] - mt_parts_h, mt_pos[1]])
+    if (name == "mt3608") color("MediumPurple", 0.6) translate([mt_pos[0], y_back - mt_pcb[2] - mt_parts_h, mt_pos[1]])
         cube([mt_pcb[0], mt_pcb[2] + mt_parts_h, mt_pcb[1]]);
     // ESP32-C3 SuperMini
-    color("Black", 0.7) translate([esp_pos[0], y_front + esp_rail_h, esp_pos[1]]) {
+    if (name == "esp32") color("Black", 0.7) translate([esp_pos[0], y_front + esp_rail_h, esp_pos[1]]) {
         cube([esp_pcb[0], esp_pcb[2], esp_pcb[1]]);
         translate([-0.5, esp_pcb[2], esp_pcb[1] / 2 - esp_usb[0] / 2]) cube([7.3, esp_usb[1], esp_usb[0]]);
     }
     // LM358 board
-    color("Green", 0.6) translate([lm_pos[0], y_front + lm_standoff_h, lm_pos[1]])
+    if (name == "lm358") color("Green", 0.6) translate([lm_pos[0], y_front + lm_standoff_h, lm_pos[1]])
         cube([lm_pcb[0], lm_pcb[2], lm_pcb[1]]);
     // Radar module, parallel to the window
-    color("Gold", 0.7) in_window_frame()
+    if (name == "radar") color("Gold", 0.7) in_window_frame()
         translate([-radar_pcb[0] / 2, win_t + radar_gap, 0]) cube([radar_pcb[0], radar_pcb[2], radar_pcb[1]]);
-    // Switch and LED
-    color("Silver") translate([body_w - wall - sw_body[2], sw_center[0] - sw_body[0] / 2, sw_center[1] - sw_body[1] / 2])
-        cube([sw_body[2], sw_body[0], sw_body[1]]);
-    color("Red", 0.8) translate([led_pos[0], led_pos[1], body_h - wall - 8.6]) cylinder(h = 8.6, d = 5);
-    // Boresight indicator
-    color("Orange", 0.5) in_window_frame() translate([0, 0, win_size / 2])
+    if (name == "switch") color("Silver")
+        translate([body_w - wall - sw_body[2], sw_center[0] - sw_body[0] / 2, sw_center[1] - sw_body[1] / 2])
+            cube([sw_body[2], sw_body[0], sw_body[1]]);
+    if (name == "led") color("Red", 0.8) translate([led_pos[0], led_pos[1], body_h - wall - 8.6]) cylinder(h = 8.6, d = 5);
+    // Boresight indicator: a cone along the radar's 15-degree axis
+    if (name == "boresight") color("Orange", 0.5) in_window_frame() translate([0, 0, win_size / 2])
         rotate([90, 0, 0]) cylinder(h = 60, d1 = 1, d2 = 20);
+}
+
+// Clamp tab i (0 or 1) where it sits when fitted: on its standoff, over the
+// end of the SuperMini.
+module esp32_clamp_tab_in_place(i) {
+    translate([esp_pos[0] + esp_pcb[0] + 2.2, y_front + esp_rail_h + esp_pcb[2], esp32_tab_z()[i]])
+        rotate([-90, 0, 0]) esp32_clamp_tab();
 }
 
 // ----------------------------------------------------------------------------
@@ -587,6 +602,18 @@ if (part == "shell") {
         shell();
         if (show_components) ghosts();
     }
+} else if (part == "in_place:shell") {
+    shell();
+} else if (part == "in_place:lid") {
+    lid();
+} else if (part == "in_place:tab0") {
+    esp32_clamp_tab_in_place(0);
+} else if (part == "in_place:tab1") {
+    esp32_clamp_tab_in_place(1);
+} else if (part == "in_place:stand") {
+    stand();
+} else if (len(part) > 6 && part[0] == "g" && part[5] == ":") {
+    ghost(str_join(part, 6));
 } else if (part == "print_plate") {
     shell_print();
     translate([body_w + 8, 0, 0]) lid_print();
@@ -595,8 +622,12 @@ if (part == "shell") {
 } else {
     shell();
     translate([0, explode, 0]) lid();
+    for (i = [0, 1]) esp32_clamp_tab_in_place(i);
     if (show_components) ghosts();
 }
+
+// Characters of s from index i to the end, as a string ("ghost:radar" -> "radar").
+function str_join(s, i) = i >= len(s) ? "" : str(s[i], str_join(s, i + 1));
 
 // Print orientations.
 // Shell: front face on the bed (Y = 0 -> Z = 0). The window recess then needs

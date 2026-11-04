@@ -22,6 +22,12 @@ launchmon-hw/
     export_stl.sh              regenerates cad/stl/ and its fit report
     stl/                       print-ready STLs, already in print orientation
       fit_report.txt           every clearance the layouts depend on, for these STLs
+    blender/
+      ground_radar_unit.blend  ground unit assembled, with stand-in components and an exploded view
+      shaft_pod.blend          pod on a 13 mm shaft, likewise
+      make_blends.py           regenerates both .blend files from the OpenSCAD scripts
+      build_blend.py           the Blender side of that (run by make_blends.py)
+      previews/                renders of each, assembled and exploded
   firmware/
     ground_unit/ground_unit.ino
     shaft_pod/shaft_pod.ino
@@ -84,8 +90,26 @@ carries its provenance. A value that cannot be measured is refused with a
 reason. Raw data leaves the device unmodified. **Spin, face angle, club
 path, attack angle and swing plane are not outputs.**
 
-## Regenerating the STLs
+## Regenerating the STLs and Blender scenes
 
 ```bash
 cd launchmon-hw/cad && ./export_stl.sh      # needs openscad on PATH
+python3 launchmon-hw/cad/blender/make_blends.py   # needs openscad and blender (4.x) on PATH
 ```
+
+The `.blend` files are generated from the OpenSCAD scripts, not modelled by
+hand. Each object is exported by OpenSCAD in its assembled position
+(`part = "in_place:..."` or `"ghost:..."`) and imported into a scene with
+materials and collections:
+
+- **Printed parts:** the printable pieces, each tagged with the STL it is
+  printed from (`print_file` custom property).
+- **Components (stand-ins):** boxes at the real size and position of every
+  board, cell and switch. They are not detailed models.
+- **Reference:** the radar's 15° boresight cone, the IMU axis markers and
+  the shaft.
+
+Units are millimetres, in the same coordinates as the OpenSCAD. Frame 1 is
+assembled and frame 60 exploded, so scrubbing the timeline takes the unit
+apart. Edit the OpenSCAD and regenerate: changes made in Blender are not
+carried back to the CAD or the STLs.

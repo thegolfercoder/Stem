@@ -42,6 +42,8 @@
 
 /* [Render] */
 part            = "assembly";   // [assembly, base, lid, section, print_plate]
+// Also: "in_place:base|lid" and "ghost:<name>" export one part in its
+// assembled position (used by cad/blender/).
 show_components = true;
 explode         = 0;            // [0:1:20]
 $fn             = 64;
@@ -303,21 +305,38 @@ module esp32_retainer() {
 // ----------------------------------------------------------------------------
 //  Ghost components
 // ----------------------------------------------------------------------------
-module ghosts() {
-    color("Purple", 0.7) translate([imu_x0, imu_y0, z_imu]) {
+// Named ghosts, so each can be exported alone in place (`part = "ghost:imu"`).
+// The Blender scene in cad/blender/ is built that way.
+ghost_names = ["imu", "imu_axes", "battery", "charger", "esp32", "shaft", "liner"];
+
+module ghosts() { for (n = ghost_names) ghost(n); }
+
+module ghost(name) {
+    if (name == "imu") color("Purple", 0.7) translate([imu_x0, imu_y0, z_imu])
         cube([imu_pcb[0], imu_pcb[1], imu_pcb[2]]);
-        // Sensor axes as printed on the Adafruit silkscreen: check yours.
-        color("Red")   translate([imu_pcb[0] / 2, imu_pcb[1] / 2, imu_pcb[2]]) rotate([0, 90, 0]) cylinder(h = 8, d = 0.8);
-        color("Green") translate([imu_pcb[0] / 2, imu_pcb[1] / 2, imu_pcb[2]]) rotate([-90, 0, 0]) cylinder(h = 8, d = 0.8);
-        color("Blue")  translate([imu_pcb[0] / 2, imu_pcb[1] / 2, imu_pcb[2]]) cylinder(h = 8, d = 0.8);
+    // Sensor axes as printed on the Adafruit silkscreen (X red, Y green, Z blue): check yours.
+    if (name == "imu_axes") translate([imu_x0 + imu_pcb[0] / 2, imu_y0 + imu_pcb[1] / 2, z_imu + imu_pcb[2]]) {
+        color("Red")   rotate([0, 90, 0]) cylinder(h = 8, d = 0.8);
+        color("Green") rotate([-90, 0, 0]) cylinder(h = 8, d = 0.8);
+        color("Blue")  cylinder(h = 8, d = 0.8);
     }
-    color("SteelBlue", 0.5) translate([batt_x0, batt_y0, z_batt]) cube(batt);
-    color("Teal", 0.6) translate([chg_x0, chg_y0, z_batt]) cube(chg);
-    color("Black", 0.7) translate([esp_x0, esp_y0, z_esp]) {
+    if (name == "battery") color("SteelBlue", 0.5) translate([batt_x0, batt_y0, z_batt]) cube(batt);
+    if (name == "charger") color("Teal", 0.6) translate([chg_x0, chg_y0, z_batt]) cube(chg);
+    if (name == "esp32") color("Black", 0.7) translate([esp_x0, esp_y0, z_esp]) {
         cube([esp_pcb[0], esp_pcb[1], esp_pcb[2]]);
         translate([-esp_usb_overhang, esp_pcb[1] / 2 - esp_usb[0] / 2, esp_pcb[2]]) cube([7.3, esp_usb[0], esp_usb[1]]);
     }
-    color("Gray", 0.35) translate([-20, bore_y, bore_z]) rotate([0, 90, 0]) cylinder(h = pod[0] + 40, d = shaft_d);
+    if (name == "shaft") color("Gray", 0.35)
+        translate([-20, bore_y, bore_z]) rotate([0, 90, 0]) cylinder(h = pod[0] + 40, d = shaft_d);
+    // Liner strips in the jaw bands, standing liner_proud above the bore.
+    if (name == "liner") color("DimGray") for (j = jaw_xs)
+        x_extrude(j[0] + 1.0, j[1] - 1.0) translate([bore_y, bore_z]) difference() {
+            intersection() {
+                circle(r = bore_r + liner_t - liner_proud);
+                rotate(90) sector(bore_r + 2, -wrap_deg / 2, wrap_deg / 2);
+            }
+            circle(r = bore_r - liner_proud);
+        }
 }
 
 // ----------------------------------------------------------------------------
@@ -356,6 +375,12 @@ if (part == "base") {
         base();
         if (show_components) ghosts();
     }
+} else if (part == "in_place:base") {
+    base();
+} else if (part == "in_place:lid") {
+    lid();
+} else if (len(part) > 6 && part[0] == "g" && part[5] == ":") {
+    ghost(str_join(part, 6));
 } else if (part == "print_plate") {
     base_print();
     translate([pod[2] - bore_z + jaw_R + 6, 0, 0]) lid_print();
@@ -364,6 +389,9 @@ if (part == "base") {
     translate([0, 0, explode]) lid();
     if (show_components) ghosts();
 }
+
+// Characters of s from index i to the end ("ghost:imu" -> "imu").
+function str_join(s, i) = i >= len(s) ? "" : str(s[i], str_join(s, i + 1));
 
 // Base: printed standing on its -X (USB) end, so the bore axis is vertical and
 // every layer contains a complete C. The jaws then flex along the layers rather
