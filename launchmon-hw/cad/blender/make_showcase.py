@@ -3,6 +3,10 @@
 
     python3 cad/blender/make_showcase.py OUT_DIR            # full 1080p render, then encode
     python3 cad/blender/make_showcase.py OUT_DIR --encode-only
+    python3 cad/blender/make_showcase.py OUT_DIR --render-only --shots=ground_hero,ground_assembly
+
+Rendering resumes: frames already on disk are kept, so an interrupted run can
+simply be started again.
 
 Needs blender (4.x), ffmpeg and Pillow. Run make_blends.py first so the .blend
 files match the CAD. EEVEE needs an OpenGL context: on a machine without a
@@ -56,8 +60,10 @@ def run(cmd: list[str]) -> None:
     subprocess.run(cmd, check=True)
 
 
-def render(out: Path) -> None:
+def render(out: Path, only: set[str] | None = None) -> None:
     for shot, blend, *_ in SHOTS:
+        if only and shot not in only:
+            continue
         frames = out / "frames" / shot
         frames.mkdir(parents=True, exist_ok=True)
         print(f"rendering {shot}", flush=True)
@@ -129,9 +135,14 @@ def main() -> None:
         raise SystemExit(__doc__)
     out = Path(sys.argv[1]).resolve()
     out.mkdir(parents=True, exist_ok=True)
+    only = None
+    for a in sys.argv:
+        if a.startswith("--shots="):
+            only = set(a.split("=", 1)[1].split(","))
     if "--encode-only" not in sys.argv:
-        render(out)
-    encode(out)
+        render(out, only)
+    if "--render-only" not in sys.argv:
+        encode(out)
 
 
 if __name__ == "__main__":

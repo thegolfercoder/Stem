@@ -404,6 +404,7 @@ def configure_render(frames: int, out_dir: str, preview: bool) -> None:
     scene.render.resolution_x, scene.render.resolution_y = 1920, 1080
     scene.render.resolution_percentage = 50 if preview else 100
     scene.render.image_settings.file_format = "PNG"
+    scene.render.use_overwrite = False   # resume: frames already rendered are skipped
     scene.render.filepath = out_dir.rstrip("/") + "/f_"
 
 
