@@ -152,6 +152,7 @@ def build(unit: dict, render: bool, tmp: Path) -> None:
     if result.returncode != 0 or not (HERE / unit["out"]).exists():
         sys.stderr.write(result.stdout[-3000:] + result.stderr[-3000:])
         raise SystemExit(f"blender failed for {unit['out']}")
+    (HERE / (unit["out"] + "1")).unlink(missing_ok=True)   # Blender's backup of the previous save
     print(f"  wrote {unit['out']}")
 
 

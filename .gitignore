@@ -21,3 +21,6 @@ models/
 # The one exception is the real-swing regression fixture, which is checked in on
 # purpose: without it there is nothing here but generated data.
 !swingml/tests/fixtures/*.mov
+
+# Blender keeps the previous save as .blend1 when a file is overwritten.
+*.blend1
