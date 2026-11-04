@@ -543,7 +543,8 @@ struct __attribute__((packed)) PodStatus {
 };
 static_assert(sizeof(PodHeader) == 12 && sizeof(PodImu) == 12, "must match the pod");
 
-struct PodSample { PodImu s; uint32_t t_ground_us; };
+struct PodSample { PodImu s; uint32_t t_ground_us; uint32_t t_pod_us; };   // 20 bytes, as streamed
+static_assert(sizeof(PodImu) + 8 == 20, "IMU block record layout is part of the USB format");
 static PodSample*             g_pod = nullptr;
 static std::atomic<uint32_t>  g_pod_written{0};
 static portMUX_TYPE           g_pod_mux = portMUX_INITIALIZER_UNLOCKED;
@@ -552,6 +553,8 @@ static volatile uint32_t      g_pod_period_ns = 600240;      // updated from sta
 static volatile uint16_t      g_pod_batt_mv = 0;
 static volatile uint32_t      g_pod_dropped = 0;
 static volatile uint32_t      g_pod_swing_ms = 0;            // last packet flagged SWING_ACTIVE
+static volatile bool          g_pod_hold = false;            // set while the ring is streamed to USB
+static volatile uint32_t      g_pod_dropped_held = 0;        // packets refused while held
 
 static NimBLEClient*          g_pod_client = nullptr;
 static NimBLEAddress          g_pod_addr;
@@ -571,6 +574,7 @@ static void onPodNotify(NimBLERemoteCharacteristic*, uint8_t* data, size_t len, 
   }
   if (h->type != 1 || len < sizeof(PodHeader) + h->n * sizeof(PodImu)) return;
   if (h->flags & 0x01) g_pod_swing_ms = millis();
+  if (g_pod_hold) { g_pod_dropped_held = g_pod_dropped_held + 1; return; }
 
   // Clock alignment. rx time minus the last sample's pod time is the offset
   // plus that packet's transport delay. The smallest value seen is the best
@@ -588,7 +592,8 @@ static void onPodNotify(NimBLERemoteCharacteristic*, uint8_t* data, size_t len, 
   for (uint8_t i = 0; i < h->n; ++i, ++w) {
     PodSample& d = g_pod[w % cfg::POD_RING];
     d.s = s[i];
-    d.t_ground_us = uint32_t(int64_t(h->t0_us) + int64_t(i) * period_us + g_pod_offset_us);
+    d.t_pod_us = h->t0_us + uint32_t(i) * period_us;
+    d.t_ground_us = uint32_t(int64_t(d.t_pod_us) + g_pod_offset_us);
   }
   g_pod_written.store(w);
   portEXIT_CRITICAL(&g_pod_mux);
@@ -851,10 +856,13 @@ static WireReading wire(const Reading& r) {
 // Raw capture as a framed binary block on USB. A host splits it out of the
 // JSON lines by the RAW_BEGIN header, which gives the exact byte count.
 static void streamRaw(uint32_t first, uint16_t shot_seq) {
+  // capture_end_us is the ground clock (32-bit microseconds) when the last pair
+  // was stored; the IMU block below is on the same clock, which is what lets
+  // launchmon-py's fusion put the two on one timeline.
   Serial.printf("RAW_BEGIN {\"shot_seq\":%u,\"pairs\":%u,\"fs_hz\":%u,\"format\":\"int16le I,Q; 12-bit ADC codes\","
-                "\"q_lag_samples\":0.5,\"receding_sign\":%d,\"bytes\":%u}\n",
+                "\"q_lag_samples\":0.5,\"receding_sign\":%d,\"capture_end_us\":%lu,\"bytes\":%u}\n",
                 shot_seq, unsigned(cfg::CAPTURE_PAIRS), unsigned(cfg::FS_HZ), cfg::RECEDING_SIGN,
-                unsigned(cfg::CAPTURE_PAIRS * 4));
+                (unsigned long)uint32_t(g_capture_end_us), unsigned(cfg::CAPTURE_PAIRS * 4));
   static int16_t chunk[256][2];
   for (size_t k = 0; k < cfg::CAPTURE_PAIRS; k += 256) {
     size_t m = std::min<size_t>(256, cfg::CAPTURE_PAIRS - k);
@@ -865,6 +873,29 @@ static void streamRaw(uint32_t first, uint16_t shot_seq) {
     Serial.write(reinterpret_cast<uint8_t*>(chunk), m * 4);
   }
   Serial.println("\nRAW_END");
+}
+
+// The pod's samples held for this shot, as a framed binary block after the
+// radar capture: 20 bytes each, int16 gx gy gz ax ay az (raw counts), then the
+// sample's time on the ground clock and on the pod's own clock (uint32 us).
+// Pod packets arriving while it is written are refused and counted, so the
+// ring cannot change under the copy.
+static void streamImu(uint16_t shot_seq) {
+  g_pod_hold = true;
+  portENTER_CRITICAL(&g_pod_mux);
+  uint32_t end = g_pod_written.load();
+  portEXIT_CRITICAL(&g_pod_mux);
+  uint32_t start = end > cfg::POD_RING ? end - cfg::POD_RING : 0;
+  uint32_t n = end - start;
+  Serial.printf("IMU_BEGIN {\"shot_seq\":%u,\"n\":%lu,\"format\":\"int16le gx gy gz ax ay az, uint32le t_ground_us, "
+                "uint32le t_pod_us\",\"gyro_dps_per_lsb\":%.4f,\"accel_g_per_lsb\":0.000488,\"clip_counts\":%d,"
+                "\"bytes\":%lu}\n",
+                shot_seq, (unsigned long)n, cfg::POD_GYRO_DPS_PER_LSB, int(cfg::POD_CLIP_COUNTS),
+                (unsigned long)(n * sizeof(PodSample)));
+  for (uint32_t k = start; k < end; ++k)
+    Serial.write(reinterpret_cast<const uint8_t*>(&g_pod[k % cfg::POD_RING]), sizeof(PodSample));
+  Serial.println("\nIMU_END");
+  g_pod_hold = false;
 }
 
 // -----------------------------------------------------------------------------
@@ -978,7 +1009,10 @@ void loop() {
     g_chr_shot->setValue(reinterpret_cast<uint8_t*>(&sum), sizeof sum);
     g_chr_shot->notify();
 
-    if (g_stream_raw) streamRaw(first, g_shot_seq);
+    if (g_stream_raw) {
+      streamRaw(first, g_shot_seq);
+      streamImu(g_shot_seq);
+    }
     g_capture_ready = false;   // release the ring; capture resumes
   }
 

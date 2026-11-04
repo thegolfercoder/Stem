@@ -87,6 +87,20 @@ One JSON object per line:
 Serial commands: `r` toggles raw capture streaming, `d` toggles the trigger
 debug print, `a` arms or disarms.
 
+With raw streaming on, each shot is followed by two framed binary blocks, each
+opened by a header line that states its exact length in bytes:
+
+- `RAW_BEGIN {...}` then the 0.7 s radar capture as int16 I,Q pairs, then
+  `RAW_END`. The header carries `capture_end_us`, the ground clock when the
+  last pair was stored.
+- `IMU_BEGIN {...}` then the pod's last ~2.5 s of samples, 20 bytes each: six
+  int16 raw counts (gx gy gz ax ay az), the sample's time on the ground clock
+  and on the pod's own clock (uint32 microseconds), then `IMU_END`.
+
+`launchmon-py/scripts/record_ground_unit.py` saves the stream to a file, and
+`launchmon-py/scripts/fuse_shot.py` fuses it with the phone clip (see the
+launchmon-py README, "Fusion").
+
 ## Pod output
 
 Nothing derived: raw IMU counts in BLE notifications, flagged where the sensor

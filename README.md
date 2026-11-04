@@ -59,6 +59,10 @@ Python here is the research environment where the algorithms are developed and
 proven; the iOS side is not started. `launchmon-hw/` holds a hardware variant in
 which the radar is digitised on its own ESP32-C3 rather than as phone audio. See
 its [README](launchmon-hw/README.md) for what has and has not been checked.
+`launchmon-py`'s fusion layer puts that unit's radar, the club pod's IMU and
+swingml's analysis of the phone video on one timeline, aligned by the strike
+each of them sees, and takes each event and number from the sensor that measures
+it best.
 
 The contract between the Python and any later Swift implementation is a golden
 vector suite: Python generates synthetic inputs with known ground truth plus its
