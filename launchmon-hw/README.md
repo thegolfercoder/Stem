@@ -28,6 +28,8 @@ launchmon-hw/
       make_blends.py           regenerates both .blend files from the OpenSCAD scripts
       build_blend.py           the Blender side of that (run by make_blends.py)
       previews/                renders of each, assembled and exploded
+      make_showcase.py         renders the captioned showcase videos (six shots + reel)
+      render_showcase.py       one shot: studio lighting, camera moves, assembly timing
   firmware/
     ground_unit/ground_unit.ino
     shaft_pod/shaft_pod.ino
@@ -113,3 +115,26 @@ Units are millimetres, in the same coordinates as the OpenSCAD. Frame 1 is
 assembled and frame 60 exploded, so scrubbing the timeline takes the unit
 apart. Edit the OpenSCAD and regenerate: changes made in Blender are not
 carried back to the CAD or the STLs.
+
+## Showcase videos
+
+```bash
+xvfb-run -a python3 launchmon-hw/cad/blender/make_showcase.py OUT_DIR   # blender, ffmpeg, Pillow
+```
+
+This renders six captioned 1080p shots in EEVEE from the generated `.blend`
+files, and joins them, with title and end cards, into
+`stem_launch_monitor_showcase.mp4`:
+
+- the ground unit turning in its stand
+- the ground unit assembling
+- its placement behind a ball, with the 15° boresight
+- the pod turning on a shaft
+- the pod assembling
+- the pod snapping onto the shaft
+
+It takes about 80–90 minutes on a 4-core machine without a GPU. Every frame
+is the CAD geometry, and the cards say so: "prototype design, CAD renders,
+not product footage". Nothing in them shows or implies a speed, an accuracy
+or any other result the prototype has not produced. The videos are build
+products and are not checked in.
