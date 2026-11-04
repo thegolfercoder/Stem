@@ -11,11 +11,6 @@
   ok   radar posts on their corner pads: 0.2 mm
   ok   radar post pilot under its depth: 0.5 mm
   ok   light pipe flange to ESP32 board: 2.6 mm
-  ok   phone bottom above buttress     : 0 mm
-  ok   phone clears unit top           : 0 mm
-  ok   alignment magnet inside neck    : 0 mm
-  ok   stem behind the ring pocket     : 0 mm
-  ok   opening inside the magnet ring  : 0 mm
   ok   stud stands at least 4.5 mm     : 1.02 mm
   ok   stud stands at most 6.0 mm      : 0.48 mm
   ok   hex pocket clear of the stem    : 0.612433 mm
@@ -31,12 +26,6 @@
   ok   alignment magnet inside neck    : 4.25 mm
   ok   stem behind the ring pocket     : 0.6 mm
   ok   opening inside the magnet ring  : 4.75 mm
-  ok   stud stands at least 4.5 mm     : 0 mm
-  ok   stud stands at most 6.0 mm      : 0 mm
-  ok   hex pocket clear of the stem    : 0 mm
-  ok   hex pocket inside the cap (Y)   : 0 mm
-  ok   hex pocket inside the cap (X)   : 0 mm
-  ok   cap above the unit's top edge   : 0 mm
   info  tallest phone that clears the buttress: 186 mm
   info  magnet ring to MT3608 PCB: 6.5 mm (check the 5 V rail with a phone attached)
   info  dock base reaches 25.35 mm behind the phone's centre line
