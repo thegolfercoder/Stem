@@ -50,6 +50,23 @@ def product_objects() -> list[bpy.types.Object]:
     return objects_in("Printed parts") + objects_in("Components (stand-ins)") + phone
 
 
+def matte_black_finish() -> None:
+    """Every printed part in solid matte black. The light grey studio keeps the
+    silhouettes readable; the boards inside keep their colours."""
+    mat = bpy.data.materials.new("Matte black")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.018, 0.018, 0.02, 1)
+    bsdf.inputs["Roughness"].default_value = 0.8
+    for key in ("Specular IOR Level", "Specular"):   # 4.x / 3.x name
+        if key in bsdf.inputs:
+            bsdf.inputs[key].default_value = 0.3
+    mat.diffuse_color = (0.018, 0.018, 0.02, 1)
+    for o in objects_in("Printed parts"):
+        o.data.materials.clear()
+        o.data.materials.append(mat)
+
+
 def hide_reference(keep: tuple[str, ...] = ("Phone",)) -> None:
     """Hide reference geometry, except the stand-in phone on the MagSafe mount."""
     for o in objects_in("Reference"):
@@ -86,21 +103,21 @@ def material(name: str, rgba, roughness=0.5, emission=None, alpha=1.0, metallic=
     return mat
 
 
-def studio(floor_z: float, size: float, dark: bool = True) -> None:
+def studio(floor_z: float, size: float, dark: bool = False) -> None:
     """Seamless floor, soft three-light setup, neutral world."""
     for o in objects_in("Stage"):
         if o.type == "LIGHT":
             bpy.data.objects.remove(o, do_unlink=True)
     world = bpy.context.scene.world
     bg = world.node_tree.nodes["Background"]
-    bg.inputs["Color"].default_value = (0.09, 0.10, 0.12, 1) if dark else (0.75, 0.77, 0.8, 1)
+    bg.inputs["Color"].default_value = (0.09, 0.10, 0.12, 1) if dark else (0.62, 0.64, 0.67, 1)
     bg.inputs["Strength"].default_value = 1.0
 
     bpy.ops.mesh.primitive_plane_add(size=max(size * 400, 20000), location=(0, 0, floor_z))
     floor = bpy.context.object
     floor.name = "Studio floor"
-    floor.data.materials.append(material("Floor", (0.09, 0.10, 0.12, 1) if dark else (0.8, 0.8, 0.82, 1),
-                                         roughness=0.3))
+    floor.data.materials.append(material("Floor", (0.09, 0.10, 0.12, 1) if dark else (0.52, 0.53, 0.55, 1),
+                                         roughness=0.3 if dark else 0.7))
 
     # Sun lights: the scene is in millimetres, and area or point lights would
     # fall off as if it were metres. A sun has no falloff, so the same rig
@@ -231,13 +248,13 @@ def shot_ground_hero():
 
 
 def shot_ground_assembly():
-    objs = product_objects()
-    hide_reference()
+    hide_reference(keep=())   # no phone in this shot: it would hide the inside
+    objs = [o for o in product_objects() if not o.name.startswith("Phone")]
     lo, hi = bounds(objs)
     c, r = (lo + hi) / 2, (hi - lo).length / 2
     studio(lo.z, r)
     order = [["LiPo"], ["TP4056"], ["BGT24LTR11"], ["LM358"], ["ESP32-C3"], ["ESP32 clamp"], ["Slide switch", "Status LED"],
-             ["Lid", "MT3608"], ["MagSafe phone mount", "MagSafe magnet ring"], ["Phone"]]
+             ["Lid", "MT3608"], ["MagSafe phone mount", "MagSafe magnet ring"]]
     assemble(objs, order, start=20, step=14, travel=40, extra=(0, 30, 0))
     for o in objs:   # the stand stays put in this shot
         if o.name.startswith("Stand"):
@@ -245,7 +262,7 @@ def shot_ground_assembly():
             o.location = (0, 0, -STAND_DROP)
     cam = camera(60)
     # From behind and above, where the parts come in, swinging round to the front.
-    orbit(cam, c + Vector((0, 20, 0)), fit_distance(r * 1.7, 60, 1.0), 26, 200, 150, 210)
+    orbit(cam, c + Vector((0, 12, -4)), fit_distance(r * 1.3, 60, 1.0), 24, 205, 150, 210)
     return 210
 
 
@@ -411,6 +428,7 @@ def configure_render(frames: int, out_dir: str, preview: bool) -> None:
 def main() -> None:
     a = args()
     shot, out_dir, preview = a[0], a[1], "--preview" in a
+    matte_black_finish()
     frames = SHOTS[shot]()
     configure_render(frames, out_dir, preview)
     if preview:   # three stills: start, middle, end

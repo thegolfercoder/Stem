@@ -34,10 +34,10 @@ PRINTED = "Printed parts"
 COMPONENTS = "Components (stand-ins)"
 REFERENCE = "Reference"
 
-# Materials: printed parts in a light PETG grey-blue, so the window and seams read.
-PETG = dict(material="PETG shell", color=[0.30, 0.38, 0.48, 1.0], roughness=0.45)
-PETG_LID = dict(material="PETG lid", color=[0.20, 0.27, 0.36, 1.0], roughness=0.45)
-PETG_TAB = dict(material="PETG small parts", color=[0.80, 0.42, 0.10, 1.0], roughness=0.45)
+# Materials: every printed part in solid matte black; boards and cells keep their colours.
+PETG = dict(material="Matte black", color=[0.018, 0.018, 0.02, 1.0], roughness=0.8)
+PETG_LID = PETG
+PETG_TAB = PETG
 PCB = lambda name, rgb: dict(material=name, color=[*rgb, 1.0], roughness=0.6)  # noqa: E731
 
 GROUND = {
