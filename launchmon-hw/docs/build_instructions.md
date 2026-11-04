@@ -22,7 +22,7 @@ these with calipers, change the parameter, and re-export with
 | TP4056 module length and width | `tp_pcb` | ground |
 | Shaft diameter where the pod will sit | `shaft_d` | pod |
 | Micro LiPo | `batt` | pod |
-| MagSafe magnet ring (OD, ID, thickness) | `ring_od`, `ring_id`, `ring_depth` | ground |
+| MagSafe magnet ring, if you use the MagSafe-ring head | `ring_od`, `ring_id`, `ring_depth` | ground |
 
 A line marked `FAIL` in the fit report is a collision: fix it before printing.
 
@@ -170,33 +170,31 @@ Front view, as used: the window is upper right, the battery lower left.
     Wipe off any squeeze-out before it cures. Silicone lets it be prised out
     again; epoxy does not.
 
-### 4.1 Dock and MagSafe ring
+### 4.1 Dock
 
-The dock is the stand and the phone holder in one: a base with a lip in front
-of the unit and two short lips behind it, and a stem rising behind the unit
-that carries the MagSafe ring.
+The dock is the stand and a phone holder in one: a base with a lip in front of
+the unit and two short lips behind it, and a stem rising behind the unit to a
+cap with a standard **1/4"-20 tripod stud**.
 
-1. **Check the ring's orientation with a phone first.** Lay it in the stem's
-   pocket, offer the phone's back to it, and confirm it pulls the phone in and
-   centres it. If it repels or slides off-centre, turn the ring over. Do the
-   same with the alignment magnet in the slot below: it should pull the phone's
-   bottom edge straight down into line.
-2. Glue the ring and the alignment magnet into their pockets with epoxy or CA.
-3. Cut the 0.5 mm grip pad to the ring's shape and stick it over the phone side.
-4. Push the stem's foot into the socket in the base, front face toward the
+1. **Stud.** Put a little epoxy in the hex pocket under the cap and push the
+   1/4"-20 x 1/2" hex bolt in from below, head first, until it seats. Its
+   thread stands 5.5 mm above the cap. Keep epoxy off the thread, and let it cure.
+2. Push the stem's foot into the socket in the base, front face toward the
    unit's side, and fix it with two **M2 x 6** screws from behind, through the
    buttress.
-5. Stick four 8 mm silicone bumpers into the recesses under the base for hard
+3. Stick four 8 mm silicone bumpers into the recesses under the base for hard
    floors and hitting mats.
-6. **Check the 5 V rail with the phone attached.** The ring ends up about
-   6.5 mm from the MT3608 boost converter on the inside of the lid. Measure the
-   MT3608's output with and without the phone: it should not move.
 
-The phone's screen faces back, toward you. Its rear camera is about 70 mm
-above the unit's top edge, looking down the target line over the radar. The
-dock suits phones up to 186 mm tall (the fit report recomputes this for other
-ring positions). The unit lifts straight out of the dock, so it can be carried
-and charged on its own.
+Any smartphone tripod clamp screws onto the stud and holds a phone, whatever
+its size or make, as a **results screen** facing the golfer. The phone on the
+dock is not the camera that films the swing: see 4.2.
+
+**MagSafe-ring head (optional).** Print `ground_radar_dock_stem_magsafe.stl`
+instead. Check the magnet ring's orientation with a phone first (it should pull
+the phone in and centre it; if it repels or slides, turn it over), glue it and
+the alignment magnet into their pockets, and cover the ring with a 0.5 mm grip
+pad. The ring ends up about 6.5 mm from the MT3608 on the inside of the lid:
+measure the MT3608's output with and without the phone, and it should not move.
 
 ### 4.2 Placing it
 
@@ -209,8 +207,22 @@ session and record them; launchmon-py's `hardware.yaml` explains why the
 height matters for the cosine correction.
 
 Use the **dock** on grass or a mat: a 21 mm deep box standing on its edge is
-easy to knock over. The base reaches behind the unit, the side the phone pulls
-it toward. Charge the unit out of the dock: its USB-C port is on the bottom edge.
+easy to knock over. The base reaches behind the unit, the side a phone on the
+stud pulls it toward. Charge the unit out of the dock: its USB-C port is on the
+bottom edge.
+
+**The camera.** Film the swing from a tripod, not from the unit. Put the phone
+or tablet in an ordinary 1/4"-20 clamp on any tripod about **3 m behind the
+ball, at hip height** (about 1 m), on or just beside the target line, so the
+whole golfer and the club at the top are in frame. Any phone works, with or
+without MagSafe, and so does an iPad in a tablet clamp. Record the distance
+from the camera to the ball: fusion uses it to remove the time the sound of
+the strike takes to reach the phone (`fuse_shot.py --camera-distance 3.0`).
+
+Why not on the unit: a phone on the dock sits about 15 cm off the ground,
+1.4 m behind the ball. With its normal lens the golfer's head is about 46°
+above it and their body about 27° to the side, outside the frame in either
+orientation. A tablet is also heavy enough to tip the dock over.
 
 ### 4.3 Set the Doppler sign (one-time bench check)
 

@@ -44,14 +44,29 @@ include the spares worth having. Wiring for every part is in
 | G16 | Clear silicone or epoxy | small | Seats the radome on its ledge, and the LED against the light pipe |
 | G17 | Heat-shrink, 1.5-3 mm | assorted | Solder joints |
 
-### Dock: stand and MagSafe phone holder
+### Dock
 
 | # | Part | Specification | Qty | Notes |
 |---|---|---|---|---|
-| G18 | **MagSafe-compatible magnet ring** | Aftermarket ring for MagSafe mounts and cases, about 56 mm OD x 45-46 mm ID x 1-1.8 mm, ideally with the separate alignment ("tail") magnet | 1 | Sits in the pocket on the dock's stem. **Measure it** and set `ring_od`, `ring_id`, `ring_depth`, `orient_slot` before printing. Rings sold for *phone cases* are made to stick to MagSafe chargers and mounts; one made for a *mount* holds harder. |
-| G19 | Thin grip pad | 0.5 mm self-adhesive silicone, rubber or microfibre sheet, cut to the ring | 1 | Covers the ring, stops the phone sliding and protects its back |
-| G20 | Two-part epoxy or CA | small | 1 | Holds the ring in its pocket |
+| G18 | **1/4"-20 x 1/2" hex bolt**, steel | 7/16" hex head, about 4 mm tall | 1 | Glued head-down in the hex pocket under the stem's cap with epoxy. Its thread stands 5.5 mm proud, the standard for a tripod screw. |
+| G19 | Two-part epoxy | small | 1 | Holds the bolt |
+| G20 | Smartphone tripod clamp with a 1/4"-20 socket *(optional)* | Any spring clamp for phones about 55-95 mm wide | 1 | Screws onto the stud and holds a phone of any size as a results screen facing the golfer. Not for filming: see below. |
 | G21 | Silicone bumper feet, 8 mm, self-adhesive | 4 | Under the dock base: grip on hard floors and hitting mats |
+
+**MagSafe-ring head instead of the stud** *(optional)*: print
+`ground_radar_dock_stem_magsafe.stl` in place of `ground_radar_dock_stem.stl`
+and add an aftermarket MagSafe-compatible magnet ring (about 56 mm OD x 45-46 mm
+ID x 1-1.8 mm, ideally with its alignment magnet; **measure it** and set
+`ring_od`, `ring_id`, `ring_depth`, `orient_slot`), a 0.5 mm grip pad cut to the
+ring, and epoxy. It holds iPhones and phones in MagSafe cases with nothing
+else to buy.
+
+### Filming the swing (not part of the kit)
+
+| Part | Notes |
+|---|---|
+| Any tripod or light stand reaching about 1 m | The camera goes about 3 m behind the ball at hip height, not on the unit. |
+| A 1/4"-20 phone clamp, or a tablet clamp for an iPad | Standard clamps fit every phone and tablet, with or without MagSafe. |
 
 ---
 
@@ -94,14 +109,14 @@ for the slicer settings.
 | `ground_radar_led_pipe.stl` | Ground | 1 | Flange down. Natural PETG |
 | `ground_radar_esp32_clamp_tab_x2.stl` | Ground | **2** | Flat |
 | `ground_radar_dock_base.stl` | Ground | 1 | As it sits |
-| `ground_radar_dock_stem.stl` | Ground | 1 | Flat, front face down on a textured sheet, ring pocket up |
+| `ground_radar_dock_stem.stl` | Ground | 1 | Flat, front face down on a textured sheet, stud cap up. Or `ground_radar_dock_stem_magsafe.stl` for the MagSafe-ring head |
 | `shaft_pod_base.stl` | Pod | 1 | Standing on its USB end, clamp bore vertical |
 | `shaft_pod_lid.stl` | Pod | 1 | Outside face down |
 
-About **70 g** of filament and **4 hours** of printing for both units, with no
+About **66 g** of filament and **3.9 hours** of printing for both units, with no
 supports anywhere. `cad/cost_report.py` estimates it from the STLs and writes
-`cad/stl/cost_report.txt`: about $1.40 of PETG, $3.20 a kit on your own printer
-and $7.90 at a print-farm machine rate, against a $5-10 budget for the printed
+`cad/stl/cost_report.txt`: about $1.30 of PETG, $3.00 a kit on your own printer
+and $7.50 at a print-farm machine rate, against a $5-10 budget for the printed
 parts. Those are estimates, within about 20% of a slice; slice the STLs with
 your printer's profile before quoting a price.
 

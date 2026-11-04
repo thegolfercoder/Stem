@@ -12,7 +12,7 @@
 //  window is in that face. It cannot go anywhere else: the 21 mm faces are
 //  too narrow for a 25.4 mm aperture. Standing on its edge, a 21 mm deep box
 //  tips over easily, so it stands in a dock: a base with lips front and rear,
-//  and a stem behind the unit that carries a MagSafe ring for the phone.
+//  and a stem behind the unit with a standard 1/4"-20 tripod stud on top.
 //
 //  DESIGN (docs/design_language.md says why)
 //  One matte black object with one focal point, the radar window: a smoked
@@ -51,7 +51,7 @@
 //      "led_pipe"          status light pipe, natural PETG (print flange down)
 //      "esp32_clamp_tab"   x2, M2 clamp tabs for the SuperMini (no holes on it)
 //      "dock_base"         dock base with lips and the stem's socket
-//      "dock_stem"         stem and MagSafe ring (print flat)
+//      "dock_stem"         stem with the 1/4"-20 stud cap, or the MagSafe ring (print flat)
 //      "assembly"          everything placed, with ghost components (viewing only)
 //      "print_plate"       shell + lid + small parts laid out for one export
 // =============================================================================
@@ -143,13 +143,25 @@ led_hole_d  = 3.0;                 // the light pipe shows as a 2.8 mm dot, flus
 pipe_d      = 2.8;
 pipe_flange = [6.0, 0.8];          // [diameter, thickness]; the 5 mm LED's dome sits under it
 
-/* [Dock - stand and MagSafe phone holder in one] */
+/* [Dock - stand and phone holder in one] */
 // The unit drops into the dock's base between a front lip and the stem. The
-// stem rises behind the unit and ends in a ring carrying a MagSafe-compatible
-// magnet ring. The phone's back sits on the ring: its screen faces the golfer,
-// and its rear camera, above the unit's top edge, looks down the target line.
-// The stem is printed flat, so both faces are smooth, then screwed into the base.
+// stem rises behind the unit and carries a phone, screen toward the golfer, as
+// a results display. The stem is printed flat, so both faces are smooth, then
+// screwed into the base.
+//
+// THE CAMERA IS NOT ON THE DOCK. A phone here sits 15 cm off the ground,
+// 1.4 m behind the ball: too low and too close to frame the golfer for swingml.
+// Film from a tripod about 3 m behind, at hip height (docs/build_instructions.md,
+// "Placing it"). Fusion aligns the video by the sound of the strike, so the
+// camera does not need to be on the unit.
+//
+// Two stem heads:
+//   "stud"     a 1/4"-20 tripod stud on a cap above the unit. Any phone clamp,
+//              any phone size, MagSafe or not, screws on. The default.
+//   "magsafe"  a ring carrying a MagSafe-compatible magnet ring, for iPhones
+//              (or phones in a MagSafe case) with nothing else to buy.
 phone_mount   = true;           // false: dock base only, no stem
+holder        = "stud";         // [stud, magsafe]
 dock_t        = 2.4;            // base plate
 dock_lip_h    = 6.0;            // lips up the unit's front and rear faces
 dock_gap      = 0.3;            // unit to lips and stem
@@ -161,6 +173,16 @@ stem_hole_d   = 30;             // opening in the middle of the ring
 stem_chamfer  = 0.6;            // edges of the stem, printed as three 0.2 mm steps
 buttress      = [28, 6, 10];    // block behind the stem's foot [X, Y, Z]
 foot_d        = 8.2;            // recesses for 8 mm silicone bumpers under the base
+// 1/4"-20 stud: a 1/4"-20 x 1/2" hex bolt, glued head-down in a hex pocket that
+// opens under the cap, thread up. Tripod screws stand 4.5-6 mm proud.
+cap           = [30, 22, 11.4]; // [X, Y from the stem's front face, Z]
+cap_top       = 74;             // 10 mm above the unit's top edge
+bolt_len      = 12.7;           // 1/2", under the head
+bolt_head     = [11.11, 3.97];  // 7/16" across flats, head height
+bolt_d        = 6.35;
+stud_behind   = 8;              // stud axis behind the stem's rear face
+
+// MagSafe ring head
 ring_center   = [48, 104];      // magnet ring centre, front-view [X, Z] above the unit's bottom: the ring clears
                                 // the unit's top edge by 9 mm, so the neck shows between them
 ring_od       = 56.5;           // aftermarket MagSafe magnet ring: MEASURE YOURS
@@ -203,6 +225,7 @@ esp_top_y = y_front + esp_rail_h + esp_pcb[2];
 radar_stack   = win_t + radar_gap + radar_pcb[2] + radar_back_clear;
 stem_y0       = body_d + dock_gap;          // stem front face
 stem_y1       = stem_y0 + stem_t;           // stem rear face (the phone side)
+stud_y        = stem_y1 + stud_behind;      // 1/4"-20 stud axis, Y
 radar_back_y  = radar_stack * cos(win_tilt) + win_size * sin(win_tilt);
 radar_low_z   = win_zb - (win_t + radar_gap) * sin(win_tilt);  // module bottom edge
 
@@ -681,15 +704,44 @@ module dock_base() {
 }
 
 module stem_profile() {
-    // Front view [X, Z]: a ring on a neck, joined by a generous fillet.
+    // Front view [X, Z]. MagSafe: a ring on a neck, joined by a generous fillet.
+    // Stud: the neck up to the cap, flaring into it the same way.
     rc = ring_od / 2 + 3;
     difference() {
         offset(r = -stem_fillet) offset(r = stem_fillet) union() {
-            translate(ring_center) circle(r = rc, $fn = 128);
-            translate([ring_center[0] - stem_neck_w / 2, -stem_foot]) square([stem_neck_w, ring_center[1]]);
+            if (holder == "magsafe") {
+                translate(ring_center) circle(r = rc, $fn = 128);
+                translate([ring_center[0] - stem_neck_w / 2, -stem_foot]) square([stem_neck_w, ring_center[1]]);
+            } else {
+                translate([ring_center[0] - cap[0] / 2, cap_top - cap[2]]) rrect(cap[0], cap[2], 4);
+                translate([ring_center[0] - stem_neck_w / 2, -stem_foot]) square([stem_neck_w, cap_top - 4 + stem_foot]);
+            }
         }
         translate([0, -stem_foot - 20]) square([body_w, 20]);   // keep the foot square
-        translate(ring_center) circle(d = stem_hole_d, $fn = 96);
+        if (holder == "magsafe") translate(ring_center) circle(d = stem_hole_d, $fn = 96);
+    }
+}
+
+module stud_cap() {
+    // The block behind the stem's top that carries the stud. Chamfered on
+    // every edge, as the stem is.
+    c = 0.8;
+    x0 = ring_center[0] - cap[0] / 2; z0 = cap_top - cap[2];
+    hull() {
+        xz_extrude(stem_y0, stem_y0 + 0.01)     translate([x0 + c, z0 + c]) rrect(cap[0] - 2 * c, cap[2] - 2 * c, 4 - c);
+        xz_extrude(stem_y0 + c, stem_y0 + cap[1] - c) translate([x0, z0]) rrect(cap[0], cap[2], 4);
+        xz_extrude(stem_y0 + cap[1] - 0.01, stem_y0 + cap[1]) translate([x0 + c, z0 + c]) rrect(cap[0] - 2 * c, cap[2] - 2 * c, 4 - c);
+    }
+}
+
+module stud_cut() {
+    // Hex pocket for the bolt's head, open underneath, and the hole its thread
+    // passes up through. A vertex of the hex points along Y, so printed flat
+    // the pocket has a peaked roof and needs no support.
+    z0 = cap_top - cap[2];
+    translate([ring_center[0], stud_y, z0 - 1]) {
+        rotate([0, 0, 30]) cylinder(h = bolt_head[1] + 0.25 + 1, d = (bolt_head[0] + 0.3) / cos(30), $fn = 6);
+        cylinder(h = cap[2] + 2, d = bolt_d + 0.25, $fn = 32);
     }
 }
 
@@ -705,13 +757,14 @@ module stem() {
 }
 
 module stem_cut() {
+    if (holder == "stud") stud_cut();
     // Magnet ring pocket, open on the phone side.
-    translate([ring_center[0], stem_y1 - ring_depth, ring_center[1]]) difference() {
+    if (holder == "magsafe") translate([ring_center[0], stem_y1 - ring_depth, ring_center[1]]) difference() {
         y_cylinder(ring_depth + 1, ring_od);
         translate([0, -1, 0]) y_cylinder(ring_depth + 3, ring_id);
     }
     // Alignment magnet below the ring, as on a MagSafe accessory.
-    if (orient_slot[0] > 0)
+    if (holder == "magsafe" && orient_slot[0] > 0)
         translate([ring_center[0] - orient_slot[0] / 2, stem_y1 - ring_depth,
                    ring_center[1] - ring_od / 2 - orient_gap - orient_slot[1]])
             cube([orient_slot[0], ring_depth + 1, orient_slot[1]]);
@@ -719,12 +772,17 @@ module stem_cut() {
     for (p = stem_screws) translate([p[0], stem_y1 - 3.4, p[1]]) y_cylinder(4, m2_pilot);
 }
 
-module dock_stem() { difference() { stem(); stem_cut(); } }
+module dock_stem() {
+    difference() {
+        union() { stem(); if (holder == "stud") stud_cap(); }
+        stem_cut();
+    }
+}
 
 // Print orientations. Base: as it sits. Stem: flat, front face on the bed,
 // ring pocket facing up.
 module dock_base_print() { translate([0, -dock_y0, dock_t]) dock_base(); }
-module dock_stem_print()  { translate([0, ring_center[1] + ring_od / 2 + 3, -stem_y0]) rotate([90, 0, 0]) dock_stem(); }
+module dock_stem_print()  { translate([0, holder == "magsafe" ? ring_center[1] + ring_od / 2 + 3 : cap_top + 1, -stem_y0]) rotate([90, 0, 0]) dock_stem(); }
 
 // ----------------------------------------------------------------------------
 //  Ghost components (assembly view only)
@@ -732,7 +790,7 @@ module dock_stem_print()  { translate([0, ring_center[1] + ring_od / 2 + 3, -ste
 // Each component is a named ghost so other tools can export them one at a
 // time: `part = "ghost:battery"` exports just the cell, in place. The Blender
 // scenes in cad/blender/ are built that way.
-ghost_names = ["battery", "tp4056", "mt3608", "esp32", "lm358", "radar", "switch", "led", "boresight", "phone", "magsafe_ring"];
+ghost_names = ["battery", "tp4056", "mt3608", "esp32", "lm358", "radar", "switch", "led", "boresight", "phone", "magsafe_ring", "stud_bolt"];
 // The radome and light pipe are printed parts, exported with "in_place:radome" and "in_place:led_pipe".
 
 module ghosts() { for (n = ghost_names) ghost(n); }
@@ -765,14 +823,19 @@ module ghost(name) {
             cube([sw_body[2], sw_body[0], sw_body[1]]);
     if (name == "led") color("Red", 0.8) translate([led_pos[0], led_pos[1], body_h - wall - 8.6]) cylinder(h = 8.6, d = 5);
     // Stand-in phone on the dock's ring: back on the ring, camera bump at the top.
-    if (name == "phone" && phone_mount) color("DimGray") {
+    if (name == "phone" && phone_mount && holder == "magsafe") color("DimGray") {
         y = stem_y1 + 0.5;   // 0.5 mm grip pad
         translate([0, y, 0]) xz_extrude(0, phone[2])
             translate([ring_center[0] - phone[0] / 2, ring_center[1] - phone[1] / 2]) rrect(phone[0], phone[1], 10);
         translate([ring_center[0] - phone[0] / 2 + 4, y - 2, ring_center[1] + phone[1] / 2 - 42])
             cube([36, 2.01, 38]);
     }
-    if (name == "magsafe_ring" && phone_mount) color("Silver")
+    if (name == "stud_bolt" && phone_mount && holder == "stud") color("Silver")
+        translate([ring_center[0], stud_y, cap_top - cap[2]]) {
+            rotate([0, 0, 30]) cylinder(h = bolt_head[1], d = bolt_head[0] / cos(30), $fn = 6);
+            cylinder(h = bolt_head[1] + bolt_len, d = bolt_d, $fn = 32);
+        }
+    if (name == "magsafe_ring" && phone_mount && holder == "magsafe") color("Silver")
         translate([ring_center[0], stem_y1 - ring_depth, ring_center[1]]) difference() {
             y_cylinder(ring_depth - 0.2, ring_od - 0.4);
             translate([0, -1, 0]) y_cylinder(ring_depth + 2, ring_id + 0.4);
@@ -796,6 +859,9 @@ module esp32_clamp_tab_in_place(i) {
 function chk(name, v) = str(v >= 0 ? "  ok   " : "  FAIL ", name, ": ", v, " mm");
 
 module fit_report() {
+    ms = phone_mount && holder == "magsafe";
+    st = phone_mount && holder == "stud";
+    stud_proud = bolt_len - (cap[2] - bolt_head[1] - 0.25);
     radar_x0 = win_cx - win_size / 2 - win_frame;
     radar_x1 = win_cx + win_size / 2 + win_frame;
     // Window opening on the front face must stay inside the R12 outline with a full wall.
@@ -816,21 +882,31 @@ module fit_report() {
         chk("radar posts on their corner pads", ledge_pad - (win_size / 2 - abs(radar_holes[0][0]) + 2.3)),
         chk("radar post pilot under its depth", (radar_gap - ledge_t) - 4.5),
         chk("light pipe flange to ESP32 board", (body_h - wall) - (esp_pos[1] + esp_pcb[1]) - 0),
-        // Dock: the stand-in phone's bottom edge must clear the buttress, its
-        // camera must see over the unit's top edge, and the magnets must fit the stem.
-        chk("phone bottom above buttress     ", phone_mount ? (ring_center[1] - phone[1] / 2) - (buttress[2] + 1) : 0),
-        chk("phone camera clears unit top    ", phone_mount ? (ring_center[1] + phone[1] / 2 - phone_lens_from_top)
-            - (body_h + (stem_y1 + 0.5) * tan(phone_vfov / 2)) : 0),
-        chk("alignment magnet inside neck    ", phone_mount ? (stem_neck_w - orient_slot[0]) / 2 - 1.5 : 0),
-        chk("stem behind the ring pocket     ", phone_mount ? (stem_t - ring_depth) - 1.6 : 0),
-        chk("opening inside the magnet ring  ", phone_mount ? (ring_id - stem_hole_d) / 2 - 3 : 0),
-        chk("stem face past the screw pilots  ", phone_mount ? stem_t - 3.4 - 0.4 : 0),
     ];
-    for (l = lines) echo(l);
+    // Dock: only the checks for the stem head being exported.
+    ms_lines = !ms ? [] : [
+        chk("phone bottom above buttress     ", (ring_center[1] - phone[1] / 2) - (buttress[2] + 1)),
+        chk("phone clears unit top           ", (ring_center[1] + phone[1] / 2 - phone_lens_from_top)
+            - (body_h + (stem_y1 + 0.5) * tan(phone_vfov / 2))),
+        chk("alignment magnet inside neck    ", (stem_neck_w - orient_slot[0]) / 2 - 1.5),
+        chk("stem behind the ring pocket     ", (stem_t - ring_depth) - 1.6),
+        chk("opening inside the magnet ring  ", (ring_id - stem_hole_d) / 2 - 3),
+    ];
+    st_lines = !st ? [] : [
+        chk("stud stands at least 4.5 mm     ", stud_proud - 4.5),
+        chk("stud stands at most 6.0 mm      ", 6.0 - stud_proud),
+        chk("hex pocket clear of the stem    ", (stud_y - (bolt_head[0] + 0.3) / cos(30) / 2) - stem_y1 - 0.8),
+        chk("hex pocket inside the cap (Y)   ", (stem_y0 + cap[1]) - (stud_y + (bolt_head[0] + 0.3) / cos(30) / 2) - 1.6),
+        chk("hex pocket inside the cap (X)   ", cap[0] / 2 - (bolt_head[0] + 0.3) / 2 - 1.6),
+        chk("cap above the unit's top edge   ", (cap_top - cap[2]) - body_h + 3),
+    ];
+    stem_lines = !phone_mount ? [] : [chk("stem face past the screw pilots  ", stem_t - 3.4 - 0.4)];
+    for (l = concat(lines, ms_lines, st_lines, stem_lines)) echo(l);
     echo(str("  info  radar window centre ", [win_cx, win_zb + top_on_face / 2],
              ", boresight ", win_tilt, " deg up, skin ", win_t, " mm"));
     echo(str("  info  USB-C receptacle centre X ", tp_usb_x, " Y ", tp_usb_y));
-    if (phone_mount) {
+    if (st) echo(str("  info  1/4-20 stud stands ", stud_proud, " mm proud of the cap, top ", cap_top, " mm above the unit's bottom"));
+    if (ms) {
         echo(str("  info  tallest phone that clears the buttress: ", 2 * (ring_center[1] - buttress[2] - 1), " mm"));
         echo(str("  info  magnet ring to MT3608 PCB: ", (stem_y1 - ring_depth) - (y_back - mt_pcb[2]),
                  " mm (check the 5 V rail with a phone attached)"));

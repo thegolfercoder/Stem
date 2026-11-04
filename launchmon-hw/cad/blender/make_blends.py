@@ -65,11 +65,8 @@ GROUND = {
              explode=[0, 0, -25], props={"print_file": "ground_radar_dock_base.stl"}),
         dict(part="in_place:dock_stem", name="Dock stem", collection=PRINTED, **PETG_LID,
              explode=[0, 80, 0], props={"print_file": "ground_radar_dock_stem.stl"}),
-        dict(part="ghost:magsafe_ring", name="MagSafe magnet ring", collection=COMPONENTS,
-             material="Magnet ring", color=[0.75, 0.75, 0.78, 1.0], roughness=0.3, metallic=1.0, explode=[0, 80, 0]),
-        dict(part="ghost:phone", name="Phone (stand-in, 147.6 mm)", collection=REFERENCE,
-             material="Phone", color=[0.05, 0.05, 0.06, 1.0], roughness=0.25, explode=[0, 115, 0],
-             hide_render=True),   # shown in the viewport; hidden in the previews so the unit is seen
+        dict(part="ghost:stud_bolt", name="1/4-20 stud (hex bolt)", collection=COMPONENTS,
+             material="Steel", color=[0.72, 0.72, 0.74, 1.0], roughness=0.3, metallic=1.0, explode=[0, 80, 0]),
         dict(part="ghost:battery", name="LiPo 1500 mAh", collection=COMPONENTS,
              **PCB("Cell", [0.15, 0.35, 0.65]), explode=[0, 32, 0]),
         dict(part="ghost:tp4056", name="TP4056 USB-C charger", collection=COMPONENTS,
@@ -102,7 +99,8 @@ Collections: Printed parts (print from cad/stl/, see each object's print_file
 property), Components (stand-in boxes at real size and position), Reference
 (the radar's 15 degree boresight cone, hidden in renders).
 The unit stands on the dock base's top face (Z = 0). The dock stem behind it
-carries the MagSafe ring; the phone is a stand-in slab for fit and scale.
+ends in a cap with a 1/4"-20 tripod stud, for any phone clamp. (A MagSafe-ring
+head is the alternative: script_ground_radar.scad, holder = "magsafe".)
 """,
 }
 

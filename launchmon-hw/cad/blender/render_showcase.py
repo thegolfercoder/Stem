@@ -30,6 +30,7 @@ TIMED_FPS = 30
 WIN_CX, WIN_ZB, WIN_SIZE, WIN_TILT = 76.1, 33.0, 25.4, 15.0
 DOCK_T = 2.4              # the dock base is under the unit: its underside is the floor
 RANGE_FROM_TEE = 1400.0
+CAMERA_FROM_BALL, CAMERA_HEIGHT = 3000.0, 1000.0   # the filming phone, on a tripod (build_instructions 4.2)
 BEAM_AZ_DEG, BEAM_EL_DEG = 80.0, 40.0
 
 
@@ -257,7 +258,7 @@ def shot_ground_assembly():
     c, r = (lo + hi) / 2, (hi - lo).length / 2
     studio(lo.z, r)
     order = [["LiPo"], ["TP4056"], ["BGT24LTR11"], ["LM358"], ["ESP32-C3"], ["ESP32 clamp"],
-             ["Slide switch", "Light pipe", "Status LED"], ["Lid", "MT3608"], ["Radome"], ["Dock stem", "MagSafe magnet ring"]]
+             ["Slide switch", "Light pipe", "Status LED"], ["Lid", "MT3608"], ["Radome"], ["Dock stem", "1/4-20 stud"]]
     assemble(objs, order, start=20, step=14, travel=40, extra=(0, 30, 0))
     for o in objs:   # the dock base stays put in this shot
         if o.name.startswith("Dock base"):
@@ -319,21 +320,68 @@ def shot_ground_in_use():
     for f, hidden in ((1, True), (75, True), (76, False)):
         beam.hide_render = hidden
         beam.keyframe_insert("hide_render", frame=f)
+    # The camera films from a tripod 3 m behind the ball, at hip height.
+    tripod_phone(floor_z, WIN_CX - 150, -RANGE_FROM_TEE + CAMERA_FROM_BALL, CAMERA_HEIGHT)
 
     cam = camera(35)
     tgt = target_empty()
     window = start
-    mid = Vector((WIN_CX, -RANGE_FROM_TEE * 0.5, floor_z + 120))
+    mid = Vector((WIN_CX, (-RANGE_FROM_TEE + CAMERA_FROM_BALL - RANGE_FROM_TEE) / 2, floor_z + 330))
     # Close on the window, then pull back and up to show the unit, beam and ball.
     key_loc(cam, 1, window + Vector((120, -130, 30)))
     key_loc(cam, 50, window + Vector((160, -175, 45)))
-    key_loc(cam, 210, Vector((WIN_CX + 1700, -250, 720)))
+    key_loc(cam, 210, Vector((WIN_CX + 3600, -650, 1250)))
     key_loc(tgt, 1, window)
     key_loc(tgt, 50, window)
     key_loc(tgt, 210, mid)
     cam.data.dof.aperture_fstop = 16.0
     cam.data.clip_end = 100000
     return 210
+
+
+def cylinder_between(p0: Vector, p1: Vector, radius: float, mat) -> bpy.types.Object:
+    d = p1 - p0
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=d.length, vertices=24, location=(p0 + p1) / 2)
+    ob = bpy.context.object
+    ob.rotation_mode = "QUATERNION"
+    ob.rotation_quaternion = d.normalized().to_track_quat("Z", "Y")
+    ob.data.materials.append(mat)
+    return ob
+
+
+def tripod_phone(floor_z: float, x: float, y: float, lens_h: float) -> None:
+    """A generic tripod with a phone in a clamp, portrait, rear camera toward
+    the ball (-Y): the filming position the docs recommend. Illustrative only."""
+    black = material("Tripod", (0.025, 0.025, 0.028, 1), 0.45)
+    phone_w, phone_h, phone_t = 71.6, 147.6, 8.3
+    pc = floor_z + lens_h - (phone_h / 2 - 25)           # lens 25 mm below the phone's top
+    bpy.ops.mesh.primitive_cube_add(location=(x, y, pc))
+    phone = bpy.context.object
+    phone.name = "Filming phone (stand-in)"
+    phone.scale = (phone_w / 2, phone_t / 2, phone_h / 2)
+    phone.data.materials.append(material("Phone body", (0.05, 0.05, 0.06, 1), 0.25))
+    bpy.ops.mesh.primitive_cylinder_add(radius=6, depth=2, vertices=32,
+                                        location=(x - phone_w / 2 + 16, y - phone_t / 2 - 0.8, pc + phone_h / 2 - 25))
+    lens = bpy.context.object
+    lens.rotation_euler = (math.radians(90), 0, 0)
+    lens.data.materials.append(material("Lens", (0.01, 0.01, 0.012, 1), 0.05))
+    # Clamp: a bar behind the phone with a jaw at each side.
+    bpy.ops.mesh.primitive_cube_add(location=(x, y + phone_t / 2 + 6, pc))
+    bar = bpy.context.object
+    bar.scale = (phone_w / 2 + 6, 6, 9)
+    bar.data.materials.append(black)
+    for sx in (-1, 1):
+        bpy.ops.mesh.primitive_cube_add(location=(x + sx * (phone_w / 2 + 3), y, pc))
+        jaw = bpy.context.object
+        jaw.scale = (3, phone_t / 2 + 6, 9)
+        jaw.data.materials.append(black)
+    head = Vector((x, y + phone_t / 2 + 6, pc - 9))
+    hub = Vector((x, y + 20, floor_z + lens_h - 330))
+    cylinder_between(hub, head, 9, black)                                   # centre column
+    for k in range(3):
+        a = math.radians(90 + 120 * k)
+        foot = Vector((x + 420 * math.cos(a), y + 20 + 420 * math.sin(a), floor_z))
+        cylinder_between(hub, foot, 7, black)
 
 
 def shot_pod_hero():

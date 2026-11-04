@@ -49,11 +49,13 @@ Both units share one design language, set out in
 [docs/design_language.md](docs/design_language.md): matte black, one focal
 point, details that each do a job, and parts drawn for the printer. On the
 ground unit the focal point is the radar window, a separate smoked radome in a
-bevelled pocket. The unit stands in a dock, a ring on a stem behind it that
-carries the phone on a MagSafe ring. The pod has an arrow pointing to the
+bevelled pocket. The unit stands in a dock whose stem ends in a standard
+1/4"-20 tripod stud, so any phone clamp fits it (a MagSafe-ring head is the
+alternative). The camera that films the swing goes on its own tripod 3 m back,
+not on the unit. The pod has an arrow pointing to the
 clubhead, and a saddle that makes its clamp one form. No part needs supports.
-All printed parts for both units come to about 70 g and 4 hours, an estimated
-$3.20 a kit on your own printer or $7.90 at a print-farm rate
+All printed parts for both units come to about 66 g and 3.9 hours, an estimated
+$3.00 a kit on your own printer or $7.50 at a print-farm rate
 (`cad/stl/cost_report.txt`).
 
 ## Where it departs from the brief, and why
@@ -75,12 +77,17 @@ $3.20 a kit on your own printer or $7.90 at a print-farm rate
   them (about 15 mm), and one parameter switches to that.
 - **Zip-tie retention on the pod clamp.** Not asked for, but a snap clamp alone
   is not something to trust at clubhead speed.
-- **The MagSafe phone holder is behind the unit, on the dock, not on the front
-  face.** A phone is bigger than the 96 x 64 mm front face, so on the front it
-  would cover the radar window. Behind the unit, the screen faces the user and
-  the phone's camera, above the unit, looks down the target line. The ring is
-  on the dock's stem, so the unit lifts out on its own and its lid stays plain.
-  It takes phones up to 186 mm tall.
+- **The phone is not mounted on the unit to film.** A phone on the dock sits
+  15 cm off the ground and 1.4 m behind the ball: with its normal lens the
+  golfer's head is about 46° above it and their body about 27° to the side,
+  outside the frame. The camera goes on its own tripod about 3 m back at hip
+  height, which also takes any phone or tablet in a standard clamp. Fusion
+  lines the video up by the sound of the strike, so it does not need to be on
+  the unit; record its distance from the ball.
+- **The dock's phone holder is a standard 1/4"-20 tripod stud**, not a MagSafe
+  ring. Any phone clamp screws on, whatever the phone's size or make, for a
+  results screen facing the golfer. A MagSafe-ring head is kept as an option
+  (`holder = "magsafe"`, `ground_radar_dock_stem_magsafe.stl`).
 - **The radar window is a separate part.** Printed into the shell, the 1.0-1.2
   mm window needed supports, came out rough and varied in thickness, and tied
   the whole shell to an RF-safe filament colour. As a flat-printed radome it is

@@ -15,9 +15,9 @@ cd "$(dirname "$0")"
 OPENSCAD="${OPENSCAD:-openscad}"
 mkdir -p stl
 
-export_part() {  # script part outfile
+export_part() {  # script part outfile [extra -D assignment]
   echo "  $3"
-  "$OPENSCAD" -o "stl/$3" -D "part=\"$2\"" "$1" 2>>"stl/fit_report.txt"
+  "$OPENSCAD" -o "stl/$3" -D "part=\"$2\"" ${4:+-D "$4"} "$1" 2>>"stl/fit_report.txt"
 }
 
 : > stl/fit_report.txt
@@ -29,6 +29,7 @@ export_part script_ground_radar.scad led_pipe        ground_radar_led_pipe.stl
 export_part script_ground_radar.scad esp32_clamp_tab ground_radar_esp32_clamp_tab_x2.stl
 export_part script_ground_radar.scad dock_base       ground_radar_dock_base.stl
 export_part script_ground_radar.scad dock_stem       ground_radar_dock_stem.stl
+export_part script_ground_radar.scad dock_stem       ground_radar_dock_stem_magsafe.stl 'holder="magsafe"'
 echo "shaft motion pod"
 export_part script_shaft_imu.scad    base            shaft_pod_base.stl
 export_part script_shaft_imu.scad    lid             shaft_pod_lid.stl

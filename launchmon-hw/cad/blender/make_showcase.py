@@ -37,11 +37,11 @@ FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 # (shot, .blend, caption title, caption detail)
 SHOTS = [
     ("ground_hero", "ground_radar_unit.blend", "Ground radar unit",
-     "96 x 64 x 21 mm  |  smoked radome  |  dock with a MagSafe ring for the phone"),
+     "96 x 64 x 21 mm  |  smoked radome  |  dock with a standard 1/4-20 phone mount"),
     ("ground_assembly", "ground_radar_unit.blend", "Inside the ground unit",
      "24 GHz I/Q Doppler radar  |  ESP32-C3  |  1500 mAh LiPo, USB-C charging"),
     ("ground_in_use", "ground_radar_unit.blend", "Placement",
-     "Radar faces the target, tilted 15 degrees up  |  phone camera looks down the line  |  beam illustrative"),
+     "Radar faces the target, 15 degrees up  |  phone films from a tripod 3 m back  |  beam illustrative"),
     ("pod_hero", "shaft_pod.blend", "Club-mounted motion pod",
      "32 x 26 x 14 mm  |  6-axis IMU  |  Bluetooth LE link to the ground unit"),
     ("pod_assembly", "shaft_pod.blend", "Inside the pod",
