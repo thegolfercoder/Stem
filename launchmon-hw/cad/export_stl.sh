@@ -25,7 +25,8 @@ echo "ground radar unit"
 export_part script_ground_radar.scad shell           ground_radar_shell.stl
 export_part script_ground_radar.scad lid             ground_radar_lid.stl
 export_part script_ground_radar.scad esp32_clamp_tab ground_radar_esp32_clamp_tab_x2.stl
-export_part script_ground_radar.scad stand           ground_radar_stand_optional.stl
+export_part script_ground_radar.scad stand           ground_radar_stand.stl
+export_part script_ground_radar.scad phone_mount     ground_radar_magsafe_phone_mount.stl
 echo "shaft motion pod"
 export_part script_shaft_imu.scad    base            shaft_pod_base.stl
 export_part script_shaft_imu.scad    lid             shaft_pod_lid.stl

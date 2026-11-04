@@ -7,8 +7,13 @@
   ok   cell + MT3608 depth stack       : 1.4 mm
   ok   divider to ESP32 board          : 2.4 mm
   ok   radar housing to right wall     : 3.6 mm
+  ok   phone bottom above stand wall   : 9.2 mm
+  ok   phone camera clears unit top    : 60.8732 mm
+  ok   alignment magnet inside plate   : 53.25 mm
   info  radar window centre [76.1, 46.148], boresight 15 deg up, skin 1.1 mm
   info  USB-C receptacle centre X 73 Y 7.15
+  info  tallest phone that clears the stand: 166 mm
+  info  magnet ring to MT3608 PCB: 6.2 mm (check the 5 V rail with a phone attached)
   ok   stack height under the lid      : 0.74 mm
   ok   IMU board inside the walls (X)  : 1.1 mm
   ok   cell + charger along X          : 0.3 mm

@@ -43,7 +43,7 @@ radar's beam; a warped clamp lets go of the shaft.
 **Colour matters for the radar window.** Use natural, white or a light,
 plainly pigmented filament for the ground shell. **Avoid carbon-fibre,
 metal-filled, glitter/sparkle and heavily carbon-black filaments**: conductive
-or lossy fillers absorb 24 GHz. If in doubt, run the bench check in 4.4 with
+or lossy fillers absorb 24 GHz. If in doubt, run the bench check in 4.5 with
 the module behind a printed test window.
 
 ## 2. Slicer settings (all parts)
@@ -81,7 +81,12 @@ enclosure. Check afterwards:
 
 **Clamp tabs (x2).** Flat. Small: print them with the lid.
 
-**Stand (optional).** Flat. No supports.
+**Stand.** Flat. No supports. Its channel is deep enough for the unit with the
+phone mount fitted.
+
+**MagSafe phone mount.** Flat, lid side on the bed, ring pocket facing up. No
+supports. Check the ring drops into its pocket and sits flush or very slightly
+below the surface.
 
 **Pod base (`shaft_pod_base.stl`).** Prints **standing on its USB end, with
 the clamp bore vertical**. Every layer then contains a complete C, so the
@@ -143,7 +148,33 @@ Front view, as used: the window is upper right, the battery lower left.
 10. **Close.** Fit the lid (the lip locates it) and drive the four M2 x 6
     screws. Snug them up; do not over-tighten into plastic.
 
-### 4.1 Placing it
+### 4.1 MagSafe phone mount
+
+1. **Check the ring's orientation with a phone first.** Lay it in the pocket,
+   offer the phone's back to it, and confirm it pulls the phone in and centres it.
+   If it repels or slides off-centre, turn the ring over. Do the same with the
+   alignment magnet in the slot below: it should pull the phone's bottom edge
+   straight down into line.
+2. Glue the ring and the alignment magnet into their pockets with epoxy or CA.
+3. Stick the 0.5 mm grip pad over the whole phone side of the plate.
+4. Remove the lid's four M2 x 6 screws, place the plate on the lid, and fix both
+   with four **M2 x 10** screws through the plate into the same bosses. The lid
+   now comes off with the plate, using the same four screws.
+5. **Check the 5 V rail with the phone attached.** The ring sits about 6 mm from
+   the MT3608 boost converter on the inside of the lid. Measure the MT3608's
+   output with and without the phone: it should not move. If it drifts, move
+   the MT3608 elsewhere on the lid or add a spacer under the plate.
+
+With a phone fitted, **always use the stand**. The phone weighs more than the
+unit and hangs behind it. The stand's long base is behind the unit, which is the
+side the phone pulls toward.
+
+The phone's screen then faces back, toward you. Its rear camera is about 60 mm
+above the unit's top edge, looking down the target line over the radar. The
+mount suits phones up to 166 mm tall (the fit report recomputes this for other
+ring positions). Remove the phone before carrying the unit by its stand.
+
+### 4.2 Placing it
 
 Stand the unit on its bottom edge **behind the ball, on the target line**, window
 facing the target. The window's boresight points **15° up**. The groove on the
@@ -158,7 +189,7 @@ easy to knock over. The stand's long side goes behind the unit, the side it
 tips toward. Its channel takes a right-angle USB-C cable if you want to charge
 it standing up.
 
-### 4.2 Set the Doppler sign (one-time bench check)
+### 4.3 Set the Doppler sign (one-time bench check)
 
 Which sign of Doppler means "moving away" depends on which IF output went to
 which pin. With the unit running and a serial monitor open, send `d` to print
@@ -167,7 +198,7 @@ quickly. The `ratio` should jump strongly **positive**. If it goes negative,
 change `RECEDING_SIGN` to `-1` in `ground_unit.ino` and re-flash. If nothing
 moves, check the radar supply and the pre-amp.
 
-### 4.3 Raw captures
+### 4.4 Raw captures
 
 Send `r` (or short-press the BOOT button) to toggle raw streaming. Each shot
 then also sends a `RAW_BEGIN {...}` header line, exactly the stated number of
@@ -176,7 +207,7 @@ the on-device speeds are a preview, and launchmon-py can be run on exactly the
 samples the unit saw. Its configuration must then say 40 kHz, not the 48 kHz
 it was written for.
 
-### 4.4 Window check
+### 4.5 Window check
 
 Before closing the case, compare the trigger metric for the same hand movement
 with the module bare and with it behind the printed window. A large drop means

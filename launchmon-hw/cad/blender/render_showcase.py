@@ -18,7 +18,11 @@ import sys
 import bpy
 from mathutils import Vector
 
-FPS = 30
+FPS = 24
+# Shots are timed in 30 fps frames and rendered at 24 fps: Blender's time
+# remapping plays the same motion in 20% fewer frames, which on a CPU-only
+# machine is 20% less render time for the same duration.
+TIMED_FPS = 30
 
 # Ground-unit geometry, from script_ground_radar.scad (win_cx, win_zb, win_size,
 # win_tilt) and launchmon-py config/hardware.yaml (range_from_tee_m,
@@ -42,7 +46,14 @@ def objects_in(col_name: str) -> list[bpy.types.Object]:
 
 
 def product_objects() -> list[bpy.types.Object]:
-    return objects_in("Printed parts") + objects_in("Components (stand-ins)")
+    phone = [o for o in objects_in("Reference") if o.name.startswith("Phone")]
+    return objects_in("Printed parts") + objects_in("Components (stand-ins)") + phone
+
+
+def hide_reference(keep: tuple[str, ...] = ("Phone",)) -> None:
+    """Hide reference geometry, except the stand-in phone on the MagSafe mount."""
+    for o in objects_in("Reference"):
+        set_visible(o, o.name.startswith(keep))
 
 
 def set_visible(obj: bpy.types.Object, visible: bool) -> None:
@@ -210,8 +221,7 @@ def assemble(objs, order: list[list[str]], start: int, step: int, travel: int, e
 def shot_ground_hero():
     objs = product_objects()
     assembled_and_exploded(objs)   # drop the .blend's explode animation: assembled throughout
-    for o in objects_in("Reference"):
-        set_visible(o, False)
+    hide_reference()
     lo, hi = bounds(objs)
     c, r = (lo + hi) / 2, (hi - lo).length / 2
     studio(lo.z, r)
@@ -222,13 +232,12 @@ def shot_ground_hero():
 
 def shot_ground_assembly():
     objs = product_objects()
-    for o in objects_in("Reference"):
-        set_visible(o, False)
+    hide_reference()
     lo, hi = bounds(objs)
     c, r = (lo + hi) / 2, (hi - lo).length / 2
     studio(lo.z, r)
     order = [["LiPo"], ["TP4056"], ["BGT24LTR11"], ["LM358"], ["ESP32-C3"], ["ESP32 clamp"], ["Slide switch", "Status LED"],
-             ["Lid", "MT3608"]]
+             ["Lid", "MT3608"], ["MagSafe phone mount", "MagSafe magnet ring"], ["Phone"]]
     assemble(objs, order, start=20, step=14, travel=40, extra=(0, 30, 0))
     for o in objs:   # the stand stays put in this shot
         if o.name.startswith("Stand"):
@@ -243,8 +252,7 @@ def shot_ground_assembly():
 def shot_ground_in_use():
     objs = product_objects()
     assembled_and_exploded(objs)   # drop the .blend's explode animation: assembled throughout
-    for o in objects_in("Reference"):
-        set_visible(o, False)
+    hide_reference()
     floor_z = -STAND_DROP
     studio(floor_z, 300, dark=False)
     floor = bpy.data.objects["Studio floor"]
@@ -365,24 +373,34 @@ SHOTS = {f.__name__[5:]: f for f in [shot_ground_hero, shot_ground_assembly, sho
                                      shot_pod_hero, shot_pod_assembly, shot_pod_mount]}
 
 
+def opt(name: str, default: str) -> str:
+    for a in args():
+        if a.startswith(f"--{name}="):
+            return a.split("=", 1)[1]
+    return default
+
+
 def configure_render(frames: int, out_dir: str, preview: bool) -> None:
+    """EEVEE settings. Defaults are tuned for a CPU-only machine (software
+    OpenGL); --samples, --ssr=1 and --shadow=2048 raise quality on a GPU."""
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE"
     ee = scene.eevee
-    ee.taa_render_samples = 8 if preview else 32
+    ee.taa_render_samples = 8 if preview else int(opt("samples", "16"))
     ee.use_gtao = True
     ee.gtao_distance = 4.0
-    ee.use_soft_shadows = True
-    ee.use_ssr = True
-    ee.shadow_cube_size = "2048"
-    ee.shadow_cascade_size = "2048"
+    ee.use_soft_shadows = opt("soft", "1") == "1"
+    ee.use_ssr = opt("ssr", "0") == "1"
+    ee.shadow_cube_size = opt("shadow", "1024")
+    ee.shadow_cascade_size = opt("shadow", "1024")
     try:
         scene.view_settings.view_transform = "AgX"
         scene.view_settings.look = "AgX - Medium High Contrast"
     except TypeError:
         scene.view_settings.view_transform = "Filmic"
     scene.render.fps = FPS
-    scene.frame_start, scene.frame_end = 1, frames
+    scene.render.frame_map_old, scene.render.frame_map_new = TIMED_FPS, FPS
+    scene.frame_start, scene.frame_end = 1, round(frames * FPS / TIMED_FPS)
     scene.render.resolution_x, scene.render.resolution_y = 1920, 1080
     scene.render.resolution_percentage = 50 if preview else 100
     scene.render.image_settings.file_format = "PNG"
@@ -396,11 +414,15 @@ def main() -> None:
     configure_render(frames, out_dir, preview)
     if preview:   # three stills: start, middle, end
         scene = bpy.context.scene
-        for f in (1, frames // 2, frames):
+        for f in (1, round(frames * FPS / TIMED_FPS) // 2, round(frames * FPS / TIMED_FPS)):
             scene.frame_set(f)
             scene.render.filepath = f"{out_dir.rstrip('/')}/still_{f:04d}.png"
             bpy.ops.render.render(write_still=True)
     else:
+        rng = opt("frames", "")
+        if rng:   # render a sub-range, e.g. --frames=90:92 for timing tests
+            a0, a1 = (int(x) for x in rng.split(":"))
+            bpy.context.scene.frame_start, bpy.context.scene.frame_end = a0, a1
         bpy.ops.render.render(animation=True)
 
 

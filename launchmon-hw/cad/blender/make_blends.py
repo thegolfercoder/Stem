@@ -53,8 +53,14 @@ GROUND = {
              props={"print_file": "ground_radar_esp32_clamp_tab_x2.stl"}),
         dict(part="in_place:tab1", name="ESP32 clamp tab 2", collection=PRINTED, **PETG_TAB, explode=[0, 28, 0],
              props={"print_file": "ground_radar_esp32_clamp_tab_x2.stl"}),
-        dict(part="in_place:stand", name="Stand (optional)", collection=PRINTED, **PETG_TAB,
-             offset=[0, 0, -12], explode=[0, 0, -25], props={"print_file": "ground_radar_stand_optional.stl"}),
+        dict(part="in_place:stand", name="Stand", collection=PRINTED, **PETG_TAB,
+             offset=[0, 0, -12], explode=[0, 0, -25], props={"print_file": "ground_radar_stand.stl"}),
+        dict(part="in_place:phone_mount", name="MagSafe phone mount", collection=PRINTED, **PETG_LID,
+             explode=[85, 80, 0], props={"print_file": "ground_radar_magsafe_phone_mount.stl"}),
+        dict(part="ghost:magsafe_ring", name="MagSafe magnet ring", collection=COMPONENTS,
+             material="Magnet ring", color=[0.75, 0.75, 0.78, 1.0], roughness=0.3, metallic=1.0, explode=[85, 80, 0]),
+        dict(part="ghost:phone", name="Phone (stand-in, 147.6 mm)", collection=REFERENCE,
+             material="Phone", color=[0.05, 0.05, 0.06, 1.0], roughness=0.25, explode=[85, 115, 0]),
         dict(part="ghost:battery", name="LiPo 1500 mAh", collection=COMPONENTS,
              **PCB("Cell", [0.15, 0.35, 0.65]), explode=[0, 32, 0]),
         dict(part="ghost:tp4056", name="TP4056 USB-C charger", collection=COMPONENTS,
@@ -87,6 +93,7 @@ Collections: Printed parts (print from cad/stl/, see each object's print_file
 property), Components (stand-in boxes at real size and position), Reference
 (the radar's 15 degree boresight cone, hidden in renders).
 The stand sits 12 mm lower than the unit because the unit stands in its channel.
+The MagSafe phone mount screws onto the lid; the phone is a stand-in slab for fit and scale.
 """,
 }
 

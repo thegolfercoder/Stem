@@ -17,7 +17,7 @@ directory comes from a measurement of a real shot. See "What has been checked".
 ```
 launchmon-hw/
   cad/
-    script_ground_radar.scad   ground unit: shell, lid, ESP32 clamp tabs, optional stand
+    script_ground_radar.scad   ground unit: shell, lid, ESP32 clamp tabs, stand, MagSafe phone mount
     script_shaft_imu.scad      pod: base with C-clamp, snap lid
     export_stl.sh              regenerates cad/stl/ and its fit report
     stl/                       print-ready STLs, already in print orientation
@@ -45,7 +45,7 @@ launchmon-hw/
 - **The ground unit stands on its long edge.** A 25.4 mm radar window cannot fit
   in a 21 mm face, so the window is in the 96 x 64 face and the unit stands
   upright behind the ball. Standing on a 21 mm edge it tips over easily, so an
-  optional stand is included.
+  stand is included.
 - **The MT3608 sits on the lid, behind the cell.** The cell, the TP4056 and the
   MT3608 do not fit side by side in a 91 mm interior with R9.6 corners while
   leaving room for the radar. All three are still in the lower cavity; the
@@ -59,6 +59,12 @@ launchmon-hw/
   them (about 15 mm), and one parameter switches to that.
 - **Zip-tie retention on the pod clamp.** Not asked for, but a snap clamp alone
   is not something to trust at clubhead speed.
+- **The MagSafe phone mount goes on the lid, not the front face.** A phone is
+  bigger than the 96 x 64 mm front face, so on the front it would cover the
+  radar window. On the lid, the screen faces the user and the phone's camera,
+  above the unit, looks down the target line. A phone is also much taller than
+  the unit, so the mount rises above the unit's top edge: that way the phone's
+  bottom edge clears the stand, for phones up to 166 mm tall.
 
 Each of these is also explained where it happens, in the CAD and the docs.
 
@@ -122,7 +128,7 @@ carried back to the CAD or the STLs.
 xvfb-run -a python3 launchmon-hw/cad/blender/make_showcase.py OUT_DIR   # blender, ffmpeg, Pillow
 ```
 
-This renders six captioned 1080p shots in EEVEE from the generated `.blend`
+This renders six captioned 1080p, 24 fps shots in EEVEE from the generated `.blend`
 files, and joins them, with title and end cards, into
 `stem_launch_monitor_showcase.mp4`:
 
@@ -133,7 +139,7 @@ files, and joins them, with title and end cards, into
 - the pod assembling
 - the pod snapping onto the shaft
 
-It takes about 80–90 minutes on a 4-core machine without a GPU. Every frame
+It takes a little over two hours on a 4-core machine without a GPU (EEVEE on software OpenGL, about 9 s a frame); a GPU is far faster. Every frame
 is the CAD geometry, and the cards say so: "prototype design, CAD renders,
 not product footage". Nothing in them shows or implies a speed, an accuracy
 or any other result the prototype has not produced. The videos are build

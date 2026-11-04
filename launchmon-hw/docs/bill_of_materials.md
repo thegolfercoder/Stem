@@ -35,7 +35,8 @@ include the spares worth having. Wiring for every part is in
 
 | # | Part | Qty | Used for |
 |---|---|---|---|
-| G10 | **M2 x 6 mm screws**, pan head, thread-forming for plastics (stainless machine screws also work into the 1.7 mm pilots) | **14** (buy 20) | 4 lid, 4 radar module, 4 LM358 board, 2 ESP32 clamp tabs |
+| G10 | **M2 x 6 mm screws**, pan head, thread-forming for plastics (stainless machine screws also work into the 1.7 mm pilots) | **10** (buy 20) | 4 radar module, 4 LM358 board, 2 ESP32 clamp tabs; also the 4 lid screws if no phone mount is fitted |
+| G10a | **M2 x 10 mm screws**, pan head | **4** | Phone mount + lid into the lid bosses (they replace the lid's M2 x 6) |
 | G11 | Silicone wire, 26-28 AWG, several colours | ~1 m | All internal wiring |
 | G12 | Kapton tape | small roll | Insulating the cell where the MT3608 faces it, and the IMU-to-cell contact in the pod |
 | G13 | Double-sided foam tape, 1 mm | small piece | Under the cell, so it cannot rattle |
@@ -43,6 +44,14 @@ include the spares worth having. Wiring for every part is in
 | G15 | Silicone USB-C dust plug | 1 | Closes the charging port while the unit is on wet grass |
 | G16 | **Right-angle USB-C cable** *(optional)* | 1 | Charging while the unit stands in the stand |
 | G17 | Heat-shrink, 1.5-3 mm | assorted | Solder joints |
+
+### MagSafe phone mount
+
+| # | Part | Specification | Qty | Notes |
+|---|---|---|---|---|
+| G18 | **MagSafe-compatible magnet ring** | Aftermarket ring for MagSafe mounts and cases, about 56 mm OD x 45-46 mm ID x 1-1.8 mm, ideally with the separate alignment ("tail") magnet | 1 | Sits in the pocket on the mount plate. **Measure it** and set `ring_od`, `ring_id`, `ring_depth`, `orient_slot` before printing. Rings sold for *phone cases* are made to stick to MagSafe chargers and mounts; one made for a *mount* holds harder. |
+| G19 | Thin grip pad | 0.5 mm self-adhesive silicone, rubber or microfibre sheet, cut to the plate | 1 | Covers the ring, stops the phone sliding and protects its back |
+| G20 | Two-part epoxy or CA | small | 1 | Holds the ring in its pocket |
 
 ---
 
@@ -82,7 +91,8 @@ for the slicer settings.
 | `ground_radar_shell.stl` | Ground | 1 | Front face down; tree supports under the radar window |
 | `ground_radar_lid.stl` | Ground | 1 | Outside face down |
 | `ground_radar_esp32_clamp_tab_x2.stl` | Ground | **2** | Flat |
-| `ground_radar_stand_optional.stl` | Ground | 1 | Flat (optional, recommended outdoors) |
+| `ground_radar_stand.stl` | Ground | 1 | Flat. **Required with a phone fitted**, recommended outdoors in any case |
+| `ground_radar_magsafe_phone_mount.stl` | Ground | 1 | Flat, lid side down, ring pocket facing up |
 | `shaft_pod_base.stl` | Pod | 1 | Standing on its USB end, clamp bore vertical |
 | `shaft_pod_lid.stl` | Pod | 1 | Outside face down |
 

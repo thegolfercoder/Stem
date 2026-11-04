@@ -48,7 +48,7 @@
 // =============================================================================
 
 /* [Render] */
-part            = "assembly";   // [assembly, shell, lid, esp32_clamp_tab, stand, print_plate, section]
+part            = "assembly";   // [assembly, shell, lid, esp32_clamp_tab, stand, phone_mount, print_plate, section]
 // Also: "in_place:shell|lid|tab0|tab1|stand" and "ghost:<name>" export one
 // part in its assembled position (used by cad/blender/).
 show_components = true;         // ghost components in the assembly view
@@ -111,6 +111,28 @@ sw_center   = [10.5, 20.0];        // slot centre [Y, Z] on the right wall
 led_d       = 5.1;                 // 5 mm LED, through hole
 led_flange_d = 6.0;                // LED rim, seated from inside
 led_pos     = [22.75, 13.0];       // [X, Y] on the top face
+
+/* [Phone holder - MagSafe, on the lid] */
+// A plate screwed to the lid with the lid's own four screws (M2 x 10 instead
+// of M2 x 6). It carries a MagSafe-compatible magnet ring. The phone's back
+// sits on the plate: its screen faces the user behind the unit, and its rear
+// camera, above the unit's top edge, looks down the target line beside the radar.
+// A phone is much taller than the unit, so the ring sits high enough for the
+// phone's bottom edge to clear the stand's rear wall: the plate rises above the
+// unit's top edge. Use the stand whenever a phone is fitted; it carries the weight.
+phone_mount   = true;
+mount_t       = 4.0;            // plate thickness
+ring_center   = [48, 92];       // magnet ring centre, front-view [X, Z]
+ring_od       = 56.5;           // aftermarket MagSafe magnet ring: MEASURE YOURS
+ring_id       = 45.5;
+ring_depth    = 1.8;            // pocket depth; the ring sits flush, under a 0.5 mm grip pad
+orient_slot   = [12.5, 6.5];    // alignment ("tail") magnet below the ring [X, Z]; [0, 0] for none
+orient_gap    = 2.5;            // ring OD to the slot's top edge
+phone         = [71.6, 147.6, 8.3];  // stand-in phone for fit checks and renders [W, H, T]
+phone_lens_from_top = 25;       // main camera centre below the phone's top edge (typical)
+phone_vfov    = 65;             // camera vertical field of view, portrait, degrees
+stand_wall_top = 8;             // top of the stand's channel walls above the unit's bottom (stand() wall_h):
+                                // the phone hangs just behind the rear wall, so its bottom edge must clear it
 
 /* [Fasteners - M2] */
 m2_pilot    = 1.7;    // thread-forming M2 straight into PETG/ABS
@@ -479,12 +501,58 @@ module tp4056_presser() {
 }
 
 // ----------------------------------------------------------------------------
+//  MagSafe phone holder (screws onto the lid)
+// ----------------------------------------------------------------------------
+module phone_mount_profile() {
+    // The lid's outline, joined smoothly to a disc round the magnet ring that
+    // rises above the unit's top edge.
+    rc = ring_od / 2 + 3;
+    union() {
+        outline(0.6);
+        hull() {
+            translate([ring_center[0], ring_center[1]]) circle(r = rc);
+            translate([ring_center[0] - rc * 0.95, body_h - 14]) square([2 * rc * 0.95, 13.4]);
+        }
+    }
+}
+
+module phone_mount() {
+    y0 = body_d; y1 = body_d + mount_t;
+    c = 0.8;   // soft edge on the phone side
+    difference() {
+        hull() {
+            xz_extrude(y0, y1 - c) phone_mount_profile();
+            xz_extrude(y1 - 0.01, y1) offset(delta = -c) phone_mount_profile();
+        }
+        // Magnet ring pocket, open on the phone side.
+        translate([ring_center[0], y1 - ring_depth, ring_center[1]]) difference() {
+            y_cylinder(ring_depth + 1, ring_od);
+            translate([0, -1, 0]) y_cylinder(ring_depth + 3, ring_id);
+        }
+        // Alignment magnet below the ring, as on a MagSafe accessory.
+        if (orient_slot[0] > 0)
+            translate([ring_center[0] - orient_slot[0] / 2, y1 - ring_depth,
+                       ring_center[1] - ring_od / 2 - orient_gap - orient_slot[1]])
+                cube([orient_slot[0], ring_depth + 1, orient_slot[1]]);
+        // Through the lid's screw positions, heads countersunk on the phone side.
+        for (p = lid_bosses) {
+            translate([p[0], y0 - 1, p[1]]) y_cylinder(mount_t + 2, m2_clear);
+            translate([p[0], y1 - m2_head_h, p[1]]) y_cylinder(m2_head_h + 1, m2_head_d);
+        }
+    }
+}
+
+// Print orientation: lid side on the bed, ring pocket facing up.
+module phone_mount_print() { translate([0, ring_center[1] + ring_od / 2 + 5, -body_d]) rotate([90, 0, 0]) phone_mount(); }
+
+// ----------------------------------------------------------------------------
 //  Optional anti-tip stand
 // ----------------------------------------------------------------------------
 module stand() {
     floor_z = 12;     // underside of the unit: leaves room for a right-angle plug
-    wall_h  = 8;      // how far the cradle walls rise up the unit's faces
+    wall_h  = stand_wall_top;   // how far the cradle walls rise up the unit's faces
     gap     = 0.3;
+    depth   = body_d + (phone_mount ? mount_t : 0);    // the phone plate stands in the channel too
     cx0 = corner_r - 1; cx1 = body_w - corner_r + 1;    // flat part of the bottom edge
     difference() {
         union() {
@@ -492,10 +560,10 @@ module stand() {
             translate([0, -8, 0]) linear_extrude(3) rrect(body_w, 70, 6);
             // Cradle block.
             translate([cx0 - wall, -gap - wall, 0])
-                cube([cx1 - cx0 + 2 * wall, body_d + 2 * gap + 2 * wall, floor_z + wall_h]);
+                cube([cx1 - cx0 + 2 * wall, depth + 2 * gap + 2 * wall, floor_z + wall_h]);
         }
         // Channel the unit stands in.
-        translate([cx0, -gap, floor_z]) cube([cx1 - cx0, body_d + 2 * gap, wall_h + 1]);
+        translate([cx0, -gap, floor_z]) cube([cx1 - cx0, depth + 2 * gap, wall_h + 1]);
         // Pocket and exit channel for a right-angle USB-C plug, running out the back.
         translate([tp_usb_x - 8, tp_usb_y - 5, 3]) cube([16, 80, floor_z - 3 + 0.01]);
         // Lighten and drain.
@@ -509,7 +577,7 @@ module stand() {
 // Each component is a named ghost so other tools can export them one at a
 // time: `part = "ghost:battery"` exports just the cell, in place. The Blender
 // scenes in cad/blender/ are built that way.
-ghost_names = ["battery", "tp4056", "mt3608", "esp32", "lm358", "radar", "switch", "led", "boresight"];
+ghost_names = ["battery", "tp4056", "mt3608", "esp32", "lm358", "radar", "switch", "led", "boresight", "phone", "magsafe_ring"];
 
 module ghosts() { for (n = ghost_names) ghost(n); }
 
@@ -540,6 +608,19 @@ module ghost(name) {
         translate([body_w - wall - sw_body[2], sw_center[0] - sw_body[0] / 2, sw_center[1] - sw_body[1] / 2])
             cube([sw_body[2], sw_body[0], sw_body[1]]);
     if (name == "led") color("Red", 0.8) translate([led_pos[0], led_pos[1], body_h - wall - 8.6]) cylinder(h = 8.6, d = 5);
+    // Stand-in phone on the MagSafe plate: back on the plate, camera bump at the top.
+    if (name == "phone" && phone_mount) color("DimGray") {
+        y = body_d + mount_t + 0.5;   // 0.5 mm grip pad
+        translate([0, y, 0]) xz_extrude(0, phone[2])
+            translate([ring_center[0] - phone[0] / 2, ring_center[1] - phone[1] / 2]) rrect(phone[0], phone[1], 10);
+        translate([ring_center[0] - phone[0] / 2 + 4, y - 2, ring_center[1] + phone[1] / 2 - 42])
+            cube([36, 2.01, 38]);
+    }
+    if (name == "magsafe_ring" && phone_mount) color("Silver")
+        translate([ring_center[0], body_d + mount_t - ring_depth, ring_center[1]]) difference() {
+            y_cylinder(ring_depth - 0.2, ring_od - 0.4);
+            translate([0, -1, 0]) y_cylinder(ring_depth + 2, ring_id + 0.4);
+        }
     // Boresight indicator: a cone along the radar's 15-degree axis
     if (name == "boresight") color("Orange", 0.5) in_window_frame() translate([0, 0, win_size / 2])
         rotate([90, 0, 0]) cylinder(h = 60, d1 = 1, d2 = 20);
@@ -575,11 +656,22 @@ module fit_report() {
         chk("cell + MT3608 depth stack       ", inner_d - (batt[2] + 0.2 + mt_pcb[2] + mt_parts_h)),
         chk("divider to ESP32 board          ", esp_pos[1] - (batt_pos[1] + batt[1] + 2 * batt_clear + 1.2)),
         chk("radar housing to right wall     ", (body_w - wall) - radar_x1),
+        // Phone holder: the stand-in phone's bottom edge must clear the stand
+        // base, and its camera must see over the unit's top edge.
+        chk("phone bottom above stand wall   ", phone_mount ? (ring_center[1] - phone[1] / 2) - (stand_wall_top + 1) : 0),
+        chk("phone camera clears unit top    ", phone_mount ? (ring_center[1] + phone[1] / 2 - phone_lens_from_top)
+            - (body_h + (body_d + mount_t) * tan(phone_vfov / 2)) : 0),
+        chk("alignment magnet inside plate   ", phone_mount ? (ring_center[1] - ring_od / 2 - orient_gap - orient_slot[1]) - 1.5 : 0),
     ];
     for (l = lines) echo(l);
     echo(str("  info  radar window centre ", [win_cx, win_zb + top_on_face / 2],
              ", boresight ", win_tilt, " deg up, skin ", win_t, " mm"));
     echo(str("  info  USB-C receptacle centre X ", tp_usb_x, " Y ", tp_usb_y));
+    if (phone_mount) {
+        echo(str("  info  tallest phone that clears the stand: ", 2 * (ring_center[1] - stand_wall_top - 1), " mm"));
+        echo(str("  info  magnet ring to MT3608 PCB: ", (body_d + mount_t - ring_depth) - (y_back - mt_pcb[2]),
+                 " mm (check the 5 V rail with a phone attached)"));
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -595,6 +687,8 @@ if (part == "shell") {
     esp32_clamp_tab();
 } else if (part == "stand") {
     stand();
+} else if (part == "phone_mount") {
+    phone_mount_print();
 } else if (part == "section") {
     // 2D cut through the radar boresight (the Y/Z plane at X = win_cx), for
     // checking the window skin thickness and tilt. Horizontal = Y, vertical = Z.
@@ -612,6 +706,8 @@ if (part == "shell") {
     esp32_clamp_tab_in_place(1);
 } else if (part == "in_place:stand") {
     stand();
+} else if (part == "in_place:phone_mount") {
+    phone_mount();
 } else if (len(part) > 6 && part[0] == "g" && part[5] == ":") {
     ghost(str_join(part, 6));
 } else if (part == "print_plate") {
@@ -623,6 +719,7 @@ if (part == "shell") {
     shell();
     translate([0, explode, 0]) lid();
     for (i = [0, 1]) esp32_clamp_tab_in_place(i);
+    if (phone_mount) translate([0, explode, 0]) phone_mount();
     if (show_components) ghosts();
 }
 

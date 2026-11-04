@@ -26,18 +26,18 @@ from PIL import Image, ImageDraw, ImageFont
 
 HERE = Path(__file__).resolve().parent
 BLENDER = "blender"
-FPS = 30
+FPS = 24
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 # (shot, .blend, caption title, caption detail)
 SHOTS = [
     ("ground_hero", "ground_radar_unit.blend", "Ground radar unit",
-     "96 x 64 x 21 mm  |  stands behind the ball, window toward the target"),
+     "96 x 64 x 21 mm  |  MagSafe phone mount on the back  |  stands behind the ball"),
     ("ground_assembly", "ground_radar_unit.blend", "Inside the ground unit",
      "24 GHz I/Q Doppler radar  |  ESP32-C3  |  1500 mAh LiPo, USB-C charging"),
     ("ground_in_use", "ground_radar_unit.blend", "Placement",
-     "Radar boresight tilted 15 degrees up toward the ball's flight  |  beam drawn for illustration"),
+     "Radar faces the target, tilted 15 degrees up  |  phone camera looks down the line  |  beam illustrative"),
     ("pod_hero", "shaft_pod.blend", "Club-mounted motion pod",
      "32 x 26 x 14 mm  |  6-axis IMU  |  Bluetooth LE link to the ground unit"),
     ("pod_assembly", "shaft_pod.blend", "Inside the pod",
