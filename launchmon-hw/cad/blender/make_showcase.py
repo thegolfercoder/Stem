@@ -108,6 +108,9 @@ def encode(out: Path) -> None:
     for shot, _, title, detail in SHOTS:
         frames = out / "frames" / shot
         n = len(list(frames.glob("f_*.png")))
+        if n == 0:
+            print(f"skipping {shot}: not rendered yet")
+            continue
         dur = n / FPS
         caption = (
             f"drawbox=x=0:y=ih-150:w=iw:h=150:color=black@0.45:t=fill,"
@@ -121,6 +124,9 @@ def encode(out: Path) -> None:
              "-vf", caption, "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p", str(mp4)])
         parts.append(mp4)
 
+    if len(parts) < len(SHOTS):
+        print("reel not built: some shots are not rendered yet")
+        return
     order = [clips / "title.mp4", *parts, clips / "end.mp4"]
     lst = out / "concat.txt"
     lst.write_text("".join(f"file '{p}'\n" for p in order))
