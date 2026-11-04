@@ -28,7 +28,7 @@ TIMED_FPS = 30
 # win_tilt) and launchmon-py config/hardware.yaml (range_from_tee_m,
 # azimuth/elevation beamwidth). Used only to place the placement-shot props.
 WIN_CX, WIN_ZB, WIN_SIZE, WIN_TILT = 76.1, 33.0, 25.4, 15.0
-STAND_DROP = 12.0          # the stand sits 12 mm below the unit (see make_blends.py)
+DOCK_T = 2.4              # the dock base is under the unit: its underside is the floor
 RANGE_FROM_TEE = 1400.0
 BEAM_AZ_DEG, BEAM_EL_DEG = 80.0, 40.0
 
@@ -63,6 +63,8 @@ def matte_black_finish() -> None:
             bsdf.inputs[key].default_value = 0.3
     mat.diffuse_color = (0.018, 0.018, 0.02, 1)
     for o in objects_in("Printed parts"):
+        if o.name.startswith(("Radome", "Light pipe")):   # smoked and natural PETG keep theirs
+            continue
         o.data.materials.clear()
         o.data.materials.append(mat)
 
@@ -236,14 +238,15 @@ def assemble(objs, order: list[list[str]], start: int, step: int, travel: int, e
 #  Shots
 # ---------------------------------------------------------------------------
 def shot_ground_hero():
-    objs = product_objects()
+    # The product alone: unit and dock. The phone appears in the placement shot.
+    hide_reference(keep=())
+    objs = [o for o in product_objects() if not o.name.startswith("Phone")]
     assembled_and_exploded(objs)   # drop the .blend's explode animation: assembled throughout
-    hide_reference()
     lo, hi = bounds(objs)
     c, r = (lo + hi) / 2, (hi - lo).length / 2
     studio(lo.z, r)
     cam = camera(70)
-    orbit(cam, c + Vector((0, 0, -6)), fit_distance(r, 70, 1.15), 14, -35, 250, 180, rise=r * 0.4)
+    orbit(cam, c + Vector((0, 0, -6)), fit_distance(r, 70, 0.95), 14, -35, 250, 180, rise=r * 0.4)
     return 180
 
 
@@ -253,13 +256,13 @@ def shot_ground_assembly():
     lo, hi = bounds(objs)
     c, r = (lo + hi) / 2, (hi - lo).length / 2
     studio(lo.z, r)
-    order = [["LiPo"], ["TP4056"], ["BGT24LTR11"], ["LM358"], ["ESP32-C3"], ["ESP32 clamp"], ["Slide switch", "Status LED"],
-             ["Lid", "MT3608"], ["MagSafe phone mount", "MagSafe magnet ring"]]
+    order = [["LiPo"], ["TP4056"], ["BGT24LTR11"], ["LM358"], ["ESP32-C3"], ["ESP32 clamp"],
+             ["Slide switch", "Light pipe", "Status LED"], ["Lid", "MT3608"], ["Radome"], ["Dock stem", "MagSafe magnet ring"]]
     assemble(objs, order, start=20, step=14, travel=40, extra=(0, 30, 0))
-    for o in objs:   # the stand stays put in this shot
-        if o.name.startswith("Stand"):
+    for o in objs:   # the dock base stays put in this shot
+        if o.name.startswith("Dock base"):
             o.animation_data_clear()
-            o.location = (0, 0, -STAND_DROP)
+            o.location = (0, 0, 0)
     cam = camera(60)
     # From behind and above, where the parts come in, swinging round to the front.
     orbit(cam, c + Vector((0, 12, -4)), fit_distance(r * 1.3, 60, 1.0), 24, 205, 150, 210)
@@ -270,7 +273,7 @@ def shot_ground_in_use():
     objs = product_objects()
     assembled_and_exploded(objs)   # drop the .blend's explode animation: assembled throughout
     hide_reference()
-    floor_z = -STAND_DROP
+    floor_z = -DOCK_T
     studio(floor_z, 300, dark=False)
     floor = bpy.data.objects["Studio floor"]
     floor.data.materials[0] = material("Turf", (0.06, 0.20, 0.06, 1), roughness=0.95)

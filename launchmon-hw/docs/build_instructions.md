@@ -22,6 +22,7 @@ these with calipers, change the parameter, and re-export with
 | TP4056 module length and width | `tp_pcb` | ground |
 | Shaft diameter where the pod will sit | `shaft_d` | pod |
 | Micro LiPo | `batt` | pod |
+| MagSafe magnet ring (OD, ID, thickness) | `ring_od`, `ring_id`, `ring_depth` | ground |
 
 A line marked `FAIL` in the fit report is a collision: fix it before printing.
 
@@ -40,11 +41,21 @@ radar's beam; a warped clamp lets go of the shaft.
 | **ASA** | Ground unit outdoors | Best UV resistance. Print in an enclosure. |
 | **ABS** | Either | Print in an enclosure; prone to warping on large flat parts like the ground shell. |
 
-**Colour matters for the radar window.** Use natural, white or a light,
-plainly pigmented filament for the ground shell. **Avoid carbon-fibre,
-metal-filled, glitter/sparkle and heavily carbon-black filaments**: conductive
-or lossy fillers absorb 24 GHz. If in doubt, run the bench check in 4.5 with
-the module behind a printed test window.
+**Colour matters for the radome, and only for the radome.** The radar looks
+out through one part, the radome, so that is the only part whose filament the
+radar cares about. Print it in **translucent smoke (dye-tinted) or natural
+PETG**. **Avoid carbon-fibre, metal-filled, glitter/sparkle and carbon-black
+filaments for it**: conductive or lossy fillers absorb 24 GHz, and most opaque
+black filaments are coloured with carbon black. The radar does not look through
+the shell, lid or dock, so those can be any colour; the design's finish is
+matte black (see [design_language.md](design_language.md)). If in doubt about
+a radome filament, run the bench check in 4.5.
+
+| Part | Filament | Finish |
+|---|---|---|
+| Shell, lid, dock base and stem, clamp tabs, pod base and lid | Matte black PETG | Textured PEI sheet under the shell, lid and stem |
+| Radome | Translucent smoke (or natural) PETG, not carbon-black | Outer face up, ironing on |
+| Light pipe | Natural (translucent) PETG | As printed |
 
 ## 2. Slicer settings (all parts)
 
@@ -55,8 +66,8 @@ the module behind a printed test window.
 | Wall perimeters | **3-4** (1.2-1.6 mm of solid shell; the 2.4 mm walls are filled solid by the rest) |
 | Top / bottom layers | 5 / 5 (1.0 mm) |
 | Infill | **20 % gyroid** |
-| Supports | **Tree supports, touching build plate only** |
-| Support Z distance | 0.2 mm (one layer), with a support interface |
+| Supports | **None.** No part needs them. If your slicer insists, tree supports touching the build plate only |
+| Build sheet | **Textured PEI** for the shell, lid and dock stem: the face on the bed is the face people see, and the texture gives it an even matte grain with no layer lines |
 | Brim | 5 mm on the pod base (it stands on a small footprint); none elsewhere |
 | PETG temperatures | about 235-245 °C nozzle, 75-85 °C bed, cooling 30-50 % |
 
@@ -64,29 +75,32 @@ Each STL is already in its print orientation.
 
 ### Part-specific notes
 
-**Ground shell (`ground_radar_shell.stl`).** Prints front face down, open back
-up. The radar window is a 15° recess in the front face, so its outer surface
-is a gentle overhang built on tree supports from the plate. That is why the
-brief specifies "touching build plate only": no support ever lands inside the
-enclosure. Check afterwards:
+**Ground shell (`ground_radar_shell.stl`).** Prints front face down on the
+textured sheet, open back up, with **no supports**. The window is an open
+pocket in the front face; the radome that closes it is a separate part. The
+ledge the radome sits on is a 1.2 mm overhang, and the slicer bridges it.
 
-- The **window skin must be 1.0-1.2 mm** (designed 1.1 mm). Measure at its
-  centre with calipers. Thicker attenuates and reflects more; thinner is fragile.
-- The skin must be solid, with no gaps. Hold it to a light: it should look
-  even. The 1.1 mm skin is all perimeters and solid layers, so the slicer
-  should put no infill in it; check in the layer preview.
-- Remove the supports carefully and lightly sand the window's outer face.
+**Radome (`ground_radar_radome.stl`).** Flat, **outer face up**, with
+**ironing** on the top surface: the one smooth, slightly glossy face on a
+matte unit. It is exactly 1.0 mm, five 0.20 mm layers, which is why the radar
+window is no longer printed as part of the shell: there it sat on supports,
+came out rough and varied in thickness. Check it is **1.0-1.2 mm** with
+calipers, solid with no gaps (hold it to a light), and flat.
 
-**Ground lid.** Flat, outside face down, no supports.
+**Light pipe (`ground_radar_led_pipe.stl`).** Flange down, in natural PETG. It
+is tiny: print it on the same plate as the radome.
+
+**Ground lid.** Flat, outside face down on the textured sheet, no supports.
 
 **Clamp tabs (x2).** Flat. Small: print them with the lid.
 
-**Stand.** Flat. No supports. Its channel is deep enough for the unit with the
-phone mount fitted.
+**Dock base (`ground_radar_dock_base.stl`).** As it sits, no supports.
 
-**MagSafe phone mount.** Flat, lid side on the bed, ring pocket facing up. No
-supports. Check the ring drops into its pocket and sits flush or very slightly
-below the surface.
+**Dock stem (`ground_radar_dock_stem.stl`).** Flat, front face down on the
+textured sheet, ring pocket facing up, no supports. Printed flat, both faces
+are smooth and the ring's opening is a clean vertical hole; printed upright it
+would be 600 layers of a thin wall. Check the magnet ring drops into its
+pocket and sits flush or very slightly below the surface.
 
 **Pod base (`shaft_pod_base.stl`).** Prints **standing on its USB end, with
 the clamp bore vertical**. Every layer then contains a complete C, so the
@@ -132,8 +146,10 @@ Front view, as used: the window is upper right, the battery lower left.
 4. **ESP32-C3 SuperMini.** USB end first: hook it under the two lips at the left
    of its bay, lower the far end onto the rails, and fit the two printed clamp
    tabs with M2 x 6. Its USB-C stays reachable with the lid off, for flashing.
-5. **Status LED.** Push it through the top-face hole **from inside** until its
-   rim seats. A drop of silicone or CA holds it.
+5. **Status light.** Push the printed light pipe into the top-face hole **from
+   inside** until its flange seats; its end sits flush with the top face. Hold
+   the 5 mm LED's dome against the flange and fix it with a drop of hot glue or
+   clear silicone. The light then shows as a small soft dot.
 6. **Switch.** Press it into the pocket on the inside of the right wall, lever
    through the slot. A drop of CA on the body.
 7. **Wire up** per the wiring doc. Keep the radar → pre-amp → ESP32 leads short
@@ -147,32 +163,40 @@ Front view, as used: the window is upper right, the battery lower left.
    of wire so the lid can lie open beside the shell.
 10. **Close.** Fit the lid (the lip locates it) and drive the four M2 x 6
     screws. Snug them up; do not over-tighten into plastic.
+11. **Radome, last.** With the radar module tested (4.5), run a thin bead of
+    clear silicone or epoxy round the ledge behind the window pocket and press
+    the radome in from the front, ironed face out. It sits flush with the front
+    face at its bottom edge and steps back into the pocket toward the top.
+    Wipe off any squeeze-out before it cures. Silicone lets it be prised out
+    again; epoxy does not.
 
-### 4.1 MagSafe phone mount
+### 4.1 Dock and MagSafe ring
 
-1. **Check the ring's orientation with a phone first.** Lay it in the pocket,
-   offer the phone's back to it, and confirm it pulls the phone in and centres it.
-   If it repels or slides off-centre, turn the ring over. Do the same with the
-   alignment magnet in the slot below: it should pull the phone's bottom edge
-   straight down into line.
+The dock is the stand and the phone holder in one: a base with a lip in front
+of the unit and two short lips behind it, and a stem rising behind the unit
+that carries the MagSafe ring.
+
+1. **Check the ring's orientation with a phone first.** Lay it in the stem's
+   pocket, offer the phone's back to it, and confirm it pulls the phone in and
+   centres it. If it repels or slides off-centre, turn the ring over. Do the
+   same with the alignment magnet in the slot below: it should pull the phone's
+   bottom edge straight down into line.
 2. Glue the ring and the alignment magnet into their pockets with epoxy or CA.
-3. Stick the 0.5 mm grip pad over the whole phone side of the plate.
-4. Remove the lid's four M2 x 6 screws, place the plate on the lid, and fix both
-   with four **M2 x 10** screws through the plate into the same bosses. The lid
-   now comes off with the plate, using the same four screws.
-5. **Check the 5 V rail with the phone attached.** The ring sits about 6 mm from
-   the MT3608 boost converter on the inside of the lid. Measure the MT3608's
-   output with and without the phone: it should not move. If it drifts, move
-   the MT3608 elsewhere on the lid or add a spacer under the plate.
+3. Cut the 0.5 mm grip pad to the ring's shape and stick it over the phone side.
+4. Push the stem's foot into the socket in the base, front face toward the
+   unit's side, and fix it with two **M2 x 6** screws from behind, through the
+   buttress.
+5. Stick four 8 mm silicone bumpers into the recesses under the base for hard
+   floors and hitting mats.
+6. **Check the 5 V rail with the phone attached.** The ring ends up about
+   6.5 mm from the MT3608 boost converter on the inside of the lid. Measure the
+   MT3608's output with and without the phone: it should not move.
 
-With a phone fitted, **always use the stand**. The phone weighs more than the
-unit and hangs behind it. The stand's long base is behind the unit, which is the
-side the phone pulls toward.
-
-The phone's screen then faces back, toward you. Its rear camera is about 60 mm
+The phone's screen faces back, toward you. Its rear camera is about 70 mm
 above the unit's top edge, looking down the target line over the radar. The
-mount suits phones up to 166 mm tall (the fit report recomputes this for other
-ring positions). Remove the phone before carrying the unit by its stand.
+dock suits phones up to 186 mm tall (the fit report recomputes this for other
+ring positions). The unit lifts straight out of the dock, so it can be carried
+and charged on its own.
 
 ### 4.2 Placing it
 
@@ -184,10 +208,9 @@ unit up with the target. The geometry launchmon-py's config assumes is about
 session and record them; launchmon-py's `hardware.yaml` explains why the
 height matters for the cosine correction.
 
-Use the **stand** on grass or a mat: a 21 mm deep box standing on its edge is
-easy to knock over. The stand's long side goes behind the unit, the side it
-tips toward. Its channel takes a right-angle USB-C cable if you want to charge
-it standing up.
+Use the **dock** on grass or a mat: a 21 mm deep box standing on its edge is
+easy to knock over. The base reaches behind the unit, the side the phone pulls
+it toward. Charge the unit out of the dock: its USB-C port is on the bottom edge.
 
 ### 4.3 Set the Doppler sign (one-time bench check)
 
@@ -204,14 +227,15 @@ Send `r` (or short-press the BOOT button) to toggle raw streaming. Each shot
 then also sends a `RAW_BEGIN {...}` header line, exactly the stated number of
 bytes of int16 I/Q pairs, and `RAW_END`. Save them. Raw data is kept forever:
 the on-device speeds are a preview, and launchmon-py can be run on exactly the
-samples the unit saw. Its configuration must then say 40 kHz, not the 48 kHz
-it was written for.
+samples the unit saw. `launchmon-py/scripts/record_ground_unit.py` saves the
+stream and `launchmon-py/scripts/fuse_shot.py` runs the 40 kHz pipeline on it.
 
 ### 4.5 Window check
 
-Before closing the case, compare the trigger metric for the same hand movement
-with the module bare and with it behind the printed window. A large drop means
-the filament is lossy (see section 1).
+Before fitting the radome, compare the trigger metric for the same hand
+movement with the module bare and with the radome held in its pocket. A large
+drop means the radome's filament is lossy (see section 1): reprint it in
+another.
 
 ## 5. Shaft pod assembly
 
@@ -272,8 +296,8 @@ passing shower if you then dry them. Do not leave them in rain.
 
 **Strain relief**
 
-- Do not let a cable hang from a port. When charging the ground unit upright,
-  use a right-angle cable laid through the stand's channel.
+- Do not let a cable hang from a port. Charge the ground unit lying on its
+  back, out of the dock, so the cable leaves the bottom edge straight.
 - Inside: a dab of hot glue over every wire where it meets a board pad.
 - Leave service loops: the MT3608's leads (lid to shell) and the cell's leads.
 

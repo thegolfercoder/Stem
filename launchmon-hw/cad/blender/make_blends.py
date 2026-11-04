@@ -39,6 +39,10 @@ PETG = dict(material="Matte black", color=[0.018, 0.018, 0.02, 1.0], roughness=0
 PETG_LID = PETG
 PETG_TAB = PETG
 PCB = lambda name, rgb: dict(material=name, color=[*rgb, 1.0], roughness=0.6)  # noqa: E731
+# The radome is translucent smoke PETG with an ironed (smooth) outer face, the one
+# glossy surface on the unit; the light pipe is natural PETG.
+RADOME = dict(material="Smoked radome", color=[0.02, 0.022, 0.026, 0.8], roughness=0.12)
+PIPE = dict(material="Natural PETG", color=[0.85, 0.86, 0.84, 0.85], roughness=0.35)
 
 GROUND = {
     "scad": "script_ground_radar.scad",
@@ -49,18 +53,23 @@ GROUND = {
              props={"print_file": "ground_radar_shell.stl"}),
         dict(part="in_place:lid", name="Lid", collection=PRINTED, **PETG_LID, explode=[85, 55, 0],
              props={"print_file": "ground_radar_lid.stl"}),
+        dict(part="in_place:radome", name="Radome", collection=PRINTED, **RADOME, explode=[0, -60, 10],
+             props={"print_file": "ground_radar_radome.stl"}),
+        dict(part="in_place:led_pipe", name="Light pipe", collection=PRINTED, **PIPE, explode=[0, 0, 22],
+             props={"print_file": "ground_radar_led_pipe.stl"}),
         dict(part="in_place:tab0", name="ESP32 clamp tab 1", collection=PRINTED, **PETG_TAB, explode=[0, 28, 0],
              props={"print_file": "ground_radar_esp32_clamp_tab_x2.stl"}),
         dict(part="in_place:tab1", name="ESP32 clamp tab 2", collection=PRINTED, **PETG_TAB, explode=[0, 28, 0],
              props={"print_file": "ground_radar_esp32_clamp_tab_x2.stl"}),
-        dict(part="in_place:stand", name="Stand", collection=PRINTED, **PETG_TAB,
-             offset=[0, 0, -12], explode=[0, 0, -25], props={"print_file": "ground_radar_stand.stl"}),
-        dict(part="in_place:phone_mount", name="MagSafe phone mount", collection=PRINTED, **PETG_LID,
-             explode=[85, 80, 0], props={"print_file": "ground_radar_magsafe_phone_mount.stl"}),
+        dict(part="in_place:dock_base", name="Dock base", collection=PRINTED, **PETG_TAB,
+             explode=[0, 0, -25], props={"print_file": "ground_radar_dock_base.stl"}),
+        dict(part="in_place:dock_stem", name="Dock stem", collection=PRINTED, **PETG_LID,
+             explode=[0, 80, 0], props={"print_file": "ground_radar_dock_stem.stl"}),
         dict(part="ghost:magsafe_ring", name="MagSafe magnet ring", collection=COMPONENTS,
-             material="Magnet ring", color=[0.75, 0.75, 0.78, 1.0], roughness=0.3, metallic=1.0, explode=[85, 80, 0]),
+             material="Magnet ring", color=[0.75, 0.75, 0.78, 1.0], roughness=0.3, metallic=1.0, explode=[0, 80, 0]),
         dict(part="ghost:phone", name="Phone (stand-in, 147.6 mm)", collection=REFERENCE,
-             material="Phone", color=[0.05, 0.05, 0.06, 1.0], roughness=0.25, explode=[85, 115, 0]),
+             material="Phone", color=[0.05, 0.05, 0.06, 1.0], roughness=0.25, explode=[0, 115, 0],
+             hide_render=True),   # shown in the viewport; hidden in the previews so the unit is seen
         dict(part="ghost:battery", name="LiPo 1500 mAh", collection=COMPONENTS,
              **PCB("Cell", [0.15, 0.35, 0.65]), explode=[0, 32, 0]),
         dict(part="ghost:tp4056", name="TP4056 USB-C charger", collection=COMPONENTS,
@@ -92,8 +101,8 @@ Timeline: frame 1 assembled, frame 60 exploded.
 Collections: Printed parts (print from cad/stl/, see each object's print_file
 property), Components (stand-in boxes at real size and position), Reference
 (the radar's 15 degree boresight cone, hidden in renders).
-The stand sits 12 mm lower than the unit because the unit stands in its channel.
-The MagSafe phone mount screws onto the lid; the phone is a stand-in slab for fit and scale.
+The unit stands on the dock base's top face (Z = 0). The dock stem behind it
+carries the MagSafe ring; the phone is a stand-in slab for fit and scale.
 """,
 }
 

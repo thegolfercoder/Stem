@@ -37,7 +37,7 @@ FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 # (shot, .blend, caption title, caption detail)
 SHOTS = [
     ("ground_hero", "ground_radar_unit.blend", "Ground radar unit",
-     "96 x 64 x 21 mm  |  MagSafe phone mount on the back  |  stands behind the ball"),
+     "96 x 64 x 21 mm  |  smoked radome  |  dock with a MagSafe ring for the phone"),
     ("ground_assembly", "ground_radar_unit.blend", "Inside the ground unit",
      "24 GHz I/Q Doppler radar  |  ESP32-C3  |  1500 mAh LiPo, USB-C charging"),
     ("ground_in_use", "ground_radar_unit.blend", "Placement",
@@ -47,7 +47,7 @@ SHOTS = [
     ("pod_assembly", "shaft_pod.blend", "Inside the pod",
      "IMU on a flat datum floor  |  100 mAh LiPo  |  ESP32-C3, USB-C charging"),
     ("pod_mount", "shaft_pod.blend", "Snap-on clamp",
-     "Fits a 13 mm shaft section  |  liner for grip  |  secured with zip ties"),
+     "Fits a 13 mm shaft section  |  arrow points to the clubhead  |  secured with zip ties"),
 ]
 
 TITLE = ("Stem Launch Monitor", "Two-unit system: ground radar + club-mounted motion pod",

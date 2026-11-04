@@ -17,11 +17,13 @@ directory comes from a measurement of a real shot. See "What has been checked".
 ```
 launchmon-hw/
   cad/
-    script_ground_radar.scad   ground unit: shell, lid, ESP32 clamp tabs, stand, MagSafe phone mount
+    script_ground_radar.scad   ground unit: shell, lid, radome, light pipe, ESP32 clamp tabs, dock
     script_shaft_imu.scad      pod: base with C-clamp, snap lid
-    export_stl.sh              regenerates cad/stl/ and its fit report
+    export_stl.sh              regenerates cad/stl/, its fit report and its cost report
+    cost_report.py             filament, print time and cost per kit, from the STLs
     stl/                       print-ready STLs, already in print orientation
       fit_report.txt           every clearance the layouts depend on, for these STLs
+      cost_report.txt          estimated grams, hours and cost for these STLs
     blender/
       ground_radar_unit.blend  ground unit assembled, with stand-in components and an exploded view
       shaft_pod.blend          pod on a 13 mm shaft, likewise
@@ -38,14 +40,28 @@ launchmon-hw/
     bill_of_materials.md
     wiring_schematic.md        pinouts, power paths, pre-amp, BLE packet format
     build_instructions.md      printing, assembly, weatherproofing, axis rules
+    design_language.md         what the units look like and why; print-cost budget
 ```
+
+## Design
+
+Both units share one design language, set out in
+[docs/design_language.md](docs/design_language.md): matte black, one focal
+point, details that each do a job, and parts drawn for the printer. On the
+ground unit the focal point is the radar window, a separate smoked radome in a
+bevelled pocket. The unit stands in a dock, a ring on a stem behind it that
+carries the phone on a MagSafe ring. The pod has an arrow pointing to the
+clubhead, and a saddle that makes its clamp one form. No part needs supports.
+All printed parts for both units come to about 70 g and 4 hours, an estimated
+$3.20 a kit on your own printer or $7.90 at a print-farm rate
+(`cad/stl/cost_report.txt`).
 
 ## Where it departs from the brief, and why
 
 - **The ground unit stands on its long edge.** A 25.4 mm radar window cannot fit
   in a 21 mm face, so the window is in the 96 x 64 face and the unit stands
-  upright behind the ball. Standing on a 21 mm edge it tips over easily, so an
-  stand is included.
+  upright behind the ball. Standing on a 21 mm edge it tips over easily, so it
+  stands in a dock.
 - **The MT3608 sits on the lid, behind the cell.** The cell, the TP4056 and the
   MT3608 do not fit side by side in a 91 mm interior with R9.6 corners while
   leaving room for the radar. All three are still in the lower cavity; the
@@ -59,12 +75,17 @@ launchmon-hw/
   them (about 15 mm), and one parameter switches to that.
 - **Zip-tie retention on the pod clamp.** Not asked for, but a snap clamp alone
   is not something to trust at clubhead speed.
-- **The MagSafe phone mount goes on the lid, not the front face.** A phone is
-  bigger than the 96 x 64 mm front face, so on the front it would cover the
-  radar window. On the lid, the screen faces the user and the phone's camera,
-  above the unit, looks down the target line. A phone is also much taller than
-  the unit, so the mount rises above the unit's top edge: that way the phone's
-  bottom edge clears the stand, for phones up to 166 mm tall.
+- **The MagSafe phone holder is behind the unit, on the dock, not on the front
+  face.** A phone is bigger than the 96 x 64 mm front face, so on the front it
+  would cover the radar window. Behind the unit, the screen faces the user and
+  the phone's camera, above the unit, looks down the target line. The ring is
+  on the dock's stem, so the unit lifts out on its own and its lid stays plain.
+  It takes phones up to 186 mm tall.
+- **The radar window is a separate part.** Printed into the shell, the 1.0-1.2
+  mm window needed supports, came out rough and varied in thickness, and tied
+  the whole shell to an RF-safe filament colour. As a flat-printed radome it is
+  exact and smooth, the shell prints with no supports, and the body can be
+  matte black.
 
 Each of these is also explained where it happens, in the CAD and the docs.
 
@@ -73,8 +94,9 @@ Each of these is also explained where it happens, in the CAD and the docs.
 | Check | Result |
 |---|---|
 | Both OpenSCAD scripts render in OpenSCAD 2021.01, every part | Yes; STLs in `cad/stl/` |
-| Clearances in the fit report | All `ok`. Tightest: 0.3 mm (pod cell + charger) and 0.4 mm (ground boards) |
-| Radar window: 1.1 mm skin, 15° tilt, module parallel behind it | Confirmed on a rendered cross-section (`part = "section"`) |
+| Clearances in the fit report | All `ok`. Tightest: 0.07 mm (window bevel inside the R12 corner), 0.2 mm (radar posts on their pads, screw pilots in the stem) |
+| Radar window: 1.0 mm radome, 15° tilt, module parallel behind it | Confirmed on a rendered cutaway |
+| Printed-part cost | Estimated from the STLs (`cost_report.py`): 69 g, 4.1 h, $7.92 a kit at $1.50/h. Not yet sliced |
 | Firmware: C++ syntax, `-Wall -Wextra` | Clean, against stub headers (see `firmware/README.md` for what that does not prove) |
 | I/Q skew-correction arithmetic | Checked on synthetic tones: about 62 dB image rejection |
 | Compiled for the ESP32-C3 | **No** |
@@ -90,8 +112,9 @@ moving away from the radar from targets moving toward it, which a single
 channel cannot do. The on-device analysis reuses launchmon-py's calibration
 values (`min_snr_db`, `edge_drop_db`, `n_frames_before_impact`, the smash
 bounds) and its passband. The raw captures it streams are what the
-reference pipeline should be run on, once that pipeline accepts a complex
-40 kHz input; it does not yet.
+reference pipeline should be run on: `launchmon-py` reads them with
+`launchmon.ingest.ground_unit` and fuses them with the pod and the phone
+camera (see its README, "Fusion").
 
 The repository's principles apply here as they do there. Every reported value
 carries its provenance. A value that cannot be measured is refused with a
@@ -132,7 +155,7 @@ This renders six captioned 1080p, 24 fps shots in EEVEE from the generated `.ble
 files, and joins them, with title and end cards, into
 `stem_launch_monitor_showcase.mp4`:
 
-- the ground unit turning in its stand
+- the ground unit turning in its dock
 - the ground unit assembling
 - its placement behind a ball, with the 15° boresight
 - the pod turning on a shaft

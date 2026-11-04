@@ -28,30 +28,30 @@ include the spares worth having. Wiring for every part is in
 | G5 | **TP4056 USB-C charging module** | With DW01A + FS8205 protection (B+/B-/OUT+/OUT- pads), 1 A default (R_PROG 1.2 kΩ) | 1 (+1 spare) | 1 A is 0.67 C for a 1500 mAh cell, which is fine. Its USB-C port lines up with the bottom cutout. |
 | G6 | **MT3608 DC-DC boost module** | 2 V-24 V in, adjustable out, **set to 5.0 V** | 1 (+1 spare) | Set it to 5.0 V on the bench **before** connecting anything to its output. It mounts inside the lid. Measure the height of its trimmer and inductor: the CAD assumes 5 mm. |
 | G7 | **SPST slide switch** | SS12D00-class (SPDT used as SPST), body about 8.6 x 3.6 x 3.5 mm | 1 (+2 spare) | Sits in the right-side wall pocket, with its lever in the recessed slot. |
-| G8 | **5 mm status LED** | Any colour, diffused; plus a **330 Ω** resistor | 1 | Pushed in from inside the top face; its rim sits on the seat. |
+| G8 | **5 mm status LED** | Any colour, diffused; plus a **330 Ω** resistor | 1 | Sits inside, under the printed light pipe, which shows it as a flush 2.8 mm dot on the top face. |
 | G9 | Battery-sense divider | 2x **100 kΩ** 1%, 1x 100 nF | 1 set | Wired after the switch, so it draws nothing when the unit is off. |
 
 ### Fasteners and consumables
 
 | # | Part | Qty | Used for |
 |---|---|---|---|
-| G10 | **M2 x 6 mm screws**, pan head, thread-forming for plastics (stainless machine screws also work into the 1.7 mm pilots) | **10** (buy 20) | 4 radar module, 4 LM358 board, 2 ESP32 clamp tabs; also the 4 lid screws if no phone mount is fitted |
-| G10a | **M2 x 10 mm screws**, pan head | **4** | Phone mount + lid into the lid bosses (they replace the lid's M2 x 6) |
+| G10 | **M2 x 6 mm screws**, pan head, thread-forming for plastics (stainless machine screws also work into the 1.7 mm pilots) | **16** (buy 20) | 4 radar module, 4 LM358 board, 2 ESP32 clamp tabs, 4 lid, 2 dock stem into its base |
 | G11 | Silicone wire, 26-28 AWG, several colours | ~1 m | All internal wiring |
 | G12 | Kapton tape | small roll | Insulating the cell where the MT3608 faces it, and the IMU-to-cell contact in the pod |
 | G13 | Double-sided foam tape, 1 mm | small piece | Under the cell, so it cannot rattle |
 | G14 | Neutral-cure silicone (RTV) | small tube | USB-C receptacle seal, lid seam (optional) |
 | G15 | Silicone USB-C dust plug | 1 | Closes the charging port while the unit is on wet grass |
-| G16 | **Right-angle USB-C cable** *(optional)* | 1 | Charging while the unit stands in the stand |
+| G16 | Clear silicone or epoxy | small | Seats the radome on its ledge, and the LED against the light pipe |
 | G17 | Heat-shrink, 1.5-3 mm | assorted | Solder joints |
 
-### MagSafe phone mount
+### Dock: stand and MagSafe phone holder
 
 | # | Part | Specification | Qty | Notes |
 |---|---|---|---|---|
-| G18 | **MagSafe-compatible magnet ring** | Aftermarket ring for MagSafe mounts and cases, about 56 mm OD x 45-46 mm ID x 1-1.8 mm, ideally with the separate alignment ("tail") magnet | 1 | Sits in the pocket on the mount plate. **Measure it** and set `ring_od`, `ring_id`, `ring_depth`, `orient_slot` before printing. Rings sold for *phone cases* are made to stick to MagSafe chargers and mounts; one made for a *mount* holds harder. |
-| G19 | Thin grip pad | 0.5 mm self-adhesive silicone, rubber or microfibre sheet, cut to the plate | 1 | Covers the ring, stops the phone sliding and protects its back |
+| G18 | **MagSafe-compatible magnet ring** | Aftermarket ring for MagSafe mounts and cases, about 56 mm OD x 45-46 mm ID x 1-1.8 mm, ideally with the separate alignment ("tail") magnet | 1 | Sits in the pocket on the dock's stem. **Measure it** and set `ring_od`, `ring_id`, `ring_depth`, `orient_slot` before printing. Rings sold for *phone cases* are made to stick to MagSafe chargers and mounts; one made for a *mount* holds harder. |
+| G19 | Thin grip pad | 0.5 mm self-adhesive silicone, rubber or microfibre sheet, cut to the ring | 1 | Covers the ring, stops the phone sliding and protects its back |
 | G20 | Two-part epoxy or CA | small | 1 | Holds the ring in its pocket |
+| G21 | Silicone bumper feet, 8 mm, self-adhesive | 4 | Under the dock base: grip on hard floors and hitting mats |
 
 ---
 
@@ -88,15 +88,22 @@ for the slicer settings.
 
 | File | Unit | Qty | Print orientation (already set in the STL) |
 |---|---|---|---|
-| `ground_radar_shell.stl` | Ground | 1 | Front face down; tree supports under the radar window |
-| `ground_radar_lid.stl` | Ground | 1 | Outside face down |
+| `ground_radar_shell.stl` | Ground | 1 | Front face down on a textured sheet; no supports |
+| `ground_radar_lid.stl` | Ground | 1 | Outside face down on a textured sheet |
+| `ground_radar_radome.stl` | Ground | 1 | Flat, outer face up, ironing on. **Translucent smoke or natural PETG, not carbon-black** |
+| `ground_radar_led_pipe.stl` | Ground | 1 | Flange down. Natural PETG |
 | `ground_radar_esp32_clamp_tab_x2.stl` | Ground | **2** | Flat |
-| `ground_radar_stand.stl` | Ground | 1 | Flat. **Required with a phone fitted**, recommended outdoors in any case |
-| `ground_radar_magsafe_phone_mount.stl` | Ground | 1 | Flat, lid side down, ring pocket facing up |
+| `ground_radar_dock_base.stl` | Ground | 1 | As it sits |
+| `ground_radar_dock_stem.stl` | Ground | 1 | Flat, front face down on a textured sheet, ring pocket up |
 | `shaft_pod_base.stl` | Pod | 1 | Standing on its USB end, clamp bore vertical |
 | `shaft_pod_lid.stl` | Pod | 1 | Outside face down |
 
-About 60 g of filament for everything, including supports.
+About **70 g** of filament and **4 hours** of printing for both units, with no
+supports anywhere. `cad/cost_report.py` estimates it from the STLs and writes
+`cad/stl/cost_report.txt`: about $1.40 of PETG, $3.20 a kit on your own printer
+and $7.90 at a print-farm machine rate, against a $5-10 budget for the printed
+parts. Those are estimates, within about 20% of a slice; slice the STLs with
+your printer's profile before quoting a price.
 
 ## 4. Tools
 

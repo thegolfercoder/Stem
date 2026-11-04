@@ -1,5 +1,5 @@
-  ok   depth behind radar module      : 0.531479 mm
-  ok   radar module above TP4056       : 1.31062 mm
+  ok   depth behind radar module      : 0.628072 mm
+  ok   radar module above TP4056       : 1.3365 mm
   ok   window opening inside outline   : 0.866625 mm
   ok   LM358 board to radar housing    : 0.4 mm
   ok   ESP32 tab posts to LM358 board  : 0.48 mm
@@ -7,13 +7,21 @@
   ok   cell + MT3608 depth stack       : 1.4 mm
   ok   divider to ESP32 board          : 2.4 mm
   ok   radar housing to right wall     : 3.6 mm
-  ok   phone bottom above stand wall   : 9.2 mm
-  ok   phone camera clears unit top    : 60.8732 mm
-  ok   alignment magnet inside plate   : 53.25 mm
-  info  radar window centre [76.1, 46.148], boresight 15 deg up, skin 1.1 mm
+  ok   window bevel inside outline     : 0.0666252 mm
+  ok   radar posts on their corner pads: 0.2 mm
+  ok   radar post pilot under its depth: 0.5 mm
+  ok   light pipe flange to ESP32 board: 2.6 mm
+  ok   phone bottom above buttress     : 19.2 mm
+  ok   phone camera clears unit top    : 72.3636 mm
+  ok   alignment magnet inside neck    : 4.25 mm
+  ok   stem behind the ring pocket     : 0.6 mm
+  ok   opening inside the magnet ring  : 4.75 mm
+  ok   stem face past the screw pilots  : 0.2 mm
+  info  radar window centre [76.1, 46.148], boresight 15 deg up, skin 1 mm
   info  USB-C receptacle centre X 73 Y 7.15
-  info  tallest phone that clears the stand: 166 mm
-  info  magnet ring to MT3608 PCB: 6.2 mm (check the 5 V rail with a phone attached)
+  info  tallest phone that clears the buttress: 186 mm
+  info  magnet ring to MT3608 PCB: 6.5 mm (check the 5 V rail with a phone attached)
+  info  dock base reaches 25.35 mm behind the phone's centre line
   ok   stack height under the lid      : 0.74 mm
   ok   IMU board inside the walls (X)  : 1.1 mm
   ok   cell + charger along X          : 0.3 mm

@@ -27,6 +27,12 @@
 //  Set `imu_stemma_fitted = true` to keep them, and fit_report() gives the body
 //  height that needs; 14 mm is not enough. Wires on the 0.1" pads are just as good.
 //
+//  DESIGN (../docs/design_language.md says why)
+//  It shares the ground unit's finish and details: matte black, soft edges, a
+//  shadow gap at the seam, one debossed mark. The mark is functional: the
+//  arrow on the lid points to the clubhead, the pod's +X axis. Between the two
+//  jaws a saddle follows the shaft, so the pod reads as one form on the club.
+//
 //  The clamp is a C, wrapping 230 degrees, with a recessed band for a
 //  0.8 mm silicone or neoprene liner. The liner stands 0.2 mm proud and grips.
 //  A zip-tie tunnel and an outside groove on each jaw take a tie that closes
@@ -86,6 +92,11 @@ liner_t     = 0.8;                // liner strip thickness
 liner_proud = 0.2;                // how far the liner stands above the bore
 tie_w       = 3.0;                // zip-tie slot width (2.5 mm ties)
 tie_h       = 1.6;
+saddle_clear = 0.6;               // between the jaws the underside follows the shaft at this gap
+
+/* [Surface details] */
+mark_depth  = 0.4;                // debossed arrow on the lid: two layers at 0.20 mm
+reveal      = [0.3, 0.5];         // shadow gap at the lid seam [depth, height]
 
 // ----------------------------------------------------------------------------
 //  Derived values
@@ -154,6 +165,7 @@ module base() {
         usb_port();
         pry_notch();
         clamp_bore();
+        saddle_relief();
     }
     imu_pocket();
     battery_stops();
@@ -204,8 +216,9 @@ module snap_groove() {
 module usb_port() {
     // Plug-shell opening through the -X wall plus a shallow outer recess so
     // the plug's overmold can seat, which lets the shell reach full engagement.
-    translate([-1, bore_y - 9.2 / 2, z_usb_c - 3.8 / 2]) cube([wall + 2, 9.2, 3.8]);
-    translate([-1, bore_y - 12.4 / 2, z_usb_c - 6.4 / 2]) cube([1 + 0.6, 12.4, 6.4]);
+    // Both are rounded, as the plug is.
+    x_extrude(-1, wall + 1) translate([bore_y - 9.2 / 2, z_usb_c - 3.8 / 2]) rrect(9.2, 3.8, 1.2);
+    x_extrude(-1, 0.6) translate([bore_y - 12.4 / 2, z_usb_c - 6.4 / 2]) rrect(12.4, 6.4, 2.4);
 }
 
 module pry_notch() {
@@ -224,6 +237,21 @@ module clamp() {
         // Mouth, centred on -Z.
         rotate(-90) sector(jaw_R + 2, -mouth / 2, mouth / 2);
     }
+    // Between the jaws, a saddle that follows the top of the shaft, so the
+    // underside reads as one form sitting on the shaft rather than two clips.
+    // It stands clear of the shaft: only the lined jaws grip.
+    // Its outline is the jaws' own, cut off level with the shaft's centre.
+    x_extrude(jaw_xs[0][1] - 0.01, jaw_xs[1][0] + 0.01) translate([bore_y, bore_z]) intersection() {
+        union() {
+            circle(r = jaw_R);
+            translate([-(jaw_R - 0.8), 0]) square([2 * (jaw_R - 0.8), -bore_z + 0.5]);
+        }
+        translate([-jaw_R - 1, 0]) square([2 * jaw_R + 2, -bore_z + 1]);
+    }
+}
+
+module saddle_relief() {
+    x_extrude(jaw_xs[0][1] - 0.02, jaw_xs[1][0] + 0.02) translate([bore_y, bore_z]) circle(r = bore_r + saddle_clear);
 }
 
 module clamp_bore() {
@@ -282,7 +310,23 @@ module lid() {
             esp32_retainer();
         }
         usb_port();
+        // Shadow gap at the seam: the lid's edge steps in for its first 0.5 mm.
+        translate([0, 0, base_h - 0.01]) linear_extrude(reveal[1] + 0.01) difference() {
+            translate([-1, -1]) square([pod[0] + 2, pod[1] + 2]);
+            seam_inset = edge_r - sqrt(edge_r * edge_r - pow(base_h - (pod[2] - edge_r), 2));
+            translate([seam_inset + reveal[0], seam_inset + reveal[0]])
+                rrect(pod[0] - 2 * (seam_inset + reveal[0]), pod[1] - 2 * (seam_inset + reveal[0]), edge_r - seam_inset - reveal[0]);
+        }
+        // Arrow on the lid pointing along +X, toward the clubhead: the pod's
+        // reference direction, and the way round it goes on the shaft.
+        translate([pod[0] / 2, pod[1] / 2, pod[2] - mark_depth]) linear_extrude(1) head_arrow();
     }
+}
+
+module head_arrow() {
+    // A chevron and a short shaft, 11 mm long.
+    translate([-5.5, -0.6]) square([10.5, 1.2]);
+    translate([5.5, 0]) rotate(180) for (s = [-1, 1]) rotate(s * 40) translate([0, -0.6]) square([5, 1.2]);
 }
 
 module esp32_retainer() {

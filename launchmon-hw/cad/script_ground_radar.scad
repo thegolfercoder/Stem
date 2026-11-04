@@ -11,8 +11,14 @@
 //  the large 96 x 64 face looking down the target line. The radar's 25.4 mm
 //  window is in that face. It cannot go anywhere else: the 21 mm faces are
 //  too narrow for a 25.4 mm aperture. Standing on its edge, a 21 mm deep box
-//  tips over easily, so an optional cradle (`part = "stand"`) adds a rear
-//  outrigger and a channel for a right-angle USB-C cable.
+//  tips over easily, so it stands in a dock: a base with lips front and rear,
+//  and a stem behind the unit that carries a MagSafe ring for the phone.
+//
+//  DESIGN (docs/design_language.md says why)
+//  One matte black object with one focal point, the radar window: a smoked
+//  radome in a bevelled pocket. Edges that print on the bed are chamfered,
+//  edges that stand up are rounded. The seam is a deliberate shadow gap.
+//  Everything printed is printed without supports.
 //
 //  COORDINATES (as used, not as printed)
 //      X  0 -> 96   left to right, seen from in front (the target side)
@@ -41,15 +47,18 @@
 //  PRINTED PARTS (set `part`):
 //      "shell"             front face + side walls (print front face DOWN)
 //      "lid"               rear cover, carries the MT3608   (print flat, lip UP)
+//      "radome"            radar window, translucent smoke PETG (print flat)
+//      "led_pipe"          status light pipe, natural PETG (print flange down)
 //      "esp32_clamp_tab"   x2, M2 clamp tabs for the SuperMini (no holes on it)
-//      "stand"             optional anti-tip cradle
+//      "dock_base"         dock base with lips and the stem's socket
+//      "dock_stem"         stem and MagSafe ring (print flat)
 //      "assembly"          everything placed, with ghost components (viewing only)
-//      "print_plate"       shell + lid + tabs laid out for one export
+//      "print_plate"       shell + lid + small parts laid out for one export
 // =============================================================================
 
 /* [Render] */
-part            = "assembly";   // [assembly, shell, lid, esp32_clamp_tab, stand, phone_mount, print_plate, section]
-// Also: "in_place:shell|lid|tab0|tab1|stand" and "ghost:<name>" export one
+part            = "assembly";   // [assembly, shell, lid, radome, led_pipe, esp32_clamp_tab, dock_base, dock_stem, print_plate, section]
+// Also: "in_place:shell|lid|radome|led_pipe|tab0|tab1|dock_base|dock_stem" and "ghost:<name>" export one
 // part in its assembled position (used by cad/blender/).
 show_components = true;         // ghost components in the assembly view
 explode         = 0;            // [0:1:40] pull the lid back in the assembly view
@@ -62,15 +71,36 @@ body_d      = 21;     // Y (thickness)
 corner_r    = 12;     // R12 plan corners
 wall        = 2.4;    // outer wall: 6 perimeters at 0.4 mm, or 4 at 0.6 mm
 lid_t       = 2.4;    // rear lid plate thickness
-edge_chamfer = 1.0;   // soft 45-degree edge on the front and rear perimeter
+front_chamfer = 1.6;  // 45-degree edge round the front face: catches the light as one crisp line,
+                      // and on the bed it stops the first layers squashing out ("elephant's foot")
+rear_chamfer  = 1.0;
+reveal      = [0.5, 0.8];  // shadow gap at the shell/lid seam [depth, width]: a printed seam never
+                           // lines up perfectly, so it is made a deliberate line instead
+
+/* [Surface details] */
+rib_pitch   = 1.6;    // grip ribs on both end faces, upper half
+rib_w       = 0.8;
+rib_d       = 0.4;
+rib_z       = [27, 49];
+wordmark    = "STEM";
+wordmark_size = 5.5;
+mark_depth  = 0.4;    // debossed marks: two layers at 0.20 mm
+font        = "Liberation Sans:style=Bold";
 
 /* [Radar window - Infineon BGT24LTR11] */
 win_size    = 25.4;   // square aperture, measured in the plane of the window
-win_t       = 1.1;    // window skin: 1.0 - 1.2 mm keeps PETG/ABS nearly transparent at 24 GHz
+win_t       = 1.0;    // radome: 1.0 - 1.2 mm keeps PETG/ABS nearly transparent at 24 GHz.
+                      // 1.0 mm is five 0.20 mm layers, so the slicer prints exactly this
 win_tilt    = 15;     // boresight elevation above horizontal, degrees
 win_cx      = 76.1;   // window centre, X
 win_zb      = 33.0;   // window bottom edge, Z, where it meets the front face
 win_frame   = 1.2;    // wall thickness of the window's internal housing
+win_r       = 3.0;    // radome corner radius
+win_chamfer = 0.8;    // bevel round the window opening on the front face
+radome_clear = 0.15;  // radome to pocket, per side
+ledge_w     = 1.2;    // ledge the radome sits on, round the aperture
+ledge_t     = 1.2;
+ledge_pad   = 5.0;    // square pads in the ledge's corners carry the radar posts
 radar_pcb   = [25.4, 25.4, 1.6];  // module PCB, measured in the window plane [w, h, t]
 radar_gap   = 6.2;    // antenna to inner window surface. 6.2 mm = half a free-space
                       // wavelength at 24.125 GHz; see docs/build_instructions.md
@@ -108,21 +138,31 @@ usb_cut     = [11.5, 6.0];         // bottom USB-C cutout [X, Y]
 sw_body     = [8.7, 3.7, 3.7];     // SS12D00-style slide switch body [Y-long, Z, X-depth]
 sw_slot     = [4.6, 2.2];          // actuator slot [Y, Z]
 sw_center   = [10.5, 20.0];        // slot centre [Y, Z] on the right wall
-led_d       = 5.1;                 // 5 mm LED, through hole
-led_flange_d = 6.0;                // LED rim, seated from inside
 led_pos     = [22.75, 13.0];       // [X, Y] on the top face
+led_hole_d  = 3.0;                 // the light pipe shows as a 2.8 mm dot, flush with the face
+pipe_d      = 2.8;
+pipe_flange = [6.0, 0.8];          // [diameter, thickness]; the 5 mm LED's dome sits under it
 
-/* [Phone holder - MagSafe, on the lid] */
-// A plate screwed to the lid with the lid's own four screws (M2 x 10 instead
-// of M2 x 6). It carries a MagSafe-compatible magnet ring. The phone's back
-// sits on the plate: its screen faces the user behind the unit, and its rear
-// camera, above the unit's top edge, looks down the target line beside the radar.
-// A phone is much taller than the unit, so the ring sits high enough for the
-// phone's bottom edge to clear the stand's rear wall: the plate rises above the
-// unit's top edge. Use the stand whenever a phone is fitted; it carries the weight.
-phone_mount   = true;
-mount_t       = 4.0;            // plate thickness
-ring_center   = [48, 92];       // magnet ring centre, front-view [X, Z]
+/* [Dock - stand and MagSafe phone holder in one] */
+// The unit drops into the dock's base between a front lip and the stem. The
+// stem rises behind the unit and ends in a ring carrying a MagSafe-compatible
+// magnet ring. The phone's back sits on the ring: its screen faces the golfer,
+// and its rear camera, above the unit's top edge, looks down the target line.
+// The stem is printed flat, so both faces are smooth, then screwed into the base.
+phone_mount   = true;           // false: dock base only, no stem
+dock_t        = 2.4;            // base plate
+dock_lip_h    = 6.0;            // lips up the unit's front and rear faces
+dock_gap      = 0.3;            // unit to lips and stem
+dock_depth    = 58;             // base, front lip to rear edge
+stem_t        = 4.0;            // stem and ring thickness
+stem_neck_w   = 24;
+stem_fillet   = 10;             // where the neck meets the ring
+stem_hole_d   = 30;             // opening in the middle of the ring
+stem_chamfer  = 0.6;            // edges of the stem, printed as three 0.2 mm steps
+buttress      = [28, 6, 10];    // block behind the stem's foot [X, Y, Z]
+foot_d        = 8.2;            // recesses for 8 mm silicone bumpers under the base
+ring_center   = [48, 104];      // magnet ring centre, front-view [X, Z] above the unit's bottom: the ring clears
+                                // the unit's top edge by 9 mm, so the neck shows between them
 ring_od       = 56.5;           // aftermarket MagSafe magnet ring: MEASURE YOURS
 ring_id       = 45.5;
 ring_depth    = 1.8;            // pocket depth; the ring sits flush, under a 0.5 mm grip pad
@@ -131,8 +171,6 @@ orient_gap    = 2.5;            // ring OD to the slot's top edge
 phone         = [71.6, 147.6, 8.3];  // stand-in phone for fit checks and renders [W, H, T]
 phone_lens_from_top = 25;       // main camera centre below the phone's top edge (typical)
 phone_vfov    = 65;             // camera vertical field of view, portrait, degrees
-stand_wall_top = 8;             // top of the stand's channel walls above the unit's bottom (stand() wall_h):
-                                // the phone hangs just behind the rear wall, so its bottom edge must clear it
 
 /* [Fasteners - M2] */
 m2_pilot    = 1.7;    // thread-forming M2 straight into PETG/ABS
@@ -163,6 +201,8 @@ esp_top_y = y_front + esp_rail_h + esp_pcb[2];
 
 // The radar module's rearmost point (top edge, rear components), in global Y.
 radar_stack   = win_t + radar_gap + radar_pcb[2] + radar_back_clear;
+stem_y0       = body_d + dock_gap;          // stem front face
+stem_y1       = stem_y0 + stem_t;           // stem rear face (the phone side)
 radar_back_y  = radar_stack * cos(win_tilt) + win_size * sin(win_tilt);
 radar_low_z   = win_zb - (win_t + radar_gap) * sin(win_tilt);  // module bottom edge
 
@@ -188,13 +228,31 @@ module outline(inset = 0) {
 
 module envelope() {
     // The full closed body, with chamfered front and rear perimeter edges.
-    c = edge_chamfer;
     hull() {
-        xz_extrude(0, 0.01)             outline(c);
-        xz_extrude(c, body_d - c)       outline(0);
-        xz_extrude(body_d - 0.01, body_d) outline(c);
+        xz_extrude(0, 0.01)                         outline(front_chamfer);
+        xz_extrude(front_chamfer, body_d - rear_chamfer) outline(0);
+        xz_extrude(body_d - 0.01, body_d)           outline(rear_chamfer);
     }
 }
+
+// The radome's outline in the window plane: local x across, local z up from
+// the window's bottom edge.
+module win_shape(inset = 0) {
+    translate([-win_size / 2 + inset, inset])
+        rrect(win_size - 2 * inset, win_size - 2 * inset, max(0.5, win_r - inset));
+}
+
+// The clear aperture behind the radome: the ledge round it, with square pads
+// in the corners where the radar module's posts stand.
+module ledge_opening() {
+    difference() {
+        win_shape(ledge_w);
+        for (sx = [-1, 1], z = [0, win_size - ledge_pad])
+            translate([sx > 0 ? win_size / 2 - ledge_pad : -win_size / 2, z]) square(ledge_pad);
+    }
+}
+
+module y_cone(h, d1, d2) { rotate([-90, 0, 0]) cylinder(h = h, d1 = d1, d2 = d2); }
 
 // Window frame: local x across the window, local y inward (into the box)
 // along the window normal, local z up the window. Origin at the bottom-centre
@@ -241,41 +299,76 @@ module shell() {
         switch_slot();
         led_hole();
         aim_groove();
+        window_bevel();
+        side_ribs();
+        front_wordmark();
     }
 }
 
 // ---- Radar window -----------------------------------------------------------
+// The window is a separate part, the radome: a 1.0 mm plate printed flat, so
+// its thickness is exact and both faces are smooth. It drops into a rounded
+// pocket in the front face, flush at its bottom edge, and is glued onto a ledge.
+// Printing the window as part of the shell would put it on supports, with a
+// rough face and a thickness that varies. As a separate part it needs neither,
+// and the shell prints with no supports at all.
 module window_recess() {
-    // Everything in front of the tilted window surface, inside the aperture.
-    in_window_frame() translate([-win_size / 2, -40, 0]) cube([win_size, 40, win_size]);
+    // The pocket in front of the tilted radome, and the radome's own slot.
+    in_window_frame() xz_extrude(-40, win_t) win_shape();
+}
+
+module window_bevel() {
+    // A 45-degree bevel round the opening on the front face.
+    hull() {
+        intersection() {
+            in_window_frame() xz_extrude(-40, 12) offset(delta = win_chamfer) win_shape();
+            translate([0, -1, 0]) cube([body_w, 1, body_h]);
+        }
+        intersection() {
+            in_window_frame() xz_extrude(-40, 12) win_shape();
+            translate([0, win_chamfer, 0]) cube([body_w, 0.01, body_h]);
+        }
+    }
 }
 
 module window_rear_clearance() {
-    // Hollow out the front wall behind the window skin, so the skin is win_t
-    // thick everywhere and the module can sit square behind it.
+    // Hollow out the front wall behind the radome, so the module can sit square
+    // behind it.
     in_window_frame() translate([-win_size / 2, win_t, 0])
         cube([win_size, radar_stack + 2, win_size]);
 }
 
 module window_housing() {
-    // A rectangular collar around the aperture plus the skin itself. Above the
-    // bottom edge the window sits behind the front face, so the collar forms
-    // the side walls and roof of the recess and holds the skin in place.
+    // A collar round the aperture. Above the bottom edge the window sits behind
+    // the front face, so the collar forms the side walls and roof of the pocket.
+    // Behind the radome it closes in to the ledge and corner pads.
     in_window_frame() difference() {
         translate([-win_size / 2 - win_frame, -40, -win_frame])
-            cube([win_size + 2 * win_frame, 40 + win_t, win_size + 2 * win_frame]);
-        translate([-win_size / 2, -41, 0]) cube([win_size, 41, win_size]);
+            cube([win_size + 2 * win_frame, 40 + win_t + ledge_t, win_size + 2 * win_frame]);
+        xz_extrude(-41, win_t) win_shape();
+        xz_extrude(win_t - 0.01, win_t + ledge_t + 1) ledge_opening();
     }
 }
 
 module radar_posts() {
-    // M2 standoffs on the inside of the window skin, normal to it, so the module
-    // sits parallel to the window at radar_gap behind it.
+    // M2 standoffs on the corner pads, normal to the window, so the module sits
+    // parallel to the radome at radar_gap behind it.
+    post = radar_gap - ledge_t;
     in_window_frame() for (h = radar_holes)
-        translate([h[0], win_t - 0.01, h[1]]) difference() {
-            y_cylinder(radar_gap + 0.01, 4.6);
-            translate([0, radar_gap - 4.5, 0]) y_cylinder(5, m2_pilot);
+        translate([h[0], win_t + ledge_t - 0.01, h[1]]) difference() {
+            y_cylinder(post + 0.01, 4.6);
+            translate([0, post - 4.5, 0]) y_cylinder(5, m2_pilot);
         }
+}
+
+module radome() {
+    // As fitted: outer face on the window plane, flush with the front face at
+    // its bottom edge.
+    in_window_frame() xz_extrude(0, win_t) offset(delta = -radome_clear) win_shape();
+}
+// Print flat, outer face up, with ironing on the top surface for a smooth finish.
+module radome_print() {
+    translate([win_size / 2, 0, 0]) linear_extrude(win_t) offset(delta = -radome_clear) win_shape();
 }
 
 // ---- ESP32-C3 SuperMini -----------------------------------------------------
@@ -375,8 +468,8 @@ module tp4056_pocket() {
 // ---- Bottom USB-C cutout ----------------------------------------------------
 module usb_c_cutout() {
     // Through the bottom wall, centred on the TP4056 receptacle. The port faces
-    // the ground while the unit stands, which keeps rain off it; use the stand
-    // and a right-angle cable to charge it upright.
+    // the ground while the unit stands, which keeps rain off it. Charge the
+    // unit out of the dock, lying on its back.
     translate([tp_usb_x - usb_cut[0] / 2, tp_usb_y - usb_cut[1] / 2, -1])
         rounded_slot(usb_cut[0], usb_cut[1], wall + 1.6, 1.2);
 }
@@ -398,27 +491,52 @@ module switch_holder() {
         }
 }
 
+// 2D shapes drawn in the Y/Z plane, extruded along X from x0 to x1.
+module yz_extrude(x0, x1) { translate([x0, 0, 0]) rotate([90, 0, 90]) linear_extrude(x1 - x0) children(); }
+
 module switch_slot() {
-    // Actuator slot through the wall, plus a 1 mm outside recess so the lever
-    // sits below the surface and a stray club or foot does not switch it.
+    // Actuator slot through the wall, plus a 1 mm pill-shaped recess outside so
+    // the lever sits below the surface and a stray club or foot does not switch it.
     translate([body_w - wall - 1, sw_center[0] - sw_slot[0] / 2, sw_center[1] - sw_slot[1] / 2])
         cube([wall + 2, sw_slot[0], sw_slot[1]]);
-    translate([body_w - 1.0, sw_center[0] - 4.5, sw_center[1] - 2.8]) cube([2, 9, 5.6]);
+    yz_extrude(body_w - 1.0, body_w + 1)
+        translate([sw_center[0] - 4.5, sw_center[1] - 2.8]) rrect(9, 5.6, 2.8);
 }
 
-// ---- 5 mm status LED, top face ------------------------------------------------
+// ---- Status light, top face ---------------------------------------------------
 module led_hole() {
-    translate([led_pos[0], led_pos[1], body_h - wall - 1]) cylinder(h = wall + 2, d = led_d);
-    // A seat for the LED's rim on the inside, so it is pushed in from inside and
-    // cannot be pushed through.
-    translate([led_pos[0], led_pos[1], body_h - wall - 0.01]) cylinder(h = 1.0 + 0.01, d = led_flange_d);
+    // A 3 mm hole for the light pipe, with a seat inside for its flange. The 5 mm
+    // LED sits under the flange, so the light shows as a small flush dot.
+    translate([led_pos[0], led_pos[1], body_h - wall - 1]) cylinder(h = wall + 2, d = led_hole_d);
+    translate([led_pos[0], led_pos[1], body_h - wall - 0.01]) cylinder(h = pipe_flange[1] + 0.01, d = pipe_flange[0] + 0.3);
+    translate([led_pos[0], led_pos[1], body_h - 0.4]) cylinder(h = 0.41, d1 = led_hole_d, d2 = led_hole_d + 0.8);
 }
 
-// ---- Aiming groove ------------------------------------------------------------
+module led_pipe() {
+    // Printed in natural (translucent) PETG, flange down. Glue the LED to it.
+    cylinder(h = pipe_flange[1], d = pipe_flange[0]);
+    cylinder(h = wall, d = pipe_d);
+}
+module led_pipe_in_place() { translate([led_pos[0], led_pos[1], body_h - wall]) led_pipe(); }
+
+// ---- Aiming index ---------------------------------------------------------------
 module aim_groove() {
-    // A shallow groove on the top face, directly over the radar boresight, for
-    // lining the unit up with the target line.
-    translate([win_cx - 0.5, -1, body_h - 0.6]) cube([1.0, body_d + 2, 1]);
+    // A round-ended groove on the top face, directly over the radar boresight,
+    // for lining the unit up with the target line.
+    hull() for (y = [3.5, y_back - 1.6])
+        translate([win_cx, y, body_h - mark_depth]) cylinder(h = 1, d = 0.8, $fn = 16);
+}
+
+// ---- Grip ribs and wordmark -------------------------------------------------------
+module side_ribs() {
+    // Fine grooves along both end faces, upper half, where the unit is held.
+    for (x = [-1, body_w - rib_d], z = [rib_z[0] : rib_pitch : rib_z[1]])
+        translate([x, front_chamfer + 2, z - rib_w / 2]) cube([rib_d + 1, y_back - front_chamfer - 3.5, rib_w]);
+}
+
+module front_wordmark() {
+    xz_extrude(-1, mark_depth) translate([10, 9])
+        text(wordmark, size = wordmark_size, font = font, spacing = 1.25);
 }
 
 // ---- Lid fixings ---------------------------------------------------------------
@@ -464,10 +582,12 @@ module lid() {
             mt3608_fence();
             tp4056_presser();
         }
-        aim_groove();
+        // Shadow gap at the seam: the lid's edge steps in for its first 0.8 mm.
+        xz_extrude(y_back - 0.01, y_back + reveal[1]) difference() { outline(-2); outline(reveal[0]); }
         for (p = lid_bosses) {
             translate([p[0], y_back - 1, p[1]]) y_cylinder(lid_t + 2, m2_clear);
             translate([p[0], body_d - m2_head_h, p[1]]) y_cylinder(m2_head_h + 1, m2_head_d);
+            translate([p[0], body_d - 0.4, p[1]]) y_cone(0.41, m2_head_d, m2_head_d + 0.8);
         }
     }
 }
@@ -501,75 +621,110 @@ module tp4056_presser() {
 }
 
 // ----------------------------------------------------------------------------
-//  MagSafe phone holder (screws onto the lid)
+//  Dock: the stand and the MagSafe phone holder in one, in two printed parts
 // ----------------------------------------------------------------------------
-module phone_mount_profile() {
-    // The lid's outline, joined smoothly to a disc round the magnet ring that
-    // rises above the unit's top edge.
-    rc = ring_od / 2 + 3;
-    union() {
-        outline(0.6);
-        hull() {
-            translate([ring_center[0], ring_center[1]]) circle(r = rc);
-            translate([ring_center[0] - rc * 0.95, body_h - 14]) square([2 * rc * 0.95, 13.4]);
-        }
+// Coordinates as the unit's: the base's top face is Z = 0, where the unit
+// stands. The base is printed as it sits; the stem is printed flat.
+dock_cx0 = corner_r - 1;               // the flat part of the unit's bottom edge
+dock_cx1 = body_w - corner_r + 1;
+dock_y0  = -dock_gap - wall;           // front face of the front lip
+stem_foot = dock_t - 0.8;              // how far the stem sits down into the base
+stem_screws = [[ring_center[0] - 7, 5], [ring_center[0] + 7, 5]];   // [X, Z], M2 x 6 from behind
+
+module dock_outline() {
+    // Plan view [X, Y]: full width under the unit, narrowing behind it, where
+    // it only has to stop the phone's weight tipping the dock backwards.
+    hull() {
+        translate([0, dock_y0]) rrect(body_w, stem_y1 + buttress[1] + 4 - dock_y0, 6);
+        translate([ring_center[0] - 34, dock_y0 + dock_depth - 26]) rrect(68, 26, 13);
     }
 }
 
-module phone_mount() {
-    y0 = body_d; y1 = body_d + mount_t;
-    c = 0.8;   // soft edge on the phone side
-    difference() {
-        hull() {
-            xz_extrude(y0, y1 - c) phone_mount_profile();
-            xz_extrude(y1 - 0.01, y1) offset(delta = -c) phone_mount_profile();
-        }
-        // Magnet ring pocket, open on the phone side.
-        translate([ring_center[0], y1 - ring_depth, ring_center[1]]) difference() {
-            y_cylinder(ring_depth + 1, ring_od);
-            translate([0, -1, 0]) y_cylinder(ring_depth + 3, ring_id);
-        }
-        // Alignment magnet below the ring, as on a MagSafe accessory.
-        if (orient_slot[0] > 0)
-            translate([ring_center[0] - orient_slot[0] / 2, y1 - ring_depth,
-                       ring_center[1] - ring_od / 2 - orient_gap - orient_slot[1]])
-                cube([orient_slot[0], ring_depth + 1, orient_slot[1]]);
-        // Through the lid's screw positions, heads countersunk on the phone side.
-        for (p = lid_bosses) {
-            translate([p[0], y0 - 1, p[1]]) y_cylinder(mount_t + 2, m2_clear);
-            translate([p[0], y1 - m2_head_h, p[1]]) y_cylinder(m2_head_h + 1, m2_head_d);
-        }
-    }
-}
-
-// Print orientation: lid side on the bed, ring pocket facing up.
-module phone_mount_print() { translate([0, ring_center[1] + ring_od / 2 + 5, -body_d]) rotate([90, 0, 0]) phone_mount(); }
-
-// ----------------------------------------------------------------------------
-//  Optional anti-tip stand
-// ----------------------------------------------------------------------------
-module stand() {
-    floor_z = 12;     // underside of the unit: leaves room for a right-angle plug
-    wall_h  = stand_wall_top;   // how far the cradle walls rise up the unit's faces
-    gap     = 0.3;
-    depth   = body_d + (phone_mount ? mount_t : 0);    // the phone plate stands in the channel too
-    cx0 = corner_r - 1; cx1 = body_w - corner_r + 1;    // flat part of the bottom edge
+module dock_base() {
     difference() {
         union() {
-            // Base plate: short in front, long behind, which is the side it tips toward.
-            translate([0, -8, 0]) linear_extrude(3) rrect(body_w, 70, 6);
-            // Cradle block.
-            translate([cx0 - wall, -gap - wall, 0])
-                cube([cx1 - cx0 + 2 * wall, depth + 2 * gap + 2 * wall, floor_z + wall_h]);
+            // Plate: 0.8 mm bevel on top, 0.4 mm at the bed.
+            hull() {
+                translate([0, 0, -dock_t]) linear_extrude(0.01) offset(delta = -0.4) dock_outline();
+                translate([0, 0, -dock_t + 0.4]) linear_extrude(dock_t - 1.2) dock_outline();
+                translate([0, 0, -0.01]) linear_extrude(0.01) offset(delta = -0.8) dock_outline();
+            }
+            // Front lip, bevelled on its top front edge.
+            yz_extrude(dock_cx0, dock_cx1) polygon([[dock_y0, -0.01], [-dock_gap, -0.01], [-dock_gap, dock_lip_h],
+                [dock_y0 + 1.2, dock_lip_h], [dock_y0, dock_lip_h - 1.2]]);
+            // Short rear lips at both ends stop the unit turning in the dock.
+            for (x = [dock_cx0, dock_cx1 - 10])
+                yz_extrude(x, x + 10) polygon([[stem_y0, -0.01], [stem_y0 + wall, -0.01],
+                    [stem_y0 + wall, dock_lip_h - 1.2], [stem_y0 + wall - 1.2, dock_lip_h], [stem_y0, dock_lip_h]]);
+            // Buttress behind the stem's foot: it takes the phone's weight.
+            if (phone_mount)
+                yz_extrude(ring_center[0] - buttress[0] / 2, ring_center[0] + buttress[0] / 2)
+                    polygon([[stem_y1 + 0.1, -0.01], [stem_y1 + 0.1 + buttress[1], -0.01],
+                             [stem_y1 + 0.1 + buttress[1], buttress[2] - 2], [stem_y1 + 0.1 + buttress[1] - 2, buttress[2]],
+                             [stem_y1 + 0.1, buttress[2]]]);
         }
-        // Channel the unit stands in.
-        translate([cx0, -gap, floor_z]) cube([cx1 - cx0, depth + 2 * gap, wall_h + 1]);
-        // Pocket and exit channel for a right-angle USB-C plug, running out the back.
-        translate([tp_usb_x - 8, tp_usb_y - 5, 3]) cube([16, 80, floor_z - 3 + 0.01]);
-        // Lighten and drain.
-        translate([cx0 + 6, 3, 3]) cube([tp_usb_x - 8 - cx0 - 9, body_d - 6, floor_z]);
+        if (phone_mount) {
+            // Socket for the stem's foot.
+            translate([ring_center[0] - stem_neck_w / 2 - 0.15, stem_y0 - 0.1, -stem_foot])
+                cube([stem_neck_w + 0.3, stem_t + 0.2, stem_foot + 1]);
+            // Two M2 x 6 from behind, heads sunk in the buttress, into the stem.
+            for (p = stem_screws) {
+                translate([p[0], stem_y1, p[1]]) y_cylinder(buttress[1] + 1, m2_clear);
+                translate([p[0], stem_y1 + 0.1 + 2.7, p[1]]) y_cylinder(buttress[1], m2_head_d + 0.2);
+            }
+        }
+        // Recesses for silicone bumpers, for hitting mats and hard floors.
+        for (x = [10, body_w - 10], y = [dock_y0 + 6]) translate([x, y, -dock_t - 1]) cylinder(h = 1.6, d = foot_d);
+        for (x = [ring_center[0] - 24, ring_center[0] + 24])
+            translate([x, dock_y0 + dock_depth - 9, -dock_t - 1]) cylinder(h = 1.6, d = foot_d);
     }
 }
+
+module stem_profile() {
+    // Front view [X, Z]: a ring on a neck, joined by a generous fillet.
+    rc = ring_od / 2 + 3;
+    difference() {
+        offset(r = -stem_fillet) offset(r = stem_fillet) union() {
+            translate(ring_center) circle(r = rc, $fn = 128);
+            translate([ring_center[0] - stem_neck_w / 2, -stem_foot]) square([stem_neck_w, ring_center[1]]);
+        }
+        translate([0, -stem_foot - 20]) square([body_w, 20]);   // keep the foot square
+        translate(ring_center) circle(d = stem_hole_d, $fn = 96);
+    }
+}
+
+module stem() {
+    // Edges chamfered as three 0.2 mm steps on each face, which is how the
+    // printer lays down a 45-degree chamfer on a flat part anyway.
+    c = stem_chamfer; n = 3; s = c / n;
+    for (i = [0 : n - 1]) {
+        xz_extrude(stem_y0 + i * s, stem_y0 + (i + 1) * s + 0.01) offset(delta = -(c - i * s)) stem_profile();
+        xz_extrude(stem_y1 - (i + 1) * s - 0.01, stem_y1 - i * s) offset(delta = -(c - i * s)) stem_profile();
+    }
+    xz_extrude(stem_y0 + c, stem_y1 - c) stem_profile();
+}
+
+module stem_cut() {
+    // Magnet ring pocket, open on the phone side.
+    translate([ring_center[0], stem_y1 - ring_depth, ring_center[1]]) difference() {
+        y_cylinder(ring_depth + 1, ring_od);
+        translate([0, -1, 0]) y_cylinder(ring_depth + 3, ring_id);
+    }
+    // Alignment magnet below the ring, as on a MagSafe accessory.
+    if (orient_slot[0] > 0)
+        translate([ring_center[0] - orient_slot[0] / 2, stem_y1 - ring_depth,
+                   ring_center[1] - ring_od / 2 - orient_gap - orient_slot[1]])
+            cube([orient_slot[0], ring_depth + 1, orient_slot[1]]);
+    // Pilots for the two screws from the buttress.
+    for (p = stem_screws) translate([p[0], stem_y1 - 3.4, p[1]]) y_cylinder(4, m2_pilot);
+}
+
+module dock_stem() { difference() { stem(); stem_cut(); } }
+
+// Print orientations. Base: as it sits. Stem: flat, front face on the bed,
+// ring pocket facing up.
+module dock_base_print() { translate([0, -dock_y0, dock_t]) dock_base(); }
+module dock_stem_print()  { translate([0, ring_center[1] + ring_od / 2 + 3, -stem_y0]) rotate([90, 0, 0]) dock_stem(); }
 
 // ----------------------------------------------------------------------------
 //  Ghost components (assembly view only)
@@ -578,6 +733,7 @@ module stand() {
 // time: `part = "ghost:battery"` exports just the cell, in place. The Blender
 // scenes in cad/blender/ are built that way.
 ghost_names = ["battery", "tp4056", "mt3608", "esp32", "lm358", "radar", "switch", "led", "boresight", "phone", "magsafe_ring"];
+// The radome and light pipe are printed parts, exported with "in_place:radome" and "in_place:led_pipe".
 
 module ghosts() { for (n = ghost_names) ghost(n); }
 
@@ -608,16 +764,16 @@ module ghost(name) {
         translate([body_w - wall - sw_body[2], sw_center[0] - sw_body[0] / 2, sw_center[1] - sw_body[1] / 2])
             cube([sw_body[2], sw_body[0], sw_body[1]]);
     if (name == "led") color("Red", 0.8) translate([led_pos[0], led_pos[1], body_h - wall - 8.6]) cylinder(h = 8.6, d = 5);
-    // Stand-in phone on the MagSafe plate: back on the plate, camera bump at the top.
+    // Stand-in phone on the dock's ring: back on the ring, camera bump at the top.
     if (name == "phone" && phone_mount) color("DimGray") {
-        y = body_d + mount_t + 0.5;   // 0.5 mm grip pad
+        y = stem_y1 + 0.5;   // 0.5 mm grip pad
         translate([0, y, 0]) xz_extrude(0, phone[2])
             translate([ring_center[0] - phone[0] / 2, ring_center[1] - phone[1] / 2]) rrect(phone[0], phone[1], 10);
         translate([ring_center[0] - phone[0] / 2 + 4, y - 2, ring_center[1] + phone[1] / 2 - 42])
             cube([36, 2.01, 38]);
     }
     if (name == "magsafe_ring" && phone_mount) color("Silver")
-        translate([ring_center[0], body_d + mount_t - ring_depth, ring_center[1]]) difference() {
+        translate([ring_center[0], stem_y1 - ring_depth, ring_center[1]]) difference() {
             y_cylinder(ring_depth - 0.2, ring_od - 0.4);
             translate([0, -1, 0]) y_cylinder(ring_depth + 2, ring_id + 0.4);
         }
@@ -656,21 +812,30 @@ module fit_report() {
         chk("cell + MT3608 depth stack       ", inner_d - (batt[2] + 0.2 + mt_pcb[2] + mt_parts_h)),
         chk("divider to ESP32 board          ", esp_pos[1] - (batt_pos[1] + batt[1] + 2 * batt_clear + 1.2)),
         chk("radar housing to right wall     ", (body_w - wall) - radar_x1),
-        // Phone holder: the stand-in phone's bottom edge must clear the stand
-        // base, and its camera must see over the unit's top edge.
-        chk("phone bottom above stand wall   ", phone_mount ? (ring_center[1] - phone[1] / 2) - (stand_wall_top + 1) : 0),
+        chk("window bevel inside outline     ", (corner_r - wall) - sqrt(dx * dx + dz * dz) - win_chamfer),
+        chk("radar posts on their corner pads", ledge_pad - (win_size / 2 - abs(radar_holes[0][0]) + 2.3)),
+        chk("radar post pilot under its depth", (radar_gap - ledge_t) - 4.5),
+        chk("light pipe flange to ESP32 board", (body_h - wall) - (esp_pos[1] + esp_pcb[1]) - 0),
+        // Dock: the stand-in phone's bottom edge must clear the buttress, its
+        // camera must see over the unit's top edge, and the magnets must fit the stem.
+        chk("phone bottom above buttress     ", phone_mount ? (ring_center[1] - phone[1] / 2) - (buttress[2] + 1) : 0),
         chk("phone camera clears unit top    ", phone_mount ? (ring_center[1] + phone[1] / 2 - phone_lens_from_top)
-            - (body_h + (body_d + mount_t) * tan(phone_vfov / 2)) : 0),
-        chk("alignment magnet inside plate   ", phone_mount ? (ring_center[1] - ring_od / 2 - orient_gap - orient_slot[1]) - 1.5 : 0),
+            - (body_h + (stem_y1 + 0.5) * tan(phone_vfov / 2)) : 0),
+        chk("alignment magnet inside neck    ", phone_mount ? (stem_neck_w - orient_slot[0]) / 2 - 1.5 : 0),
+        chk("stem behind the ring pocket     ", phone_mount ? (stem_t - ring_depth) - 1.6 : 0),
+        chk("opening inside the magnet ring  ", phone_mount ? (ring_id - stem_hole_d) / 2 - 3 : 0),
+        chk("stem face past the screw pilots  ", phone_mount ? stem_t - 3.4 - 0.4 : 0),
     ];
     for (l = lines) echo(l);
     echo(str("  info  radar window centre ", [win_cx, win_zb + top_on_face / 2],
              ", boresight ", win_tilt, " deg up, skin ", win_t, " mm"));
     echo(str("  info  USB-C receptacle centre X ", tp_usb_x, " Y ", tp_usb_y));
     if (phone_mount) {
-        echo(str("  info  tallest phone that clears the stand: ", 2 * (ring_center[1] - stand_wall_top - 1), " mm"));
-        echo(str("  info  magnet ring to MT3608 PCB: ", (body_d + mount_t - ring_depth) - (y_back - mt_pcb[2]),
+        echo(str("  info  tallest phone that clears the buttress: ", 2 * (ring_center[1] - buttress[2] - 1), " mm"));
+        echo(str("  info  magnet ring to MT3608 PCB: ", (stem_y1 - ring_depth) - (y_back - mt_pcb[2]),
                  " mm (check the 5 V rail with a phone attached)"));
+        echo(str("  info  dock base reaches ", dock_y0 + dock_depth - (stem_y1 + 0.5 + phone[2] / 2),
+                 " mm behind the phone's centre line"));
     }
 }
 
@@ -685,10 +850,14 @@ if (part == "shell") {
     lid_print();
 } else if (part == "esp32_clamp_tab") {
     esp32_clamp_tab();
-} else if (part == "stand") {
-    stand();
-} else if (part == "phone_mount") {
-    phone_mount_print();
+} else if (part == "radome") {
+    radome_print();
+} else if (part == "led_pipe") {
+    led_pipe();
+} else if (part == "dock_base") {
+    dock_base_print();
+} else if (part == "dock_stem") {
+    dock_stem_print();
 } else if (part == "section") {
     // 2D cut through the radar boresight (the Y/Z plane at X = win_cx), for
     // checking the window skin thickness and tilt. Horizontal = Y, vertical = Z.
@@ -704,10 +873,14 @@ if (part == "shell") {
     esp32_clamp_tab_in_place(0);
 } else if (part == "in_place:tab1") {
     esp32_clamp_tab_in_place(1);
-} else if (part == "in_place:stand") {
-    stand();
-} else if (part == "in_place:phone_mount") {
-    phone_mount();
+} else if (part == "in_place:radome") {
+    radome();
+} else if (part == "in_place:led_pipe") {
+    led_pipe_in_place();
+} else if (part == "in_place:dock_base") {
+    dock_base();
+} else if (part == "in_place:dock_stem") {
+    dock_stem();
 } else if (len(part) > 6 && part[0] == "g" && part[5] == ":") {
     ghost(str_join(part, 6));
 } else if (part == "print_plate") {
@@ -715,11 +888,16 @@ if (part == "shell") {
     translate([body_w + 8, 0, 0]) lid_print();
     translate([-10, 10, 0]) esp32_clamp_tab();
     translate([-10, 20, 0]) esp32_clamp_tab();
+    translate([-40, 0, 0]) radome_print();
+    translate([-10, 30, 0]) led_pipe();
 } else {
     shell();
+    radome();
+    led_pipe_in_place();
     translate([0, explode, 0]) lid();
     for (i = [0, 1]) esp32_clamp_tab_in_place(i);
-    if (phone_mount) translate([0, explode, 0]) phone_mount();
+    dock_base();
+    if (phone_mount) translate([0, 2 * explode, 0]) dock_stem();
     if (show_components) ghosts();
 }
 
@@ -727,8 +905,9 @@ if (part == "shell") {
 function str_join(s, i) = i >= len(s) ? "" : str(s[i], str_join(s, i + 1));
 
 // Print orientations.
-// Shell: front face on the bed (Y = 0 -> Z = 0). The window recess then needs
-// support, which "tree supports touching the build plate only" provides.
+// Shell: front face on the bed (Y = 0 -> Z = 0), on a textured sheet, which
+// gives the face the unit is seen by an even matte grain. No supports: the
+// radome is a separate part, and the ledge it sits on is a short overhang.
 module shell_print() { translate([0, body_h, 0]) rotate([90, 0, 0]) shell(); }
 // Lid: outside face on the bed (Y = body_d -> Z = 0), lip and fence facing up.
 module lid_print()   { translate([0, 0, body_d]) rotate([-90, 0, 0]) lid(); }

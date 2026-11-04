@@ -1,0 +1,24 @@
+Printed-part cost estimate (not a slice: within about 20% of one)
+PETG 20 $/kg, 0.2 mm layers, 20% infill, 4.0 mm3/s sustained, 5% scrap allowance
+
+part                                     qty   grams  minutes
+ground_radar_shell.stl                     1    26.0       85  
+ground_radar_lid.stl                       1    14.0       46  
+ground_radar_radome.stl                    1     0.8        3  translucent smoke PETG
+ground_radar_led_pipe.stl                  1     0.0        1  natural PETG
+ground_radar_esp32_clamp_tab_x2.stl        2     0.1        2  
+ground_radar_dock_base.stl                 1     9.8       32  
+ground_radar_dock_stem.stl                 1    11.4       37  
+shaft_pod_base.stl                         1     5.8       19  
+shaft_pod_lid.stl                          1     1.5        5  
+
+ground     62.1 g   3.57 h
+pod         7.3 g   0.53 h
+both       69.4 g   4.10 h
+
+material                         $ 1.39
+own printer   ($0.40/h machine) $ 3.18  per kit
+print farm    ($1.50/h machine) $ 7.92  per kit
+budget                           $5-10: WITHIN at the print-farm rate
+
+Labour (support removal, inserts, assembly) is not included.
