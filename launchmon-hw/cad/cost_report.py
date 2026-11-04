@@ -118,8 +118,10 @@ def main() -> None:
     farm_usd_h = opt("farm", 1.50)  # typical print-farm machine rate
     lines = [
         "Printed-part cost estimate (not a slice: within about 20% of one)",
-        f"PETG {filament_usd_kg:.0f} $/kg, {LAYER_MM} mm layers, {INFILL:.0%} infill, "
-        f"{FLOW_MM3_S} mm3/s sustained, {FAILURE_ALLOWANCE - 1:.0%} scrap allowance",
+        (
+            f"PETG {filament_usd_kg:.0f} $/kg, {LAYER_MM} mm layers, {INFILL:.0%} infill, "
+            f"{FLOW_MM3_S} mm3/s sustained, {FAILURE_ALLOWANCE - 1:.0%} scrap allowance"
+        ),
         "",
         f"{'part':40s} {'qty':>3s} {'grams':>7s} {'minutes':>8s}",
     ]
