@@ -9,6 +9,7 @@ tag. They share a set of principles and no code.
 |---|---|---|
 | `swingml/` | **Swing analysis from a single phone camera.** Pose estimation, a temporal model over the eight swing events, and the metrics that follow. Runs as a local web app, a command line tool, or one self-contained HTML file with no install. | Working. |
 | `launchmon-py/` | **Radar DSP for a launch monitor.** A 24 GHz CW Doppler front end arriving as USB-C audio, and the signal processing that turns it into ball and club speed. | Working. No hardware yet. |
+| `launchmon-hw/` | **Hardware for a two-part launch monitor.** A ground radar unit (BGT24LTR11 I/Q radar, ESP32-C3) and a separate club-mounted IMU pod, linked over BLE: OpenSCAD enclosures with print-ready STLs, firmware for both, and the build documentation. | Designed and syntax-checked. Not yet compiled for the target or built. |
 
 Both suites run on every push - lint, types and tests - and the badge above is
 the only place a test count belongs. Written into prose it goes stale the day
@@ -55,7 +56,9 @@ clone has no `out/`.
 A 24 GHz CW Doppler radar over USB-C audio, a club-mounted IMU over BLE, and the
 phone's own camera down the line, with everything computed on the phone. The
 Python here is the research environment where the algorithms are developed and
-proven; the iOS and firmware sides are not started.
+proven; the iOS side is not started. `launchmon-hw/` holds a hardware variant in
+which the radar is digitised on its own ESP32-C3 rather than as phone audio. See
+its [README](launchmon-hw/README.md) for what has and has not been checked.
 
 The contract between the Python and any later Swift implementation is a golden
 vector suite: Python generates synthetic inputs with known ground truth plus its

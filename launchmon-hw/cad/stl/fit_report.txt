@@ -1,0 +1,19 @@
+  ok   depth behind radar module      : 0.531479 mm
+  ok   radar module above TP4056       : 1.31062 mm
+  ok   window opening inside outline   : 0.866625 mm
+  ok   LM358 board to radar housing    : 0.4 mm
+  ok   ESP32 tab posts to LM358 board  : 0.48 mm
+  ok   battery bay to TP4056 guide     : 0.4 mm
+  ok   cell + MT3608 depth stack       : 1.4 mm
+  ok   divider to ESP32 board          : 2.4 mm
+  ok   radar housing to right wall     : 3.6 mm
+  info  radar window centre [76.1, 46.148], boresight 15 deg up, skin 1.1 mm
+  info  USB-C receptacle centre X 73 Y 7.15
+  ok   stack height under the lid      : 0.74 mm
+  ok   IMU board inside the walls (X)  : 1.1 mm
+  ok   cell + charger along X          : 0.3 mm
+  ok   SuperMini inside the walls (Y)  : 2.8 mm
+  info  body height needed for this stack: 13.26 mm (body is 14)
+  info  antenna zone over the cell: 1.88 mm of 4 (0 is ideal; a 1-3 m link tolerates a little)
+  info  clamp mouth 11.782 mm for a 13 mm bore; each jaw deflects 0.608999 mm to snap on
+  info  overall height incl. clamp: 32.4 mm
