@@ -225,6 +225,22 @@ export function provenanceLabel(p) {
   return { measured: 'measured', derived: 'derived', low_confidence: 'low confidence', modelled: 'modelled', none: 'no reading' }[p] || p;
 }
 
+// What one shot's IMU readings say about the pod at that shot, and nothing
+// more. Firmware 0.2 sends no live pod link, dock or charge state to the phone;
+// this reads only analyseImu()'s outcome (ground_unit.ino:872-937).
+//   'data'         the pod had samples around impact (a reading, or a refusal
+//                  that is only reached with >= 100 samples: 10, 11)
+//   'no_samples'   refusal 9: connected at some point, nothing covers the impact
+//   'not_connected' refusal 8: no pod connected and no pod samples since boot
+//   null           the IMU analysis did not run (no impact) or the codes say nothing
+export function podAtShot(packet) {
+  const rs = [packet.readings.peak_shaft_rate, packet.readings.tempo_ratio];
+  if (rs.some((r) => r.ok || r.refusalCode === 10 || r.refusalCode === 11)) return 'data';
+  if (rs.some((r) => r.refusalCode === 8)) return 'not_connected';
+  if (rs.some((r) => r.refusalCode === 9)) return 'no_samples';
+  return null;
+}
+
 // ---- Session statistics ------------------------------------------------------
 // Mean of the readings that carry a number; refused or invalid ones are counted,
 // never filled in.

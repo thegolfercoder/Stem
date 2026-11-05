@@ -14,7 +14,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseShotSummary, encodeShotSummary, convertSpeed, formatReading, sessionStats, toCsv, CSV_COLUMNS,
-  float32Text, isSameShot, PACKET_BYTES, SERVICE_UUID, SHOT_CHAR_UUID, DEVICE_NAME, REFUSAL,
+  float32Text, isSameShot, podAtShot, PACKET_BYTES, SERVICE_UUID, SHOT_CHAR_UUID, DEVICE_NAME, REFUSAL,
 } from '../protocol.js';
 
 const u8 = (v) => [v & 0xff];
@@ -272,4 +272,17 @@ test('float32Text gives the shortest round-trip text', () => {
 test('every refusal code in enum class Refusal has its text (ground_unit.ino:230-263)', () => {
   assert.equal(Object.keys(REFUSAL).length, 13);
   assert.equal(REFUSAL[12], 'depends on a refused reading');
+});
+
+test('podAtShot reads only the IMU refusal codes', () => {
+  const base = examplePacket();                       // peak refused 10 (needs pod samples), tempo ok
+  assert.equal(podAtShot(parseShotSummary(base).packet), 'data');
+  const imu = (code) => {
+    const b = examplePacket();
+    for (const o of [26, 32]) { b.set(NAN32, o); b[o + 4] = 0; b[o + 5] = code; }
+    return parseShotSummary(b).packet;
+  };
+  assert.equal(podAtShot(imu(8)), 'not_connected');
+  assert.equal(podAtShot(imu(9)), 'no_samples');
+  assert.equal(podAtShot(imu(3)), null, 'no impact: the IMU analysis never ran');
 });
