@@ -21,7 +21,10 @@ on:
 jobs:
   swingml:
     name: swing analysis
-    runs-on: ubuntu-latest
+    # Pinned, like the requirements lock: ubuntu-latest moved to 26.04, which the
+    # pinned Playwright (1.56) cannot install Chromium on, so the page step failed
+    # for a change on GitHub's side and none in this repository.
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: swingml
