@@ -32,6 +32,8 @@ launchmon-hw/
       previews/                renders of each, assembled and exploded
       make_showcase.py         renders the captioned showcase videos (eight shots + reel)
       render_showcase.py       one shot: studio lighting, camera moves, assembly timing
+  results/                     the phone results screen: a web page that connects to
+                               the ground unit over Web Bluetooth (see its README)
   firmware/
     ground_unit/ground_unit.ino
     shaft_pod/shaft_pod.ino
@@ -63,6 +65,11 @@ What sets it apart, for little or no added cost:
   sees a pod, so wet grass cannot short them.
 - **A gun sight** (front post, rear notch) over the radar's boresight, for
   lining the unit up quickly and the same way every session.
+- **A results screen on the phone**: a web page (`results/`) that connects to
+  the unit over Bluetooth and shows each shot's ball speed, club speed and smash
+  in type readable from the address position, with a session list and CSV
+  export. Chrome on Android and desktop; iPhone needs a Web Bluetooth browser
+  such as Bluefy, since Safari has none.
 - **A ready beep** from a piezo disc behind the grip ribs: armed, shot read, pod
   parked, low battery. The golfer is looking at the ball, not at a light.
 - **Self-calibrating club speed from the pod.** Each shot the radar and pod both

@@ -294,6 +294,7 @@ struct __attribute__((packed)) ShotSummary {
   WireReading tempo_ratio;            // backswing / downswing duration
   uint16_t    battery_mv_ground, battery_mv_pod;
 };
+static_assert(sizeof(ShotSummary) == 42, "the phone results screen (launchmon-hw/results) decodes 42 bytes");
 
 // -----------------------------------------------------------------------------
 //  I/Q capture ring (heap; 112 KB).
@@ -713,6 +714,7 @@ class PodClientCallbacks : public NimBLEClientCallbacks {
     Serial.printf("{\"type\":\"event\",\"msg\":\"pod disconnected\",\"reason\":%d}\n", reason);
     g_pod_offset_us = INT64_MAX;
     g_pod_power = 0;
+    g_pod_batt_mv = 0;          // otherwise later shots report a stale pod voltage
     g_pod_evt_disconnect = true;
   }
 };

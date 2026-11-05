@@ -113,3 +113,20 @@ jobs:
         run: mypy -p launchmon
       - name: tests
         run: pytest -q
+
+  results:
+    name: results screen
+    # The phone page that decodes the ground unit's shot summary. Its tests build
+    # packets byte by byte from the firmware's struct, so a change to either side
+    # that breaks the other fails here. Node's own test runner; no dependencies.
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: launchmon-hw/results
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: tests
+        run: node --test

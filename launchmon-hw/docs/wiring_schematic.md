@@ -374,7 +374,11 @@ firmware and has no power fields. Nothing else in either packet changed.
 `magic 0x5A`, `version 1`, `shot_seq` u16, `impact_ms` u32, then five readings,
 each `{value f32, provenance u8, refusal u8}`: `ball_speed_radial` (m/s),
 `club_speed_radial` (m/s), `smash`, `peak_shaft_rate` (deg/s), `tempo_ratio`.
-Then `battery_mv_ground` u16 and `battery_mv_pod` u16.
+Then `battery_mv_ground` u16 and `battery_mv_pod` u16 (0 when no pod is
+connected). Packed and little-endian, **42 bytes**; a `static_assert` in the
+firmware pins the size. A 42-byte notification needs an ATT MTU of at least 45:
+where a phone negotiates less, the notification is cut to 20 bytes, and the
+results screen (`launchmon-hw/results/`) reads the characteristic instead.
 
 Provenance codes match `launchmon.quantity.Provenance`: 0 none (refused), 1
 measured, 2 derived, 3 low_confidence, 4 modelled. A non-zero refusal code means
