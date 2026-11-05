@@ -30,7 +30,7 @@ launchmon-hw/
       make_blends.py           regenerates both .blend files from the OpenSCAD scripts
       build_blend.py           the Blender side of that (run by make_blends.py)
       previews/                renders of each, assembled and exploded
-      make_showcase.py         renders the captioned showcase videos (six shots + reel)
+      make_showcase.py         renders the captioned showcase videos (eight shots + reel)
       render_showcase.py       one shot: studio lighting, camera moves, assembly timing
   firmware/
     ground_unit/ground_unit.ino
@@ -176,16 +176,18 @@ carried back to the CAD or the STLs.
 xvfb-run -a python3 launchmon-hw/cad/blender/make_showcase.py OUT_DIR   # blender, ffmpeg, Pillow
 ```
 
-This renders six captioned 1080p, 24 fps shots in EEVEE from the generated `.blend`
+This renders eight captioned 1080p, 24 fps shots in EEVEE from the generated `.blend`
 files, and joins them, with title and end cards, into
-`stem_launch_monitor_showcase.mp4`:
+`stem_launch_monitor_showcase.mp4` (about 55 s):
 
-- the ground unit turning in its dock
+- the ground unit turning in its dock, the pod parked on its back
 - the ground unit assembling
-- its placement behind a ball, with the 15° boresight
+- its placement behind a ball, with the 15° boresight and the tripod camera
 - the pod turning on a shaft
 - the pod assembling
 - the pod snapping onto the shaft
+- the pod parking on the back of the ground unit
+- the radome in smoke, ice and amber
 
 It takes a little over two hours on a 4-core machine without a GPU (EEVEE on software OpenGL, about 9 s a frame); a GPU is far faster. Every frame
 is the CAD geometry, and the cards say so: "prototype design, CAD renders,
