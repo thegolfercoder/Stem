@@ -46,6 +46,15 @@ What is modelled, and says so
   calibration, not a property of the club. The ratio of the radar's clubhead
   speed to the IMU's rotation rate measures it, shot by shot, and is reported
   as `effective_clubhead_radius` so it can be fitted.
+* **Clubhead speed from a calibrated radius.** `fusion.calibration` keeps those
+  measured radii per club. When the radar has no clubhead speed for a shot and
+  the caller passes a usable calibration for the club, the IMU's clubhead speed
+  uses the calibrated radius instead of the assumed one. It is then DERIVED,
+  source `imu+calibration`, not MODELLED: both factors were measured, the rate
+  on this shot and the radius on earlier ones. The calibration and the scatter
+  it carries into the speed travel with the shot as `imu_speed_calibration`.
+  When the radar has a clubhead speed nothing changes: the radar's is the
+  primary number and the IMU's stays MODELLED as before.
 
 Spin, face angle, club path, attack angle and swing plane are not outputs.
 """
@@ -53,11 +62,13 @@ Spin, face angle, club path, attack angle and swing plane are not outputs.
 from __future__ import annotations
 
 import math
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SerializerFunctionWrapHandler, model_serializer
 
 from launchmon.config import ClubConfig, RadarGeometryConfig, cosine_correction_factor
 from launchmon.dsp.pipeline import RadarResult
+from launchmon.fusion.calibration import RadiusCalibration
 from launchmon.fusion.camera import ADDRESS, CLUB_DEFINED, EVENT_NAMES, IMPACT, TOP, CameraSwing
 from launchmon.imu.swing import ImuSwing, ImuSwingConfig, analyse_imu_swing
 from launchmon.imu.trace import ImuTrace
@@ -121,6 +132,22 @@ class Disagreement(BaseModel):
     tolerance_ms: float
 
 
+class CalibratedImuSpeed(BaseModel):
+    """The calibration behind a calibrated `clubhead_speed_from_imu`, and its scatter."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    calibration: RadiusCalibration
+    speed_spread_mps: float = Field(
+        description=(
+            "One robust standard deviation of the speed, propagated from the radius: "
+            "rate x the calibration's prediction spread. It is the scatter the club's "
+            "own radar/IMU samples showed, which includes both sensors' per-shot noise; "
+            "it is not an accuracy figure for the instrument."
+        )
+    )
+
+
 class FusedShot(BaseModel):
     """One shot. Every number is a Reading: a Quantity with provenance, or a refusal."""
 
@@ -147,6 +174,21 @@ class FusedShot(BaseModel):
     camera_tempo_ratio: float | None = Field(
         default=None, description="swingml's tempo from the camera alone, for comparison."
     )
+    imu_speed_calibration: CalibratedImuSpeed | None = Field(
+        default=None,
+        description=(
+            "Present only when clubhead_speed_from_imu used a calibrated radius. Left out "
+            "of exports when absent, so shots fused without a calibration export exactly "
+            "as they always have."
+        ),
+    )
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_calibration(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data: dict[str, Any] = handler(self)
+        if self.imu_speed_calibration is None:
+            data.pop("imu_speed_calibration", None)
+        return data
 
 
 def _no(reason: str, source: str = "fusion") -> NoReading:
@@ -176,6 +218,7 @@ def fuse_shot(
     camera: CameraSwing | None = None,
     camera_audio_impact_s: Reading | None = None,
     measured_launch_angle_deg: Reading | None = None,
+    radius_calibration: RadiusCalibration | None = None,
 ) -> FusedShot:
     """Fuse whatever sensors this shot has. Any of them may be missing.
 
@@ -189,6 +232,11 @@ def fuse_shot(
         camera_audio_impact_s: the strike in the clip's audio, on the clip's clock.
         measured_launch_angle_deg: a measured launch angle, when one exists. Until
             then the club's prior is used and the true ball speed is MODELLED.
+        radius_calibration: this club's calibrated clubhead radius
+            (`CalibrationStore.calibration`), when one is usable. Used only when
+            the radar has no clubhead speed for the shot; then the IMU's clubhead
+            speed is DERIVED from it rather than MODELLED from the club's
+            assumed radius.
     """
     config = config or FusionConfig()
     alignment: list[SensorAlignment] = []
@@ -421,9 +469,28 @@ def fuse_shot(
     rate = imu.shaft_rate_at_impact if imu is not None else _no("no IMU data for this shot", "imu")
     club_imu: Reading
     radius: Reading
+    imu_calibration: CalibratedImuSpeed | None = None
     if isinstance(rate, NoReading):
         club_imu = rate
         radius = rate
+    elif isinstance(club_radial, NoReading) and radius_calibration is not None:
+        omega = math.radians(rate.value)
+        cal = radius_calibration
+        club_imu = Quantity(
+            value=omega * cal.radius_m,
+            unit="m/s",
+            provenance=Provenance.DERIVED,
+            source="imu+calibration",
+            assumptions=(
+                f"clubhead {cal.radius_m:.3f} m from the centre of rotation: the median of "
+                f"{cal.n_samples} radar/IMU measurements for {cal.club!r} (robust spread "
+                f"{cal.spread_m:.3f} m), taken to hold for this swing",
+            ),
+        )
+        imu_calibration = CalibratedImuSpeed(
+            calibration=cal, speed_spread_mps=omega * cal.prediction_spread_m()
+        )
+        radius = _no("needs the radar's clubhead speed and the IMU's rate at impact")
     else:
         omega = math.radians(rate.value)
         club_imu = Quantity(
@@ -466,4 +533,5 @@ def fuse_shot(
         tempo_ratio=tempo,
         disagreements=tuple(disagreements),
         camera_tempo_ratio=camera.tempo_ratio if camera is not None else None,
+        imu_speed_calibration=imu_calibration,
     )

@@ -8,4 +8,7 @@ them measure the same thing.
 
 `camera` reads swingml's output (no code is shared with swingml, only its JSON).
 `audio` finds the strike in the video's sound. `shot` does the fusion.
+`calibration` keeps each club's measured clubhead radius across shots, so a
+shot the radar missed can take its IMU clubhead speed from this golfer's own
+radius rather than an assumed one.
 """

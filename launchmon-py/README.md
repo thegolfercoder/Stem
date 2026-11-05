@@ -167,7 +167,40 @@ which is a calibration; `effective_clubhead_radius` measures it shot by shot
 from the radar's clubhead speed so it can be fitted. Spin, face angle, club
 path, attack angle and swing plane are not outputs here either.
 
+**Per-club radius calibration.** `fusion.calibration` keeps those measured
+radii per club in a JSON file you name, and `fuse_shot.py` uses it when given
+`--calibration`:
+
+```bash
+PYTHONPATH=. python scripts/fuse_shot.py session.bin --club 7-iron \
+    --calibration ~/launchmon/radius.json
+```
+
+`--club` (a name from `config/clubs.yaml`) is required with `--calibration`,
+because it is the key the samples are filed under. Each shot that both the
+radar and the IMU measured offers its radius. It is refused, and the refusal
+is printed and kept in the file with its reason, if either input is not
+MEASURED, if it is outside 0.6 to 1.8 m (two thirds of a wedge's length up to
+the longest legal driver plus a straight arm, swung as one lever about the
+shoulder), or, once the club has 5 accepted samples, if it is more than 3.5
+robust deviations (1.4826 x MAD, floored at 2 cm) from their median. The same
+capture fused twice is counted once. The last 50 accepted and 50 refused
+samples are kept; the file is replaced atomically, and a file that cannot be
+read stops the script rather than being overwritten.
+
+The calibration is the median of the accepted samples, with their robust
+spread and count, and is used once there are 5. Then, and only for a shot whose
+clubhead speed the radar did not measure, `clubhead_speed_from_imu` is the
+IMU's rate times the calibrated radius: DERIVED, source `imu+calibration`,
+rather than MODELLED from the assumed radius. The shot also carries
+`imu_speed_calibration`: the calibration used and a speed spread, the rate
+times the radius spread widened by the median's own uncertainty
+(`sqrt(1 + pi/2n)`). That spread is the scatter of this golfer's samples with
+this club, not an accuracy figure for the instrument. When the radar measured
+the clubhead nothing changes, and without `--calibration` the script reads
+and writes no file and its output is exactly as before.
+
 **What has been checked.** All of it against synthetic shots with known
 truth (`tests/test_iq.py`, `test_imu_swing.py`, `test_fusion.py`,
-`test_ground_unit_ingest.py`), including a USB stream built the way the
-firmware writes it. None of it has seen real hardware yet.
+`test_ground_unit_ingest.py`, `test_radius_calibration.py`), including a USB
+stream built the way the firmware writes it. None of it has seen real hardware yet.
