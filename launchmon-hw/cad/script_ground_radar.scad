@@ -1132,6 +1132,71 @@ module coupon_pin_block() {
     for (j = [0, 1]) translate([cp_fx(j == 0 ? 0 : cp_n + 1), cp_depth / 2, cp_h - 0.01]) cp_label(cp_step(coupon_mag_steps[j]));
 }
 
+// The flat plate behind the block, as thick as the pod's end wall, with the
+// hex for the 1/4"-20 bolt on its own tile at the left end.
+cp_hex_w  = bolt_head[0] + bolt_clear[0] + 2 * coupon_rim;         // the hex tile, across flats plus rims
+cp_plate_d = coupon_rim + bolt_hex_ac() + 1.0 + coupon_text + 1.2;  // front edge to back edge
+cp_feat_y = cp_depth + coupon_rim + boss_d / 2;                     // the small features' row
+cp_text_y = cp_plate_d - 1.2 - coupon_text / 2;                     // every label on the plate, one row
+// Pod magnets (0, +.1), the pod's contact-screw pilot, the M2 x 6 boss: X centres and labels.
+cp_pod_mag_x = [coupon_rim + (pp_mag[0] + pp[8]) / 2, coupon_rim + (pp_mag[0] + pp[8]) / 2 + 6.3];
+cp_pilot_x = 19.0;
+cp_boss_x  = cp_w - coupon_rim - 4.9;    // its label, 9.8 mm wide, ends a rim short of the block's end
+
+module coupon_plate() {
+    difference() {
+        union() {
+            translate([-cp_hex_w, 0, 0]) linear_extrude(cp_t) rrect(cp_hex_w + cp_w, cp_plate_d, 2);
+            // M2 x 6 boss: a lid-screw pilot as deep as the shell's, closed by the plate.
+            translate([cp_boss_x, cp_feat_y, 0]) cylinder(h = cp_t + lid_pilot_depth, d = boss_d);
+        }
+        // Room for the standing block.
+        translate([-0.01, -1, -1]) cube([cp_w + 0.02, cp_depth + 1, cp_t + 2]);
+        // The pod's magnet pockets open underneath, under the pod's skin, as the pod prints them
+        // (standing on its USB end, the pocket's skin bridged at the top).
+        for (j = [0, 1]) translate([cp_pod_mag_x[j], cp_feat_y, -1])
+            cylinder(h = 1 + cp_t - pp[5], d = pp_mag[0] + pp[8] + coupon_mag_steps[j], $fn = 32);
+        // The pod's contact-screw pilot, through a wall as thick as its end wall.
+        translate([cp_pilot_x, cp_feat_y, -1]) cylinder(h = cp_t + 2, d = pp_pad[3], $fn = 24);
+        translate([cp_boss_x, cp_feat_y, cp_t]) cylinder(h = lid_pilot_depth + 1, d = m2_pilot);
+        // The bolt's hex, the cap's own pocket.
+        translate([-cp_hex_w / 2, coupon_rim + bolt_hex_ac() / 2, -1]) bolt_hex(cp_t + 2);
+    }
+    translate([0, 0, cp_t - 0.01]) {
+        for (j = [0, 1]) translate([cp_pod_mag_x[j], cp_text_y]) cp_label(cp_step(coupon_mag_steps[j]));
+        translate([cp_pilot_x, cp_text_y]) cp_label("M2x4");
+        translate([cp_boss_x, cp_text_y]) cp_label("M2x6");
+        translate([-cp_hex_w / 2, cp_text_y]) cp_label("1/4");
+    }
+}
+
+// The hood's own bottom 1.5 mm, the socket, laid flat: the key slides through it.
+module coupon_socket() {
+    translate([-pp_hx0, -body_d, -pp_hz0]) intersection() {
+        pod_park_hood();
+        translate([pp_hx0 - 1, body_d - 1, pp_hz0 - 1]) cube([pod_park_hood[0] + 2, pp_hy1 - body_d + 2, 1 + pod_park_socket[0]]);
+    }
+}
+
+// The pod's end outline, and on it two stand-ins for its contact heads, as tall
+// as the pins' recess plus their stroke: pressed home, each pushes its pin's
+// plunger in to the stop and then the barrel to where the recess is right.
+module coupon_key() {
+    translate([-pp_tx, -(pp_ty + pod_back_z_unit()), 0]) {
+        linear_extrude(coupon_key_t) pp_pod_end_2d();
+        for (p = pp_pads) translate([p[0], p[1], coupon_key_t - 0.01])
+            cylinder(h = pod_park_recess + pod_park_pogo[2] + 0.01, d = pp_pad[0], $fn = 24);
+    }
+}
+function pod_back_z_unit() = pp[6];   // the pod's lowest point (jaw tips), in its own Z
+
+module fit_test_coupon() {
+    coupon_pin_block();
+    coupon_plate();
+    translate([cp_w, 0, 0]) coupon_socket();
+    translate([cp_w + pod_park_hood[0] + coupon_gap, 0, 0]) coupon_key();
+}
+
 // ----------------------------------------------------------------------------
 //  Ghost components (assembly view only)
 // ----------------------------------------------------------------------------
