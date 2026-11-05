@@ -23,6 +23,9 @@ these with calipers, change the parameter, and re-export with
 | Shaft diameter where the pod will sit | `shaft_d` | pod |
 | Micro LiPo | `batt` | pod |
 | MagSafe magnet ring, if you use the MagSafe-ring head | `ring_od`, `ring_id`, `ring_depth` | ground |
+| Spring (pogo) pins for the pod park: barrel, length, stroke | `pod_park_pogo` | ground |
+| The pod's brass contact screws: head diameter and height | `pod_park_pad` | pod |
+| Piezo disc diameter | `pz_d` | ground |
 
 A line marked `FAIL` in the fit report is a collision: fix it before printing.
 
@@ -43,8 +46,9 @@ radar's beam; a warped clamp lets go of the shaft.
 
 **Colour matters for the radome, and only for the radome.** The radar looks
 out through one part, the radome, so that is the only part whose filament the
-radar cares about. Print it in **translucent smoke (dye-tinted) or natural
-PETG**. **Avoid carbon-fibre, metal-filled, glitter/sparkle and carbon-black
+radar cares about. Print it in **translucent PETG: smoke (dye-tinted), ice
+(natural) or amber**. It is also the one part meant to take a colour; the
+rest of the unit stays matte black. **Avoid carbon-fibre, metal-filled, glitter/sparkle and carbon-black
 filaments for it**: conductive or lossy fillers absorb 24 GHz, and most opaque
 black filaments are coloured with carbon black. The radar does not look through
 the shell, lid or dock, so those can be any colour; the design's finish is
@@ -53,8 +57,8 @@ a radome filament, run the bench check in 4.5.
 
 | Part | Filament | Finish |
 |---|---|---|
-| Shell, lid, dock base and stem, clamp tabs, pod base and lid | Matte black PETG | Textured PEI sheet under the shell, lid and stem |
-| Radome | Translucent smoke (or natural) PETG, not carbon-black | Outer face up, ironing on |
+| Shell, lid, dock base and stem, pod park hood, clamp tabs, pod base and lid | Matte black PETG | Textured PEI sheet under the shell, lid, stem and hood |
+| Radome | Translucent PETG, not carbon-black: smoke, ice (natural) or amber | Outer face up, ironing on |
 | Light pipe | Natural (translucent) PETG | As printed |
 
 ## 2. Slicer settings (all parts)
@@ -91,6 +95,11 @@ calipers, solid with no gaps (hold it to a light), and flat.
 is tiny: print it on the same plate as the radome.
 
 **Ground lid.** Flat, outside face down on the textured sheet, no supports.
+The sight's rear notch blade stands on its top edge.
+
+**Pod park hood (`ground_radar_pod_park_hood.stl`).** Rear face down on the
+textured sheet, no supports. The two spring-pin bores lie across the print as
+small teardrops; a drop of CA holds the pins.
 
 **Clamp tabs (x2).** Flat. Small: print them with the lid.
 
@@ -126,6 +135,17 @@ Wire each unit on the bench first, with the parts loose.
    SuperMini's red power LED once it works.
 4. **Link.** Power both. The ground unit prints `pod connected`, and its LED goes
    from a brief blip every 2 s to steady.
+5. **Buzzer.** Wire the piezo disc through 470 Ω to GPIO7, its brass lead
+   straight to a SuperMini GND pin. One chirp about a second after boot. Tune
+   `BUZZER_HZ` by ear once it is glued in (4, step 7): free discs usually
+   resonate a little above the 4 kHz default.
+6. **Pod charging.** Build the protection board (wiring doc, section 4) and test
+   it before it goes in: GPIO6 low, the + pin reads 0 V; GPIO6 high, about 5 V;
+   a 22 Ω load across the pins does not trip the fuse at once. Then run the
+   checks in wiring doc 4.8: with `d` on and no pod, `off_mv` under 300; a wet
+   paper towel across the pins never switches them on; a parked pod gives three
+   chirps and `"state":"charging"`, and lifting it gives `"state":"off"` within a
+   few seconds.
 
 ## 4. Ground unit assembly
 
@@ -152,18 +172,38 @@ Front view, as used: the window is upper right, the battery lower left.
    clear silicone. The light then shows as a small soft dot.
 6. **Switch.** Press it into the pocket on the inside of the right wall, lever
    through the slot. A drop of CA on the body.
-7. **Wire up** per the wiring doc. Keep the radar → pre-amp → ESP32 leads short
+7. **Buzzer.** Glue the 15 mm piezo disc onto the round seat inside the left end
+   wall, **brass face toward the wall, by its rim only**: a thin ring of CA or
+   silicone. Glued over its whole face it can barely flex and is nearly silent.
+   It sounds through the four lowest grip-rib grooves, which are cut through and
+   rise inward, so rain runs out rather than in.
+8. **Wire up** per the wiring doc. Keep the radar → pre-amp → ESP32 leads short
    and twisted with ground. Add a dab of hot glue as strain relief at every joint
    on a board pad.
-8. **Cell.** 1 mm foam tape on its back, Kapton over the face that will sit
+9. **Cell.** 1 mm foam tape on its back, Kapton over the face that will sit
    behind the MT3608. Place it in the lower-left bay, leads out through the gap
    in the right-hand fence.
-9. **MT3608 on the lid.** Lay it PCB-down inside the fence on the lid's inner
-   face (components toward the cell), with a dab of hot glue. Leave about 8 cm
-   of wire so the lid can lie open beside the shell.
-10. **Close.** Fit the lid (the lip locates it) and drive the four M2 x 6
+10. **MT3608 on the lid.** Lay it PCB-down inside the fence on the lid's inner
+    face (components toward the cell), with a dab of hot glue. Leave about 8 cm
+    of wire so the lid can lie open beside the shell.
+11. **Pod park hood.** On the bench first:
+    - *Magnets.* Check polarity before any glue: let each of the pod's magnets
+      jump onto the hood magnet it will face; the face that touched goes outward
+      in the pod. Glue the two hood magnets flush in the socket floor, opposite
+      poles facing out, so the pod only parks one way round.
+    - *Pins.* Solder a wire to each pin's tail. Press each pin into its bore from
+      the socket side, then push it home with the flat shank of a 4 mm drill bit
+      until the shank meets the bottom of the well: that sets the pin height. A
+      drop of CA at the tail. The pin next to the "+" is +5 V.
+    - *Fit.* Feed the two wires through the small holes in the lid, one each side
+      of the rib, and fix the hood with two M2 x 6 screws driven from inside the
+      lid. Seal the wire holes with silicone.
+    - *Protection board.* Wire it per the wiring doc, section 4, and glue it in the
+      pocket on the lid's inside face, just below the wire holes, between the
+      MT3608's output and the pins.
+12. **Close.** Fit the lid (the lip locates it) and drive the four M2 x 6
     screws. Snug them up; do not over-tighten into plastic.
-11. **Radome, last.** With the radar module tested (4.5), run a thin bead of
+13. **Radome, last.** With the radar module tested (4.5), run a thin bead of
     clear silicone or epoxy round the ledge behind the window pocket and press
     the radome in from the front, ironed face out. It sits flush with the front
     face at its bottom edge and steps back into the pocket toward the top.
@@ -199,9 +239,13 @@ measure the MT3608's output with and without the phone, and it should not move.
 ### 4.2 Placing it
 
 Stand the unit on its bottom edge **behind the ball, on the target line**, window
-facing the target. The window's boresight points **15° up**. The groove on the
-top face sits directly over the radar's boresight: sight along it to line the
-unit up with the target. The geometry launchmon-py's config assumes is about
+facing the target. The window's boresight points **15° up**. A front post and a
+rear notch on the top face, joined by a groove, sit directly over the radar's
+boresight: from behind, centre the post in the notch on the target, as with a
+gun sight. That gets the unit lined up quickly and the same way each session.
+It is not about precision: a Doppler speed reads low by 1 - cos(aim error),
+which is 0.01% at 1° and still only 1.5% at 10°. The sight keeps you well
+inside that and the ball well inside the beam. The geometry launchmon-py's config assumes is about
 1.4 m behind the tee. **Measure** the distance and the window height each
 session and record them; launchmon-py's `hardware.yaml` explains why the
 height matters for the cosine correction.
@@ -209,7 +253,14 @@ height matters for the cosine correction.
 Use the **dock** on grass or a mat: a 21 mm deep box standing on its edge is
 easy to knock over. The base reaches behind the unit, the side a phone on the
 stud pulls it toward. Charge the unit out of the dock: its USB-C port is on the
-bottom edge.
+bottom edge. Lay it on its back; with the pod parked, it rests on the hood and
+the lid's edge, tilted about 20°.
+
+**Beeps.** One chirp: armed and ready. Two: a shot was read. Three quick ones:
+the pod is parked and charging. Long-short and short-long: the pod connected
+or disconnected over Bluetooth. Three long ones every 5 minutes: the unit's own
+battery is low. One very long one: a charging fault. Send `b` over serial to
+turn them off.
 
 **The camera.** Film the swing from a tripod, not from the unit. Put the phone
 or tablet in an ordinary 1/4"-20 clamp on any tripod about **3 m behind the
@@ -247,7 +298,29 @@ stream and `launchmon-py/scripts/fuse_shot.py` runs the 40 kHz pipeline on it.
 Before fitting the radome, compare the trigger metric for the same hand
 movement with the module bare and with the radome held in its pocket. A large
 drop means the radome's filament is lossy (see section 1): reprint it in
-another.
+another. Do this for every new radome colour; a dye that looks translucent can
+still be lossy.
+
+### 4.6 Parking and charging the pod
+
+The pod lives on the back of the unit between sessions: one object to carry
+and one cable to charge.
+
+- **To park it,** push its arrow end up into the hood, clamp toward the unit.
+  The magnets pull it home. **To take it,** pull it down and out. The unit
+  still lifts out of the dock with the pod parked.
+- **It charges from the unit only while the unit is switched on.** The slide
+  switch cuts the 5 V rail, so a switched-off unit cannot charge the pod. To
+  charge both at once, plug a charger into the unit's USB-C, switch the unit
+  on and park the pod: about 1.5 hours from flat. Switch the unit off when the
+  pod reports `"charge":"charged"`. Or charge the pod on its own USB-C.
+- A full pod charge costs the unit about 15% of its own battery. Below 3.55 V
+  on its cell the unit stops charging the pod.
+- A pod with a completely flat cell cannot announce itself to the unit (the
+  unit looks for the pod's 3.3 V before it powers the pins). Plug the pod's own
+  USB-C in for a minute first.
+- The pins stay dead whenever no pod is parked, so wet grass or a coin across
+  them does nothing.
 
 ## 5. Shaft pod assembly
 
@@ -264,12 +337,21 @@ another.
    side walls separate them.
 4. **Schottky and divider** soldered inline in the leads and covered with
    heat-shrink.
-5. **0.5 mm foam** on top of the cell, then the **SuperMini**, USB-C into the port
+5. **Charging contacts.** Glue the two 4 x 2 mm magnets into the pockets behind
+   the +X end wall from inside, outward faces as found in step 11 of section 4.
+   Drive the two M2 x 4 brass cheese-head screws into the pilots in the +X end
+   with a drop of epoxy. Solder 30 AWG Kynar wire to each tip inside: the screw
+   by the debossed "+" through the Schottky D2 (anode at the screw) to the
+   SuperMini's 5V pin, the other to GND. Fit the 220 kΩ beacon resistor from 3V3
+   to the + screw, and the 2.2 MΩ / 1 MΩ divider with its 100 nF from the + screw
+   to GPIO1 (wiring doc, section 4). D2 lies along X between the two screws,
+   above the charger; the resistors go dead-bug above it.
+6. **0.5 mm foam** on top of the cell, then the **SuperMini**, USB-C into the port
    in the end wall.
-6. **Lid.** Snap it on. Its fences locate the SuperMini, and its pads press the
+7. **Lid.** Snap it on. Its fences locate the SuperMini, and its pads press the
    whole stack down onto the datum floor. That preload is what couples the IMU
    rigidly to the shell.
-7. **Liner.** Stick one 8 x 42 mm strip of 0.8 mm silicone or neoprene into the
+8. **Liner.** Stick one 8 x 42 mm strip of 0.8 mm silicone or neoprene into the
    recessed band of each jaw. Trim it flush with the jaw tips.
 
 ### 5.1 Mounting on the club

@@ -34,12 +34,12 @@ consistently:
 | Principle | Ground unit | Pod |
 |---|---|---|
 | **One focal point** | The radar window: a **smoked translucent radome** in a bevelled, rounded pocket, flush at its bottom edge and stepping back 15° to the top. The radar board shows faintly behind it, which says what the unit is. | The clamp's single continuous arch under a plain body. |
-| **Every detail has a job** | The **aiming groove** over the boresight, for lining the unit up. **Grip ribs** on both ends, where it is held. A **light pipe** that shows the status LED as a flush 2.8 mm dot. A **pill recess** that keeps the switch below the surface. | The **arrow** on the lid points to the clubhead, the pod's +X axis and the way round it must go on. The zip-tie grooves are left visible, because they are the safety feature. |
+| **Every detail has a job** | A **front post and rear notch**, joined by a groove, over the boresight: a gun sight for lining the unit up quickly and the same way every time. **Grip ribs** on both ends, where it is held; four of their grooves on the left are cut through as the **buzzer's sound port**, so it has no grille of its own. A **light pipe** that shows the status LED as a flush 2.8 mm dot. A **pill recess** that keeps the switch below the surface. | The **arrow** on the lid points to the clubhead, the pod's +X axis and the way round it must go on. It also points into the hood when the pod is parked: its charging contacts are in the end the arrow points to, the + one marked. The zip-tie grooves are left visible, because they are the safety feature. |
 | **A family resemblance** | Matte black, soft edges, a 0.5 mm shadow gap at the seam, 0.4 mm debossed marks. | The same: matte black, rounded body, shadow gap at the lid, one 0.4 mm debossed mark. |
 | **Made for the printer** | Chamfers, not fillets, on every edge that lies on the bed. They print crisply and stop the first layers squashing out. The faces people see print **face down on a textured sheet**, so they have an even grain and no layer lines. **No part needs supports.** The radome prints flat: smooth, and exactly 1.0 mm. The dock's stem prints flat, so its faces are clean and its opening is a true circle. | The base prints standing up, so every layer is a complete C and the jaws flex along the layers. The saddle between the jaws adds no supports. |
-| **Hidden structure** | The seam is a deliberate **shadow gap**, so a printed lid that sits 0.2 mm proud does not show. The lid screws are sunk in chamfered counterbores at the back. The dock's screws are behind the stem, low down. | The seam is a shadow gap; the lid snaps on with no fasteners. |
-| **Restraint in CMF** | Matte black PETG body. One contrasting finish: the radome's **ironed, slightly glossy** smoke face. Natural PETG only where light passes. | Matte black. The liner, under the clamp, is the only other material. |
-| **Accessories belong** | The **dock** replaces a separate stand and a phone plate screwed to the lid. Its stem rises behind the unit to a small chamfered cap, like a camera's accessory shoe, with a **standard 1/4"-20 tripod stud**: any phone clamp fits, so the dock does not care what phone you own. It is the unit's width at its base. The unit lifts out and is a clean slab on its own. | No accessory: the clamp is part of the body. |
+| **Hidden structure** | The seam is a deliberate **shadow gap**, so a printed lid that sits 0.2 mm proud does not show. The lid screws are sunk in chamfered counterbores at the back. The dock's screws are behind the stem, low down. The pod park hood is screwed on from inside the lid, its magnets sit under the socket floor, and its spring pins sit in wells under a roof that faces down. | The seam is a shadow gap; the lid snaps on with no fasteners. The parking magnets are under a 0.4 mm skin. |
+| **Restraint in CMF** | Matte black PETG body. One contrasting finish: the radome's **ironed, slightly glossy** face, and the radome is the one place a colour is offered: **smoke, ice or amber**. Natural PETG only where light passes. | Matte black. The liner, under the clamp, is the only other material. |
+| **Accessories belong** | The **dock** replaces a separate stand and a phone plate screwed to the lid. Its stem rises behind the unit to a small chamfered cap, like a camera's accessory shoe, with a **standard 1/4"-20 tripod stud**: any phone clamp fits, so the dock does not care what phone you own. It is the unit's width at its base. The unit lifts out and is a clean slab on its own. **The pod parks on the back**, beside the stem, under a hood with the stem cap's own face (30 x 11.4 mm, R4 corners, 0.8 mm chamfers), so cap and hood read as a pair. It charges there: one object to carry, one cable to charge. | The unit is its dock: it parks and charges on the ground unit. |
 | **Proportions agree** | The dock is the unit's width. The stem and its stud are on the unit's centre line. Body corners R12, window corners R3, cap corners R4, dock plan corners R6. | Body 32 x 26 mm; jaws 10 mm wide at each end; the arrow on the centre line. |
 
 ### A practical win from the radome
@@ -57,10 +57,10 @@ writes `cad/stl/cost_report.txt` each time the STLs are exported.
 
 | | Before (prototype) | Now |
 |---|---|---|
-| Filament, both units | 98 g, including supports | 66 g, no supports |
-| Print time, both units | 5.7 h | 3.9 h |
-| Kit cost, own printer ($0.40/h) | $4.45 | **$3.01** |
-| Kit cost, print farm ($1.50/h) | $11.00 (over budget) | **$7.51** (within $5-10) |
+| Filament, both units | 98 g, including supports | 71 g, no supports |
+| Print time, both units | 5.7 h | 4.2 h |
+| Kit cost, own printer ($0.40/h) | $4.45 | **$3.27** |
+| Kit cost, print farm ($1.50/h) | $11.00 (over budget) | **$8.12** (within $5-10) |
 
 These assume PETG at $20/kg and a conservative 4 mm³/s sustained flow. A
 faster printer roughly halves the time and the machine cost. The estimate is
@@ -70,7 +70,9 @@ The redesign got cheaper as well as better looking. Merging the stand and the
 phone plate into one dock, printing its stem flat and ending it in a stud
 rather than a plate saved about 31 g and 1.6 hours. Making the radome a
 separate part removed the shell's supports. (The MagSafe-ring stem, if you
-choose it, adds 3.8 g and 12 minutes.)
+choose it, adds 3.8 g and 12 minutes.) The pod park hood, sight and buzzer
+mount then added 5.7 g and 19 minutes, $0.61 a kit at the farm rate, most of
+it the hood.
 
 ## What was left out, and why
 
@@ -81,6 +83,13 @@ choose it, adds 3.8 g and 12 minutes.)
 - **Hiding the lid screws entirely.** A snap-fit lid on the ground unit would
   have to survive being knocked over on a range, and screws do that reliably.
   They are on the back, counterbored, and mostly behind the dock's stem.
+- **The pod inside the grip's end.** Some commercial club sensors hide in the
+  grip cap, which is better than a clamp on the shaft. It needs a custom circuit
+  board the size of a coin; with off-the-shelf boards the pod cannot get that
+  small. It is a move for volume production.
+- **A charge light on the pod.** The pod reports its charge state over
+  Bluetooth and the unit beeps when charging starts; a light would be another
+  part and another hole for a state you rarely need to see.
 - **Fake regulatory marks.** No CE, FCC or similar marks appear on the
   parts. They may only be applied once the product has been tested.
 
@@ -112,3 +121,9 @@ enclosures shrink.
 - Light pipe flush with the top face; LED visible as a soft dot.
 - Stem: clean faces; the stud bolt square to the cap and standing 5.5 mm proud.
 - Pod: arrow toward the clubhead; jaws snap on and the ties close them.
+- Sight: the post sits centred in the notch with an even sliver of light each
+  side.
+- Hood: the pod goes in only one way round and the magnets pull it home; the
+  pins stand 0.5 mm above the socket floor and press on the brass heads.
+- Buzzer: four clean slots in the rib grooves, clear of stringing; the chirp is
+  audible from the address position.

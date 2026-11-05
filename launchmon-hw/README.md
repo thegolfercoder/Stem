@@ -17,7 +17,7 @@ directory comes from a measurement of a real shot. See "What has been checked".
 ```
 launchmon-hw/
   cad/
-    script_ground_radar.scad   ground unit: shell, lid, radome, light pipe, ESP32 clamp tabs, dock
+    script_ground_radar.scad   ground unit: shell, lid, radome, light pipe, ESP32 clamp tabs, dock, pod park hood
     script_shaft_imu.scad      pod: base with C-clamp, snap lid
     export_stl.sh              regenerates cad/stl/, its fit report and its cost report
     cost_report.py             filament, print time and cost per kit, from the STLs
@@ -54,8 +54,25 @@ bevelled pocket. The unit stands in a dock whose stem ends in a standard
 alternative). The camera that films the swing goes on its own tripod 3 m back,
 not on the unit. The pod has an arrow pointing to the
 clubhead, and a saddle that makes its clamp one form. No part needs supports.
-All printed parts for both units come to about 66 g and 3.9 hours, an estimated
-$3.00 a kit on your own printer or $7.50 at a print-farm rate
+
+What sets it apart, for little or no added cost:
+
+- **The pod parks on the unit and charges from it.** It hangs under a small
+  hood on the back, held by magnets, and charges through two spring pins: one
+  object to carry and one cable to charge. The pins stay dead until the unit
+  sees a pod, so wet grass cannot short them.
+- **A gun sight** (front post, rear notch) over the radar's boresight, for
+  lining the unit up quickly and the same way every session.
+- **A ready beep** from a piezo disc behind the grip ribs: armed, shot read, pod
+  parked, low battery. The golfer is looking at the ball, not at a light.
+- **Self-calibrating club speed from the pod.** Each shot the radar and pod both
+  see measures the club's effective radius; once five agree, launchmon-py uses
+  it for swings the radar misses (`fuse_shot.py --club 7-iron --calibration`).
+- **The radome is the one colour choice:** smoke, ice or amber, on a matte black
+  body.
+
+All printed parts for both units come to about 71 g and 4.2 hours, an estimated
+$3.30 a kit on your own printer or $8.10 at a print-farm rate
 (`cad/stl/cost_report.txt`).
 
 ## Where it departs from the brief, and why
@@ -103,8 +120,9 @@ Each of these is also explained where it happens, in the CAD and the docs.
 | Both OpenSCAD scripts render in OpenSCAD 2021.01, every part | Yes; STLs in `cad/stl/` |
 | Clearances in the fit report | All `ok`. Tightest: 0.07 mm (window bevel inside the R12 corner), 0.2 mm (radar posts on their pads, screw pilots in the stem) |
 | Radar window: 1.0 mm radome, 15° tilt, module parallel behind it | Confirmed on a rendered cutaway |
-| Printed-part cost | Estimated from the STLs (`cost_report.py`): 69 g, 4.1 h, $7.92 a kit at $1.50/h. Not yet sliced |
-| Firmware: C++ syntax, `-Wall -Wextra` | Clean, against stub headers (see `firmware/README.md` for what that does not prove) |
+| Printed-part cost | Estimated from the STLs (`cost_report.py`): 71 g, 4.2 h, $8.12 a kit at $1.50/h. Not yet sliced |
+| Firmware: C++ syntax, `-Wall -Wextra` | Clean, against stub headers, with the buzzer and pod charging on and off (see `firmware/README.md` for what that does not prove) |
+| Pod charging circuit: divider, threshold and RC values | Calculated, including wet contacts; not built |
 | I/Q skew-correction arithmetic | Checked on synthetic tones: about 62 dB image rejection |
 | Compiled for the ESP32-C3 | **No** |
 | Printed, assembled, run | **No** |

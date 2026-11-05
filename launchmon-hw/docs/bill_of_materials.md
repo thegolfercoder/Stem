@@ -31,11 +31,36 @@ include the spares worth having. Wiring for every part is in
 | G8 | **5 mm status LED** | Any colour, diffused; plus a **330 Ω** resistor | 1 | Sits inside, under the printed light pipe, which shows it as a flush 2.8 mm dot on the top face. |
 | G9 | Battery-sense divider | 2x **100 kΩ** 1%, 1x 100 nF | 1 set | Wired after the switch, so it draws nothing when the unit is off. |
 
+### Buzzer
+
+| # | Part | Specification | Qty | Notes |
+|---|---|---|---|---|
+| G29 | **Bare piezo disc** | 15 mm brass, 0.3 mm, about 10 mm ceramic, with leads | 1 (+1 spare) | Glued **by its rim only**, brass face to the wall, on the frame inside the left end wall. Glued over its whole face it can barely flex and is nearly silent. It sounds through four of the grip-rib grooves, which are cut through. |
+| G30 | 470 Ω resistor | 0603, 0805 or through-hole | 1 | In series between GPIO7 and the disc (why: wiring doc, section 1.6) |
+
+### Pod park and charging
+
+The pod hangs in a socket under a small hood on the unit's lid, held by
+magnets, and charges through two spring pins. The parts on the unit's side are
+below. The pod's side is P12-P15.
+
+| # | Part | Specification | Qty | Notes |
+|---|---|---|---|---|
+| G22 | AO3401A P-MOSFET | SOT-23 | 1 (+1) | High-side switch for the pins |
+| G23 | 2N7002 N-MOSFET | SOT-23 | 1 (+1) | Gate driver. Not a BSS138: its threshold is too low for the margin against the boot pull-up |
+| G24 | PTC resettable fuse | 1206, 0.20 A hold, trips at 0.5 A or less, 6 V or more (Bourns MF-NSMF020X-2, Littelfuse 1206L020 or similar) | 1 (+1) | Bounds a fault. The pod's charger sets the normal current (about 0.1 A) |
+| G25 | 5 V ESD diode | SOD-323, PESD5V0S1BA or similar | 1 | On the +5 V pin, which can be touched |
+| G26 | Protection passives | 100 kΩ, 2x 10 kΩ, 470 kΩ 1%, 330 kΩ 1%, 47 nF, 10 nF (0603/0805) | 1 set | Values and roles: wiring doc, section 4 |
+| G27 | Perfboard or a small PCB | about **15 x 12 mm** | 1 | Glued in the pocket on the lid's inside face (15.4 x 12.4 mm, 4 mm deep) |
+| G28 | **Spring (pogo) pins**, solder tail | about 2.0 mm barrel, 6 mm long, 1 mm stroke | 2 | Pressed into the hood, 6 mm apart. **Measure the pins you buy** and set `pod_park_pogo` in the CAD before printing |
+| G31 | **N52 disc magnets, 4 x 2 mm** | | 2 | In the hood's socket floor. The pod has the other two (P13) |
+| G32 | M2 x 6 mm screws | as G10 | 2 | Hood to lid, driven from inside the lid (counted in G10) |
+
 ### Fasteners and consumables
 
 | # | Part | Qty | Used for |
 |---|---|---|---|
-| G10 | **M2 x 6 mm screws**, pan head, thread-forming for plastics (stainless machine screws also work into the 1.7 mm pilots) | **16** (buy 20) | 4 radar module, 4 LM358 board, 2 ESP32 clamp tabs, 4 lid, 2 dock stem into its base |
+| G10 | **M2 x 6 mm screws**, pan head, thread-forming for plastics (stainless machine screws also work into the 1.7 mm pilots) | **18** (buy 25) | 4 radar module, 4 LM358 board, 2 ESP32 clamp tabs, 4 lid, 2 dock stem into its base, 2 pod park hood |
 | G11 | Silicone wire, 26-28 AWG, several colours | ~1 m | All internal wiring |
 | G12 | Kapton tape | small roll | Insulating the cell where the MT3608 faces it, and the IMU-to-cell contact in the pod |
 | G13 | Double-sided foam tape, 1 mm | small piece | Under the cell, so it cannot rattle |
@@ -83,6 +108,18 @@ else to buy.
 | P5 | Schottky diode | Low forward voltage, ≥ 500 mA: SS14, MBR0520, BAT60A or similar | 1 | Battery → SuperMini 5 V pin, so USB power can never back-feed the cell. |
 | P6 | Battery-sense divider | 2x **1 MΩ** 1%, 1x 100 nF | 1 set | High value so it draws about 2 µA from the cell in deep sleep. The 100 nF gives the ADC a low-impedance source. |
 
+### Charging on the ground unit
+
+| # | Part | Specification | Qty | Notes |
+|---|---|---|---|---|
+| P12 | Schottky diode (D2) | B5819WS (SOD-323) or 1N5819HW (SOD-123), 40 V | 1 | From the + contact (anode) to the SuperMini's 5V pin. It keeps the cell and the pod's own USB off the contact. A 40 V part leaks less than the low-voltage ones |
+| P13 | **N52 disc magnets, 4 x 2 mm** | | 2 | Behind the +X end wall, under a 0.4 mm skin. They face the hood's magnets with opposite poles, so the pod only parks one way round |
+| P14 | **M2 x 4 brass cheese-head screws** (DIN 84) | | 2 | The pod's contacts, in the +X end. The one by the debossed "+" is +5 V. **Measure the heads** and set `pod_park_pad` in the CAD |
+| P15 | Beacon and sense parts | 220 kΩ, 2.2 MΩ 1%, 1 MΩ 1%, 100 nF | 1 set | The 220 kΩ lets the ground unit see a parked pod before it powers the pins; the divider lets the pod see dock power (wiring doc, section 4) |
+
+The pod's IMU (P1) has no magnetometer, so the magnets do not disturb it. Do
+not swap in a 9-axis IMU with a magnetometer.
+
 ### Mechanical and consumables
 
 | # | Part | Qty | Notes |
@@ -91,7 +128,7 @@ else to buy.
 | P8 | **Zip ties, 2.5 mm wide** | 2 per session (they are single use) | **Mandatory.** One through each jaw's tunnel and groove, closing the C around the shaft. |
 | P9 | Foam sheet, 0.5 mm | small piece | Between the cell and the SuperMini, so the lid preloads the stack |
 | P10 | Kapton tape | | Between the IMU board and the cell |
-| P11 | Silicone wire, 30 AWG | ~30 cm | Internal wiring; the pod is tight |
+| P11 | Silicone wire, 30 AWG (Kynar wire-wrap wire for the contact leads) | ~40 cm | Internal wiring; the pod is tight |
 
 ---
 
@@ -105,18 +142,19 @@ for the slicer settings.
 |---|---|---|---|
 | `ground_radar_shell.stl` | Ground | 1 | Front face down on a textured sheet; no supports |
 | `ground_radar_lid.stl` | Ground | 1 | Outside face down on a textured sheet |
-| `ground_radar_radome.stl` | Ground | 1 | Flat, outer face up, ironing on. **Translucent smoke or natural PETG, not carbon-black** |
+| `ground_radar_radome.stl` | Ground | 1 | Flat, outer face up, ironing on. **Translucent PETG, not carbon-black**: smoke, ice (natural) or amber. This is the one part that can take a colour |
 | `ground_radar_led_pipe.stl` | Ground | 1 | Flange down. Natural PETG |
 | `ground_radar_esp32_clamp_tab_x2.stl` | Ground | **2** | Flat |
 | `ground_radar_dock_base.stl` | Ground | 1 | As it sits |
 | `ground_radar_dock_stem.stl` | Ground | 1 | Flat, front face down on a textured sheet, stud cap up. Or `ground_radar_dock_stem_magsafe.stl` for the MagSafe-ring head |
+| `ground_radar_pod_park_hood.stl` | Ground | 1 | Rear face down on a textured sheet; no supports |
 | `shaft_pod_base.stl` | Pod | 1 | Standing on its USB end, clamp bore vertical |
 | `shaft_pod_lid.stl` | Pod | 1 | Outside face down |
 
-About **66 g** of filament and **3.9 hours** of printing for both units, with no
+About **71 g** of filament and **4.2 hours** of printing for both units, with no
 supports anywhere. `cad/cost_report.py` estimates it from the STLs and writes
-`cad/stl/cost_report.txt`: about $1.30 of PETG, $3.00 a kit on your own printer
-and $7.50 at a print-farm machine rate, against a $5-10 budget for the printed
+`cad/stl/cost_report.txt`: about $1.45 of PETG, $3.30 a kit on your own printer
+and $8.10 at a print-farm machine rate, against a $5-10 budget for the printed
 parts. Those are estimates, within about 20% of a slice; slice the STLs with
 your printer's profile before quoting a price.
 
