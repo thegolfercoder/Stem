@@ -1,0 +1,30 @@
+# Improvement backlog
+
+The queue for the continuous improvement loop. Each round takes the first item
+marked `todo`, builds it with worker agents, checks it, commits and pushes it,
+then marks it `done` here with the commit. When the queue is empty the loop
+adds the next most valuable improvement it can justify, with the reason, and
+carries on. Edit this file to reorder, add or drop items; mark one `skip` to
+leave it out.
+
+Rules every round follows:
+
+- **Budgets hold.** Printed parts at most $10 a kit at the print-farm rate
+  (`cad/stl/cost_report.txt`); retail target $80-100, so added parts stay cheap.
+- **Checks pass before a push.** Fit report with no `FAIL`; launchmon-py
+  `ruff check`, `ruff format --check`, `mypy -p launchmon`, `pytest`; firmware
+  `g++ -Wall -Wextra` against the stub headers with every feature flag on and
+  off; Blender scripts compile. Unchanged STLs are restored, not re-triangulated.
+- **Honesty.** No measured number without a measurement; anything unbuilt is
+  said to be unbuilt. Spin, face angle, club path, attack angle and swing plane
+  are never outputs.
+- **Design language** in `design_language.md`: matte black, one focal point,
+  every detail has a job, no supports.
+
+| # | Item | Why | Status |
+|---|---|---|---|
+| 1 | **Results screen on the phone.** A web page that connects to the ground unit over Web Bluetooth and shows each shot's club speed, ball speed and smash factor, readable from the address position. Note iOS Safari lacks Web Bluetooth (Bluefy works). | The unit already sends a shot summary over BLE; nothing reads it, so the phone on the dock has nothing to show. | todo |
+| 2 | **Fit test piece**, and widen gaps under 0.3 mm where there is room. A small print with the pin bores, magnet pockets, contact pilots and a pod-in-hood socket slice. | Several fits are 0.1-0.25 mm, below what most printers hold. Ten minutes of printing protects a four-hour print. | todo |
+| 3 | **Charge while "off" (soft power).** The slide switch becomes an input; off means deep sleep, so a plugged-in unit charges a parked pod. | The pod can only charge from a switched-on unit today. | todo |
+| 4 | **Reusable pod strap.** A printed TPU strap with a latch replaces the single-use zip ties, still a positive lock. | Zip ties every session are a chore and a cost. | todo |
+| 5 | **Knocks and rain.** A catch on the pod park hood, and a printed TPU gasket in the lid seam. | The hood sticks out 30 mm and the magnets hold about 7 N; the seam relies on optional silicone. | todo |
