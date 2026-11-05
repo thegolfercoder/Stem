@@ -1,0 +1,61 @@
+# The agent loop's settings. Every agent reads this at the start of every run;
+# `python agents/loop.py config` checks it. Change a number here, push, and the
+# next run of each agent follows it. See agents/README.md.
+
+[loop]
+# false stops every agent at its next run (as does the `agents-paused` label on
+# the control issue).
+enabled = true
+repo = "thegolfercoder/Stem"
+# Where the Builder pushes and QA reviews. Its pull request is the integration PR;
+# no agent merges it or pushes to main.
+integration_branch = "claude/prompt-usage-0oy6wa"
+integration_pr = 4
+# The pinned issue holding the journal, the kill switch and the human queue.
+control_issue = 9
+
+[builder]
+# Upper bound on work cycles started per UTC day. One cycle is one backlog item
+# (or one slice of it), verified and pushed.
+max_cycles_per_day = 12
+# Items in progress at once. One keeps every push reviewable.
+wip_limit = 1
+# Wait before the next cycle when ready work remains.
+continuation_delay_minutes = 3
+# Soft limit on lines changed in one cycle; beyond it the item is split.
+max_lines_changed = 800
+
+[qa]
+# Findings filed per run, most severe first. Flooding the backlog is not review.
+max_findings_per_run = 5
+# When no new commits have landed, QA audits one area in this rotation.
+audit_rotation = [
+  "swingml/swingml/analysis.py and the decision path (thresholds, timing gate, slow-motion retry)",
+  "swingml/webapp (browser engine, parity with Python, the page's failure handling)",
+  "ios/SwingCore and ios/SwingStudio (parity, persistence, error states)",
+  "swingml/swingml/insights (priority rules, comparability, retest verdicts)",
+  "swingml/swingml/model (release gate, calibration, manifests, training scripts)",
+  "swingml/swingml/web (desktop app routes, storage, security of the local server)",
+  "tests and CI (what is not tested, what is skipped, what CI does not run)",
+  "docs versus code (claims in docs that the code or the numbers no longer support)",
+]
+
+[strategist]
+max_new_items_per_run = 5
+# Ready items the Builder should always have to choose from, and the most the
+# backlog should hold before the Strategist prunes instead of adding.
+min_ready = 3
+max_ready = 15
+
+[protected]
+# Paths no agent changes without a `needs-human` decision recorded on an issue:
+# frozen dataset manifests, released-model checksums, and the shipped weights,
+# which change only through the release gate.
+paths = [
+  "swingml/swingml/manifests/",
+  "swingml/swingml/data/checksums.json",
+  "swingml/swingml/data/swing_event_net.pt",
+  "swingml/swingml/data/swing_event_net.npz",
+  "swingml/swingml/data/event_calibration.json",
+  ".github/workflows/desktop.yml",
+]

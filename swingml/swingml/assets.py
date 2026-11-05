@@ -13,6 +13,8 @@ user can delete a single directory and be back to a clean state.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import shutil
 import tempfile
@@ -23,11 +25,21 @@ from pathlib import Path
 
 POSE_MODEL_URL = (
     "https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
-    "pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task"
+    "pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task"
 )
+POSE_MODEL_SHA256 = "64437af838a65d18e5ba7a0d39b465540069bc8aae8308de3e318aad31fcbc7b"
+"""The landmarker bundle every landmark behind the event model, its calibration and
+docs/audit was produced with (#51). Version 1, not "latest": a bundle that changed
+under the app would change every reading without any gate seeing it. The browser
+(webapp/app.js, build_artifact.py) and the iPhone (ios/setup.sh, ios/project.yml)
+pin the same URL and digest; tests/test_pose_model_pin.py holds them to it."""
 POSE_MODEL_NAME = "pose_landmarker_heavy.task"
 EVENT_MODEL_NAME = "swing_event_net.pt"
+EVENT_MODEL_NUMPY_NAME = "swing_event_net.npz"
+"""The same weights for the NumPy network, which the packaged application runs."""
 EVENT_CALIBRATION_NAME = "event_calibration.json"
+CHECKSUMS_NAME = "checksums.json"
+"""SHA-256 of each released file in the package's data, written when a model ships."""
 
 HOME_ENV_VAR = "SWINGML_HOME"
 POSE_MODEL_ENV_VAR = "SWINGML_POSE_MODEL"
@@ -52,6 +64,60 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def package_data() -> Path:
+    """The data shipped inside the package, wherever the package itself is: the
+    repository, a pip install, or a packaged desktop application's bundle."""
+    return Path(__file__).resolve().parent / "data"
+
+
+class ModelIntegrityError(RuntimeError):
+    """A released file's bytes are not the ones that were released. Never loaded."""
+
+
+def sha256_of(path: Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def shipped_checksums() -> dict[str, str]:
+    path = package_data() / CHECKSUMS_NAME
+    if not path.is_file():
+        return {}
+    loaded = json.loads(path.read_text(encoding="utf-8"))
+    return {str(k): str(v) for k, v in loaded.items()} if isinstance(loaded, dict) else {}
+
+
+def verify_shipped(path: Path | str) -> None:
+    """Refuse a file from the package's data unless its SHA-256 is the released one.
+
+    The weights and their error bands are what every accuracy figure in the model
+    card describes, and a PyTorch checkpoint is unpickled when it loads, so a file
+    that has changed since release is neither the model that was measured nor
+    one that is safe to open. Files anywhere else - a developer's `out/`, a path
+    named by an environment variable - are the developer's own, have no released
+    checksum, and are not checked here.
+    """
+    resolved = Path(path).resolve()
+    if resolved.parent != package_data().resolve():
+        return
+    expected = shipped_checksums().get(resolved.name)
+    if expected is None:
+        raise ModelIntegrityError(
+            f"{resolved.name} is in the package's data with no released checksum in "
+            f"{CHECKSUMS_NAME}; it was not part of a release and is not loaded"
+        )
+    actual = sha256_of(resolved)
+    if actual != expected:
+        raise ModelIntegrityError(
+            f"{resolved.name} has SHA-256 {actual[:12]}..., but the released file has "
+            f"{expected[:12]}...; it has been changed since release and is not loaded. "
+            "Reinstall, or restore it from the release named in docs/ml/model-card.md"
+        )
+
+
 def _search_paths(name: str, env_var: str, extra: list[Path]) -> list[Path]:
     configured = os.environ.get(env_var)
     paths = [Path(configured).expanduser()] if configured else []
@@ -67,6 +133,7 @@ def find_pose_model() -> Path | None:
         POSE_MODEL_NAME,
         POSE_MODEL_ENV_VAR,
         [
+            package_data() / POSE_MODEL_NAME,
             root / "models" / POSE_MODEL_NAME,
             Path("models") / POSE_MODEL_NAME,
         ],
@@ -85,20 +152,31 @@ def find_event_model() -> Path | None:
     synthetic landmarks, because it is measurably better on real video.
     """
     root = _repo_root() / "swingml"
-    for path in _search_paths(
-        EVENT_MODEL_NAME,
-        EVENT_MODEL_ENV_VAR,
-        [
-            root / "swingml" / "data" / EVENT_MODEL_NAME,
-            root / "out" / "finetuned" / EVENT_MODEL_NAME,
-            root / "out" / "events" / EVENT_MODEL_NAME,
-            Path("out") / "finetuned" / EVENT_MODEL_NAME,
-            Path("out") / "events" / EVENT_MODEL_NAME,
-        ],
-    ):
-        if path.is_file():
-            return path
+    # PyTorch trains the model and the development install has it; the packaged
+    # application does not, and runs the NumPy copy of the same weights.
+    names = [EVENT_MODEL_NAME, EVENT_MODEL_NUMPY_NAME] if have_torch() else [EVENT_MODEL_NUMPY_NAME]
+    for name in names:
+        for path in _search_paths(
+            name,
+            EVENT_MODEL_ENV_VAR,
+            [
+                package_data() / name,
+                root / "out" / "finetuned" / name,
+                root / "out" / "events" / name,
+                Path("out") / "finetuned" / name,
+                Path("out") / "events" / name,
+            ],
+        ):
+            if path.is_file() and (path.suffix == ".npz" or have_torch()):
+                return path
     return None
+
+
+def have_torch() -> bool:
+    """Whether PyTorch can be imported here, without importing it."""
+    import importlib.util
+
+    return importlib.util.find_spec("torch") is not None
 
 
 def find_event_calibrations() -> list[Path]:
@@ -123,7 +201,7 @@ def find_event_calibrations() -> list[Path]:
         [
             root / "out" / "calibration" / EVENT_CALIBRATION_NAME,
             Path("out") / "calibration" / EVENT_CALIBRATION_NAME,
-            root / "swingml" / "data" / EVENT_CALIBRATION_NAME,
+            package_data() / EVENT_CALIBRATION_NAME,
         ],
     ):
         if path.is_file() and path not in found:
@@ -161,10 +239,33 @@ def find_event_ensemble() -> list[Path]:
     for root in roots:
         if not root.is_dir():
             continue
-        members = sorted(root.glob("member_*.pt"))
+        members = sorted(root.glob("member_*.pt" if have_torch() else "member_*.npz"))
         if members:
             return members
     return []
+
+
+class PoseModelMismatchError(RuntimeError):
+    """A landmarker bundle that is not the one the analysis was measured with."""
+
+
+_pose_digests: dict[tuple[str, int, int], str] = {}
+
+
+def verify_pose_model(path: Path) -> None:
+    """Refuse a landmarker bundle other than `POSE_MODEL_SHA256` (#51)."""
+    stat = path.stat()
+    key = (str(path.resolve()), stat.st_size, stat.st_mtime_ns)
+    if key not in _pose_digests:
+        _pose_digests[key] = sha256_of(path)
+    actual = _pose_digests[key]
+    if actual != POSE_MODEL_SHA256:
+        raise PoseModelMismatchError(
+            f"{path} is not the pose model this analysis was measured with "
+            f"(sha256 {actual[:12]}, expected {POSE_MODEL_SHA256[:12]}), so it is not used: "
+            "landmarks from another model would change every reading unseen. Delete it to "
+            f"download the right one, or point ${POSE_MODEL_ENV_VAR} at a copy of {POSE_MODEL_URL}."
+        )
 
 
 def download_pose_model(
@@ -202,6 +303,11 @@ def download_pose_model(
             "Download it by hand and point $SWINGML_POSE_MODEL at it."
         ) from error
 
+    try:
+        verify_pose_model(partial)
+    except PoseModelMismatchError:
+        partial.unlink(missing_ok=True)
+        raise
     shutil.move(str(partial), str(target))
     return target
 

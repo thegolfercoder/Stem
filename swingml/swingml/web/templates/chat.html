@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Ask the coach{% endblock %}
+{% block content %}
+<section class="chat-head">
+  <h1>Ask the coach</h1>
+  <p class="section-sub">Questions about your swings, answered by a language model on this
+    computer from the {{ ok_count }} swing{{ '' if ok_count == 1 else 's' }} on record. It
+    reads your measurements, not your videos, and it is told how precise each one is - so
+    it should not make much of a difference smaller than a measurement's own error.</p>
+</section>
+
+<div class="ai-setup" id="ai-setup" hidden>
+  <h2>Set up the local coach</h2>
+  <p id="ai-setup-text"></p>
+  <ol>
+    <li>Install Ollama from <strong>ollama.com</strong> and open it.</li>
+    <li>In a terminal, run <code id="ai-pull">ollama pull gemma3:4b</code> (about 3 GB, once).</li>
+    <li>Come back here. Nothing else to configure.</li>
+  </ol>
+  <button class="btn" id="ai-recheck" type="button">Check again</button>
+</div>
+
+<section class="chat" id="chat">
+  <div class="chat-log" id="chat-log" aria-live="polite">
+    <div class="chat-suggest" id="chat-suggest">
+      <button type="button" class="chip">Is my tempo getting more consistent?</button>
+      <button type="button" class="chip">Which of my swings was the best, and why?</button>
+      <button type="button" class="chip">What should I work on first?</button>
+      <button type="button" class="chip">Compare my driver swings with my irons.</button>
+    </div>
+  </div>
+  <form class="chat-form" id="chat-form">
+    <textarea id="chat-input" rows="2" placeholder="Ask about your swings..." required></textarea>
+    <button class="btn primary" id="chat-send" type="submit">Ask</button>
+  </form>
+  <p class="coach-meta" id="chat-meta"></p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='chat.js') }}"></script>
+{% endblock %}

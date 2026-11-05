@@ -26,13 +26,25 @@ jobs:
       run:
         working-directory: swingml
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      # v5/v6/v5: the Node 24 releases. The v4/v5/v4 ones ran on Node 20, which
+      # the runner deprecates and was already forcing onto Node 24 with a warning.
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: swingml/requirements-dev.lock
       - name: install
-        run: pip install -e ".[dev]"
+        # libEGL: MediaPipe's native runtime loads it when a pose landmarker is
+        # created, and ubuntu-latest does not ship it. Without it the tests that
+        # run the real estimator (the capture preflight) cannot run here.
+        # The lock pins every package, so a run fails for a change in this
+        # repository and not for a release somebody else made that morning.
+        # Regenerate it with the command at its top after changing pyproject.toml.
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q libegl1 libgles2
+          pip install -r requirements-dev.lock
+          pip install -e . --no-deps
       - name: lint
         run: |
           ruff check .
@@ -45,11 +57,36 @@ jobs:
         run: |
           mypy -p swingml -p synth
           mypy scripts
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: browser payload
+        # The browser/Python parity tests skip themselves without the exported
+        # weights, and a fresh checkout has none - so for as long as this step was
+        # missing, all 22 of them were skipped here on every run and nothing in CI
+        # compared the browser engine with Python. Exporting takes two seconds.
+        run: python scripts/export_web_model.py
       - name: tests
-        # The browser and parity tests skip themselves when the built page and
-        # the exported weights are absent, which they are in a fresh checkout -
-        # both are build products. Everything that does not need them runs.
-        run: pytest -q
+        run: pytest -q -rs --ignore=tests/test_page.py
+      - name: page
+        # The page itself, driven in Chromium (tests/test_page.py): the practice
+        # section's wiring, the refusal paths, the numbers on screen against
+        # Python's. It used to skip here for want of a browser, so nothing in CI
+        # opened the page. The tests build the page from webapp/ themselves;
+        # STEM_PAGE_TESTS=required turns a test that cannot run into a failure
+        # rather than a skip.
+        env:
+          STEM_PAGE_TESTS: required
+        run: |
+          pip install -r requirements-page.txt
+          python -m playwright install --with-deps chromium
+          pytest -q -rs tests/test_page.py
+      - name: agent loop
+        # The backlog ranker, item validator and loop settings the three agents
+        # rely on (agents/README.md). Standard library only.
+        run: |
+          python -m pytest -q ../agents/tests
+          python ../agents/loop.py config > /dev/null
 
   launchmon:
     name: radar dsp
@@ -58,8 +95,8 @@ jobs:
       run:
         working-directory: launchmon-py
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip

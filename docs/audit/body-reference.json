@@ -1,0 +1,70 @@
+{
+  "source": "face-on clips of golfdb-validation-v2 and golfdb-calibration-v2, through the shipped pipeline",
+  "model_fingerprint": "8c70fac9540d053b6936aca3cb4688fc",
+  "n_clips": 85,
+  "measures": {
+    "head_movement": {
+      "n_swings": 84,
+      "n_groups": 32,
+      "p10": 0.03,
+      "p10_ci95": [
+        0.017,
+        0.045
+      ],
+      "p50": 0.071,
+      "p50_ci95": [
+        0.055,
+        0.093
+      ],
+      "p90": 0.14,
+      "p90_ci95": [
+        0.109,
+        0.158
+      ],
+      "unit": "body lengths",
+      "refused": 1
+    },
+    "pelvis_sway": {
+      "n_swings": 84,
+      "n_groups": 32,
+      "p10": 0.03,
+      "p10_ci95": [
+        0.015,
+        0.041
+      ],
+      "p50": 0.058,
+      "p50_ci95": [
+        0.046,
+        0.074
+      ],
+      "p90": 0.093,
+      "p90_ci95": [
+        0.081,
+        0.107
+      ],
+      "unit": "body lengths",
+      "refused": 1
+    },
+    "shoulder_turn_foreshortened": {
+      "n_swings": 84,
+      "n_groups": 32,
+      "p10": 49.044,
+      "p10_ci95": [
+        47.334,
+        51.518
+      ],
+      "p50": 57.96,
+      "p50_ci95": [
+        54.611,
+        61.974
+      ],
+      "p90": 74.574,
+      "p90_ci95": [
+        70.307,
+        81.842
+      ],
+      "unit": "deg",
+      "refused": 1
+    }
+  }
+}

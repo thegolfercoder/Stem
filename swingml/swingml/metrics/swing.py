@@ -34,6 +34,12 @@ from swingml.pose.base import PoseSequence
 from swingml.quantity import NoReading, Provenance, Quantity, Reading
 from swingml.skeleton import Handedness, Landmark
 
+FINISH_UNRELIABLE = (
+    "the finish cannot be placed reliably from one camera: on 201 held-out real swings "
+    "the model's finish landed a median 29 frames (about half a second) from the "
+    "labelled one, so no duration ending at it is reported"
+)
+
 
 class MetricConfig(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -609,9 +615,6 @@ def compute_metrics(
     downswing_s = _event_time(events, times, SwingEvent.IMPACT) - _event_time(
         events, times, SwingEvent.TOP
     )
-    swing_s = _event_time(events, times, SwingEvent.FINISH) - _event_time(
-        events, times, SwingEvent.ADDRESS
-    )
     if downswing_s <= 0.0:
         return NoReading(reason="downswing has no duration", source="metrics")
 
@@ -635,7 +638,7 @@ def compute_metrics(
         tempo_ratio=_reading(backswing_s / downswing_s, "", Provenance.DERIVED, "events"),
         backswing_duration=_reading(1000.0 * backswing_s, "ms", Provenance.MEASURED, "events"),
         downswing_duration=_reading(1000.0 * downswing_s, "ms", Provenance.MEASURED, "events"),
-        swing_duration=_reading(1000.0 * swing_s, "ms", Provenance.MEASURED, "events"),
+        swing_duration=NoReading(reason=FINISH_UNRELIABLE, source="events"),
         time_to_peak_hand_speed=_reading(
             1000.0 * float(times[peak_hand_frame] - times[impact]),
             "ms",

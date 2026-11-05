@@ -7,10 +7,13 @@ comfortably inside what resampling the same model against itself produces. Sayin
 so out loud is the difference between an experiment and a story.
 
 The comparison is paired: both models answer the same clips, the difference is
-taken per clip, and the resampling is over clips rather than over events. Events
-within one clip stand or fall together - a model that puts address ten frames
-early usually gets toe-up wrong too - so treating 1,280 events as 1,280
-independent draws would report an interval several times narrower than the truth.
+taken per clip, and the resampling is over whole golfer/video groups rather than
+over events or clips. Events within one clip stand or fall together - a model
+that puts address ten frames early usually gets toe-up wrong too - and so do
+clips of one golfer from one video, so resampling either one at a time reports an
+interval narrower than the truth. The groups come from the frozen manifest whose
+SHA-256 matches each archive; an archive no manifest froze falls back to
+resampling clips, and says so.
 
 Refusals are counted, reported, and then set aside: the paired statistics are
 taken over the clips both models answered, because a difference computed over
@@ -30,6 +33,7 @@ from numpy.typing import NDArray
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from swingml.analysis import load_model
+from swingml.dataset.manifest import group_resamples, groups_for
 from swingml.model.benchmark import TOLERANCES, load_samples, predict_frames, tempo_of
 from swingml.model.ensemble import SERVING_TIME_WARPS, EnsembleConfig, SwingEventEnsemble
 from synth.dataset import Sample
@@ -78,12 +82,18 @@ def compare(
     b: dict[str, NDArray[np.float64]],
     resamples: int,
     seed: int,
+    groups: list[str] | None = None,
 ) -> None:
     n = len(next(iter(a.values())))
     rng = np.random.default_rng(seed)
-    draws = rng.integers(0, n, size=(resamples, n))
+    if groups is not None:
+        draws = group_resamples(groups, resamples, rng)
+        unit = f"resampling {len(set(groups))} golfer/video groups"
+    else:
+        draws = list(rng.integers(0, n, size=(resamples, n)))
+        unit = "resampling clips (no frozen manifest matches these archives): intervals too narrow"
 
-    print(f"\n  {n} clips both models answered, {resamples} resamples")
+    print(f"\n  {n} clips both models answered, {resamples} resamples, {unit}")
     print("  metric        A        B      difference (95% interval)      B better in")
     for key in [f"within_{t}" for t in TOLERANCES] + ["tempo"]:
         # The median for tempo, the mean for a share. A mean relative tempo error
@@ -107,6 +117,20 @@ def compare(
     print("  * the interval excludes zero, so the sign of the difference is resolved")
 
 
+def clip_groups(paths: list[Path], n_samples: int) -> list[str] | None:
+    """Each loaded clip's golfer/video group, or None unless every archive has one."""
+    groups: list[str] = []
+    for path in paths:
+        if not path.is_file():
+            continue
+        found = groups_for(path)
+        if found is None:
+            return None
+        # Groups are named per split; the archive keeps two splits' groups apart.
+        groups += [f"{path.name}:{g}" for g in found]
+    return groups if len(groups) == n_samples else None
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--a", type=Path, required=True, help="checkpoint or ensemble directory")
@@ -120,6 +144,7 @@ def main() -> None:
     if not samples:
         raise SystemExit("no clips")
     print(f"{len(samples)} clips from {', '.join(p.name for p in args.clips)}")
+    groups = clip_groups(args.clips, len(samples))
 
     predictions = {}
     for label, path in (("A", args.a), ("B", args.b)):
@@ -141,6 +166,7 @@ def main() -> None:
         per_clip([predictions["B"][i] for i in both], kept),
         args.resamples,
         args.seed,
+        None if groups is None else [groups[i] for i in both],
     )
 
 

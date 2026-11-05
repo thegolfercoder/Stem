@@ -43,8 +43,19 @@ def log_softmax(logits: NDArray[np.float32]) -> NDArray[np.float64]:
     return np.asarray(shifted - np.log(np.exp(shifted).sum(axis=-1, keepdims=True)))
 
 
+CORE_EVENTS: tuple[int, ...] = (0, 3, 4, 5)
+"""Address, top, mid-downswing and impact: the positions every swing has sharply.
+
+The other four are soft by nature - toe-up and mid-follow-through are defined by a
+club the estimator cannot see, and a finish is a pose held rather than an instant
+- so a real swing can be unsure of them while being sure of these.
+"""
+
+
 def decode_events(
-    logits: NDArray[np.float32], min_mean_confidence: float = 0.0
+    logits: NDArray[np.float32],
+    min_mean_confidence: float = 0.0,
+    min_core_confidence: float = 0.0,
 ) -> EventSequence | NoReading:
     """Best strictly-increasing assignment of the eight events to frames.
 
@@ -54,6 +65,9 @@ def decode_events(
             frames below which no sequence is returned. A clip containing no
             swing still has a best-scoring ordered sequence, and reporting one is
             worse than reporting nothing.
+        min_core_confidence: the same over the four core events alone, which a
+            real swing is sure of even when a cut-short finish drags the mean of
+            all eight down.
 
     Returns:
         The decoded sequence, or a refusal explaining why there is none.
@@ -104,6 +118,17 @@ def decode_events(
     probabilities = np.exp(scores[frames, np.arange(NUM_EVENTS)])
     subframe = _refine_subframe(scores, frames)
     mean_confidence = float(np.exp(np.mean(np.log(np.maximum(probabilities, 1e-12)))))
+    core = probabilities[list(CORE_EVENTS)]
+    core_confidence = float(np.exp(np.mean(np.log(np.maximum(core, 1e-12)))))
+    if core_confidence < min_core_confidence:
+        return NoReading(
+            reason=(
+                f"address, top, mid-downswing and impact have a mean confidence of "
+                f"{core_confidence:.3f}, below the {min_core_confidence:.2f} required; "
+                "this clip probably does not contain a swing"
+            ),
+            source="events",
+        )
     if mean_confidence < min_mean_confidence:
         return NoReading(
             reason=(

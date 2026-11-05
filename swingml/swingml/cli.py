@@ -69,7 +69,13 @@ def command_ui(args: argparse.Namespace) -> int:
         _download_with_progress()
 
     store = SwingStore(args.database)
-    app = create_app(store=store, model_path=args.model)
+    exposed = args.host not in ("127.0.0.1", "localhost", "::1")
+    app = create_app(store=store, model_path=args.model, allow_any_host=exposed)
+    if exposed:
+        print(
+            f"\n  Warning: serving on {args.host} makes your swings reachable by anyone on "
+            "this network, with no password. Use it only on a network you trust."
+        )
 
     url = f"http://{args.host}:{args.port}"
     print(f"\n  Swing analysis is running at {url}")

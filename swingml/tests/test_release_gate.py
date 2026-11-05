@@ -1,0 +1,357 @@
+"""The release gate and the frozen manifests it scores against.
+
+The gate is the thing that says no to a model, so the ways it can be fooled are
+tested directly: an archive changed after freezing, a test set sharing golfers
+with the calibration set, evidence that is simply absent, and a slow-motion clip
+the application would read and a naive evaluation would call a refusal.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import numpy as np
+import pytest
+from pydantic import ValidationError
+
+from swingml.analysis import AnalysisConfig, load_model
+from swingml.assets import find_event_model
+from swingml.dataset.manifest import (
+    ManifestError,
+    freeze,
+    group_resamples,
+    groups_for,
+    leaks,
+    verify,
+)
+from swingml.features import extract_features, feature_layout, resample_pose
+from swingml.model import release_gate
+from swingml.skeleton import Handedness
+from synth.camera import CameraConfig, NoiseConfig, render_pose_sequence
+from synth.swing import SwingTiming, generate_swing
+
+
+def _archive(path: Path, ids: list[int]) -> Path:
+    lengths = np.array([40] * len(ids))
+    np.savez_compressed(
+        path,
+        lengths=lengths,
+        features=np.zeros((int(lengths.sum()), 4), dtype=np.float32),
+        events=np.tile(np.arange(8) * 4, (len(ids), 1)),
+        seeds=np.array(ids),
+    )
+    return path
+
+
+def test_a_frozen_archive_verifies_until_it_changes(tmp_path: Path) -> None:
+    archive = _archive(tmp_path / "holdout.npz", [1, 2, 3])
+    manifest = freeze(archive, "t", "holdout", {1: "g1", 2: "g1", 3: "g2"}, "test", tmp_path)
+    assert verify(manifest, tmp_path) == archive
+    _archive(archive, [1, 2, 4])
+    with pytest.raises(ManifestError, match="changed since it was frozen"):
+        verify(manifest, tmp_path)
+
+
+def test_every_clip_must_have_a_leakage_group(tmp_path: Path) -> None:
+    archive = _archive(tmp_path / "a.npz", [1, 2])
+    with pytest.raises(ManifestError, match="no leakage group"):
+        freeze(archive, "t", "holdout", {1: "g1"}, "test", tmp_path)
+
+
+def test_shared_golfers_are_a_leak_even_without_shared_clips(tmp_path: Path) -> None:
+    test = freeze(
+        _archive(tmp_path / "t.npz", [1, 2]), "test", "holdout", {1: "a", 2: "b"}, "", tmp_path
+    )
+    calibration = freeze(
+        _archive(tmp_path / "c.npz", [3]), "cal", "calibration", {3: "b"}, "", tmp_path
+    )
+    problems = leaks([test, calibration])
+    assert len(problems) == 1 and "groups" in problems[0]
+    clean = freeze(_archive(tmp_path / "d.npz", [4]), "cal2", "calibration", {4: "c"}, "", tmp_path)
+    assert leaks([test, clean]) == []
+
+
+def test_the_groups_of_an_archive_come_from_the_manifest_that_froze_it(tmp_path: Path) -> None:
+    archive = _archive(tmp_path / "a.npz", [1, 2, 3])
+    manifests = tmp_path / "manifests"
+    manifests.mkdir()
+    manifest = freeze(archive, "t", "holdout", {1: "g1", 2: "g1", 3: "g2"}, "test", tmp_path)
+    (manifests / "t.json").write_text(manifest.model_dump_json())
+    assert groups_for(archive, manifests) == ("g1", "g1", "g2")
+    # Other bytes, even with the same clips, are not the archive that was frozen.
+    other = _archive(tmp_path / "b.npz", [1, 2, 4])
+    assert groups_for(other, manifests) is None
+
+
+def test_a_group_bootstrap_draws_whole_groups_and_is_wider_when_groups_agree() -> None:
+    groups = [f"g{i // 5}" for i in range(40)]  # 8 groups of 5 clips
+    rng = np.random.default_rng(0)
+    for idx in group_resamples(groups, 50, rng):
+        drawn = [groups[i] for i in idx]
+        # Every group drawn comes whole, and as many group draws as there are groups.
+        assert all(drawn.count(g) % 5 == 0 for g in set(drawn))
+        assert len(idx) == 40
+    # Clips within a group agree: resampling them one by one understates the spread.
+    values = np.repeat(np.random.default_rng(1).normal(size=8), 5)
+    by_group = [values[i].mean() for i in group_resamples(groups, 2000, np.random.default_rng(2))]
+    rng = np.random.default_rng(3)
+    by_clip = [values[rng.integers(0, 40, 40)].mean() for _ in range(2000)]
+    assert np.std(by_group) > 1.8 * np.std(by_clip)
+
+
+def test_missing_evidence_exits_two_before_any_number(tmp_path: Path) -> None:
+    model = find_event_model()
+    if model is None:
+        pytest.skip("needs the bundled model")
+    status = release_gate.main(
+        [
+            "--candidate", str(model),
+            "--baseline", str(model),
+            "--test-manifest", str(tmp_path / "absent.json"),
+            "--calibration-manifest", str(tmp_path / "absent.json"),
+        ]
+    )  # fmt: skip
+    assert status == 2
+
+
+def test_compressing_time_rescales_every_per_second_channel() -> None:
+    layout = feature_layout()
+    features = np.ones((80, layout.total), dtype=np.float32)
+    squeezed = release_gate.compress(features, 4.0)
+    assert squeezed.shape[0] == 20
+    for start, end in layout.per_second_spans:
+        assert np.allclose(squeezed[:, start:end], 4.0)
+    start, end = layout.positions
+    assert np.allclose(squeezed[:, start:end], 1.0)
+
+
+def test_group_resampling_brackets_the_point_estimate() -> None:
+    rows_a = [release_gate.Scored(answered=True, w1_core=0.5, tempo_error=0.2) for _ in range(40)]
+    rows_b = [
+        release_gate.Scored(answered=True, w1_core=0.5 + 0.1 * (i % 2), tempo_error=0.15)
+        for i in range(40)
+    ]
+    groups = [f"g{i // 4}" for i in range(40)]
+    point, low, high = release_gate.paired_difference(
+        rows_a, rows_b, groups, lambda r: r.w1_core, lambda v: float(v.mean()), 500, 0
+    )
+    assert low <= point <= high
+    assert point == pytest.approx(0.05)
+
+
+@pytest.mark.skipif(find_event_model() is None, reason="needs the bundled model")
+def test_the_gate_reads_a_slow_motion_swing_the_way_the_app_does() -> None:
+    """Scored with the retry, as the application decides, not as a refusal."""
+    timing = SwingTiming(
+        address_hold_s=1.0, backswing_s=0.8, downswing_s=0.8 / 3, follow_through_s=0.45,
+        finish_hold_s=0.8,
+    )  # fmt: skip
+    swing = generate_swing(timing=timing, frame_rate_hz=60.0)
+    camera = CameraConfig(
+        azimuth_deg=0.0, distance_m=4.5, frame_width=720, frame_height=1280, vertical_fov_deg=55.0
+    )
+    quiet = NoiseConfig(
+        jitter_px=0.0, speed_jitter_px_per_body_length=0.0, fast_landmark_multiplier=1.0,
+        dropout_probability=0.0, frame_loss_probability=0.0, timestamp_jitter_s=0.0,
+    )  # fmt: skip
+    sequence = render_pose_sequence(swing, camera, quiet, seed=0)
+    slowed = sequence.model_copy(update={"timestamps_s": sequence.timestamps_s * 4.0})
+    resampled, _ = resample_pose(slowed, 60.0)
+    features = extract_features(resampled, Handedness.RIGHT)
+    path = find_event_model()
+    assert path is not None
+    model = load_model(path)
+    without = release_gate.decide(model, features, AnalysisConfig(slow_motion_factors=()))
+    with_retry = release_gate.decide(model, features, AnalysisConfig())
+    assert without.positions is None
+    assert with_retry.positions is not None
+    assert with_retry.slowed_by is not None
+    truth = swing.truth.event_frames * 4
+    assert release_gate.tempo_of(with_retry.positions) == pytest.approx(
+        release_gate.tempo_of(truth), rel=0.25
+    )
+
+
+# -- a decision-rule change on the same weights (#41) -----------------------------
+
+
+def _rows(n: int, seed: int) -> list[release_gate.Scored]:
+    rng = np.random.default_rng(seed)
+    return [
+        release_gate.Scored(
+            answered=True, w1_core=float(rng.choice([0.25, 0.5, 0.75, 1.0])),
+            tempo_error=float(rng.uniform(0.0, 0.4)),
+        )
+        for _ in range(n)
+    ]  # fmt: skip
+
+
+def test_the_same_model_and_rule_is_not_worse_with_differences_of_zero() -> None:
+    rows = _rows(60, 0)
+    groups = [f"g{i // 3}" for i in range(60)]
+    name, gate = release_gate.comparison_gate(rows, rows, groups, same_model=True, resamples=300)
+    assert name == "not_worse_than_baseline_on_frozen_real_test"
+    assert gate["passed"]
+    assert gate["within_1_core4_difference"] == [0.0, 0.0, 0.0]
+    assert gate["tempo_error_difference"] == [0.0, 0.0, 0.0]
+
+
+def test_a_new_model_that_only_ties_still_does_not_beat_the_baseline() -> None:
+    rows = _rows(60, 0)
+    groups = [f"g{i // 3}" for i in range(60)]
+    name, gate = release_gate.comparison_gate(rows, rows, groups, same_model=False, resamples=300)
+    assert name == "beats_baseline_on_frozen_real_test"
+    assert not gate["passed"]
+
+
+def test_a_rule_that_refuses_every_clip_fails() -> None:
+    rows = _rows(60, 0)
+    refused = [release_gate.Scored(answered=False) for _ in rows]
+    groups = [f"g{i // 3}" for i in range(60)]
+    _, gate = release_gate.comparison_gate(rows, refused, groups, same_model=True, resamples=300)
+    assert not gate["passed"]
+    assert "no clip was answered by both" in gate["detail"]
+
+
+def test_a_rule_that_loses_accuracy_fails_non_inferiority() -> None:
+    rows = _rows(60, 0)
+    worse = [r.model_copy(update={"w1_core": max(0.0, r.w1_core - 0.25)}) for r in rows]
+    groups = [f"g{i // 3}" for i in range(60)]
+    _, gate = release_gate.comparison_gate(rows, worse, groups, same_model=True, resamples=300)
+    assert not gate["passed"]
+
+
+def test_a_side_s_rule_is_read_from_json_and_typos_are_refused(tmp_path: Path) -> None:
+    off = tmp_path / "off.json"
+    off.write_text('{"slow_motion_check_backswing_s": null}')
+    config, overrides = release_gate.load_config(off)
+    assert config.slow_motion_check_backswing_s is None
+    assert overrides == {"slow_motion_check_backswing_s": None}
+    assert release_gate.load_config(None)[0] == AnalysisConfig()
+    typo = tmp_path / "typo.json"
+    typo.write_text('{"slow_motion_check_backswing": null}')
+    with pytest.raises(ValidationError):
+        release_gate.load_config(typo)
+
+
+# -- once per candidate (#55) ------------------------------------------------------
+
+
+def _holdout_run(tmp_path: Path, weights: bytes = b"candidate weights") -> tuple[list[str], Path]:
+    manifest = freeze(_archive(tmp_path / "h.npz", [1, 2]), "tiny-holdout", "holdout",
+                      {1: "a", 2: "b"}, "", tmp_path)  # fmt: skip
+    (tmp_path / "tiny-holdout.json").write_text(manifest.model_dump_json())
+    (tmp_path / "candidate.pt").write_bytes(weights)
+    (tmp_path / "baseline.pt").write_bytes(b"baseline weights")
+    log = tmp_path / "reads.jsonl"
+    argv = [
+        "--candidate", str(tmp_path / "candidate.pt"), "--baseline", str(tmp_path / "baseline.pt"),
+        "--test-manifest", str(tmp_path / "tiny-holdout.json"),
+        "--calibration-manifest", str(tmp_path / "tiny-holdout.json"),
+        "--read-log", str(log),
+    ]  # fmt: skip
+    return argv, log
+
+
+def _reads(log: Path) -> list[dict]:
+    return release_gate.read_log(log)
+
+
+def _stub_run(passed: bool = True):  # type: ignore[no-untyped-def]
+    def run(args, read):  # type: ignore[no-untyped-def]
+        read.append("tiny-holdout")
+        return {"gates": {}, "phone": {"gating": False, "status": "-"}, "passed": passed}
+
+    return run
+
+
+def test_a_second_read_of_the_same_weights_is_refused_before_the_holdout_is_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    argv, log = _holdout_run(tmp_path)
+    monkeypatch.setattr(release_gate, "run", _stub_run(passed=False))
+    assert release_gate.main(argv) == 1
+    first = _reads(log)
+    assert [e["outcome"] for e in first] == ["failed"] and first[0]["read"] == ["tiny-holdout"]
+    assert first[0]["code_sha256"] == release_gate.code_sha256()
+
+    def must_not_run(*_: object) -> None:
+        raise AssertionError("the holdout was read")
+
+    monkeypatch.setattr(release_gate, "run", must_not_run)
+    monkeypatch.setattr(release_gate, "read_archive", must_not_run)
+    # A different rule on the same weights is the same candidate's weights: refused too.
+    rule = tmp_path / "rule.json"
+    rule.write_text('{"slow_motion_margin": 0.02}')
+    assert release_gate.main([*argv, "--candidate-config", str(rule)]) == 2
+    refused = _reads(log)[-1]
+    assert refused["outcome"].startswith("refused") and refused["read"] == []
+    assert refused["candidate"]["config"] == {"slow_motion_margin": 0.02}
+
+
+def test_new_weights_and_an_owner_approved_reread_are_read_and_logged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    argv, log = _holdout_run(tmp_path)
+    monkeypatch.setattr(release_gate, "run", _stub_run())
+    assert release_gate.main(argv) == 0
+    (tmp_path / "candidate.pt").write_bytes(b"retrained weights")
+    assert release_gate.main(argv) == 0
+    (tmp_path / "candidate.pt").write_bytes(b"candidate weights")
+    assert release_gate.main(argv) == 2
+    assert release_gate.main([*argv, "--owner-approved-reread", "https://example/decision"]) == 0
+    outcomes = [(e["outcome"], e["owner_approved_reread"]) for e in _reads(log)]
+    assert outcomes == [
+        ("passed", None), ("passed", None),
+        ("refused: these weights were already read on this holdout", None),
+        ("passed", "https://example/decision"),
+    ]  # fmt: skip
+
+
+def test_a_run_that_breaks_is_logged_with_what_it_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    argv, log = _holdout_run(tmp_path)
+
+    def missing(args, read):  # type: ignore[no-untyped-def]
+        raise release_gate.MissingEvidenceError("no calibration")
+
+    def crash(args, read):  # type: ignore[no-untyped-def]
+        read.append("tiny-holdout")
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(release_gate, "run", missing)
+    assert release_gate.main(argv) == 2
+    monkeypatch.setattr(release_gate, "run", crash)
+    with pytest.raises(RuntimeError):
+        release_gate.main(argv)
+    entries = _reads(log)
+    assert entries[0]["outcome"].startswith("missing evidence") and entries[0]["read"] == []
+    assert entries[1]["outcome"] == "error" and entries[1]["read"] == ["tiny-holdout"]
+
+
+def test_a_holdout_report_names_no_clip() -> None:
+    decisions = [
+        {"clip": 7, "baseline": {"tempo": 3.1}, "candidate": {"tempo": 3.2}},
+        {"clip": 8, "baseline": {"tempo": 2.9}, "candidate": {"tempo": 2.9}},
+    ]
+    assert release_gate.clip_detail(decisions, on_holdout=True) == {"n_changed_clips": 1}
+    off = release_gate.clip_detail(decisions, on_holdout=False)
+    assert off["changed_clips"] == [7] and off["decisions"] == decisions
+
+
+AUDIT = Path(__file__).resolve().parents[2] / "docs" / "audit"
+
+
+def test_committed_holdout_reports_carry_aggregates_only_and_are_in_the_read_log() -> None:
+    reports = sorted(AUDIT.glob("release-gate-*.json"))
+    assert reports
+    log = release_gate.read_log(release_gate.READ_LOG)
+    for path in reports:
+        report = json.loads(path.read_text(encoding="utf-8"))
+        assert "decisions" not in report and "changed_clips" not in report, path.name
+        manifest = report["test"]["manifest"]
+        assert any(
+            e.get("report") == f"docs/audit/{path.name}" and manifest in e["read"] for e in log
+        ), f"{path.name} is not in {release_gate.READ_LOG.name}"
