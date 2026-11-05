@@ -4,10 +4,12 @@
 
 Every object is the CAD geometry from the .blend (itself generated from the
 OpenSCAD). This script adds only lighting, a studio floor, camera moves,
-assembly timing, and for the placement shot a turf plane, a ball on a tee
-and an illustrative radar beam. Nothing here depicts a measurement.
+assembly timing, for the placement shot a turf plane, a ball on a tee and an
+illustrative radar beam, and for the colour shot two copies of the unit that
+differ only in the radome's material. Nothing here depicts a measurement.
 
-Shots: ground_hero, ground_assembly, ground_in_use, pod_hero, pod_assembly, pod_mount.
+Shots: ground_hero, ground_assembly, ground_in_use, pod_park, radome_colours
+(ground_radar_unit.blend); pod_hero, pod_assembly, pod_mount (shaft_pod.blend).
 """
 
 from __future__ import annotations
@@ -46,9 +48,12 @@ def objects_in(col_name: str) -> list[bpy.types.Object]:
     return list(col.objects) if col else []
 
 
+PARKED = "Parked pod"   # the pod hanging in the ground unit's hood (ground .blend only)
+
+
 def product_objects() -> list[bpy.types.Object]:
     phone = [o for o in objects_in("Reference") if o.name.startswith("Phone")]
-    return objects_in("Printed parts") + objects_in("Components (stand-ins)") + phone
+    return objects_in("Printed parts") + objects_in("Components (stand-ins)") + objects_in(PARKED) + phone
 
 
 def matte_black_finish() -> None:
@@ -63,7 +68,8 @@ def matte_black_finish() -> None:
         if key in bsdf.inputs:
             bsdf.inputs[key].default_value = 0.3
     mat.diffuse_color = (0.018, 0.018, 0.02, 1)
-    for o in objects_in("Printed parts"):
+    parked_printed = [o for o in objects_in(PARKED) if "print_file" in o]   # not its brass contacts
+    for o in objects_in("Printed parts") + parked_printed:
         if o.name.startswith(("Radome", "Light pipe")):   # smoked and natural PETG keep theirs
             continue
         o.data.materials.clear()
@@ -122,23 +128,25 @@ def studio(floor_z: float, size: float, dark: bool = False) -> None:
     floor.data.materials.append(material("Floor", (0.09, 0.10, 0.12, 1) if dark else (0.52, 0.53, 0.55, 1),
                                          roughness=0.3 if dark else 0.7))
 
-    # Sun lights: the scene is in millimetres, and area or point lights would
-    # fall off as if it were metres. A sun has no falloff, so the same rig
-    # lights a 30 mm pod and a 1.4 m placement shot alike.
-    def sun(name, direction, strength, angle_deg, color=(1, 1, 1)):
-        light = bpy.data.lights.new(name, "SUN")
-        light.energy = strength
-        light.angle = math.radians(angle_deg)
-        light.color = color
-        ob = bpy.data.objects.new(name, light)
-        ob.rotation_mode = "QUATERNION"
-        ob.rotation_quaternion = (-Vector(direction)).normalized().to_track_quat("-Z", "Y")
-        bpy.context.scene.collection.objects.link(ob)
-        return ob
-
     sun("Key", (-0.9, 0.8, -1.1), 4.0, 12)
     sun("Fill", (1.0, 0.5, -0.5), 1.2, 30, (0.85, 0.9, 1.0))
     sun("Rim", (0.3, -1.0, -0.7), 3.0, 8, (1.0, 0.95, 0.9))
+
+
+def sun(name, direction, strength, angle_deg, color=(1, 1, 1)):
+    """Sun lights: the scene is in millimetres, and area or point lights would
+    fall off as if it were metres. A sun has no falloff, so the same rig
+    lights a 30 mm pod and a 1.4 m placement shot alike. `direction` is the
+    way the light travels."""
+    light = bpy.data.lights.new(name, "SUN")
+    light.energy = strength
+    light.angle = math.radians(angle_deg)
+    light.color = color
+    ob = bpy.data.objects.new(name, light)
+    ob.rotation_mode = "QUATERNION"
+    ob.rotation_quaternion = (-Vector(direction)).normalized().to_track_quat("-Z", "Y")
+    bpy.context.scene.collection.objects.link(ob)
+    return ob
 
 
 _target = None
@@ -235,6 +243,30 @@ def assemble(objs, order: list[list[str]], start: int, step: int, travel: int, e
                 key_loc(o, f0 + travel, a)
 
 
+PARK_RISE = 4.0   # the pod comes in under the hood this far low, then rises into its socket
+
+
+def park_start(pod, floor_z: float) -> Vector:
+    """Where the pod waits before it parks: behind the lid, 3 mm off the floor."""
+    plo, _ = bounds(pod)
+    return Vector((0, 42, -(plo.z - floor_z) + 3))
+
+
+def park_path(objs, start: Vector, f_start: int, f_under: int, f_seat: int) -> None:
+    """The parked pod's way into the hood. It holds at `start` (an offset from
+    where it parks) until f_start, eases in to sit PARK_RISE under its socket
+    by f_under, clear of the hood, the lid and the dock's rear lip, then rises
+    straight up and seats by f_seat, slowing over the last few millimetres as
+    the magnets take it. Per-axis Bezier keys: X and Y stop at f_under, Z
+    carries on, so the pod glides in and then lifts without a pause."""
+    for o in objs:
+        a = o.location.copy()
+        key_loc(o, 1, a + start)
+        key_loc(o, f_start, a + start)
+        key_loc(o, f_under, a + Vector((0, 0, -PARK_RISE)))
+        key_loc(o, f_seat, a)
+
+
 # ---------------------------------------------------------------------------
 #  Shots
 # ---------------------------------------------------------------------------
@@ -257,23 +289,39 @@ def shot_ground_assembly():
     lo, hi = bounds(objs)
     c, r = (lo + hi) / 2, (hi - lo).length / 2
     studio(lo.z, r)
-    order = [["LiPo"], ["TP4056"], ["BGT24LTR11"], ["LM358"], ["ESP32-C3"], ["ESP32 clamp"],
-             ["Slide switch", "Light pipe", "Status LED"], ["Lid", "MT3608"], ["Radome"], ["Dock stem", "1/4-20 stud"]]
-    assemble(objs, order, start=20, step=14, travel=40, extra=(0, 30, 0))
+    # Inside first, the buzzer on the left wall with the cell; then the lid with
+    # the MT3608 and the pod park's protection board on it; the pins and magnets
+    # pressed into the hood, the hood screwed on from inside; the radome, the
+    # stem; and last the pod, parking in the hood.
+    order = [["LiPo", "Piezo"], ["TP4056"], ["BGT24LTR11"], ["LM358"], ["ESP32-C3"], ["ESP32 clamp"],
+             ["Slide switch", "Light pipe", "Status LED"], ["Lid", "MT3608", "Pod park protection board"],
+             ["Pod park spring pins", "Pod park magnets"], ["Pod park hood"], ["Radome"],
+             ["Dock stem", "1/4-20 stud"]]
+    step = 13
+    pod = objects_in(PARKED)
+    assemble(objs, order, start=20, step=step, travel=40, extra=(0, 30, 0))
     for o in objs:   # the dock base stays put in this shot
         if o.name.startswith("Dock base"):
             o.animation_data_clear()
             o.location = (0, 0, 0)
+    # The pod parks last, on the path it takes in the pod_park shot. It waits
+    # behind the unit rather than at its exploded place, which is under this
+    # camera, and a straight flight home from there would clip the hood.
+    f0 = 20 + len(order) * step
+    park_path(pod, park_start(pod, lo.z), f0, f0 + 34, f0 + 58)
+    frames = f0 + 58 + 22
     cam = camera(60)
     # From behind and above, where the parts come in, swinging round to the front.
-    orbit(cam, c + Vector((0, 12, -4)), fit_distance(r * 1.3, 60, 1.0), 24, 205, 150, 210)
-    return 210
+    orbit(cam, c + Vector((0, 12, -4)), fit_distance(r * 1.3, 60, 1.0), 24, 205, 150, frames)
+    return frames
 
 
 def shot_ground_in_use():
     objs = product_objects()
     assembled_and_exploded(objs)   # drop the .blend's explode animation: assembled throughout
     hide_reference()
+    for o in objects_in(PARKED):   # in play the pod is on the club, not parked
+        set_visible(o, False)
     floor_z = -DOCK_T
     studio(floor_z, 300, dark=False)
     floor = bpy.data.objects["Studio floor"]
@@ -337,6 +385,91 @@ def shot_ground_in_use():
     cam.data.dof.aperture_fstop = 16.0
     cam.data.clip_end = 100000
     return 210
+
+
+def shot_pod_park():
+    """The pod parks on the back of the unit: from below and behind the lid it
+    slides in under the hood and rises into the socket. Close three-quarter
+    view from behind, on the hood's side, then a slight push-in."""
+    hide_reference(keep=())
+    objs = [o for o in product_objects() if not o.name.startswith("Phone")]
+    assembled_and_exploded(objs)
+    pod = objects_in(PARKED)
+    lo, hi = bounds(objs)
+    studio(lo.z, (hi - lo).length / 2)
+    hood = next(o for o in objs if o.name.startswith("Pod park hood"))
+    hlo, hhi = bounds([hood])
+    plo, phi = bounds(pod)
+    start = park_start(pod, lo.z)
+    park_path(pod, start, 16, 82, 126)
+
+    cam = camera(50)
+    tgt = target_empty()
+    seat = Vector(((hlo.x + hhi.x) / 2, (plo.y + phi.y) / 2, (plo.z + hhi.z) / 2))
+    mid = seat + Vector((0, start.y * 0.45, start.z * 0.35))
+    view = Vector((-0.62, 0.74, 0.30)).normalized()   # behind, on the hood's (left) side, a little above
+    # The back is matte black in the key's shadow: a soft fill from over the
+    # camera's shoulder brings out the hood's edges and the pod's arrow.
+    sun("Back fill", -(view + Vector((0.3, 0, 0.5))), 1.6, 25, (0.95, 0.97, 1.0))
+    d = fit_distance(58, 50, 1.0)
+    key_loc(tgt, 1, mid)
+    key_loc(tgt, 70, seat + Vector((0, start.y * 0.15, 0)))
+    key_loc(tgt, 150, seat)
+    key_loc(cam, 1, mid + view * d)
+    key_loc(cam, 100, seat + view * d * 0.94)
+    key_loc(cam, 150, seat + view * d * 0.78)
+    cam.data.dof.aperture_fstop = 11.0
+    return 150
+
+
+def shot_radome_colours():
+    """Three units side by side, identical but for the radome: smoke (the
+    design's), ice and amber. Translucent PETG without carbon black passes
+    24 GHz, so the radome is where a colour choice can go; the body stays
+    matte black. A slow lateral move along the row."""
+    hide_reference(keep=())
+    objs = [o for o in product_objects() if not o.name.startswith("Phone")]
+    assembled_and_exploded(objs)
+    lo, hi = bounds(objs)
+    pitch = (hi.x - lo.x) + 36
+    finishes = [
+        None,   # smoke: the radome as designed
+        material("Ice radome", (0.42, 0.66, 0.92, 1), roughness=0.05, alpha=0.38),
+        material("Amber radome", (0.90, 0.30, 0.01, 1), roughness=0.12, alpha=0.72),
+    ]
+    for o in objs:   # the designed unit on the left
+        o.location.x -= pitch
+    for i, mat in enumerate(finishes[1:], start=1):
+        for o in objs:
+            twin = o.copy()
+            twin.location.x += i * pitch
+            for col in o.users_collection:
+                col.objects.link(twin)
+            if o.name.startswith("Radome"):
+                twin.data = o.data.copy()
+                twin.data.materials.clear()
+                twin.data.materials.append(mat)
+    smoke = next(o for o in objs if o.name.startswith("Radome")).active_material
+    for m in finishes[1:]:   # the smoke radome's own blend and shadow settings, so all three are lit alike
+        m.blend_method, m.shadow_method = smoke.blend_method, smoke.shadow_method
+    lo, hi = lo - Vector((pitch, 0, 0)), hi + Vector((pitch, 0, 0))
+    studio(lo.z, (hi - lo).length / 2)
+    centre = Vector(((lo.x + hi.x) / 2, 0.0, 32.0))
+
+    # From the target side and to the left, so the row recedes to the right:
+    # the designed smoke radome nearest, then ice, then amber.
+    cam = camera(50)
+    tgt = target_empty()
+    d = 540.0
+    view = Vector((-0.50, -1.0, 0.34)).normalized()
+    centre.x -= 0.25 * pitch   # the near unit is the largest: weight the frame toward it
+    for f, dx in ((1, -32.0), (120, 32.0)):
+        key_loc(tgt, f, centre + Vector((dx * 0.5, 0, 0)))
+        key_loc(cam, f, centre + Vector((dx, 0, 0)) + view * d)
+    linear(cam)
+    linear(tgt)
+    cam.data.dof.aperture_fstop = 16.0
+    return 120
 
 
 def cylinder_between(p0: Vector, p1: Vector, radius: float, mat) -> bpy.types.Object:
@@ -408,7 +541,8 @@ def shot_pod_assembly():
     lo, hi = bounds(objs)
     c, r = (lo + hi) / 2, (hi - lo).length / 2
     studio(lo.z - 30, r)
-    order = [["LSM6DS3TR-C"], ["LiPo", "Micro charger"], ["ESP32-C3"], ["Pod lid"]]
+    order = [["LSM6DS3TR-C"], ["LiPo", "Micro charger"], ["Park magnets", "Park diode", "Park contacts"],
+             ["ESP32-C3"], ["Pod lid"]]
     assemble(objs, order, start=20, step=22, travel=40, extra=(0, 0, 18))
     cam = camera(70)
     orbit(cam, c + Vector((0, 0, 14)), fit_distance(r * 1.9, 70, 1.0), 34, 25, 60, 180)
@@ -438,6 +572,7 @@ def shot_pod_mount():
 
 
 SHOTS = {f.__name__[5:]: f for f in [shot_ground_hero, shot_ground_assembly, shot_ground_in_use,
+                                     shot_pod_park, shot_radome_colours,
                                      shot_pod_hero, shot_pod_assembly, shot_pod_mount]}
 
 

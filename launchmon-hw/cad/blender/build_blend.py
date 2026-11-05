@@ -117,6 +117,10 @@ def add_object(entry: dict) -> bpy.types.Object:
     for key, value in entry.get("props", {}).items():
         obj[key] = value
 
+    # A part exported from another script (the pod parked on the ground unit)
+    # is placed by a fixed rotation (degrees, XYZ Euler) and offset.
+    obj.rotation_euler = [math.radians(a) for a in entry.get("rotation", [0, 0, 0])]
+
     # Assembled at frame 1, exploded at frame 60.
     base = Vector(entry.get("offset", [0, 0, 0]))
     obj.location = base

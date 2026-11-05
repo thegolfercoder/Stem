@@ -14,7 +14,7 @@ display, run this under xvfb-run.
 
 Writes, in OUT_DIR:
     clips/<shot>.mp4                 each shot alone, captioned
-    stem_launch_monitor_showcase.mp4 title card, all six shots, end card
+    stem_launch_monitor_showcase.mp4 title card, every shot in SHOTS order, end card
 
 Every frame is a render of the CAD geometry. The cards and captions say so,
 and they claim nothing the prototype has not done: no speeds, no accuracy.
@@ -34,12 +34,12 @@ FPS = 24
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
-# (shot, .blend, caption title, caption detail)
+# (shot, .blend, caption title, caption detail), in reel order
 SHOTS = [
     ("ground_hero", "ground_radar_unit.blend", "Ground radar unit",
-     "96 x 64 x 21 mm  |  smoked radome  |  dock with a standard 1/4-20 phone mount"),
+     "96 x 64 x 21 mm  |  smoked radome  |  1/4-20 phone mount on the dock  |  pod parked on the back"),
     ("ground_assembly", "ground_radar_unit.blend", "Inside the ground unit",
-     "24 GHz I/Q Doppler radar  |  ESP32-C3  |  1500 mAh LiPo, USB-C charging"),
+     "24 GHz I/Q Doppler radar  |  ESP32-C3  |  1500 mAh LiPo, USB-C charging  |  piezo buzzer"),
     ("ground_in_use", "ground_radar_unit.blend", "Placement",
      "Radar faces the target, 15 degrees up  |  phone films from a tripod 3 m back  |  beam illustrative"),
     ("pod_hero", "shaft_pod.blend", "Club-mounted motion pod",
@@ -48,6 +48,10 @@ SHOTS = [
      "IMU on a flat datum floor  |  100 mAh LiPo  |  ESP32-C3, USB-C charging"),
     ("pod_mount", "shaft_pod.blend", "Snap-on clamp",
      "Fits a 13 mm shaft section  |  arrow points to the clubhead  |  secured with zip ties"),
+    ("pod_park", "ground_radar_unit.blend", "Pod park",
+     "The pod parks on the back and charges from the unit  |  one object to carry, one cable to charge"),
+    ("radome_colours", "ground_radar_unit.blend", "Radome colours",
+     "The radome is the one colour choice  |  smoke, ice or amber; the body stays matte black"),
 ]
 
 TITLE = ("Stem Launch Monitor", "Two-unit system: ground radar + club-mounted motion pod",

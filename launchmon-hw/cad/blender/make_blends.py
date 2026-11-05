@@ -19,6 +19,7 @@ Writes:
 from __future__ import annotations
 
 import json
+import math
 import os
 import subprocess
 import sys
@@ -43,6 +44,17 @@ PCB = lambda name, rgb: dict(material=name, color=[*rgb, 1.0], roughness=0.6)  #
 # glossy surface on the unit; the light pipe is natural PETG.
 RADOME = dict(material="Smoked radome", color=[0.02, 0.022, 0.026, 0.8], roughness=0.12)
 PIPE = dict(material="Natural PETG", color=[0.85, 0.86, 0.84, 0.85], roughness=0.35)
+BRASS = dict(material="Brass", color=[0.60, 0.38, 0.10, 1.0], roughness=0.35, metallic=1.0)
+GOLD_PINS = dict(material="Gold-plated pins", color=[0.76, 0.52, 0.12, 1.0], roughness=0.3, metallic=1.0)
+NICKEL = dict(material="Nickel", color=[0.68, 0.68, 0.70, 1.0], roughness=0.25, metallic=1.0)
+
+# The pod, parked on the ground unit, built from the pod's own parts. Its
+# script maps pod (x, y, z) to unit (y, z, x) (script_ground_radar.scad,
+# pod_park_place): this rotation. The offset is not written here: build()
+# measures it from the ground script's "ghost:parked_pod", so the parked pod
+# follows any change to pod_park_cx, pod_park_z0 or the pod's clamp.
+PARKED_POD = "Parked pod"
+PARKED = dict(scad="script_shaft_imu.scad", rotation=[0, -90, -90], align="ghost:parked_pod", collection=PARKED_POD)
 
 GROUND = {
     "scad": "script_ground_radar.scad",
@@ -83,6 +95,23 @@ GROUND = {
              material="Metal", color=[0.75, 0.75, 0.78, 1.0], roughness=0.3, metallic=1.0, explode=[12, 0, 0]),
         dict(part="ghost:led", name="Status LED 5 mm", collection=COMPONENTS,
              material="LED red", color=[0.9, 0.05, 0.05, 1.0], roughness=0.2, explode=[0, 0, 14]),
+        dict(part="ghost:piezo", name="Piezo buzzer 15 mm", collection=COMPONENTS, **BRASS, explode=[10, 30, 0]),
+        # Pod park: the hood on the lid, its pins and magnets, the protection
+        # board on the lid's inner face, and the pod itself, hanging in the hood.
+        dict(part="ghost:pod_park_board", name="Pod park protection board", collection=COMPONENTS,
+             **PCB("PCB green", [0.05, 0.35, 0.12]), explode=[85, 45, 0]),
+        dict(part="in_place:pod_park_hood", name="Pod park hood", collection=PRINTED, **PETG_LID,
+             explode=[85, 80, 0], props={"print_file": "ground_radar_pod_park_hood.stl"}),
+        dict(part="ghost:pod_park_pogo", name="Pod park spring pins", collection=COMPONENTS, **GOLD_PINS,
+             explode=[85, 80, 18]),
+        dict(part="ghost:pod_park_magnets", name="Pod park magnets", collection=COMPONENTS, **NICKEL,
+             explode=[85, 80, -7]),
+        dict(part="in_place:base", name="Parked pod base", **PARKED, **PETG, explode=[85, 115, -8],
+             props={"print_file": "shaft_pod_base.stl"}),
+        dict(part="in_place:lid", name="Parked pod lid", **PARKED, **PETG_LID, explode=[85, 115, -8],
+             props={"print_file": "shaft_pod_lid.stl"}),
+        dict(part="ghost:park_contacts", name="Parked pod contacts (brass)", **PARKED, **BRASS,
+             explode=[85, 115, -8]),
         dict(part="ghost:boresight", name="Radar boresight (15 deg)", collection=REFERENCE,
              material="Boresight", color=[1.0, 0.45, 0.0, 0.25], roughness=0.5, hide_render=True),
     ],
@@ -101,6 +130,10 @@ property), Components (stand-in boxes at real size and position), Reference
 The unit stands on the dock base's top face (Z = 0). The dock stem behind it
 ends in a cap with a 1/4"-20 tripod stud, for any phone clamp. (A MagSafe-ring
 head is the alternative: script_ground_radar.scad, holder = "magsafe".)
+Pod park: the club pod hangs, arrow up, in the hood on the lid left of the
+stem, and charges there through two spring pins. The Parked pod collection is
+the pod's own base, lid and brass contacts (from script_shaft_imu.scad),
+rotated into the unit's coordinates. The piezo buzzer is inside the left wall.
 """,
 }
 
@@ -123,6 +156,12 @@ POD = {
              **PCB("PCB teal", [0.05, 0.45, 0.45]), explode=[0, 0, 12]),
         dict(part="ghost:esp32", name="ESP32-C3 SuperMini", collection=COMPONENTS,
              **PCB("PCB black", [0.03, 0.03, 0.03]), explode=[0, 0, 22]),
+        dict(part="ghost:park_contacts", name="Park contacts (brass M2)", collection=COMPONENTS, **BRASS,
+             explode=[10, 0, 0]),
+        dict(part="ghost:park_magnets", name="Park magnets 4 x 2 mm", collection=COMPONENTS, **NICKEL,
+             explode=[0, 0, 14]),
+        dict(part="ghost:park_diode", name="Park diode D2", collection=COMPONENTS,
+             **PCB("Epoxy black", [0.03, 0.03, 0.035]), explode=[0, 0, 18]),
         dict(part="ghost:liner", name="Anti-slip liner strips", collection=COMPONENTS,
              material="Silicone", color=[0.12, 0.12, 0.12, 1.0], roughness=0.9),
         dict(part="ghost:shaft", name="Golf shaft 13 mm (reference)", collection=REFERENCE,
@@ -140,19 +179,61 @@ Timeline: frame 1 assembled, frame 60 exploded.
 Collections: Printed parts (print from cad/stl/, see each object's print_file
 property), Components (stand-ins at real size and position), Reference (shaft,
 IMU axis markers). The zip ties that must close the clamp are not modelled.
+Pod park: two brass contact screws in the +X end, a 4 x 2 mm magnet either
+side behind the end wall, and the diode D2 behind it; the pod parks, +X end
+up, in the hood on the ground unit's lid and charges there.
 """,
 }
+
+
+def stl_vertices(path: Path) -> list[tuple[float, float, float]]:
+    """Vertices of an ASCII STL, as OpenSCAD writes them."""
+    return [tuple(map(float, ln.split()[1:4])) for ln in path.read_text().splitlines()
+            if ln.lstrip().startswith("vertex")]
+
+
+def euler_xyz(deg: list[float]):
+    """Rotation matrix of a Blender XYZ Euler rotation (Rz @ Ry @ Rx), in degrees."""
+    cx, cy, cz = (math.cos(math.radians(a)) for a in deg)
+    sx, sy, sz = (math.sin(math.radians(a)) for a in deg)
+    return [[cz * cy, cz * sy * sx - sz * cx, cz * sy * cx + sz * sx],
+            [sz * cy, sz * sy * sx + cz * cx, sz * sy * cx - cz * sx],
+            [-sy, cy * sx, cy * cx]]
+
+
+def align_offset(scad: Path, obj: dict, tmp: Path) -> list[float]:
+    """Offset that puts a part exported from another script, rotated by
+    obj["rotation"], where obj["align"] (exported from this unit's script) is:
+    the two bounding boxes' minimum corners meet. Used for the parked pod, whose
+    base sets its bounding box on every axis."""
+    ref, own = tmp / "align_ref.stl", tmp / "align_own.stl"
+    subprocess.run([OPENSCAD, "-q", "-o", str(ref), "-D", f'part="{obj["align"]}"', str(scad)], check=True)
+    subprocess.run([OPENSCAD, "-q", "-o", str(own), "-D", 'part="in_place:base"', str(CAD / obj["scad"])],
+                   check=True)
+    m = euler_xyz(obj["rotation"])
+    rot = [[sum(m[r][c] * v[c] for c in range(3)) for r in range(3)] for v in stl_vertices(own)]
+    ref_v = stl_vertices(ref)
+    return [round(min(v[k] for v in ref_v) - min(v[k] for v in rot), 3) for k in range(3)]
 
 
 def build(unit: dict, render: bool, tmp: Path) -> None:
     scad = CAD / unit["scad"]
     entries = []
+    offsets: dict[str, list[float]] = {}
     for i, obj in enumerate(unit["objects"]):
         stl = tmp / f"{Path(unit['out']).stem}_{i:02d}.stl"
-        subprocess.run([OPENSCAD, "-q", "-o", str(stl), "-D", f'part="{obj["part"]}"', str(scad)], check=True)
-        entry = {k: v for k, v in obj.items() if k != "part"}
+        src = CAD / obj["scad"] if "scad" in obj else scad
+        subprocess.run([OPENSCAD, "-q", "-o", str(stl), "-D", f'part="{obj["part"]}"', str(src)], check=True)
+        entry = {k: v for k, v in obj.items() if k not in ("part", "scad", "align")}
         entry["file"] = str(stl)
-        entry.setdefault("props", {})["openscad_part"] = obj["part"]
+        entry["props"] = dict(obj.get("props", {}), openscad_part=obj["part"])
+        if "scad" in obj:
+            entry["props"]["openscad_script"] = obj["scad"]
+        if "align" in obj:
+            if obj["align"] not in offsets:
+                offsets[obj["align"]] = align_offset(scad, obj, tmp)
+                print(f"  {obj['align']}: offset {offsets[obj['align']]}")
+            entry["offset"] = offsets[obj["align"]]
         entries.append(entry)
         print(f"  exported {obj['part']}")
     manifest = tmp / f"{Path(unit['out']).stem}.json"
