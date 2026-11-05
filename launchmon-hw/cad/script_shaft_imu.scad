@@ -105,13 +105,18 @@ saddle_clear = 0.6;               // between the jaws the underside follows the 
 
 /* [Pod park - charging contacts in the +X end face] */
 pod_park_pitch = 6.0;  // contact centres across the end face (Y), either side of the centre line
-pod_park_z     = 9.0;  // contact and magnet centres above the floor's underside: over the charger, under the lid lip
+pod_park_z     = 8.8;  // contact and magnet centres above the floor's underside: over the charger, under the lid lip.
+                       // 8.8 keeps the heads 0.3 mm inside the end face's flat (fit report) and the magnets 0.45 under the lip
 // Contacts: M2 x 4 brass cheese-head screws (DIN 84), threaded into the end wall
 // and glued, wire soldered to the tip inside. MEASURE THE ONES YOU BUY.
 pod_park_pad   = [3.8, 1.3, 4.0, 1.7]; // [head d, head height (= how far it stands proud), length under the head, pilot d]
 pod_park_mag   = [4.0, 2.0];  // N52 disc magnet [d, t]. 6 x 2 mm does not fit behind the end wall: fit_report()
-pod_park_mag_y = 4.8;         // magnet centres in from each side face
-pod_park_skin  = 0.4;         // plastic over the magnets: two layers
+pod_park_mag_y = 4.65;        // magnet centres in from each side face: 0.3 mm from the charger, 0.4 mm of web to the hood's wells
+pod_park_mag_clear = 0.1;     // magnet pocket diameter over the magnet. Printed with its axis vertical, the 0.4 mm
+                              // skin bridged over it: the fit test coupon's "POD" pockets (0 / +0.1) tell you this
+
+pod_park_skin  = 0.4;         // plastic over the magnets: two layers. Its fit-report line (thinnest skin - 0.3)
+                              // cannot pass 0.1: the skin is two layers by design, every extra layer costs pull
 // Two 4 x 2 mm N52 pairs, 0.4 mm apart, pull about 3.7 N each (coaxial-loop
 // model, Br 1.43 T): 7 N against about 1 N from the two pins and 0.15 N of pod.
 // The LSM6DS3TR-C / LSM6DSOX have no magnetometer, so the magnets do not
@@ -160,7 +165,9 @@ jaw_xs  = [[0, jaw_w], [pod[0] - jaw_w, pod[0]]];
 // What the ground unit's script reads through `use <script_shaft_imu.scad>`,
 // so the hood it parks in is drawn from the pod's own numbers.
 function pod_back_z() = bore_z - jaw_R * cos((360 - wrap_deg) / 2);   // jaw tips: the clamp side's lowest point
-function pod_park_spec() = [pod, pod_park_pads(), pod_park_mags(), pod_park_pad, pod_park_mag, pod_park_skin, pod_back_z()];
+// [7] and [8] are for the fit test coupon: the end wall the contacts and magnets sit in, and the magnet pocket's clearance.
+function pod_park_spec() = [pod, pod_park_pads(), pod_park_mags(), pod_park_pad, pod_park_mag, pod_park_skin, pod_back_z(),
+                            wall, pod_park_mag_clear];
 
 // ----------------------------------------------------------------------------
 //  Helpers
@@ -213,7 +220,7 @@ module park_cuts() {
     for (p = pod_park_pads()) translate([pod[0] - wall - 1, p[0], p[1]])
         rotate([0, 90, 0]) cylinder(h = wall + 2, d = pod_park_pad[3], $fn = 24);
     for (m = pod_park_mags()) translate([pod[0] - pod_park_skin - pod_park_mag[1] - 0.1, m[0], m[1]])
-        rotate([0, 90, 0]) cylinder(h = pod_park_mag[1] + 0.1, d = pod_park_mag[0] + 0.1, $fn = 32);
+        rotate([0, 90, 0]) cylinder(h = pod_park_mag[1] + 0.1, d = pod_park_mag[0] + pod_park_mag_clear, $fn = 32);
     translate([pod[0] - mark_depth, pod_park_pads()[1][0], pod_park_z - pod_park_pad[0] / 2 - 2.0])
         rotate([0, 90, 0]) linear_extrude(1) plus_mark();
 }
@@ -474,7 +481,7 @@ module fit_report() {
     echo(str("  info  overall height incl. clamp: ", pod[2] - (bore_z - jaw_R), " mm"));
     // Pod park: contacts and magnets in the +X end, and D2 behind it.
     pads = pod_park_pads(); mags = pod_park_mags();
-    mr = pod_park_mag[0] / 2 + 0.05;  // pocket radius
+    mr = (pod_park_mag[0] + pod_park_mag_clear) / 2;  // pocket radius
     ye = pod_park_mag_y - mr;         // magnet pocket's outer edge, toward the side face
     skin_min = (ye >= edge_r ? pod[0] : pod[0] - edge_r + sqrt(edge_r * edge_r - pow(edge_r - ye, 2)))
              - (pod[0] - pod_park_skin);
@@ -487,6 +494,8 @@ module fit_report() {
     echo(chk("park magnets beside the charger   ", chg_y0 - (pod_park_mag_y + mr)));
     echo(chk("park magnets inside the side walls", ye - wall));
     echo(chk("park magnets to contact heads     ", (pads[0][0] - pod_park_pad[0] / 2) - (pod_park_mag_y + mr)));
+    // Stays under 0.3 by design: the skin is two 0.2 mm layers, and at the pocket's outer edge the
+    // body's R3 edge takes a few hundredths off it. The fit test coupon prints the same skin.
     echo(chk("park magnet skin, thinnest - 0.3  ", skin_min - 0.3));
     echo(chk("park D2 space along X             ", (pod[0] - wall) - park_parts_x0() - pod_park_diode[0]));
     echo(chk("park D2 space between the screws  ", (pod_park_pitch - 2.0 - 0.4) - pod_park_diode[1]));

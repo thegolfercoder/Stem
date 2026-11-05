@@ -60,6 +60,7 @@
 //      "dock_base"         dock base with lips and the stem's socket
 //      "dock_stem"         stem with the 1/4"-20 stud cap, or the MagSafe ring (print flat)
 //      "pod_park_hood"     the hood the pod parks and charges in, on the lid (print rear face down)
+//      "fit_test_coupon"   print this first: every tight fit of both units on one 10-minute plate
 //      "assembly"          everything placed, with ghost components (viewing only)
 //      "print_plate"       shell + lid + small parts laid out for one export
 // =============================================================================
@@ -69,7 +70,7 @@
 use <script_shaft_imu.scad>
 
 /* [Render] */
-part            = "assembly";   // [assembly, shell, lid, radome, led_pipe, esp32_clamp_tab, dock_base, dock_stem, pod_park_hood, print_plate, section]
+part            = "assembly";   // [assembly, shell, lid, radome, led_pipe, esp32_clamp_tab, dock_base, dock_stem, pod_park_hood, fit_test_coupon, print_plate, section]
 // Also: "in_place:shell|lid|radome|led_pipe|tab0|tab1|dock_base|dock_stem|pod_park_hood" and "ghost:<name>" export one
 // part in its assembled position (used by cad/blender/).
 show_components = true;         // ghost components in the assembly view
@@ -112,7 +113,7 @@ win_chamfer = 0.8;    // bevel round the window opening on the front face
 radome_clear = 0.15;  // radome to pocket, per side
 ledge_w     = 1.2;    // ledge the radome sits on, round the aperture
 ledge_t     = 1.2;
-ledge_pad   = 5.0;    // square pads in the ledge's corners carry the radar posts
+ledge_pad   = 5.1;    // square pads in the ledge's corners carry the radar posts, 0.3 mm round each post
 radar_pcb   = [25.4, 25.4, 1.6];  // module PCB, measured in the window plane [w, h, t]
 radar_gap   = 6.2;    // antenna to inner window surface. 6.2 mm = half a free-space
                       // wavelength at 24.125 GHz; see docs/build_instructions.md
@@ -192,6 +193,8 @@ cap_top       = 74;             // 10 mm above the unit's top edge
 bolt_len      = 12.7;           // 1/2", under the head
 bolt_head     = [11.11, 3.97];  // 7/16" across flats, head height
 bolt_d        = 6.35;
+bolt_clear    = [0.3, 0.25, 0.25];  // pocket over the bolt: [across flats, head height, thread hole d]. The fit
+                                    // test coupon's "1/4" hex is this pocket: the head should push in snug
 stud_behind   = 8;              // stud axis behind the stem's rear face
 
 // MagSafe ring head
@@ -220,19 +223,40 @@ pod_park_gap    = 0.6;          // pod's jaw tips to the lid's outer face
 pod_park_hood   = [30, 11.4, 4, 0.8];  // [X, Z, corner R, chamfer]: the stem cap's face, so the two read as a pair
 pod_park_wall   = 1.6;
 pod_park_rim    = 2.0;          // hood behind the pod's lid
-pod_park_socket = [1.5, 0.25];  // [depth, clearance] of the pocket the pod's end sits in: its outline keys it
+pod_park_socket = [1.5, 0.3];   // [depth, clearance] of the pocket the pod's end sits in: its outline keys it.
+                                // The fit test coupon's socket frame and pod-end key are this fit
 // Spring (pogo) pins, one per contact, pointing down. MEASURE THE PINS YOU BUY
 // and set these: the defaults are a common 2 x 6 mm, 1 mm stroke pin.
 pod_park_pogo   = [2.0, 6.0, 1.0, 1.5, 1.0];  // [barrel d, length extended, stroke, plunger exposed, tip d]
-pod_park_pogo_fit = -0.05;      // bore = barrel d + this: a press fit, plus a drop of CA
-pod_park_recess = 0.5;          // extended pin tip above the socket floor, up inside its well: a coin or a
-                                // wet leaf across the socket cannot reach both, and the hood faces down
+pod_park_pogo_fit = -0.05;      // bore = barrel d + this: a press fit, plus a drop of CA. Print the fit test
+                                // coupon first: add the offset of the bore the pin presses into snugly
+pod_park_mag_fit = 0.1;         // magnet pocket over the magnet, diameter and depth (the coupon's "HOOD" pockets)
+pod_park_recess = 0.6;          // extended pin tip above the socket floor, up inside its well: a coin or a
+                                // wet leaf across the socket cannot reach both, and the hood faces down.
+                                // The pod's heads (1.3 proud) then press the pins 0.7 of their 1 mm stroke.
+                                // Compression >= 0.4 and stroke left >= 0.1 share that 1 mm, so their fit-report
+                                // margins add up to 0.5 and cannot both reach 0.3. Compression gets 0.3; stroke
+                                // left keeps 0.2, and only grows in practice: DIN 84 heads are 1.16-1.3 mm tall,
+                                // never taller than pod_park_pad's 1.3. Set the pins with the coupon's key.
 pod_park_well   = 0.8;          // well diameter over the pod's contact head
 pod_park_plate  = 5.5;          // pin plate, socket floor up to the wiring space
 pod_park_screws = [6.5, 29.5];  // X of the two M2 x 6 that hold the hood, driven from inside the lid
-pod_park_wire   = [[16.5, 19.5], 1.6];  // [[X, X], d] one hole per wire through the lid, behind the hood
-pod_park_board  = [15, 12, 4];  // protection board [X, Z, height off the lid]: MOSFET switch, polyfuse, passives
-pod_park_board_pos = [10.0, 35.7];  // its pocket's lower-left [X, Z] on the lid's inner face
+pod_park_wire   = [[16.3, 19.7], 1.6];  // [[X, X], d] one hole per wire through the lid, behind the hood, 0.3 mm clear of its rib
+pod_park_board  = [15, 12, 4.3];  // protection board [X, Z, room reserved off the lid]: MOSFET switch, polyfuse, passives
+pod_park_board_pos = [10.0, 35.6];  // its pocket's lower-left [X, Z] on the lid's inner face, 0.3 mm under the wire holes
+
+/* [Fit test coupon - print it before anything else] */
+// A small flat print with the fits the build depends on, cut by the same
+// modules and parameters as the parts, so it always tests what is about to be
+// printed (docs/build_instructions.md, "Print the test piece first"). Each
+// label is an offset from its parameter's current value: "+.1" is that
+// parameter + 0.1. Pick the one that fits, add its offset, re-export.
+coupon_pin_steps = [-0.1, 0, 0.1, 0.2];  // spring-pin bores, added to pod_park_pogo_fit
+coupon_mag_steps = [0, 0.1];             // magnet pockets: hood + pod_park_mag_fit, pod + pod_park_mag_clear
+coupon_text      = 3.0;                  // label height: 3 mm bold is about the smallest a 0.4 mm nozzle draws cleanly
+coupon_key_t     = 1.2;                  // the pod-end key's plate
+coupon_rim       = 1.6;                  // plastic round the coupon's holes
+coupon_gap       = 4.0;                  // between the pieces on the plate
 
 /* [Sight - front post and rear notch over the boresight] */
 // Lines the unit up with the target line quickly and repeatably. The speed
@@ -240,7 +264,8 @@ pod_park_board_pos = [10.0, 35.7];  // its pocket's lower-left [X, Z] on the lid
 // for keeping the target well inside the beam, not for precision.
 sight_h      = 2.5;           // post tip and notch top above the top face
 sight_post   = [1.2, 1.2];    // front post [width X, flat top along Y]
-sight_notch  = [1.8, 1.4];    // rear notch [width, depth]: 0.3 mm of light each side of the post
+sight_notch  = [2.2, 1.4];    // rear notch [width, depth]: 0.5 mm of light each side of the post, which a
+                              // printed notch keeps and the eye can still compare
 sight_blade  = 8.0;           // rear blade width, X
 
 /* [Buzzer - bare piezo disc] */
@@ -252,13 +277,15 @@ pz_t        = 0.3;            // brass thickness
 pz_ceramic  = [10.0, 0.25];   // piezo ceramic on the inner face [d, t]
 pz_seat     = 0.8;            // rim glued to the seat
 pz_cavity   = 1.2;            // air between the brass and the wall
-pz_cy       = 10.5;           // disc centre, Y (middle of the inside depth)
+pz_cy       = 10.45;          // disc centre, Y (middle of the inside depth; the seat 0.3 mm short of the lid)
 pz_slot_ribs = [0, 2, 4, 6];  // which grip-rib grooves (from the lowest) open through as slots
-pz_slot_len = 8.0;            // along Y
+pz_slot_len = 7.8;            // along Y; keeps the slots' ends 0.3 mm inside the cavity
 pz_slant    = 45;             // slots rise inward, so rain cannot run in and water inside drains out
 
 /* [Fasteners - M2] */
-m2_pilot    = 1.7;    // thread-forming M2 straight into PETG/ABS
+m2_pilot    = 1.7;    // thread-forming M2 straight into PETG/ABS (the fit test coupon's "M2x6" boss)
+m2_len      = 6.0;    // every M2 screw on the unit is an M2 x 6
+lid_pilot_depth = 6.5;  // lid screw pilots into the shell's bosses
 m2_clear    = 2.4;
 m2_head_d   = 4.4;
 m2_head_h   = 1.2;
@@ -293,7 +320,7 @@ radar_back_y  = radar_stack * cos(win_tilt) + win_size * sin(win_tilt);
 radar_low_z   = win_zb - (win_t + radar_gap) * sin(win_tilt);  // module bottom edge
 
 // Pod park: the pod's numbers come from its own script.
-pp       = pod_park_spec();     // [size, pads, magnets, pad, magnet, skin, back z]
+pp       = pod_park_spec();     // [size, pads, magnets, pad, magnet, skin, back z, end wall, magnet clearance]
 pp_size  = pp[0];
 pp_pad   = pp[3];
 pp_mag   = pp[4];
@@ -733,7 +760,7 @@ module boss_shape(p) {
 module lid_screw_bosses() { for (p = lid_bosses) boss_shape(p); }
 
 module lid_screw_pilots() {
-    for (p = lid_bosses) translate([p[0], y_back - 6.5, p[1]]) y_cylinder(7, m2_pilot);
+    for (p = lid_bosses) translate([p[0], y_back - lid_pilot_depth, p[1]]) y_cylinder(lid_pilot_depth + 0.5, m2_pilot);
 }
 
 // ----------------------------------------------------------------------------
@@ -835,6 +862,8 @@ dock_cx1 = body_w - corner_r + 1;
 dock_y0  = -dock_gap - wall;           // front face of the front lip
 stem_foot = dock_t - 0.8;              // how far the stem sits down into the base
 stem_screws = [[ring_center[0] - 7, 5], [ring_center[0] + 7, 5]];   // [X, Z], M2 x 6 from behind
+stem_pilot_depth = 3.3;                // their pilots into the stem: 0.7 mm of the stem's front face left
+stem_screw_seat  = 3.0;                // their heads seat this far behind the stem, so the tips stop 0.3 short
 
 module dock_outline() {
     // Plan view [X, Y]: full width under the unit, narrowing behind it, where
@@ -875,7 +904,7 @@ module dock_base() {
             // Two M2 x 6 from behind, heads sunk in the buttress, into the stem.
             for (p = stem_screws) {
                 translate([p[0], stem_y1, p[1]]) y_cylinder(buttress[1] + 1, m2_clear);
-                translate([p[0], stem_y1 + 0.1 + 2.7, p[1]]) y_cylinder(buttress[1], m2_head_d + 0.2);
+                translate([p[0], stem_y1 + stem_screw_seat, p[1]]) y_cylinder(buttress[1], m2_head_d + 0.2);
             }
         }
         // Recesses for silicone bumpers, for hitting mats and hard floors.
@@ -922,10 +951,13 @@ module stud_cut() {
     // the pocket has a peaked roof and needs no support.
     z0 = cap_top - cap[2];
     translate([ring_center[0], stud_y, z0 - 1]) {
-        rotate([0, 0, 30]) cylinder(h = bolt_head[1] + 0.25 + 1, d = (bolt_head[0] + 0.3) / cos(30), $fn = 6);
-        cylinder(h = cap[2] + 2, d = bolt_d + 0.25, $fn = 32);
+        bolt_hex(bolt_head[1] + bolt_clear[1] + 1);
+        cylinder(h = cap[2] + 2, d = bolt_d + bolt_clear[2], $fn = 32);
     }
 }
+// The hex pocket for the bolt's head, vertex along Y, along Z from the origin.
+function bolt_hex_ac() = (bolt_head[0] + bolt_clear[0]) / cos(30);   // across corners
+module bolt_hex(h) { rotate([0, 0, 30]) cylinder(h = h, d = bolt_hex_ac(), $fn = 6); }
 
 module stem() {
     // Edges chamfered as three 0.2 mm steps on each face, which is how the
@@ -951,7 +983,7 @@ module stem_cut() {
                    ring_center[1] - ring_od / 2 - orient_gap - orient_slot[1]])
             cube([orient_slot[0], ring_depth + 1, orient_slot[1]]);
     // Pilots for the two screws from the buttress.
-    for (p = stem_screws) translate([p[0], stem_y1 - 3.4, p[1]]) y_cylinder(4, m2_pilot);
+    for (p = stem_screws) translate([p[0], stem_y1 - stem_pilot_depth, p[1]]) y_cylinder(stem_pilot_depth + 0.6, m2_pilot);
 }
 
 module dock_stem() {
@@ -984,14 +1016,17 @@ module pp_hood_profile(i = 0) {
     }
 }
 
+// Plan [X, Y] of the pod's last 1.5 mm as it parks, clamp included: the
+// outline the socket follows, and the fit test coupon's pod-end key.
+module pp_pod_end_2d() projection() intersection() {
+    pod_park_place() pod_park_solid();
+    translate([-1, -1, pp_floor - pod_park_socket[0]]) cube([body_w, 100, pod_park_socket[0] + 0.01]);
+}
+
 module pp_socket_2d() {
-    // Plan [X, Y] of the pocket: the outline of the pod's last 1.5 mm, clamp
-    // included, so it only goes in one way round. Open toward the lid.
-    module slab() intersection() {
-        pod_park_place() pod_park_solid();
-        translate([-1, -1, pp_floor - pod_park_socket[0]]) cube([body_w, 100, pod_park_socket[0] + 0.01]);
-    }
-    offset(delta = pod_park_socket[1]) union() { projection() slab(); translate([0, -4]) projection() slab(); }
+    // Plan [X, Y] of the pocket: that outline plus its clearance, so the pod
+    // only goes in one way round. Open toward the lid.
+    offset(delta = pod_park_socket[1]) union() { pp_pod_end_2d(); translate([0, -4]) pp_pod_end_2d(); }
 }
 
 // Teardrop hole along Z, its point toward -Y: as the hood prints, -Y is up.
@@ -1010,13 +1045,9 @@ module pod_park_hood() {
         // The pocket the pod's end sits in.
         translate([0, 0, pp_hz0 - 1]) linear_extrude(pod_park_socket[0] + 1) pp_socket_2d();
         // Wells over the pod's contact heads, then the pins' bores.
-        for (p = pp_pads) translate([p[0], p[1], 0]) {
-            translate([0, 0, pp_floor - 0.01]) pp_tear(pp_well_top - pp_floor + 0.01, pp_pad[0] + pod_park_well);
-            translate([0, 0, pp_well_top - 0.01]) pp_tear(pp_floor + pod_park_plate - pp_well_top + 0.02,
-                                                         pod_park_pogo[0] + pod_park_pogo_fit);
-        }
+        for (p = pp_pads) translate([p[0], p[1], 0]) pp_pin_cut();
         // Magnets, flush with the socket floor.
-        for (m = pp_mags) translate([m[0], m[1], pp_floor - 0.01]) pp_tear(pp_mag[1] + 0.1, pp_mag[0] + 0.1);
+        for (m = pp_mags) translate([m[0], m[1], 0]) pp_mag_cut();
         // "+" by the +5 V pin, for wiring.
         translate([pp_pads[1][0], pp_pads[1][1] - 5.0, pp_floor - 0.01]) linear_extrude(mark_depth + 0.01)
             for (r = [0, 90]) rotate(r) square([2.4, 0.6], center = true);
@@ -1032,9 +1063,74 @@ module pod_park_hood() {
         for (x = pod_park_screws) translate([x, body_d - 1, pp_screw_z]) y_cylinder(5.5, m2_pilot);
     }
 }
+// A pin's well over the pod's contact head, then its bore up through the pin
+// plate, along Z from the socket floor. `fit` is the bore over the barrel.
+module pp_pin_cut(fit = pod_park_pogo_fit) {
+    translate([0, 0, pp_floor - 0.01]) pp_tear(pp_well_top - pp_floor + 0.01, pp_pad[0] + pod_park_well);
+    translate([0, 0, pp_well_top - 0.01]) pp_tear(pp_floor + pod_park_plate - pp_well_top + 0.02, pod_park_pogo[0] + fit);
+}
+// A magnet's pocket, open at the socket floor. `fit` is over the magnet, diameter and depth.
+module pp_mag_cut(fit = pod_park_mag_fit) {
+    translate([0, 0, pp_floor - 0.01]) pp_tear(pp_mag[1] + fit, pp_mag[0] + fit);
+}
 // Print rear face down on the textured sheet: that is the face seen from
 // behind. The wiring space then opens upward and the pin bores lie across.
-module pod_park_hood_print() { translate([-pp_hx0, -pp_hz0, pp_hy1]) rotate([-90, 0, 0]) pod_park_hood(); }
+module pp_print_place() { translate([-pp_hx0, -pp_hz0, pp_hy1]) rotate([-90, 0, 0]) children(); }
+module pod_park_hood_print() { pp_print_place() pod_park_hood(); }
+
+
+// ----------------------------------------------------------------------------
+//  Fit test coupon: print it first
+// ----------------------------------------------------------------------------
+// Three pieces on one plate, each in the orientation its real part prints in:
+//   pin block  A strip of the hood's pin plate, standing as the hood prints
+//              (socket floor facing you, bores lying across, teardrops up) and
+//              at the hood's height off the bed: the four spring-pin bores of
+//              coupon_pin_steps at the pins' pitch, each behind its contact-head
+//              well, and a hood magnet pocket at each end (coupon_mag_steps),
+//              at the hood's distance from the pins.
+//   tab        Behind it, flat, as thick as the pod's end wall: the pod's two
+//              magnet pockets open underneath under the pod's 0.4 mm skin, as
+//              the pod prints them; the pod's M2 contact-screw pilot through the
+//              wall; an M2 x 6 lid-screw boss; the 1/4"-20 bolt's hex pocket.
+//   socket     The hood's own bottom 1.5 mm: the socket the pod's end sits in.
+//   key        The pod's end outline, with two stand-in contact heads that set
+//              the pins' height: pressed into the socket until it meets the floor,
+//              they push each pin's plunger home and its barrel to depth.
+cp_n      = len(coupon_pin_steps);
+cp_pitch  = pp_pads[1][0] - pp_pads[0][0];            // the pins' pitch
+cp_gap    = pp_pads[0][0] - pp_mags[0][0];            // magnet to pin, as in the hood
+cp_axis   = pp_hy1 - pp_pads[0][1];                   // pins' axis above the bed, as the hood prints
+cp_well_d = pp_pad[0] + pod_park_well;
+cp_h      = cp_axis + cp_well_d / 2 * sqrt(2) + 1.2;  // over the wells' teardrop points
+cp_mag_r  = (pp_mag[0] + pod_park_mag_fit + max(coupon_mag_steps)) / 2;
+cp_w      = 2 * cp_gap + (cp_n - 1) * cp_pitch + 2 * (cp_mag_r + coupon_rim);
+cp_depth  = pod_park_plate;                           // the block, socket floor to the wiring space
+cp_t      = pp[7];                                    // the tab: the pod's end wall
+// The block's features, X from its left end: magnet, pins, magnet.
+function cp_fx(i) = cp_mag_r + coupon_rim + (i == 0 ? 0 : i > cp_n ? 2 * cp_gap + (cp_n - 1) * cp_pitch
+                                                                   : cp_gap + (i - 1) * cp_pitch);
+// "0", "+.1", "-.1": an offset as the labels show it.
+function cp_step(v) = v == 0 ? "0" : str(v > 0 ? "+" : "-", str_join(str(abs(v)), abs(v) < 1 ? 1 : 0));
+
+module cp_label(s, size = coupon_text) {
+    linear_extrude(mark_depth) text(s, size = size, font = font, halign = "center", valign = "center");
+}
+
+module coupon_pin_block() {
+    // Built where the hood's plate is, then laid down with the hood's own print
+    // placement, so the bores and pockets print exactly as the hood's do.
+    translate([0, pp_hz0 - pp_floor, 0]) pp_print_place() difference() {
+        translate([pp_hx0, pp_hy1 - cp_h, pp_floor]) cube([cp_w, cp_h, cp_depth]);
+        for (i = [0 : cp_n - 1]) translate([pp_hx0 + cp_fx(i + 1), pp_pads[0][1], 0])
+            pp_pin_cut(pod_park_pogo_fit + coupon_pin_steps[i]);
+        for (j = [0, 1]) translate([pp_hx0 + cp_fx(j == 0 ? 0 : cp_n + 1), pp_mags[0][1], 0])
+            pp_mag_cut(pod_park_mag_fit + coupon_mag_steps[j]);
+    }
+    // Labels on top, over each opening.
+    for (i = [0 : cp_n - 1]) translate([cp_fx(i + 1), cp_depth / 2, cp_h - 0.01]) cp_label(cp_step(coupon_pin_steps[i]));
+    for (j = [0, 1]) translate([cp_fx(j == 0 ? 0 : cp_n + 1), cp_depth / 2, cp_h - 0.01]) cp_label(cp_step(coupon_mag_steps[j]));
+}
 
 // ----------------------------------------------------------------------------
 //  Ghost components (assembly view only)
@@ -1131,7 +1227,7 @@ function chk(name, v) = str(v >= 0 ? "  ok   " : "  FAIL ", name, ": ", v, " mm"
 module fit_report() {
     ms = phone_mount && holder == "magsafe";
     st = phone_mount && holder == "stud";
-    stud_proud = bolt_len - (cap[2] - bolt_head[1] - 0.25);
+    stud_proud = bolt_len - (cap[2] - bolt_head[1] - bolt_clear[1]);
     radar_x0 = win_cx - win_size / 2 - win_frame;
     radar_x1 = win_cx + win_size / 2 + win_frame;
     // Window opening on the front face must stay inside the R12 outline with a full wall.
@@ -1148,6 +1244,9 @@ module fit_report() {
         chk("cell + MT3608 depth stack       ", inner_d - (batt[2] + 0.2 + mt_pcb[2] + mt_parts_h)),
         chk("divider to ESP32 board          ", esp_pos[1] - (batt_pos[1] + batt[1] + 2 * batt_clear + 1.2)),
         chk("radar housing to right wall     ", (body_w - wall) - radar_x1),
+        // Stays under 0.3: the bevel's outer corner nearly meets the R12 corner's inner wall. Not a fit
+        // between parts, nothing slides here. More room means moving the window, the unit's focal
+        // point, off the boresight the sight is built over, or a smaller bevel, which would change the look.
         chk("window bevel inside outline     ", (corner_r - wall) - sqrt(dx * dx + dz * dz) - win_chamfer),
         chk("radar posts on their corner pads", ledge_pad - (win_size / 2 - abs(radar_holes[0][0]) + 2.3)),
         chk("radar post pilot under its depth", (radar_gap - ledge_t) - 4.5),
@@ -1165,12 +1264,15 @@ module fit_report() {
     st_lines = !st ? [] : [
         chk("stud stands at least 4.5 mm     ", stud_proud - 4.5),
         chk("stud stands at most 6.0 mm      ", 6.0 - stud_proud),
-        chk("hex pocket clear of the stem    ", (stud_y - (bolt_head[0] + 0.3) / cos(30) / 2) - stem_y1 - 0.8),
-        chk("hex pocket inside the cap (Y)   ", (stem_y0 + cap[1]) - (stud_y + (bolt_head[0] + 0.3) / cos(30) / 2) - 1.6),
-        chk("hex pocket inside the cap (X)   ", cap[0] / 2 - (bolt_head[0] + 0.3) / 2 - 1.6),
+        chk("hex pocket clear of the stem    ", (stud_y - bolt_hex_ac() / 2) - stem_y1 - 0.8),
+        chk("hex pocket inside the cap (Y)   ", (stem_y0 + cap[1]) - (stud_y + bolt_hex_ac() / 2) - 1.6),
+        chk("hex pocket inside the cap (X)   ", cap[0] / 2 - (bolt_head[0] + bolt_clear[0]) / 2 - 1.6),
         chk("cap above the unit's top edge   ", (cap_top - cap[2]) - body_h + 3),
     ];
-    stem_lines = !phone_mount ? [] : [chk("stem face past the screw pilots  ", stem_t - 3.4 - 0.4)];
+    stem_lines = !phone_mount ? [] : [
+        chk("stem face past the screw pilots  ", stem_t - stem_pilot_depth - 0.4),
+        chk("stem screw tips short of pilots  ", stem_pilot_depth - (m2_len - stem_screw_seat)),
+    ];
 
     // Pod park. The neck widens into the cap's fillet from z_fillet up.
     neck_x0  = ring_center[0] - stem_neck_w / 2;
@@ -1190,6 +1292,7 @@ module fit_report() {
         chk("pod park: hood inside left edge  ", pp_hx0 - rear_chamfer - 1),
         chk("pod park: socket rim, sides      ", (pp_tx - pod_park_socket[1]) - pp_hx0 - 1.2),
         chk("pod park: socket rim, back       ", pp_hy1 - (pp_ty + pp_size[2] + pod_park_socket[1]) - 1.2),
+        // These two share the pin's stroke and cannot both reach 0.3: see pod_park_recess.
         chk("pod park: pin compression >= 0.4 ", comp - 0.4),
         chk("pod park: pin stroke left >= 0.1 ", pod_park_pogo[2] - comp - 0.1),
         chk("pod park: pin tip recessed       ", pod_park_recess - 0.3),
@@ -1198,8 +1301,8 @@ module fit_report() {
         chk("pod park: solder room over tails ", (pp_hz1 - 1.2) - pp_tail - 1.5),
         chk("pod park: wells apart            ", (pp_pads[1][0] - pp_pads[0][0]) - (pp_pad[0] + pod_park_well) - 1.0),
         chk("pod park: magnet to well         ", (pp_pads[0][0] - (pp_pad[0] + pod_park_well) / 2)
-                                                 - (pp_mags[0][0] + pp_mag[0] / 2 + 0.05) - 0.6),
-        chk("pod park: magnet pocket in plate ", pod_park_plate - pp_mag[1] - 0.1 - 1.2),
+                                                 - (pp_mags[0][0] + (pp_mag[0] + pod_park_mag_fit) / 2) - 0.6),
+        chk("pod park: magnet pocket in plate ", pod_park_plate - pp_mag[1] - pod_park_mag_fit - 1.2),
         chk("pod park: hood screws in plate   ", pod_park_plate / 2 - m2_pilot / 2 - 1.0),
         chk("pod park: wire holes in wiring sp.", ((pp_hz1 - 1.2) - (pp_floor + pod_park_plate)) / 2 - pod_park_wire[1] / 2 - 0.2),
         chk("pod park: wires either side of rib", min(pod_park_cx - 0.6 - (pod_park_wire[0][0] + pod_park_wire[1] / 2),
@@ -1292,6 +1395,8 @@ if (part == "shell") {
     dock_stem_print();
 } else if (part == "pod_park_hood") {
     pod_park_hood_print();
+} else if (part == "fit_test_coupon") {
+    fit_test_coupon();
 } else if (part == "section") {
     // 2D cut through the radar boresight (the Y/Z plane at X = win_cx), for
     // checking the window skin thickness and tilt. Horizontal = Y, vertical = Z.

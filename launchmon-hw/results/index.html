@@ -56,14 +56,12 @@
 
     <div class="extras">
       <div class="extra" data-key="peak_shaft_rate">
-        <span class="x-label">Peak shaft rate</span>
-        <span class="x-value" data-value>&ndash;</span>
-        <span class="x-note" data-note></span>
+        <div class="x-top"><span class="x-label">Peak shaft rate</span><span class="x-note" data-note></span></div>
+        <div class="x-main"><span class="x-value" data-value>&ndash;</span><span class="x-why" data-why></span></div>
       </div>
       <div class="extra" data-key="tempo_ratio">
-        <span class="x-label">Tempo</span>
-        <span class="x-value" data-value>&ndash;</span>
-        <span class="x-note" data-note></span>
+        <div class="x-top"><span class="x-label">Tempo</span><span class="x-note" data-note></span></div>
+        <div class="x-main"><span class="x-value" data-value>&ndash;</span><span class="x-why" data-why></span></div>
       </div>
     </div>
 
@@ -89,36 +87,37 @@
   </section>
 
   <aside class="session" aria-label="Session">
-    <div class="device" id="device">
-      <div class="dev"><span class="d-label">Unit battery</span><span class="d-value" id="batt-ground">&ndash;</span></div>
-      <div class="dev"><span class="d-label">Pod battery</span><span class="d-value" id="batt-pod">&ndash;</span></div>
-      <div class="dev"><span class="d-label">Pod at last shot</span><span class="d-value" id="pod-state">&ndash;</span></div>
+    <div class="device" id="device" title="Sent by the unit with each shot">
+      <span class="dev">Unit <b id="batt-ground">&ndash;</b></span>
+      <span class="dev">Pod <b id="batt-pod">&ndash;</b></span>
+      <span class="dev">Pod data <b id="pod-state">&ndash;</b></span>
     </div>
 
     <div class="session-head">
-      <h2>Session <span class="count" id="count">0 shots</span></h2>
+      <h2><span class="lbl">Session</span> <span class="count" id="count">0 shots</span></h2>
       <div class="session-actions">
         <button class="btn small" id="export" type="button">Export CSV</button>
         <button class="btn small ghost" id="clear" type="button" aria-label="Start a new session">New</button>
       </div>
     </div>
 
-    <div class="avgs" id="avgs">
-      <div class="avg" data-key="club_speed_radial"><span class="a-label">Club</span><span class="a-value">&ndash;</span><span class="a-n"></span></div>
-      <div class="avg" data-key="ball_speed_radial"><span class="a-label">Ball</span><span class="a-value">&ndash;</span><span class="a-n"></span></div>
-      <div class="avg" data-key="smash"><span class="a-label">Smash</span><span class="a-value">&ndash;</span><span class="a-n"></span></div>
-    </div>
-
     <div class="history-wrap">
-      <div class="history-cols" aria-hidden="true">
+      <div class="history-cols row" aria-hidden="true">
         <span>Shot</span><span>Club</span><span>Ball</span><span>Smash</span>
+      </div>
+      <div class="means row" id="means" aria-label="Session means">
+        <span class="h-seq">Mean</span>
+        <span class="mean" data-key="club_speed_radial"><b>&ndash;</b><small></small></span>
+        <span class="mean" data-key="ball_speed_radial"><b>&ndash;</b><small></small></span>
+        <span class="mean" data-key="smash"><b>&ndash;</b><small></small></span>
       </div>
       <ol class="history" id="history" aria-label="Last 20 shots, newest first"></ol>
       <p class="history-empty" id="history-empty">Shots appear here as the unit sends them.</p>
     </div>
-    <p class="message" id="message" role="status" aria-live="polite"></p>
   </aside>
 </main>
+
+<p class="message" id="message" role="status" aria-live="polite"></p>
 
 <footer class="toolbar">
   <div class="seg" role="radiogroup" aria-label="Speed unit" id="units">

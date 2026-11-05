@@ -327,8 +327,15 @@ function renderShot() {
     let value = t.value;
     if (el.classList.contains('extra') && r && r.ok) value += el.dataset.key === 'tempo_ratio' ? ' : 1' : ' °/s';
     el.querySelector('[data-value]').textContent = value;
-    el.querySelector('[data-note]').textContent = t.note || (el.classList.contains('metric') ? ' ' : '');
+    const why = el.querySelector('[data-why]');   // extras: provenance on top, reason beside the dash
+    if (why) {
+      el.querySelector('[data-note]').textContent = t.none ? '' : t.note;
+      why.textContent = t.none ? t.note : '';
+    } else {
+      el.querySelector('[data-note]').textContent = t.note || ' ';
+    }
     el.classList.toggle('is-none', t.none);
+    el.classList.toggle('is-empty', !r);
     const u = el.querySelector('[data-unit]');
     if (u) u.textContent = unitLabel;
   }
@@ -336,12 +343,12 @@ function renderShot() {
   const title = $('shot-title');
   if (!e) title.textContent = state.demoFeed ? 'Demo starting' : 'Waiting for a shot';
   else {
-    const time = new Date(e.receivedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const time = new Date(e.receivedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     title.textContent = `Shot ${e.packet.shotSeq} · ${e.via === 'read on connect' ? 'before connecting' : time}`;
   }
   $('shot-tag').textContent = state.demoFeed
     ? 'DEMO · synthetic, not a measurement'
-    : 'Unit’s on-device preview · radial speed';
+    : 'Unit’s on-device preview · radial';
 }
 
 function volts(mv) { return `${(mv / 1000).toFixed(2)} V`; }
@@ -349,32 +356,31 @@ function volts(mv) { return `${(mv / 1000).toFixed(2)} V`; }
 function renderDevice() {
   const e = latest();
   const g = $('batt-ground'), p = $('batt-pod'), s = $('pod-state');
-  for (const el of [g, p, s]) { el.className = 'd-value'; el.title = ''; }
+  for (const el of [g, p, s]) { el.className = ''; el.title = ''; }
   if (!e) {
     g.textContent = p.textContent = s.textContent = DASH;
-    g.title = p.title = s.title = 'Sent with each shot';
     return;
   }
   const b = e.packet.battery, seq = e.packet.shotSeq;
   if (b.groundKnown) {
-    g.innerHTML = `${volts(b.groundMv)}${b.groundLow ? ' low' : ''} <small>#${seq}</small>`;
-    if (b.groundLow) g.classList.add('low');
-    g.title = `Ground unit cell, as sent with shot ${seq}${b.groundLow ? '; below the unit’s 3.50 V low-battery level' : ''}`;
+    g.textContent = `${volts(b.groundMv)}${b.groundLow ? ' low' : ''}`;
+    if (b.groundLow) g.className = 'low';
+    g.title = `Ground unit cell, sent with shot ${seq}${b.groundLow ? '; under the unit\u2019s 3.50 V low-battery level' : ''}`;
   } else {
-    g.textContent = 'not read'; g.classList.add('unknown');
+    g.textContent = 'not read'; g.className = 'unknown';
     g.title = `The unit had no battery reading at shot ${seq}`;
   }
   if (b.podKnown) {
-    p.innerHTML = `${volts(b.podMv)} <small>#${seq}</small>`;
+    p.textContent = volts(b.podMv);
     p.title = `The last value the pod reported before shot ${seq}. The unit keeps it after the pod disconnects.`;
   } else {
-    p.textContent = 'no report'; p.classList.add('unknown');
+    p.textContent = 'no report'; p.className = 'unknown';
     p.title = 'No pod status received by the unit since it started';
   }
   const pod = P.podAtShot(e.packet);
-  s.textContent = { data: 'Sent data', no_samples: 'No samples', not_connected: 'Not connected' }[pod] || 'Unknown';
-  if (!pod || pod !== 'data') s.classList.add('unknown');
-  s.title = 'From this shot’s IMU readings only. Firmware 0.2 sends no live pod link, dock or charge state to the phone.';
+  s.textContent = { data: 'yes', no_samples: 'none at impact', not_connected: 'not connected' }[pod] || 'unknown';
+  if (pod !== 'data') s.className = 'unknown';
+  s.title = 'Whether the pod\u2019s samples covered this shot, from its IMU readings. Firmware 0.2 sends no live pod link, dock or charge state to the phone.';
 }
 
 function renderSession() {
@@ -383,13 +389,13 @@ function renderSession() {
   $('count').textContent = `${n} shot${n === 1 ? '' : 's'}${state.rejected && !state.demoFeed ? ` · ${state.rejected} rejected` : ''}`;
 
   const packets = list.map((e) => e.packet);
-  for (const el of document.querySelectorAll('.avg')) {
+  for (const el of document.querySelectorAll('.mean')) {
     const key = el.dataset.key;
     const st = P.sessionStats(packets, key);
     const v = st.mean === null ? null : P.formatReading({ ok: true, key, value: st.mean }, state.unit);
-    el.querySelector('.a-value').textContent = v === null ? DASH : v;
-    el.querySelector('.a-n').textContent = n ? `${st.n} of ${st.total}` : '';
-    el.title = n ? `Mean of ${st.n} readings; ${st.refused} shot${st.refused === 1 ? '' : 's'} with no reading` : '';
+    el.querySelector('b').textContent = v === null ? DASH : v;
+    el.querySelector('small').textContent = n ? `${st.n} of ${st.total}` : '';
+    el.title = n ? `Mean of ${st.n} readings; ${st.refused} shot${st.refused === 1 ? '' : 's'} with no reading, left out` : '';
     el.classList.toggle('is-none', v === null);
   }
 
@@ -398,6 +404,7 @@ function renderSession() {
   const frag = document.createDocumentFragment();
   for (const e of list.slice(-HISTORY_SHOWN).reverse()) {
     const li = document.createElement('li');
+    li.className = 'row';
     const seq = document.createElement('span');
     seq.className = 'h-seq';
     seq.textContent = `#${e.packet.shotSeq}`;
@@ -418,8 +425,8 @@ function renderSession() {
   $('history-empty').hidden = n > 0;
   ol.hidden = n === 0;
   const cols = document.querySelectorAll('.history-cols span');
-  cols[1].textContent = `Club ${P.SPEED_UNITS[state.unit].label}`;
-  cols[2].textContent = `Ball ${P.SPEED_UNITS[state.unit].label}`;
+  $('means').hidden = n === 0;
+  cols[0].textContent = `Shot \u00b7 ${P.SPEED_UNITS[state.unit].label}`;
 
   const exp = $('export');
   exp.disabled = !!state.demoFeed || state.real.length === 0;
