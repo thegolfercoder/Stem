@@ -148,6 +148,7 @@ for the slicer settings.
 | `ground_radar_dock_base.stl` | Ground | 1 | As it sits |
 | `ground_radar_dock_stem.stl` | Ground | 1 | Flat, front face down on a textured sheet, stud cap up. Or `ground_radar_dock_stem_magsafe.stl` for the MagSafe-ring head |
 | `ground_radar_pod_park_hood.stl` | Ground | 1 | Rear face down on a textured sheet; no supports |
+| `fit_test_coupon.stl` | Test | 1, once per printer; not part of a kit | Flat as exported, no supports. **Print it first** (build instructions, section 2). Keep its loose key for setting the hood's pins |
 | `shaft_pod_base.stl` | Pod | 1 | Standing on its USB end, clamp bore vertical |
 | `shaft_pod_lid.stl` | Pod | 1 | Outside face down |
 

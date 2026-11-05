@@ -23,3 +23,6 @@ print farm    ($1.50/h machine) $ 8.12  per kit
 budget                           $5-10: WITHIN at the print-farm rate
 
 Labour (support removal, inserts, assembly) is not included.
+
+Not in the kit total (printed once, before the first kit):
+fit_test_coupon.stl                        1     4.2       14  $0.56 at the farm rate, own plate. print first: every tight fit, once per printer

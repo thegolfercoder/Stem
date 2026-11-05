@@ -26,6 +26,11 @@ these with calipers, change the parameter, and re-export with
 | Spring (pogo) pins for the pod park: barrel, length, stroke | `pod_park_pogo` | ground |
 | The pod's brass contact screws: head diameter and height | `pod_park_pad` | pod |
 | Piezo disc diameter | `pz_d` | ground |
+| Magnet pocket fit (hood) and clearance (pod) | `pod_park_mag_fit`, `pod_park_mag_clear` | ground, pod |
+| 1/4"-20 hex bolt pocket | `bolt_clear` | ground |
+
+The **fit test piece** (section 2) tells you which of these your printer needs
+changed before you print the real parts.
 
 A line marked `FAIL` in the fit report is a collision: fix it before printing.
 
@@ -76,6 +81,35 @@ a radome filament, run the bench check in 4.5.
 | PETG temperatures | about 235-245 °C nozzle, 75-85 °C bed, cooling 30-50 % |
 
 Each STL is already in its print orientation.
+
+### Print the test piece first
+
+Print `fit_test_coupon.stl` (about 15 minutes, 4 g, no supports) with the
+settings you will use for everything else, and try the real parts in it. It is
+built from the same CAD as the real parts. Each label is an offset from the
+current setting: if the `+.1` hole fits best, add 0.1 to that parameter and
+re-export with `cad/export_stl.sh`.
+
+- **Pin bores** (the standing block, `-.1` to `+.2`): the spring pin should
+  press in with a firm push and not turn. Change `pod_park_pogo_fit`.
+- **Pin height:** press two pins into neighbouring bores with the key's two
+  round heads until the key meets the block. A caliper depth rod from the block
+  face to the pin tip should read 0.6 mm (0.4-0.9 works). Outside that range,
+  measure your pins and set `pod_park_pogo`.
+- **Hood magnets** (the large holes at the block's ends): the 4 x 2 mm magnet
+  should go in flush with a finger push. Change `pod_park_mag_fit`.
+- **Pod magnets** (ringed, open underneath): turn the piece over; the magnet
+  should seat against the skin, and the skin should be closed and flat. Change
+  `pod_park_mag_clear` in the pod script.
+- **M2x4:** a brass contact screw threads in and its head sits square.
+  **M2x6:** a lid screw drives in without splitting the boss. Change
+  `pod_park_pad` or `m2_pilot`.
+- **1/4:** the bolt head pushes in snug with no rattle. Change `bolt_clear`.
+- **Socket:** the loose key slides through the frame with a light push and no
+  rattle. Change `pod_park_socket`.
+
+**Keep the key.** It sets the hood's spring pins to the right height (section 4,
+step 11).
 
 ### Part-specific notes
 
@@ -192,9 +226,11 @@ Front view, as used: the window is upper right, the battery lower left.
       in the pod. Glue the two hood magnets flush in the socket floor, opposite
       poles facing out, so the pod only parks one way round.
     - *Pins.* Solder a wire to each pin's tail. Press each pin into its bore from
-      the socket side, then push it home with the flat shank of a 4 mm drill bit
-      until the shank meets the bottom of the well: that sets the pin height. A
-      drop of CA at the tail. The pin next to the "+" is +5 V.
+      the socket side, then push both home with the test piece's key: its round
+      heads in the wells, pressed until the key meets the socket floor. That sets
+      each pin 0.6 mm up its well. Do not push with a flat tool against the well
+      floor: it drives the plunger past its stroke and sets the pin about 0.5 mm
+      too deep, so the pod barely presses it. A drop of CA at the tail. The pin next to the "+" is +5 V.
     - *Fit.* Feed the two wires through the small holes in the lid, one each side
       of the rib, and fix the hood with two M2 x 6 screws driven from inside the
       lid. Seal the wire holes with silicone.

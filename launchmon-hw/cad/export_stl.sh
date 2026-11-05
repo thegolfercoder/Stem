@@ -34,6 +34,8 @@ export_part script_ground_radar.scad pod_park_hood   ground_radar_pod_park_hood.
 echo "shaft motion pod"
 export_part script_shaft_imu.scad    base            shaft_pod_base.stl
 export_part script_shaft_imu.scad    lid             shaft_pod_lid.stl
+echo "fit test coupon (print it first; not part of a kit)"
+export_part script_ground_radar.scad fit_test_coupon fit_test_coupon.stl
 
 # Keep one copy of each script's fit report rather than one per part.
 awk '!seen[$0]++' stl/fit_report.txt | sed -n 's/^ECHO: "\(.*\)"$/\1/p' > stl/fit_report.tmp

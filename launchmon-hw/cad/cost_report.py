@@ -50,6 +50,7 @@ class Part:
     qty: int = 1
     support_fraction: float = 0.0  # extra material for supports, as a fraction of the part
     note: str = ""
+    kit: bool = True  # False: printed once by the builder, not part of every kit's cost
 
 
 PARTS = [
@@ -63,6 +64,7 @@ PARTS = [
     Part("ground_radar_pod_park_hood.stl", "ground", note="pod park: the pod hangs and charges here"),
     Part("shaft_pod_base.stl", "pod"),
     Part("shaft_pod_lid.stl", "pod"),
+    Part("fit_test_coupon.stl", "test", kit=False, note="print first: every tight fit, once per printer"),
 ]
 
 
@@ -128,11 +130,15 @@ def main() -> None:
     ]
     totals = {"ground": [0.0, 0.0], "pod": [0.0, 0.0]}
     missing = []
+    extras = []
     for p in PARTS:
         if not (STL_DIR / p.file).exists():
             missing.append(p.file)
             continue
         e = estimate(p)
+        if not p.kit:
+            extras.append((p, e))
+            continue
         g, m = e.grams * p.qty, e.minutes * p.qty
         totals[p.unit][0] += g
         totals[p.unit][1] += m
@@ -159,6 +165,14 @@ def main() -> None:
         "",
         "Labour (support removal, inserts, assembly) is not included.",
     ]
+    if extras:
+        lines += ["", "Not in the kit total (printed once, before the first kit):"]
+        for p, e in extras:
+            g, m = e.grams * p.qty, e.minutes * p.qty
+            usd = (g / 1000.0 * filament_usd_kg + (m + JOB_OVERHEAD_MIN) / 60.0 * farm_usd_h) * FAILURE_ALLOWANCE
+            lines.append(
+                f"{p.file:40s} {p.qty:3d} {g:7.1f} {m:8.0f}  ${usd:4.2f} at the farm rate, own plate. {p.note}"
+            )
     if missing:
         lines.append("Not exported yet: " + ", ".join(missing))
     text = "\n".join(lines) + "\n"

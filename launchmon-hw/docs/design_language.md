@@ -124,6 +124,6 @@ enclosures shrink.
 - Sight: the post sits centred in the notch with an even sliver of light each
   side.
 - Hood: the pod goes in only one way round and the magnets pull it home; the
-  pins stand 0.5 mm above the socket floor and press on the brass heads.
+  pins stand 0.6 mm above the socket floor and press on the brass heads.
 - Buzzer: four clean slots in the rib grooves, clear of stringing; the chirp is
   audible from the address position.

@@ -254,7 +254,9 @@ pod_park_board_pos = [10.0, 35.6];  // its pocket's lower-left [X, Z] on the lid
 coupon_pin_steps = [-0.1, 0, 0.1, 0.2];  // spring-pin bores, added to pod_park_pogo_fit
 coupon_mag_steps = [0, 0.1];             // magnet pockets: hood + pod_park_mag_fit, pod + pod_park_mag_clear
 coupon_text      = 3.0;                  // label height: 3 mm bold is about the smallest a 0.4 mm nozzle draws cleanly
+coupon_text_pins = 2.6;                  // the pin block's labels, which share the pins' 6 mm pitch
 coupon_key_t     = 1.2;                  // the pod-end key's plate
+coupon_t         = 1.2;                  // the coupon's flat plate; under the pod's features it is the pod's end wall
 coupon_rim       = 1.6;                  // plastic round the coupon's holes
 coupon_gap       = 4.0;                  // between the pieces on the plate
 
@@ -1084,8 +1086,8 @@ module pod_park_hood_print() { pp_print_place() pod_park_hood(); }
 // ----------------------------------------------------------------------------
 // Three pieces on one plate, each in the orientation its real part prints in:
 //   pin block  A strip of the hood's pin plate, standing as the hood prints
-//              (socket floor facing you, bores lying across, teardrops up) and
-//              at the hood's height off the bed: the four spring-pin bores of
+//              (socket floor facing you, bores lying across, teardrops up),
+//              lower than in the hood to save time: the four spring-pin bores of
 //              coupon_pin_steps at the pins' pitch, each behind its contact-head
 //              well, and a hood magnet pocket at each end (coupon_mag_steps),
 //              at the hood's distance from the pins.
@@ -1100,21 +1102,22 @@ module pod_park_hood_print() { pp_print_place() pod_park_hood(); }
 cp_n      = len(coupon_pin_steps);
 cp_pitch  = pp_pads[1][0] - pp_pads[0][0];            // the pins' pitch
 cp_gap    = pp_pads[0][0] - pp_mags[0][0];            // magnet to pin, as in the hood
-cp_axis   = pp_hy1 - pp_pads[0][1];                   // pins' axis above the bed, as the hood prints
 cp_well_d = pp_pad[0] + pod_park_well;
+cp_axis   = cp_well_d / 2 + 1.2;                      // pins' axis above the bed: the hood's is higher, printed the same
 cp_h      = cp_axis + cp_well_d / 2 * sqrt(2) + 1.2;  // over the wells' teardrop points
 cp_mag_r  = (pp_mag[0] + pod_park_mag_fit + max(coupon_mag_steps)) / 2;
 cp_w      = 2 * cp_gap + (cp_n - 1) * cp_pitch + 2 * (cp_mag_r + coupon_rim);
 cp_depth  = pod_park_plate;                           // the block, socket floor to the wiring space
-cp_t      = pp[7];                                    // the tab: the pod's end wall
+cp_t      = pp[7];                                    // the pod's end wall: the pad under its features
 // The block's features, X from its left end: magnet, pins, magnet.
 function cp_fx(i) = cp_mag_r + coupon_rim + (i == 0 ? 0 : i > cp_n ? 2 * cp_gap + (cp_n - 1) * cp_pitch
                                                                    : cp_gap + (i - 1) * cp_pitch);
 // "0", "+.1", "-.1": an offset as the labels show it.
 function cp_step(v) = v == 0 ? "0" : str(v > 0 ? "+" : "-", str_join(str(abs(v)), abs(v) < 1 ? 1 : 0));
 
+// A label standing mark_depth proud of the face it is placed on (sunk 0.2 into it, so it fuses).
 module cp_label(s, size = coupon_text) {
-    linear_extrude(mark_depth) text(s, size = size, font = font, halign = "center", valign = "center");
+    translate([0, 0, -0.2]) linear_extrude(mark_depth + 0.2) text(s, size = size, font = font, halign = "center", valign = "center");
 }
 
 module coupon_pin_block() {
@@ -1122,47 +1125,62 @@ module coupon_pin_block() {
     // placement, so the bores and pockets print exactly as the hood's do.
     translate([0, pp_hz0 - pp_floor, 0]) pp_print_place() difference() {
         translate([pp_hx0, pp_hy1 - cp_h, pp_floor]) cube([cp_w, cp_h, cp_depth]);
-        for (i = [0 : cp_n - 1]) translate([pp_hx0 + cp_fx(i + 1), pp_pads[0][1], 0])
+        for (i = [0 : cp_n - 1]) translate([pp_hx0 + cp_fx(i + 1), pp_hy1 - cp_axis, 0])
             pp_pin_cut(pod_park_pogo_fit + coupon_pin_steps[i]);
-        for (j = [0, 1]) translate([pp_hx0 + cp_fx(j == 0 ? 0 : cp_n + 1), pp_mags[0][1], 0])
+        for (j = [0, 1]) translate([pp_hx0 + cp_fx(j == 0 ? 0 : cp_n + 1), pp_hy1 - cp_axis, 0])
             pp_mag_cut(pod_park_mag_fit + coupon_mag_steps[j]);
     }
     // Labels on top, over each opening.
-    for (i = [0 : cp_n - 1]) translate([cp_fx(i + 1), cp_depth / 2, cp_h - 0.01]) cp_label(cp_step(coupon_pin_steps[i]));
-    for (j = [0, 1]) translate([cp_fx(j == 0 ? 0 : cp_n + 1), cp_depth / 2, cp_h - 0.01]) cp_label(cp_step(coupon_mag_steps[j]));
+    // The magnets' labels sit a little outboard, clear of the pins'.
+    for (i = [0 : cp_n - 1]) translate([cp_fx(i + 1), cp_depth / 2, cp_h])
+        cp_label(cp_step(coupon_pin_steps[i]), coupon_text_pins);
+    for (j = [0, 1]) translate([cp_fx(j == 0 ? 0 : cp_n + 1) + (j == 0 ? -0.8 : 0.8), cp_depth / 2, cp_h])
+        cp_label(cp_step(coupon_mag_steps[j]), coupon_text_pins);
 }
 
-// The flat plate behind the block, as thick as the pod's end wall, with the
-// hex for the 1/4"-20 bolt on its own tile at the left end.
+// The flat plate behind the block, with a pad as thick as the pod's end wall
+// under the pod's features, and the hex for the 1/4"-20 bolt on its own tile
+// at the left end.
 cp_hex_w  = bolt_head[0] + bolt_clear[0] + 2 * coupon_rim;         // the hex tile, across flats plus rims
 cp_plate_d = coupon_rim + bolt_hex_ac() + 1.0 + coupon_text + 1.2;  // front edge to back edge
 cp_feat_y = cp_depth + coupon_rim + boss_d / 2;                     // the small features' row
 cp_text_y = cp_plate_d - 1.2 - coupon_text / 2;                     // every label on the plate, one row
 // Pod magnets (0, +.1), the pod's contact-screw pilot, the M2 x 6 boss: X centres and labels.
-cp_pod_mag_x = [coupon_rim + (pp_mag[0] + pp[8]) / 2, coupon_rim + (pp_mag[0] + pp[8]) / 2 + 6.3];
-cp_pilot_x = 19.0;
-cp_boss_x  = cp_w - coupon_rim - 4.9;    // its label, 9.8 mm wide, ends a rim short of the block's end
+// Labels are 3 mm Liberation Sans Bold: "0" is 2.0 mm wide, "+.1" 5.5, "M2x4" and "M2x6" 9.9.
+cp_pod_mag_x = [coupon_rim + (pp_mag[0] + pp[8]) / 2 + 0.6, coupon_rim + (pp_mag[0] + pp[8]) / 2 + 7.2];
+cp_pilot_x = cp_pod_mag_x[1] + 2.75 + 2.5 + 4.95;
+cp_boss_x  = cp_pilot_x + 4.95 + 2.5 + 4.95;
+cp_plate_w = cp_boss_x + 4.95 + coupon_rim;   // the plate behind the block, a little wider than it
+// The pad at the pod's wall thickness: [x, y, w, d], round the pod's two magnets and its pilot.
+cp_pod_pad = [0, cp_depth - 1, cp_pilot_x + 3.0, cp_feat_y + (pp_mag[0] + pp[8]) / 2 + 1.2 - (cp_depth - 1)];
 
 module coupon_plate() {
     difference() {
         union() {
-            translate([-cp_hex_w, 0, 0]) linear_extrude(cp_t) rrect(cp_hex_w + cp_w, cp_plate_d, 2);
+            translate([-cp_hex_w, 0, 0]) linear_extrude(coupon_t) {
+                rrect(cp_hex_w + cp_plate_w, cp_plate_d, 2);
+                translate([cp_hex_w + cp_plate_w - 2, 0]) square([2, cp_plate_d]);   // square where the socket joins
+            }
+            // A ring round each of the pod's magnet pockets, which are hidden under their skin as on the pod.
+            for (j = [0, 1]) translate([cp_pod_mag_x[j], cp_feat_y, cp_t - 0.2]) difference() {
+                cylinder(h = mark_depth + 0.2, d = pp_mag[0] + pp[8] + coupon_mag_steps[j] + 1.8, $fn = 48);
+                translate([0, 0, -1]) cylinder(h = mark_depth + 2, d = pp_mag[0] + pp[8] + coupon_mag_steps[j] + 0.8, $fn = 48);
+            }
+            translate([cp_pod_pad[0], cp_pod_pad[1], 0]) linear_extrude(cp_t) rrect(cp_pod_pad[2], cp_pod_pad[3], 1.5);
             // M2 x 6 boss: a lid-screw pilot as deep as the shell's, closed by the plate.
-            translate([cp_boss_x, cp_feat_y, 0]) cylinder(h = cp_t + lid_pilot_depth, d = boss_d);
+            translate([cp_boss_x, cp_feat_y, 0]) cylinder(h = coupon_t + lid_pilot_depth, d = boss_d);
         }
-        // Room for the standing block.
-        translate([-0.01, -1, -1]) cube([cp_w + 0.02, cp_depth + 1, cp_t + 2]);
         // The pod's magnet pockets open underneath, under the pod's skin, as the pod prints them
         // (standing on its USB end, the pocket's skin bridged at the top).
         for (j = [0, 1]) translate([cp_pod_mag_x[j], cp_feat_y, -1])
             cylinder(h = 1 + cp_t - pp[5], d = pp_mag[0] + pp[8] + coupon_mag_steps[j], $fn = 32);
         // The pod's contact-screw pilot, through a wall as thick as its end wall.
         translate([cp_pilot_x, cp_feat_y, -1]) cylinder(h = cp_t + 2, d = pp_pad[3], $fn = 24);
-        translate([cp_boss_x, cp_feat_y, cp_t]) cylinder(h = lid_pilot_depth + 1, d = m2_pilot);
+        translate([cp_boss_x, cp_feat_y, coupon_t]) cylinder(h = lid_pilot_depth + 1, d = m2_pilot);
         // The bolt's hex, the cap's own pocket.
-        translate([-cp_hex_w / 2, coupon_rim + bolt_hex_ac() / 2, -1]) bolt_hex(cp_t + 2);
+        translate([-cp_hex_w / 2, coupon_rim + bolt_hex_ac() / 2, -1]) bolt_hex(coupon_t + 2);
     }
-    translate([0, 0, cp_t - 0.01]) {
+    translate([0, 0, coupon_t]) {
         for (j = [0, 1]) translate([cp_pod_mag_x[j], cp_text_y]) cp_label(cp_step(coupon_mag_steps[j]));
         translate([cp_pilot_x, cp_text_y]) cp_label("M2x4");
         translate([cp_boss_x, cp_text_y]) cp_label("M2x6");
@@ -1170,11 +1188,17 @@ module coupon_plate() {
     }
 }
 
-// The hood's own bottom 1.5 mm, the socket, laid flat: the key slides through it.
+// The hood's own bottom 1.5 mm, the socket, laid flat: the key slides through
+// it. Round the clamp the hood's floor holds up what lies inside the C; here
+// nothing would, so the socket is opened out to its hull there. The sides and
+// the back, where the fit is felt, are the hood's own.
 module coupon_socket() {
-    translate([-pp_hx0, -body_d, -pp_hz0]) intersection() {
-        pod_park_hood();
-        translate([pp_hx0 - 1, body_d - 1, pp_hz0 - 1]) cube([pod_park_hood[0] + 2, pp_hy1 - body_d + 2, 1 + pod_park_socket[0]]);
+    translate([-pp_hx0, -body_d, -pp_hz0]) difference() {
+        intersection() {
+            pod_park_hood();
+            translate([pp_hx0 - 1, body_d - 1, pp_hz0 - 1]) cube([pod_park_hood[0] + 2, pp_hy1 - body_d + 2, 1 + pod_park_socket[0]]);
+        }
+        translate([0, 0, pp_hz0 - 1]) linear_extrude(pod_park_socket[0] + 2) hull() pp_socket_2d();
     }
 }
 
@@ -1188,13 +1212,14 @@ module coupon_key() {
             cylinder(h = pod_park_recess + pod_park_pogo[2] + 0.01, d = pp_pad[0], $fn = 24);
     }
 }
-function pod_back_z_unit() = pp[6];   // the pod's lowest point (jaw tips), in its own Z
+function pod_back_z_unit() = pp[6];
+cp_join = 0.6;   // the socket's side rim overlaps the plate's end, so the two are one piece   // the pod's lowest point (jaw tips), in its own Z
 
 module fit_test_coupon() {
     coupon_pin_block();
     coupon_plate();
-    translate([cp_w, 0, 0]) coupon_socket();
-    translate([cp_w + pod_park_hood[0] + coupon_gap, 0, 0]) coupon_key();
+    translate([cp_plate_w - cp_join, 0, 0]) coupon_socket();
+    translate([cp_plate_w - cp_join + pod_park_hood[0] + coupon_gap, 0, 0]) coupon_key();
 }
 
 // ----------------------------------------------------------------------------
@@ -1426,6 +1451,9 @@ module fit_report() {
         echo(str("  info  pod park pins at X ", pp_pads[0][0], " (GND) and ", pp_pads[1][0], " (+5 V), Y ", pp_pads[0][1],
                  ", pitch ", pp_pads[1][0] - pp_pads[0][0], " mm; compressed ", pp_pad[1] - pod_park_recess, " of ",
                  pod_park_pogo[2], " mm"));
+        echo(str("  info  fit test coupon: a pin set with the key stands ", pod_park_recess, " mm up its well (",
+                 pp_pad[1] - (pod_park_pogo[2] - 0.1), "-", pp_pad[1] - 0.4, " works); bores ",
+                 [for (v = coupon_pin_steps) pod_park_pogo[0] + pod_park_pogo_fit + v], " mm"));
     }
     echo(str("  info  buzzer disc centre [Y, Z] ", [pz_cy, pz_cz], " on the left wall, ",
              win_cx - win_size / 2 - win_frame - pz_x1, " mm from the radar housing"));
