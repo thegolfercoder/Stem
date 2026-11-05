@@ -49,12 +49,24 @@
 //  PINS (SuperMini)                   see docs/wiring_schematic.md
 //      GPIO0  ADC1_CH0 <- I channel (pre-amp output)
 //      GPIO1  ADC1_CH1 <- Q channel
+//      GPIO3  ADC1_CH3 <- DOCK+ (pod charging contact) via 470k/330k (read between shots)
 //      GPIO4  ADC1_CH4 <- battery via 100k/100k divider (read between shots)
 //      GPIO5           -> radar enable, if the module has one (optional)
+//      GPIO6           -> pod charging switch: 2N7002 gate, AO3401 high side (high = on)
+//      GPIO7           -> piezo disc through 470 R, LEDC square wave
 //      GPIO10          -> 5 mm status LED through 330 R
 //      GPIO9           <- BOOT button: short press toggles raw USB streaming
 //      GPIO20/21       UART0 RX/TX, auxiliary serial (Serial1)
 //      GPIO2, GPIO8 are strapping pins and are left alone.
+//
+//  BUZZER AND POD CHARGING (docs/wiring_schematic.md, "Buzzer", "Dock charging")
+//  The piezo never sounds while a capture is triggered or being analysed, and
+//  the trigger stays disarmed until it has been silent for BUZZER_SETTLE_MS.
+//  The pod's charging contacts are dead until a check, made with the radar
+//  stream paused, finds a parked pod's beacon on them. Checks and non-urgent
+//  beeps wait for the radar to be quiet (nothing moving in the beam for 1 s).
+//  A swing keeps the beam busy through the backswing and downswing, so that
+//  quiet does not come in the 0.2 s a capture keeps from before its trigger.
 // =============================================================================
 
 #include <Arduino.h>
@@ -76,11 +88,20 @@
 #error "Written for the ESP32-C3: ADC1 channel numbers, the TYPE2 DMA format and the sample-rate limits are C3-specific."
 #endif
 
+// Optional parts. Set either to 0 if that part is not fitted; its GPIOs are
+// then left untouched.
+#ifndef STEM_BUZZER
+#define STEM_BUZZER 1      // piezo disc on GPIO7
+#endif
+#ifndef STEM_POD_DOCK
+#define STEM_POD_DOCK 1    // pod charging contacts: switch on GPIO6, sense on GPIO3
+#endif
+
 // -----------------------------------------------------------------------------
 //  Configuration
 // -----------------------------------------------------------------------------
 namespace cfg {
-constexpr uint8_t  FW_MAJOR = 0, FW_MINOR = 1;
+constexpr uint8_t  FW_MAJOR = 0, FW_MINOR = 2;
 
 constexpr int      PIN_I         = 0;     // ADC1_CH0
 constexpr int      PIN_Q         = 1;     // ADC1_CH1
@@ -92,9 +113,13 @@ constexpr int      PIN_BUTTON    = 9;     // BOOT button, active low
 constexpr int      PIN_AUX_RX    = 20;
 constexpr int      PIN_AUX_TX    = 21;
 constexpr uint32_t AUX_BAUD      = 115200;
+constexpr int      PIN_DOCK_SENSE = 3;    // ADC1_CH3
+constexpr int      PIN_DOCK_EN   = 6;     // high turns the pod charging contacts on
+constexpr int      PIN_BUZZER    = 7;
 
 constexpr adc_channel_t CH_I    = ADC_CHANNEL_0;
 constexpr adc_channel_t CH_Q    = ADC_CHANNEL_1;
+constexpr adc_channel_t CH_DOCK = ADC_CHANNEL_3;
 constexpr adc_channel_t CH_BATT = ADC_CHANNEL_4;
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
 constexpr adc_atten_t ADC_ATTEN = ADC_ATTEN_DB_12;   // ~0-2.5 V usable on the C3
@@ -158,6 +183,43 @@ const char* const  UUID_GND_SHOT = "7d2a0102-5b1c-4f6e-9c1e-3a6f1f0c2b10";
 
 constexpr uint32_t BATT_PERIOD_MS = 30000;
 constexpr float    BATT_DIVIDER   = 2.0f;
+constexpr uint16_t BATT_LOW_MV    = 3500;
+
+// "Quiet": no Doppler of either sign above QUIET_RATIO x the trigger's noise
+// level for QUIET_MS, and no pod swing. The backswing and downswing keep the
+// beam busy for about a second before impact, so anything that waits for quiet
+// happens well before a trigger, outside the 0.2 s a capture keeps from before it.
+constexpr float    QUIET_RATIO   = 4.0f;     // the noise learner's own "quiet" test
+constexpr uint32_t QUIET_MS      = 1000;
+
+// Buzzer: a bare 15 mm piezo disc bonded inside the case, driven single-ended
+// with a 50% square wave. A mounted disc is loudest at its mounted resonance,
+// which is lower than the free disc's: tune BUZZER_HZ by ear on the built unit.
+constexpr uint32_t BUZZER_HZ        = 4000;
+constexpr uint8_t  BUZZER_RES_BITS  = 8;
+constexpr uint32_t BUZZER_DUTY      = 1u << (BUZZER_RES_BITS - 1);   // 50%
+constexpr uint32_t BUZZER_SETTLE_MS = 30;      // silent this long before the trigger may arm
+constexpr uint32_t BEEP_MAX_WAIT_MS = 30000;   // a non-urgent beep that found no quiet by then is dropped
+constexpr uint32_t BATT_LOW_REPEAT_MS = 5UL * 60UL * 1000UL;
+
+// Pod charging contacts (DOCK+ / DOCK-). Voltages are at DOCK+.
+constexpr float    DOCK_DIVIDER      = (470.0f + 330.0f) / 330.0f;
+constexpr uint16_t DOCK_PRESENT_MV   = 1600;   // switch off: a parked pod's beacon reads 2.2-2.8 V
+constexpr uint16_t DOCK_KEEP_MV      = 1200;   // while charging, the beacon must stay above this
+constexpr uint16_t DOCK_FOREIGN_MV   = 4300;   // switch off and this high: something powered is on the contacts
+constexpr uint16_t DOCK_ON_MIN_MV    = 4000;   // switch on and below this: overload
+constexpr uint32_t DOCK_POLL_MS      = 3000;   // look for a pod this often, when quiet
+constexpr uint32_t DOCK_CONFIRM_MS   = 300;    // a second look before switching on
+constexpr uint32_t DOCK_CHECK_MS     = 5000;   // while charging, check the pod is still there, when quiet
+constexpr uint32_t DOCK_CHECK_MAX_MS = 60000;  // and at least this often, quiet or not
+constexpr uint32_t DOCK_OFF_SETTLE_MS = 30;    // switch off -> beacon readable: gate RC 4.7 ms, sense RC 1.9 ms
+constexpr uint32_t DOCK_ON_SETTLE_MS = 20;     // switch on -> DOCK+ up: soft start ~0.5 ms
+constexpr uint32_t DOCK_ARM_SETTLE_MS = 100;   // no trigger this long after the switch changes the 5 V load
+constexpr uint32_t DOCK_LOCKOUT_MS   = 30000;  // after a fault; doubles on each repeat
+constexpr uint32_t DOCK_LOCKOUT_MAX_MS = 600000;
+constexpr uint32_t DOCK_POD_TRUST_MS = 2500;   // a pod status this long after a switch change reflects it
+constexpr uint16_t DOCK_MIN_BATT_MV  = 3550;   // stop charging the pod below this: the unit's own run time first
+constexpr uint16_t DOCK_RESUME_BATT_MV = 3700;
 }  // namespace cfg
 
 // -----------------------------------------------------------------------------
@@ -296,42 +358,52 @@ static void adcStreamStop() {
   g_adc = nullptr;
 }
 
-// Battery: the continuous driver owns ADC1 while it runs, so it is stopped,
-// one calibrated one-shot reading is taken, and it is started again. Only
-// done between shots.
-static uint16_t readBatteryMv() {
-  // The stream pauses for a few milliseconds here, which leaves a gap in the
-  // ring. It only runs while nothing is triggered, and the next shot's 0.2 s
-  // pre-trigger is refilled within 0.2 s of restarting.
+// One-shot readings (battery, pod charging contact). The continuous driver owns
+// ADC1 while it runs, so it is stopped, fn runs with a one-shot unit open, and
+// the stream is started again. Only done between shots.
+// The stream pauses for a few milliseconds here, which leaves a gap in the
+// ring. It only runs while nothing is triggered, and the next shot's 0.2 s
+// pre-trigger is refilled within 0.2 s of restarting.
+template <typename F> static void withAdcPaused(F&& fn) {
   if (g_adc_lock) xSemaphoreTake(g_adc_lock, portMAX_DELAY);
   bool was_streaming = g_adc != nullptr;
   adcStreamStop();
-  int mv = 0;
   adc_oneshot_unit_handle_t unit = nullptr;
   adc_oneshot_unit_init_cfg_t ucfg = {};
   ucfg.unit_id = ADC_UNIT_1;
   if (adc_oneshot_new_unit(&ucfg, &unit) == ESP_OK) {
-    adc_oneshot_chan_cfg_t ccfg = {};
-    ccfg.atten = cfg::ADC_ATTEN;
-    ccfg.bitwidth = ADC_BITWIDTH_DEFAULT;
-    adc_oneshot_config_channel(unit, cfg::CH_BATT, &ccfg);
-    adc_cali_handle_t cali = nullptr;
-    adc_cali_curve_fitting_config_t cc = {};
-    cc.unit_id = ADC_UNIT_1;
-    cc.chan = cfg::CH_BATT;
-    cc.atten = cfg::ADC_ATTEN;
-    cc.bitwidth = ADC_BITWIDTH_DEFAULT;
-    bool have_cali = adc_cali_create_scheme_curve_fitting(&cc, &cali) == ESP_OK;
-    int sum = 0, raw = 0;
-    for (int i = 0; i < 16; ++i) { adc_oneshot_read(unit, cfg::CH_BATT, &raw); sum += raw; }
-    raw = sum / 16;
-    if (have_cali) adc_cali_raw_to_voltage(cali, raw, &mv);
-    else mv = raw * 2500 / 4095;
-    if (have_cali) adc_cali_delete_scheme_curve_fitting(cali);
+    fn(unit);
     adc_oneshot_del_unit(unit);
   }
   if (was_streaming && !adcStreamStart()) Serial.println("{\"type\":\"error\",\"msg\":\"ADC restart failed\"}");
   if (g_adc_lock) xSemaphoreGive(g_adc_lock);
+}
+
+// Calibrated millivolts at the pin, averaged over 16 conversions.
+static int oneshotMv(adc_oneshot_unit_handle_t unit, adc_channel_t ch) {
+  adc_oneshot_chan_cfg_t ccfg = {};
+  ccfg.atten = cfg::ADC_ATTEN;
+  ccfg.bitwidth = ADC_BITWIDTH_DEFAULT;
+  adc_oneshot_config_channel(unit, ch, &ccfg);
+  adc_cali_handle_t cali = nullptr;
+  adc_cali_curve_fitting_config_t cc = {};
+  cc.unit_id = ADC_UNIT_1;
+  cc.chan = ch;
+  cc.atten = cfg::ADC_ATTEN;
+  cc.bitwidth = ADC_BITWIDTH_DEFAULT;
+  bool have_cali = adc_cali_create_scheme_curve_fitting(&cc, &cali) == ESP_OK;
+  int sum = 0, raw = 0, mv = 0;
+  for (int i = 0; i < 16; ++i) { adc_oneshot_read(unit, ch, &raw); sum += raw; }
+  raw = sum / 16;
+  if (have_cali) adc_cali_raw_to_voltage(cali, raw, &mv);
+  else mv = raw * 2500 / 4095;
+  if (have_cali) adc_cali_delete_scheme_curve_fitting(cali);
+  return mv;
+}
+
+static uint16_t readBatteryMv() {
+  int mv = 0;
+  withAdcPaused([&](adc_oneshot_unit_handle_t unit) { mv = oneshotMv(unit, cfg::CH_BATT); });
   return uint16_t(mv * cfg::BATT_DIVIDER);
 }
 
@@ -541,7 +613,17 @@ struct __attribute__((packed)) PodStatus {
   PodHeader h; uint16_t battery_mv; uint32_t sample_period_ns; uint8_t who, accel_fs_g;
   uint16_t gyro_fs_dps; uint32_t dropped; uint8_t fw_major, fw_minor;
 };
+// Appended to the status packet by pod firmware 0.2 and later. Older pods send
+// the 28-byte status alone, and these stay unknown (0).
+struct __attribute__((packed)) PodPower { uint8_t flags; uint16_t dock_pad_mv; };
+namespace podpower {
+constexpr uint8_t DOCK_POWER = 1 << 0;   // the pod sees the dock's 5 V on its DOCK+ pad
+constexpr uint8_t USB_HOST   = 1 << 1;   // its own USB-C is plugged into a computer
+constexpr uint8_t CHARGING   = 1 << 2;   // on dock power and not yet judged full (an estimate)
+constexpr uint8_t CHARGED    = 1 << 3;   // cell held at the charger's 4.2 V long enough to call full (an estimate)
+}
 static_assert(sizeof(PodHeader) == 12 && sizeof(PodImu) == 12, "must match the pod");
+static_assert(sizeof(PodStatus) == 28 && sizeof(PodPower) == 3, "must match the pod");
 
 struct PodSample { PodImu s; uint32_t t_ground_us; uint32_t t_pod_us; };   // 20 bytes, as streamed
 static_assert(sizeof(PodImu) + 8 == 20, "IMU block record layout is part of the USB format");
@@ -555,6 +637,12 @@ static volatile uint32_t      g_pod_dropped = 0;
 static volatile uint32_t      g_pod_swing_ms = 0;            // last packet flagged SWING_ACTIVE
 static volatile bool          g_pod_hold = false;            // set while the ring is streamed to USB
 static volatile uint32_t      g_pod_dropped_held = 0;        // packets refused while held
+static std::atomic<uint8_t>   g_pod_power{0};                // PodPower flags from the latest status
+static std::atomic<uint16_t>  g_pod_pad_mv{0};
+static std::atomic<uint32_t>  g_pod_power_ms{0};             // millis() of that status
+static std::atomic<uint32_t>  g_pod_power_seq{0};            // counts statuses that carried PodPower
+static std::atomic<bool>      g_pod_evt_connect{false};      // set in BLE callbacks, consumed by loop()
+static std::atomic<bool>      g_pod_evt_disconnect{false};
 
 static NimBLEClient*          g_pod_client = nullptr;
 static NimBLEAddress          g_pod_addr;
@@ -570,6 +658,13 @@ static void onPodNotify(NimBLERemoteCharacteristic*, uint8_t* data, size_t len, 
     g_pod_batt_mv = st->battery_mv;
     if (st->sample_period_ns > 100000 && st->sample_period_ns < 10000000) g_pod_period_ns = st->sample_period_ns;
     g_pod_dropped = st->dropped;
+    if (len >= sizeof(PodStatus) + sizeof(PodPower)) {
+      const auto* pw = reinterpret_cast<const PodPower*>(data + sizeof(PodStatus));
+      g_pod_power = pw->flags;
+      g_pod_pad_mv = pw->dock_pad_mv;
+      g_pod_power_ms = millis();
+      g_pod_power_seq.fetch_add(1);
+    }
     return;
   }
   if (h->type != 1 || len < sizeof(PodHeader) + h->n * sizeof(PodImu)) return;
@@ -610,10 +705,15 @@ class PodScanCallbacks : public NimBLEScanCallbacks {
 };
 
 class PodClientCallbacks : public NimBLEClientCallbacks {
-  void onConnect(NimBLEClient*) override { Serial.println("{\"type\":\"event\",\"msg\":\"pod connected\"}"); }
+  void onConnect(NimBLEClient*) override {
+    Serial.println("{\"type\":\"event\",\"msg\":\"pod connected\"}");
+    g_pod_evt_connect = true;
+  }
   void onDisconnect(NimBLEClient*, int reason) override {
     Serial.printf("{\"type\":\"event\",\"msg\":\"pod disconnected\",\"reason\":%d}\n", reason);
     g_pod_offset_us = INT64_MAX;
+    g_pod_power = 0;
+    g_pod_evt_disconnect = true;
   }
 };
 
@@ -918,13 +1018,316 @@ static void ledService() {
 }
 
 // -----------------------------------------------------------------------------
-//  Arduino entry points
+//  Buzzer: piezo disc on GPIO7 through 470 R, LEDC square wave at BUZZER_HZ.
+//  Non-blocking: a pattern is a list of tone-on / tone-off times, advanced from
+//  loop(). Urgent patterns (ready, shot read) play as soon as no capture is in
+//  progress; the rest wait for quiet. Silence is duty 0: no edges at all.
+// -----------------------------------------------------------------------------
+enum class Beep : uint8_t { READY, SHOT, POD_PARKED, POD_CONNECTED, POD_DISCONNECTED, LOW_BATTERY, DOCK_FAULT, COUNT };
+
+struct BeepPattern { uint8_t steps; bool urgent; uint16_t ms[6]; };   // on, off, on, ...
+static const BeepPattern kBeeps[size_t(Beep::COUNT)] = {
+    {1, true,  {60}},                         // READY: one short chirp
+    {3, true,  {60, 90, 60}},                 // SHOT: two short chirps
+    {5, false, {40, 60, 40, 60, 40}},         // POD_PARKED: three quick chirps
+    {3, false, {200, 80, 60}},                // POD_CONNECTED: long, short
+    {3, false, {60, 80, 200}},                // POD_DISCONNECTED: short, long
+    {5, false, {300, 200, 300, 200, 300}},    // LOW_BATTERY: three long
+    {1, false, {800}},                        // DOCK_FAULT: one very long
+};
+
+struct BeepRequest { bool pending; uint32_t at_ms; };
+static BeepRequest g_beep_req[size_t(Beep::COUNT)] = {};
+static bool        g_buzzer_on = true;        // serial 'b' toggles
+static int         g_beep_playing = -1;       // index into kBeeps; -1 = silent
+static uint32_t    g_beep_silent_ms = 0;
+#if STEM_BUZZER
+static uint8_t     g_beep_step = 0;
+static uint32_t    g_beep_step_ms = 0;
+#endif
+
+static void beep(Beep b) {
+#if STEM_BUZZER
+  if (g_buzzer_on) g_beep_req[size_t(b)] = BeepRequest{true, millis()};
+#else
+  (void)b;
+#endif
+}
+
+static void buzzerStop(uint32_t now) {
+#if STEM_BUZZER
+  if (g_beep_playing < 0) return;
+  ledcWrite(cfg::PIN_BUZZER, 0);
+  g_beep_playing = -1;
+  g_beep_silent_ms = now;
+#else
+  (void)now;
+#endif
+}
+
+static bool buzzerSilentFor(uint32_t now, uint32_t ms) { return g_beep_playing < 0 && now - g_beep_silent_ms >= ms; }
+
+// may_sound is false while a capture is triggered or being analysed, or a pod
+// swing has begun (the radar is about to arm): a tone is cut off and nothing
+// new starts.
+static void buzzerService(uint32_t now, bool may_sound, bool quiet) {
+#if STEM_BUZZER
+  if (!may_sound) { buzzerStop(now); return; }
+  if (g_beep_playing >= 0) {
+    const BeepPattern& p = kBeeps[g_beep_playing];
+    if (now - g_beep_step_ms < p.ms[g_beep_step]) return;
+    g_beep_step_ms = now;
+    if (++g_beep_step >= p.steps) { buzzerStop(now); return; }
+    ledcWrite(cfg::PIN_BUZZER, (g_beep_step % 2 == 0) ? cfg::BUZZER_DUTY : 0);
+    return;
+  }
+  for (size_t i = 0; i < size_t(Beep::COUNT); ++i) {   // enum order is priority order
+    BeepRequest& r = g_beep_req[i];
+    if (!r.pending) continue;
+    if (!kBeeps[i].urgent) {
+      if (now - r.at_ms > cfg::BEEP_MAX_WAIT_MS) { r.pending = false; continue; }
+      if (!quiet) continue;
+    }
+    // Disarm before the first edge, then check that no trigger slipped in.
+    g_armed = false;
+    if (g_triggered || g_capture_ready) return;
+    r.pending = false;
+    g_beep_playing = int(i);
+    g_beep_step = 0;
+    g_beep_step_ms = now;
+    ledcWrite(cfg::PIN_BUZZER, cfg::BUZZER_DUTY);
+    return;
+  }
+#else
+  (void)now; (void)may_sound; (void)quiet;
+#endif
+}
+
+// -----------------------------------------------------------------------------
+//  Pod charging contacts (docs/wiring_schematic.md, "Dock charging").
+//  GPIO6 drives a 2N7002 that pulls the gate of an AO3401 high-side switch from
+//  the 5 V rail to DOCK+, through a 0.2 A PTC. The contacts are dead until a
+//  check finds the pod's beacon: with the switch off, a parked pod drives DOCK+
+//  to 2.2-2.8 V through its own 220k from its 3.3 V rail, against the 800k
+//  divider to ground here. Water across the contacts can only pull DOCK+ down,
+//  so wet contacts never look like a pod. While charging, each check reads
+//  DOCK+ with the switch on (overload test), turns it off for 30 ms and reads
+//  the beacon again (is the pod still there?). Every check runs inside one
+//  pause of the radar stream.
 // -----------------------------------------------------------------------------
 static uint16_t g_batt_mv = 0;
+
+enum class DockState : uint8_t { OFF, CONFIRMING, CHARGING, LOCKOUT, LOW_BATTERY };
+static DockState g_dock = DockState::OFF;
+static uint32_t  g_dock_changed_ms = 0;        // last time the switch changed state
+
+static bool podDocked(uint32_t now) {
+  return g_dock == DockState::CHARGING ||
+         ((g_pod_power.load() & podpower::DOCK_POWER) && now - g_pod_power_ms.load() < 5000);
+}
+
+#if STEM_POD_DOCK
+static uint32_t  g_dock_check_ms = 0;          // last check
+static uint32_t  g_dock_on_ms = 0;             // start of this charging session
+static uint32_t  g_dock_lockout_until = 0, g_dock_lockout_ms = cfg::DOCK_LOCKOUT_MS;
+static bool      g_dock_check_now = false;     // the pod says it lost dock power: look now
+static bool      g_dock_pod_confirmed = false; // the pod reported dock power since the last switch change
+
+static const char* dockStateText(DockState d) {
+  switch (d) {
+    case DockState::OFF: case DockState::CONFIRMING: return "off";
+    case DockState::CHARGING: return "charging";
+    case DockState::LOCKOUT: return "fault";
+    case DockState::LOW_BATTERY: return "low_battery";
+  }
+  return "unknown";
+}
+
+static void dockReport(const char* reason, uint16_t off_mv, uint16_t on_mv) {
+  Serial.printf("{\"type\":\"pod_dock\",\"state\":\"%s\",\"reason\":\"%s\",\"off_mv\":%u,\"on_mv\":%u}\n",
+                dockStateText(g_dock), reason, off_mv, on_mv);
+}
+
+static void dockSwitch(bool on) {
+  digitalWrite(cfg::PIN_DOCK_EN, on ? HIGH : LOW);
+  g_dock_changed_ms = millis();
+  g_dock_pod_confirmed = false;
+}
+
+static uint16_t dockMv(adc_oneshot_unit_handle_t unit) {
+  return uint16_t(float(oneshotMv(unit, cfg::CH_DOCK)) * cfg::DOCK_DIVIDER);
+}
+
+static void dockFault(uint32_t now, const char* reason, uint16_t off_mv, uint16_t on_mv) {
+  g_dock = DockState::LOCKOUT;
+  g_dock_lockout_until = now + g_dock_lockout_ms;
+  g_dock_lockout_ms = std::min(g_dock_lockout_ms * 2, cfg::DOCK_LOCKOUT_MAX_MS);
+  dockReport(reason, off_mv, on_mv);
+  beep(Beep::DOCK_FAULT);
+}
+
+static void dockCheck(uint32_t now) {
+  const bool was_on = g_dock == DockState::CHARGING;
+  uint16_t on_mv = 0, off_mv = 0;
+  bool overload = false, switched_on = false;
+  g_armed = false;   // the switch is about to change the 5 V load
+  withAdcPaused([&](adc_oneshot_unit_handle_t unit) {
+    // The radar stream is stopped for the whole check, so no capture can be
+    // running while it waits for the switch to settle.
+    if (was_on) {
+      on_mv = dockMv(unit);
+      dockSwitch(false);
+      if (on_mv < cfg::DOCK_ON_MIN_MV) { overload = true; return; }
+      delay(cfg::DOCK_OFF_SETTLE_MS);
+    }
+    off_mv = dockMv(unit);
+    uint16_t need = was_on ? cfg::DOCK_KEEP_MV : cfg::DOCK_PRESENT_MV;
+    bool want = (was_on || g_dock == DockState::CONFIRMING) && off_mv >= need && off_mv < cfg::DOCK_FOREIGN_MV;
+    if (!want) return;
+    dockSwitch(true);
+    delay(cfg::DOCK_ON_SETTLE_MS);
+    on_mv = dockMv(unit);
+    if (on_mv < cfg::DOCK_ON_MIN_MV) { dockSwitch(false); overload = true; return; }
+    switched_on = true;
+  });
+  if (g_debug_trigger)
+    Serial.printf("{\"type\":\"dock_debug\",\"state\":\"%s\",\"off_mv\":%u,\"on_mv\":%u}\n", dockStateText(g_dock),
+                  off_mv, on_mv);
+
+  if (overload) {
+    dockFault(now, "overload: DOCK+ sagged with the switch on", off_mv, on_mv);
+    return;
+  }
+  if (off_mv >= cfg::DOCK_FOREIGN_MV) {
+    dockFault(now, "voltage on the contacts with the switch off", off_mv, 0);
+    return;
+  }
+  switch (g_dock) {
+    case DockState::OFF:
+      if (off_mv >= cfg::DOCK_PRESENT_MV) g_dock = DockState::CONFIRMING;
+      else if (off_mv < cfg::DOCK_KEEP_MV) g_dock_lockout_ms = cfg::DOCK_LOCKOUT_MS;   // contacts clear
+      break;
+    case DockState::CONFIRMING:
+      if (switched_on) {
+        g_dock = DockState::CHARGING;
+        g_dock_on_ms = now;
+        dockReport("pod parked", off_mv, on_mv);
+        beep(Beep::POD_PARKED);
+      } else {
+        g_dock = DockState::OFF;
+      }
+      break;
+    case DockState::CHARGING:
+      if (!switched_on) {
+        g_dock = DockState::OFF;
+        dockReport("no pod on the contacts (lifted, or contacts wet)", off_mv, on_mv);
+      } else if (now - g_dock_on_ms > 60000) {
+        g_dock_lockout_ms = cfg::DOCK_LOCKOUT_MS;   // a session that ran a minute clears past faults
+      }
+      break;
+    default:
+      break;
+  }
+}
+#endif
+
+// may_check is false while a capture is in progress, a tone plays or a pod
+// swing has begun.
+static void dockService(uint32_t now, bool may_check, bool quiet) {
+#if STEM_POD_DOCK
+  // The pod's own view. Once it has reported dock power since the switch last
+  // changed, a later report without it means it was lifted: check at once
+  // rather than waiting for the next scheduled look.
+  static uint32_t seen_seq = 0;
+  uint32_t seq = g_pod_power_seq.load();
+  if (seq != seen_seq) {
+    seen_seq = seq;
+    if (g_dock == DockState::CHARGING && podConnected() &&
+        int32_t(g_pod_power_ms.load() - g_dock_changed_ms) >= int32_t(cfg::DOCK_POD_TRUST_MS)) {
+      if (g_pod_power.load() & podpower::DOCK_POWER) g_dock_pod_confirmed = true;
+      else if (g_dock_pod_confirmed) g_dock_check_now = true;
+    }
+  }
+
+  if (!may_check) return;   // never step the 5 V load during a capture, a tone or a swing
+
+  // The ground unit's own cell comes first.
+  bool batt_known = g_batt_mv > 1000;
+  if (g_dock == DockState::LOW_BATTERY) {
+    if (batt_known && g_batt_mv >= cfg::DOCK_RESUME_BATT_MV) {
+      g_dock = DockState::OFF;
+      dockReport("ground unit battery recovered", 0, 0);
+    }
+    return;
+  }
+  if (batt_known && g_batt_mv < cfg::DOCK_MIN_BATT_MV) {
+    if (g_dock == DockState::CHARGING) dockSwitch(false);
+    g_dock = DockState::LOW_BATTERY;
+    dockReport("ground unit battery low", 0, 0);
+    return;
+  }
+  if (g_dock == DockState::LOCKOUT) {
+    if (int32_t(now - g_dock_lockout_until) < 0) return;
+    g_dock = DockState::OFF;
+  }
+  // A pod whose own USB-C is on a computer has power already. The SuperMini
+  // ties VBUS straight to its 5V pin, so charging it from here too could push
+  // current up the cable into a sagging host port: leave the contacts off.
+  bool pod_on_usb = podConnected() && (g_pod_power.load() & podpower::USB_HOST) && now - g_pod_power_ms.load() < 5000;
+  if (pod_on_usb) {
+    bool was_on = g_dock == DockState::CHARGING;
+    g_dock = DockState::OFF;
+    if (was_on) {
+      dockSwitch(false);
+      dockReport("pod is on its own USB power", 0, 0);
+    }
+    return;
+  }
+
+  uint32_t since = now - g_dock_check_ms;
+  uint32_t period = g_dock == DockState::CONFIRMING ? cfg::DOCK_CONFIRM_MS
+                    : g_dock == DockState::CHARGING ? cfg::DOCK_CHECK_MS
+                                                    : cfg::DOCK_POLL_MS;
+  bool due = g_dock_check_now || since >= cfg::DOCK_CHECK_MAX_MS ||
+             (since >= period && (quiet || g_dock == DockState::CONFIRMING));
+  if (!due) return;
+  g_dock_check_now = false;
+  g_dock_check_ms = now;
+  dockCheck(now);
+#else
+  (void)now; (void)may_check; (void)quiet;
+#endif
+}
+
+// Prints the pod's power state when it changes.
+static void podPowerReport() {
+  static uint8_t last = 0xFF;
+  if (g_pod_power_seq.load() == 0) return;   // no pod has reported power state yet
+  uint8_t f = g_pod_power.load();
+  if (f == last) return;
+  last = f;
+  const char* charge = (f & podpower::CHARGED) ? "charged" : (f & podpower::CHARGING) ? "charging" : "not_charging";
+  Serial.printf("{\"type\":\"pod_power\",\"dock_power\":%s,\"usb_host\":%s,\"charge\":\"%s\",\"battery_mv\":%u,"
+                "\"dock_pad_mv\":%u}\n",
+                (f & podpower::DOCK_POWER) ? "true" : "false", (f & podpower::USB_HOST) ? "true" : "false", charge,
+                g_pod_batt_mv, g_pod_pad_mv.load());
+}
+
+// -----------------------------------------------------------------------------
+//  Arduino entry points
+// -----------------------------------------------------------------------------
 static uint16_t g_shot_seq = 0;
 static bool     g_stream_raw = false;
 
+static uint32_t g_ready_beep_ms = 0;   // when to sound the ready chirp; 0 = not pending
+
 void setup() {
+#if STEM_POD_DOCK
+  // First thing: the contacts stay dead. The 10k on the 2N7002 gate has held
+  // them off through reset; this keeps them off.
+  pinMode(cfg::PIN_DOCK_EN, OUTPUT);
+  digitalWrite(cfg::PIN_DOCK_EN, LOW);
+#endif
   pinMode(cfg::PIN_LED, OUTPUT);
   pinMode(cfg::PIN_BUTTON, INPUT_PULLUP);
   if (cfg::PIN_RADAR_EN >= 0) {
@@ -935,8 +1338,17 @@ void setup() {
   uint32_t t0 = millis();
   while (!Serial && millis() - t0 < 1000) delay(10);
   Serial1.begin(cfg::AUX_BAUD, SERIAL_8N1, cfg::PIN_AUX_RX, cfg::PIN_AUX_TX);
-  Serial.printf("{\"type\":\"boot\",\"fw\":\"%u.%u\",\"fs_hz\":%u,\"fft_n\":%u,\"hz_per_bin\":%.3f}\n",
-                cfg::FW_MAJOR, cfg::FW_MINOR, unsigned(cfg::FS_HZ), unsigned(cfg::FFT_N), HZ_PER_BIN);
+  Serial.printf("{\"type\":\"boot\",\"fw\":\"%u.%u\",\"fs_hz\":%u,\"fft_n\":%u,\"hz_per_bin\":%.3f,"
+                "\"buzzer\":%s,\"pod_dock\":%s}\n",
+                cfg::FW_MAJOR, cfg::FW_MINOR, unsigned(cfg::FS_HZ), unsigned(cfg::FFT_N), HZ_PER_BIN,
+                STEM_BUZZER ? "true" : "false", STEM_POD_DOCK ? "true" : "false");
+#if STEM_BUZZER
+  // LEDC has its own timers and clock divider; it shares nothing with the ADC's
+  // digital controller or its DMA. Duty 0 until a pattern plays.
+  if (!ledcAttach(cfg::PIN_BUZZER, cfg::BUZZER_HZ, cfg::BUZZER_RES_BITS))
+    Serial.println("{\"type\":\"error\",\"msg\":\"buzzer PWM failed to start\"}");
+  ledcWrite(cfg::PIN_BUZZER, 0);
+#endif
 
   g_iq  = static_cast<int16_t(*)[2]>(malloc(cfg::CAPTURE_PAIRS * sizeof(int16_t[2])));
   g_pod = static_cast<PodSample*>(malloc(cfg::POD_RING * sizeof(PodSample)));
@@ -956,20 +1368,26 @@ void setup() {
   }
   bleInit();
   Serial.printf("{\"type\":\"ready\",\"battery_mv\":%u}\n", g_batt_mv);
+  // Chirp once the trigger has learnt its noise level (64 blocks, 0.4 s), so
+  // the chirp is not part of what it learns.
+  g_ready_beep_ms = millis() + 1000;
 }
 
 void loop() {
   static uint32_t last_batt_ms = 0, last_debug_ms = 0, button_down_ms = 0;
+  static uint32_t batt_low_beep_ms = 0, radar_busy_ms = 0;
+  static bool     batt_low = false;
   uint32_t now = millis();
 
   podService();
-  // With a pod linked, arm only while it reports a swing (and 2 s after), so a
-  // passing cart or a practice waggle cannot fire a capture. Without a pod the
-  // unit runs radar-only and stays armed.
-  bool pod_says_swing = now - g_pod_swing_ms < 2000;
-  g_armed = g_user_armed && (!podConnected() || pod_says_swing);
+  podPowerReport();
+  // A pod sitting on the charging contacts is not on a club.
+  bool pod_on_club = podConnected() && !podDocked(now);
+  if (g_pod_evt_connect.exchange(false) && !podDocked(now)) beep(Beep::POD_CONNECTED);
+  if (g_pod_evt_disconnect.exchange(false) && !podDocked(now)) beep(Beep::POD_DISCONNECTED);
 
   if (g_capture_ready) {
+    buzzerStop(now);   // normally already silent: the trigger cannot arm while a tone plays
     g_led = LedMode::ANALYSING;
     ledService();
     uint32_t end = g_capture_end;
@@ -1014,20 +1432,60 @@ void loop() {
       streamImu(g_shot_seq);
     }
     g_capture_ready = false;   // release the ring; capture resumes
+    if (rr.impact_found) beep(Beep::SHOT);
+    now = millis();            // the analysis took a while
   }
 
   // Battery, between shots only.
   if (!g_triggered && !g_capture_ready && now - last_batt_ms >= cfg::BATT_PERIOD_MS) {
     last_batt_ms = now;
     g_batt_mv = readBatteryMv();
+    bool low = g_batt_mv > 1000 && g_batt_mv < cfg::BATT_LOW_MV;
+    if (low && (!batt_low || now - batt_low_beep_ms >= cfg::BATT_LOW_REPEAT_MS)) {
+      beep(Beep::LOW_BATTERY);
+      batt_low_beep_ms = now;
+    }
+    if (low) batt_low = true;
+    else if (g_batt_mv >= cfg::BATT_LOW_MV + 100) batt_low = false;
   }
 
-  // Serial commands: r = raw streaming, d = trigger debug, a = arm/disarm.
+  // Quiet: nothing moving in the beam for QUIET_MS, and no pod swing.
+  bool pod_says_swing = now - g_pod_swing_ms < 2000;
+  bool swing_coming = pod_on_club && pod_says_swing;
+  bool capture_busy = g_triggered || g_capture_ready;
+  float noise = g_trig_noise;
+  if (noise <= 0 || fabsf(g_trig_metric) > cfg::QUIET_RATIO * noise || capture_busy || swing_coming)
+    radar_busy_ms = now;
+  bool quiet = now - radar_busy_ms >= cfg::QUIET_MS;
+
+  // Pod charging contacts: never during a capture, a tone or a pod swing.
+  dockService(now, !capture_busy && !swing_coming && buzzerSilentFor(now, cfg::BUZZER_SETTLE_MS), quiet);
+  now = millis();              // a check pauses for up to ~60 ms
+
+  if (g_ready_beep_ms && int32_t(now - g_ready_beep_ms) >= 0) {
+    g_ready_beep_ms = 0;
+    if (g_user_armed) beep(Beep::READY);
+  }
+
+  // Serial commands: r = raw streaming, d = trigger debug, a = arm/disarm,
+  // b = buzzer on/off.
   while (Serial.available()) {
     switch (Serial.read()) {
       case 'r': g_stream_raw = !g_stream_raw; break;
       case 'd': g_debug_trigger = !g_debug_trigger; break;
-      case 'a': g_user_armed = !g_user_armed; break;
+      case 'a':
+        g_user_armed = !g_user_armed;
+        if (g_user_armed) beep(Beep::READY);
+        break;
+      case 'b':
+        g_buzzer_on = !g_buzzer_on;
+        if (!g_buzzer_on) {
+          buzzerStop(now);
+          for (auto& r : g_beep_req) r.pending = false;
+        }
+        Serial.printf("{\"type\":\"event\",\"msg\":\"buzzer %s\"}\n",
+                      !STEM_BUZZER ? "not built (STEM_BUZZER 0)" : g_buzzer_on ? "on" : "off");
+        break;
       default: break;
     }
   }
@@ -1048,8 +1506,19 @@ void loop() {
                   g_trig_noise, g_trig_noise > 0 ? g_trig_metric / g_trig_noise : 0.0f);
   }
 
+  // Buzzer, then arming. A pod swing starting silences any tone, so the radar
+  // can arm; arming then waits BUZZER_SETTLE_MS after the last edge and
+  // DOCK_ARM_SETTLE_MS after the charging switch last changed the 5 V load.
+  buzzerService(now, !capture_busy && !swing_coming, quiet);
+  // With a pod on the club, arm only while it reports a swing (and 2 s after),
+  // so a passing cart or a practice waggle cannot fire a capture. Without one
+  // (none linked, or it is parked on the charging contacts) the unit runs
+  // radar-only and stays armed.
+  g_armed = g_user_armed && (!pod_on_club || pod_says_swing) && buzzerSilentFor(now, cfg::BUZZER_SETTLE_MS) &&
+            now - g_dock_changed_ms >= cfg::DOCK_ARM_SETTLE_MS;
+
   if (g_capture_ready || g_triggered) g_led = LedMode::ANALYSING;
-  else if (g_batt_mv > 1000 && g_batt_mv < 3500) g_led = LedMode::LOW_BATTERY;
+  else if (g_batt_mv > 1000 && g_batt_mv < cfg::BATT_LOW_MV) g_led = LedMode::LOW_BATTERY;
   else g_led = podConnected() ? LedMode::POD_LINKED : LedMode::IDLE;
   ledService();
   delay(2);

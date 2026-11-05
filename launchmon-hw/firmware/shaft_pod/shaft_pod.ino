@@ -18,6 +18,11 @@
 //     IMU identity, dropped-sample count.
 //  4. After a few minutes without motion, arms the IMU's wake-up interrupt and
 //     goes into deep sleep. Picking the club up wakes it.
+//  5. Parked on the ground unit's charging contacts, it sees the dock's 5 V on
+//     its DOCK+ pad. It then stops detecting and streaming swings (a parked pod
+//     is not on a club), asks for a slower BLE connection, reports its charge
+//     state in the status packet, and once the cell looks full it sleeps on the
+//     dock. Lifting it off wakes it, as picking up the club does.
 //
 //  WHAT IT DOES NOT DO
 //  It derives nothing. The pod reports what the sensor read and flags where
@@ -36,6 +41,7 @@
 //      GPIO7  SCL  -> IMU SCL
 //      GPIO3  INT1 <- IMU INT1      data-ready while awake, wake-up in deep sleep
 //      GPIO4  ADC  <- cell voltage via a 1M/1M divider with 100 nF to GND
+//      GPIO1  ADC  <- DOCK+ pad via a 2.2M/1M divider with 100 nF to GND
 //      GPIO8  on-board blue LED (active low; also a strapping pin, driven only after boot)
 // =============================================================================
 
@@ -51,11 +57,17 @@
 #error "This sketch needs the Arduino-ESP32 core 3.x (ESP-IDF 5.x)."
 #endif
 
+// Charging contacts fitted (docs/wiring_schematic.md, "Dock charging"). Set to 0
+// for a pod built without them: GPIO1 is then left alone.
+#ifndef STEM_DOCK
+#define STEM_DOCK 1
+#endif
+
 // -----------------------------------------------------------------------------
 //  Configuration
 // -----------------------------------------------------------------------------
 namespace cfg {
-constexpr uint8_t  FW_MAJOR = 0, FW_MINOR = 1;
+constexpr uint8_t  FW_MAJOR = 0, FW_MINOR = 2;
 
 constexpr int      PIN_SDA      = 6;
 constexpr int      PIN_SCL      = 7;
@@ -66,6 +78,26 @@ constexpr uint32_t I2C_HZ       = 400000;
 
 constexpr float    BATT_DIVIDER     = 2.0f;   // 1M over 1M
 constexpr uint16_t BATT_SLEEP_MV    = 3300;   // below this, sleep instead of streaming
+
+// Charging contacts. The DOCK+ pad reaches the 5V pin through a Schottky, so
+// neither the cell nor the pod's own USB can put voltage on it. Off the dock it
+// sits at about 3.1 V (the 220k beacon from 3V3 into the 3.2M divider); on a
+// live dock it is at the dock's 5 V less the PTC's drop, 4.3-5.0 V. Diode
+// leakage from the 5V pin can raise an idle pad, but on battery the 5V pin is
+// below the cell, so only an outside supply puts the pad above the cell.
+constexpr int      PIN_DOCK         = 1;      // ADC1_CH1
+constexpr float    DOCK_DIVIDER     = 3.2f;   // 2.2M over 1M
+constexpr uint16_t DOCK_ON_MV       = 4000;   // docked: pad at least this
+constexpr uint16_t DOCK_ON_ABOVE_CELL_MV = 150;   // and this far above the cell
+constexpr uint16_t DOCK_OFF_MV      = 3700;   // undocked below either of these
+constexpr uint16_t DOCK_OFF_ABOVE_CELL_MV = 50;
+constexpr uint32_t DOCK_READ_MS     = 250;
+// Charge state is an estimate from the cell voltage: the charger's constant-
+// voltage phase holds the cell at 4.2 V while the current tapers.
+constexpr uint16_t CHARGED_MV       = 4150;
+constexpr uint32_t CHARGED_HOLD_MS  = 20UL * 60UL * 1000UL;   // that long at CHARGED_MV: call it full
+constexpr uint16_t CHARGED_CLEAR_MV = 4000;
+constexpr uint32_t CHARGED_SLEEP_MS = 60000;  // report "charged" this long, then sleep on the dock
 
 // Sampling. ODR code 0b1000 = 1.66 kHz on both chips.
 constexpr uint8_t  ODR_CODE         = 0x8;
@@ -142,9 +174,20 @@ struct __attribute__((packed)) Status {
   uint16_t gyro_fs_dps;
   uint32_t dropped_samples;    // since boot
   uint8_t  fw_major, fw_minor;
+  // Added in fw 0.2. A reader that knows only the fields above ignores these.
+  uint8_t  power;              // Power flags
+  uint16_t dock_pad_mv;        // DOCK+ pad voltage (0 if the contacts are not fitted)
+};
+
+enum Power : uint8_t {
+  DOCK_POWER = 1 << 0,   // the dock's 5 V is on the DOCK+ pad
+  USB_HOST   = 1 << 1,   // the pod's own USB-C is connected to a computer
+  CHARGING   = 1 << 2,   // on dock power and not yet judged full (estimate)
+  CHARGED    = 1 << 3,   // cell held at the charger's 4.2 V long enough to call it full (estimate)
 };
 
 static_assert(sizeof(Header) == 12, "header layout is part of the protocol");
+static_assert(sizeof(Status) == 31, "status layout is part of the protocol: 28 bytes, then power fields");
 static_assert(sizeof(ImuRaw) == 12, "sample layout is part of the protocol");
 constexpr size_t MAX_SAMPLES_PER_PACKET = (244 - sizeof(Header)) / sizeof(ImuRaw);   // 19 at MTU 247
 }  // namespace proto
@@ -262,6 +305,7 @@ static std::atomic<uint32_t> g_last_motion_ms{0};
 static std::atomic<uint32_t> g_period_ns{1000000000UL / cfg::ODR_NOMINAL_HZ};
 static volatile bool         g_stream_always = false;      // debug: stream everything
 static volatile bool         g_stop_imu = false;           // set before sleep; the task parks itself
+static std::atomic<bool>     g_docked{false};              // on a live dock: no swings are started
 
 static TaskHandle_t          g_imu_task = nullptr;
 static volatile uint32_t     g_drdy_us = 0;
@@ -327,7 +371,7 @@ static void imuTask(void*) {
     if (w2 > motion_sq) g_last_motion_ms = now_ms;
 
     if (!g_swing_active) {
-      if (w2 > start_sq) {
+      if (w2 > start_sq && !g_docked) {
         g_swing_id.fetch_add(1);
         g_swing_end_idx = UINT32_MAX;
         // Start sending from the pre-trigger point, or the oldest sample held.
@@ -360,13 +404,22 @@ static void imuTask(void*) {
 static NimBLEServer*         g_server   = nullptr;
 static NimBLECharacteristic* g_chr_data = nullptr;
 static std::atomic<uint16_t> g_mtu{23};
+static std::atomic<uint16_t> g_conn_handle{0xFFFF};       // 0xFFFF: not connected
 static uint16_t              g_seq = 0;
+
+// 7.5 ms interval, no slave latency, 1 s supervision timeout: the lowest
+// latency BLE offers, which is what a swing stream needs. On the dock there is
+// nothing to stream: 50-100 ms, 4 s timeout, which cuts the radio's current
+// pulses on the ground unit's 5 V rail as well as the pod's draw.
+static void requestConnParams(NimBLEServer* server, uint16_t handle) {
+  if (g_docked) server->updateConnParams(handle, 40, 80, 0, 400);
+  else          server->updateConnParams(handle, 6, 6, 0, 100);
+}
 
 class ServerCallbacks : public NimBLEServerCallbacks {
   void onConnect(NimBLEServer* server, NimBLEConnInfo& info) override {
-    // 7.5 ms interval, no slave latency, 1 s supervision timeout: the lowest
-    // latency BLE offers, which is what a swing stream needs.
-    server->updateConnParams(info.getConnHandle(), 6, 6, 0, 100);
+    g_conn_handle = info.getConnHandle();
+    requestConnParams(server, info.getConnHandle());
 #if STEM_USE_2M_PHY
     server->updatePhy(info.getConnHandle(), BLE_GAP_LE_PHY_2M_MASK, BLE_GAP_LE_PHY_2M_MASK, 0);
 #endif
@@ -374,6 +427,7 @@ class ServerCallbacks : public NimBLEServerCallbacks {
   }
   void onDisconnect(NimBLEServer*, NimBLEConnInfo&, int reason) override {
     g_mtu = 23;
+    g_conn_handle = 0xFFFF;
     Serial.printf("[ble] disconnected (reason %d), advertising\n", reason);
     NimBLEDevice::startAdvertising();
   }
@@ -467,10 +521,71 @@ static bool sendImuPacket(uint32_t end_idx, bool swing_closing) {
   return true;
 }
 
+static uint16_t g_batt_mv = 0;
+
 static uint16_t readBatteryMv() {
   uint32_t sum = 0;
   for (int i = 0; i < 8; ++i) sum += analogReadMilliVolts(cfg::PIN_BATT);
   return uint16_t((sum / 8) * cfg::BATT_DIVIDER);
+}
+
+// -----------------------------------------------------------------------------
+//  Charging contacts and charge state
+// -----------------------------------------------------------------------------
+static uint16_t g_dock_mv = 0;          // DOCK+ pad, mV
+static bool     g_charged = false;      // estimate: see CHARGED_HOLD_MS
+static uint32_t g_charged_ms = 0;       // when g_charged was set
+
+#if STEM_DOCK
+static uint16_t readDockMv() {
+  uint32_t sum = 0;
+  for (int i = 0; i < 4; ++i) sum += analogReadMilliVolts(cfg::PIN_DOCK);
+  return uint16_t((sum / 4) * cfg::DOCK_DIVIDER);
+}
+#endif
+
+// Reads the pad, updates g_docked and the charge estimate. Returns true when
+// g_docked changed.
+static bool dockService(uint32_t now, uint16_t cell_mv) {
+#if STEM_DOCK
+  static uint32_t at_cv_since = 0;      // cell at CHARGED_MV since; 0 = not
+  static bool     first_on_dock = true; // first docked reading since boot
+  g_dock_mv = readDockMv();
+  bool was = g_docked;
+  bool on = was ? (g_dock_mv >= cfg::DOCK_OFF_MV && g_dock_mv >= cell_mv + cfg::DOCK_OFF_ABOVE_CELL_MV)
+                : (g_dock_mv >= cfg::DOCK_ON_MV && g_dock_mv >= cell_mv + cfg::DOCK_ON_ABOVE_CELL_MV);
+  if (!on) {
+    at_cv_since = 0;
+    g_charged = false;
+  } else {
+    if (first_on_dock && cell_mv >= cfg::CHARGED_MV) {
+      // Woken on the dock (a bump) with the cell already up: it was full when it slept.
+      g_charged = true;
+      g_charged_ms = now;
+    }
+    first_on_dock = false;
+    if (cell_mv >= cfg::CHARGED_MV) {
+      if (at_cv_since == 0) at_cv_since = now;
+      if (!g_charged && now - at_cv_since >= cfg::CHARGED_HOLD_MS) { g_charged = true; g_charged_ms = now; }
+    } else {
+      at_cv_since = 0;
+      if (cell_mv < cfg::CHARGED_CLEAR_MV) g_charged = false;   // after termination it rests near 4.1 V
+    }
+  }
+  g_docked = on;
+  return on != was;
+#else
+  (void)now; (void)cell_mv;
+  return false;
+#endif
+}
+
+static uint8_t powerFlags() {
+  uint8_t f = 0;
+  if (g_docked) f |= proto::DOCK_POWER;
+  if (Serial) f |= proto::USB_HOST;
+  if (g_docked) f |= g_charged ? proto::CHARGED : proto::CHARGING;
+  return f;
 }
 
 static void sendStatus(uint16_t batt_mv) {
@@ -490,6 +605,8 @@ static void sendStatus(uint16_t batt_mv) {
   st.dropped_samples = g_dropped;
   st.fw_major = cfg::FW_MAJOR;
   st.fw_minor = cfg::FW_MINOR;
+  st.power = powerFlags();
+  st.dock_pad_mv = g_dock_mv;
   g_chr_data->setValue(reinterpret_cast<uint8_t*>(&st), sizeof st);
   g_chr_data->notify();
 }
@@ -527,10 +644,15 @@ void setup() {
                 int(esp_sleep_get_wakeup_cause()));
 
   analogSetPinAttenuation(cfg::PIN_BATT, ADC_11db);
-  uint16_t batt = readBatteryMv();
-  Serial.printf("[pod] cell %u mV\n", batt);
-  if (batt > 1000 && batt < cfg::BATT_SLEEP_MV) goToSleep("cell low; charge the pod");
+#if STEM_DOCK
+  analogSetPinAttenuation(cfg::PIN_DOCK, ADC_11db);
+#endif
+  g_batt_mv = readBatteryMv();
+  dockService(millis(), g_batt_mv);
+  Serial.printf("[pod] cell %u mV, dock pad %u mV%s\n", g_batt_mv, g_dock_mv, g_docked ? " (on the dock)" : "");
+  if (!g_docked && g_batt_mv > 1000 && g_batt_mv < cfg::BATT_SLEEP_MV) goToSleep("cell low; charge the pod");
   // batt <= 1000 means no divider is fitted (bench supply over USB): carry on.
+  // On a live dock the pod stays up whatever the cell reads: the dock powers it.
 
   g_ring   = static_cast<proto::ImuRaw*>(malloc(cfg::RING_SAMPLES * sizeof(proto::ImuRaw)));
   g_ring_t = static_cast<uint32_t*>(malloc(cfg::RING_SAMPLES * sizeof(uint32_t)));
@@ -561,9 +683,22 @@ void setup() {
 }
 
 void loop() {
-  static uint32_t last_status_ms = 0, last_led_ms = 0;
-  static uint16_t batt_mv = 0;
+  static uint32_t last_status_ms = 0, last_led_ms = 0, last_dock_ms = 0;
   uint32_t now = millis();
+
+  if (now - last_dock_ms >= cfg::DOCK_READ_MS) {
+    last_dock_ms = now;
+    if (dockService(now, g_batt_mv)) {
+      Serial.printf("[pod] %s, pad %u mV\n", g_docked ? "on the dock: charging, swing detection off" : "off the dock",
+                    g_dock_mv);
+      if (!g_docked) g_last_motion_ms = now;   // just lifted: do not count the time parked as idle
+      uint16_t h = g_conn_handle;
+      if (connected() && h != 0xFFFF) {
+        requestConnParams(g_server, h);
+        sendStatus(g_batt_mv);                  // tell the ground unit now, not at the next second
+      }
+    }
+  }
 
   // Stream everything in bench mode; otherwise the swing in progress, then the
   // tail of the one that just ended. Between swings the send pointer follows
@@ -585,17 +720,24 @@ void loop() {
 
   if (now - last_status_ms >= 1000) {
     last_status_ms = now;
-    batt_mv = readBatteryMv();
-    if (connected()) sendStatus(batt_mv);
-    if (batt_mv > 1000 && batt_mv < cfg::BATT_SLEEP_MV) goToSleep("cell low; charge the pod");
+    g_batt_mv = readBatteryMv();
+    if (connected()) sendStatus(g_batt_mv);
+    if (!g_docked && g_batt_mv > 1000 && g_batt_mv < cfg::BATT_SLEEP_MV) goToSleep("cell low; charge the pod");
   }
 
-  if (!g_swing_active && now - g_last_motion_ms >= cfg::SLEEP_AFTER_MS) goToSleep("no motion");
+  if (g_docked) {
+    // While charging it stays up (on dock power) to report; once full it sleeps.
+    if (g_charged && !g_swing_active && now - g_charged_ms >= cfg::CHARGED_SLEEP_MS) goToSleep("charged, on the dock");
+  } else if (!g_swing_active && now - g_last_motion_ms >= cfg::SLEEP_AFTER_MS) {
+    goToSleep("no motion");
+  }
 
-  // LED: slow blink advertising, short flash every 2 s when connected, solid during a swing.
+  // LED: slow blink advertising, short flash every 2 s when connected, solid
+  // during a swing. On the dock: a flash every 4 s while charging, dark once full.
+  uint32_t led_period = g_docked ? (g_charged ? 0u : 4000u) : (connected() ? 2000u : 500u);
   if (g_swing_active) {
     digitalWrite(cfg::PIN_LED, LOW);
-  } else if (now - last_led_ms >= (connected() ? 2000u : 500u)) {
+  } else if (led_period && now - last_led_ms >= led_period) {
     last_led_ms = now;
     digitalWrite(cfg::PIN_LED, LOW);
     delay(connected() ? 20 : 2);
