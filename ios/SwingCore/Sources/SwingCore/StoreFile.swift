@@ -113,11 +113,16 @@ public struct SwingRecord: Codable, Identifiable, Hashable {
     public var coach: CoachRead?
     /// This swing's entry in the practice log, when it has one.
     public var practiceId: Int?
+    /// When the clip's recording started, from its own metadata, on the phone's
+    /// clock: what pairs it with a radar shot (ShotPairing.swift). Nil for swings
+    /// kept before this was read, and for clips that carry no recording time.
+    public var clipStartedAt: Date?
 
     public var tempo: Double? { result.metrics.tempoRatio }
 
     public init(id: UUID, date: Date, club: String?, label: String?, sourceName: String,
-                result: SwingResult, keyFrames: [String], coach: CoachRead?, practiceId: Int?) {
+                result: SwingResult, keyFrames: [String], coach: CoachRead?, practiceId: Int?,
+                clipStartedAt: Date? = nil) {
         self.id = id
         self.date = date
         self.club = club
@@ -127,6 +132,7 @@ public struct SwingRecord: Codable, Identifiable, Hashable {
         self.keyFrames = keyFrames
         self.coach = coach
         self.practiceId = practiceId
+        self.clipStartedAt = clipStartedAt
     }
 
     public static func == (a: SwingRecord, b: SwingRecord) -> Bool { a.id == b.id }

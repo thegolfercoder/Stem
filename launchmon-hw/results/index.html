@@ -87,10 +87,12 @@
   </section>
 
   <aside class="session" aria-label="Session">
-    <div class="device" id="device" title="Sent by the unit with each shot">
-      <span class="dev">Unit <b id="batt-ground">&ndash;</b></span>
-      <span class="dev">Pod <b id="batt-pod">&ndash;</b></span>
-      <span class="dev">Pod data <b id="pod-state">&ndash;</b></span>
+    <div class="device" id="device" aria-label="Unit and pod status">
+      <span class="dev" id="dev-unit">Unit <b id="batt-ground">&ndash;</b></span>
+      <span class="dev" id="dev-pod">Pod <b id="batt-pod">&ndash;</b></span>
+      <span class="dev" id="dev-dock" hidden>Dock <b id="dock-state">&ndash;</b></span>
+      <span class="dev" id="dev-shotpod">Pod data <b id="pod-state">&ndash;</b></span>
+      <span class="dev-src" id="dev-src"></span>
     </div>
 
     <div class="session-head">

@@ -331,6 +331,7 @@ mapping can be applied downstream without re-recording anything.
 | Pod data | `7d2a0002-…` | notify | IMU and status packets (3.2) |
 | Pod control | `7d2a0003-…` | write | `'A'` stream continuously, `'G'` swing-gated (default), `'Z'` sleep now |
 | Ground shot | `7d2a0102-…` | read, notify | `ShotSummary` (3.3) |
+| Ground status | `7d2a0103-…` | read, notify | `UnitStatus` (3.4), ground firmware 0.3 and later |
 
 Connection: 7.5 ms interval, no slave latency, 1 s supervision timeout, MTU
 247, 2M PHY requested (BLE 5).
@@ -385,6 +386,100 @@ measured, 2 derived, 3 low_confidence, 4 modelled. A non-zero refusal code means
 there is no number and `value` is NaN. The reasons are listed in
 `firmware/ground_unit/ground_unit.ino` (`enum class Refusal`) and are spelled
 out in the USB JSON.
+
+### 3.4 Ground live status (to the phone)
+
+A second characteristic in the same service carries what the unit knows
+between shots: its own battery, the pod's link, battery and charge state, and
+the dock's state machine (4.7). Packed and little-endian, **20 bytes**, pinned
+by a `static_assert` (`struct UnitStatus` in `ground_unit.ino`). 20 bytes is
+what a notification carries at the default ATT MTU of 23, so it is never cut
+short, unlike the 42-byte shot summary.
+
+| Offset | Type | Field | Meaning |
+|---|---|---|---|
+| 0 | u8 | magic | `0x5B` (the shot summary is `0x5A`, pod packets `0xA7`) |
+| 1 | u8 | version | `1` |
+| 2 | u8 | fw_major | ground firmware version: `0` |
+| 3 | u8 | fw_minor | `3` (0.3 added this characteristic) |
+| 4 | u32 | uptime_ms | `millis()`: the clock `impact_ms` is on (3.3). Going backwards means the unit restarted. Wraps after 49.7 days |
+| 8 | u16 | battery_mv_ground | as in 3.3: read every 30 s between shots; ≤ 1000 = no usable reading |
+| 10 | u16 | battery_mv_pod | the pod's cell, from its status (1 s). **0 when no pod is connected**, or before its first status on this link |
+| 12 | u8 | pod_flags | below |
+| 13 | u8 | unit_flags | below |
+| 14 | u8 | dock_state | below |
+| 15 | u8 | dock_reason | below |
+| 16 | u16 | dock_retry_s | in a fault lockout (state 3), seconds until the contacts are tried again; else 0 |
+| 18 | u16 | shot_seq | the last shot summary's `shot_seq`; 0 = no shot since boot. A phone that holds an older one missed a shot and can read 3.3 |
+
+`pod_flags`:
+
+| Bit | Name | Set when |
+|---|---|---|
+| 0 | connected | the BLE link to the pod is up |
+| 1 | power_known | the pod has sent its power fields (pod firmware 0.2, 3.2) in the last 5 s. Bits 2-5 are its report and are 0 without this bit: with it clear, "not charging" is unknown, not no |
+| 2 | dock_power | the pod sees the dock's 5 V on its DOCK+ pad |
+| 3 | usb_host | the pod's own USB-C is on a computer (the contacts are then held off, 4.3) |
+| 4 | charging | the pod's estimate: on dock power and not yet full (4.7) |
+| 5 | charged | the pod's estimate: held at 4.2 V long enough to call full |
+| 6 | parked | the unit treats the pod as parked, not on a club: the contacts are charging it, or it reported dock power in the last 5 s. The radar then arms without waiting for pod swings |
+| 7 | charged_asleep | the link is down, but the pod reported charged before it dropped and the contacts have stayed on since: it is asleep on the dock (4.7). Cleared when the pod reconnects or the contacts change state |
+
+`unit_flags`:
+
+| Bit | Name | Set when |
+|---|---|---|
+| 0 | dock_fitted | built with `STEM_POD_DOCK` 1. Clear: `dock_state` stays 0 and means nothing |
+| 1 | buzzer_fitted | built with `STEM_BUZZER` 1 |
+| 2 | buzzer_on | fitted, and not turned off with serial `b` |
+| 3 | user_armed | not disarmed with serial `a` |
+| 4 | raw_streaming | raw captures go to USB after each shot (serial `r`, BOOT button) |
+| 5 | batt_low | the unit's cell is under 3.50 V (`BATT_LOW_MV`) |
+| 6 | adc_fault | the radar's ADC stream failed to start or restart: no shots will be captured |
+| 7 | — | 0 |
+
+`dock_state` (`enum class DockState`; the USB `pod_dock` line's word in brackets):
+
+| Code | State | Meaning |
+|---|---|---|
+| 0 | off (`off`) | contacts dead, looking for a beacon every 3 s |
+| 1 | confirming (`off`) | a beacon was seen; the second look 0.3 s later decides |
+| 2 | charging (`charging`) | contacts live, a pod parked on them |
+| 3 | fault (`fault`) | locked out after an overload or a foreign voltage; `dock_retry_s` counts down |
+| 4 | low_battery (`low_battery`) | the unit's cell is under 3.55 V: the contacts stay off until it is above 3.7 V |
+
+`dock_reason` (`enum class DockReason`): the reason given with the latest
+`pod_dock` USB line, word for word, or 0 if there has been none since boot.
+1 `pod parked`; 2 `no pod on the contacts (lifted, or contacts wet)`; 3
+`overload: DOCK+ sagged with the switch on`; 4 `voltage on the contacts with
+the switch off`; 5 `ground unit battery low`; 6 `ground unit battery
+recovered`; 7 `pod is on its own USB power`; 8 `fault lockout over: looking for
+a pod again`. New codes are only ever appended.
+
+**When it is sent.**
+
+- It is readable from boot. The value is refreshed at most every 250 ms, so a
+  read returns the state of a quarter of a second ago at most, except during a
+  capture (below).
+- A notification goes out when anything in it changes, except `uptime_ms` and
+  the `dock_retry_s` countdown, which the phone can count itself. A battery
+  voltage counts as changed once it has moved 25 mV from the last notified
+  value, or to or from 0; smaller drift rides on the periodic notification, so
+  cell noise cannot drive the link. Changes are coalesced: at most one
+  notification per 250 ms, four a second.
+- One goes out every 30 s regardless, and one within 250 ms of a phone
+  connecting.
+- **Never during a capture.** Nothing is built, stored or notified while the
+  trigger has fired, while a capture is being analysed, or while the pod
+  reports a swing: the gate the dock checks and the buzzer use (4.7). A change
+  in that time is sent as soon as it ends. The shot summary is notified with
+  the capture ring frozen, as before. Building the status reads only values
+  the unit already holds: it never pauses the radar stream or takes the ADC.
+
+A unit with ground firmware 0.2 or earlier has only `7d2a0102`. A phone
+should treat a missing `7d2a0103` as "no live status" and fall back to the
+battery values in each shot summary. A reader rejects a value whose length,
+magic or version is not exactly as above, whole.
 
 ---
 
@@ -599,9 +694,13 @@ resumes above 3.7 V.
   disconnect beeps are not sounded.
 - USB JSON lines, on each change (additive; the shot line is unchanged):
   `{"type":"pod_dock","state":"charging|off|fault|low_battery","reason":"...","off_mv":2470,"on_mv":4810}`
+  (the end of a fault's lockout is reported too, as `off` with reason
+  `fault lockout over: looking for a pod again`)
   and, from the pod's status, `{"type":"pod_power","dock_power":true,"usb_host":false,"charge":"charging|charged|not_charging","battery_mv":3950,"dock_pad_mv":4790}`.
   With trigger debug on (serial `d`), every check prints a `dock_debug` line
   with its readings.
+- The same state, the pod's power report and both batteries go to the phone
+  live, in the status characteristic (3.4).
 
 **Pod** (`STEM_DOCK`, default 1):
 

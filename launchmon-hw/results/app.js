@@ -16,6 +16,9 @@ const SESSION_KEY = 'stem.results.session.v1';
 const HISTORY_SHOWN = 20;
 const CONNECT_TIMEOUT_MS = 15000;
 const DASH = '–';
+// The unit notifies its status at least every 30 s (and holds it back only
+// during a capture or a pod swing). Two missed, and then some: call it stale.
+const STATUS_STALE_MS = 75000;
 
 const state = {
   unit: P.SPEED_UNITS[store.get(UNIT_KEY)] ? store.get(UNIT_KEY) : 'mph',
@@ -23,6 +26,12 @@ const state = {
   link: 'idle',            // idle | requesting | connecting | connected | reconnecting
   device: null,
   chr: null,
+  statusChr: null,         // the live status characteristic; null on firmware 0.2 and older
+  statusSupport: 'unknown', // unknown | yes | no (this unit has no live status)
+  status: null,            // { status, receivedAt (ms), via, demo }: the latest parsed UnitStatus
+  statusRejected: 0,
+  lastStatusError: null,
+  missedReadFor: null,     // shot_seq a status said exists and we have read for
   want: false,             // the user wants to stay connected
   attempt: 0,
   retryTimer: null,
@@ -102,11 +111,24 @@ async function openGatt() {
   if (state.chr) state.chr.removeEventListener('characteristicvaluechanged', onNotify);
   chr.addEventListener('characteristicvaluechanged', onNotify);
   await chr.startNotifications();
+  // Live status, ground firmware 0.3 and later. An older unit has no such
+  // characteristic: the shots work the same, and the status row falls back to
+  // what each shot carries.
+  let statusChr = null;
+  try { statusChr = await svc.getCharacteristic(P.STATUS_CHAR_UUID); } catch { statusChr = null; }
+  if (state.statusChr) state.statusChr.removeEventListener('characteristicvaluechanged', onStatusNotify);
+  if (statusChr) {
+    statusChr.addEventListener('characteristicvaluechanged', onStatusNotify);
+    try { await statusChr.startNotifications(); } catch { /* still readable; the row goes stale without updates */ }
+  }
   if (!state.want) { device.gatt.disconnect(); return; }
   state.chr = chr;
+  state.statusChr = statusChr;
+  state.statusSupport = statusChr ? 'yes' : 'no';
   state.attempt = 0;
   setLink('connected');
   wakeOn();
+  renderDevice();
   // The characteristic is readable too: it holds the last shot the unit
   // analysed, which may be from before this connection (or one missed while
   // disconnected). Empty until the unit's first shot since boot.
@@ -114,13 +136,29 @@ async function openGatt() {
     const v = await chr.readValue();
     if (v.byteLength > 0) handleValue(v, 'read on connect');
   } catch { /* nothing to read yet */ }
+  // Then the status, which is always there. After the shot, so a status that
+  // names that shot finds it already held.
+  if (statusChr) {
+    try { handleStatus(await statusChr.readValue(), 'read on connect'); } catch { /* the next notification brings it */ }
+  }
 }
 
 function onNotify(ev) { handleValue(ev.target.value, 'notify'); }
+function onStatusNotify(ev) { handleStatus(ev.target.value, 'notify'); }
+
+// What the unit said live is not known once the link is gone.
+function dropStatus() {
+  if (state.statusChr) state.statusChr.removeEventListener('characteristicvaluechanged', onStatusNotify);
+  state.statusChr = null;
+  state.status = null;
+  state.missedReadFor = null;
+}
 
 function onDisconnected() {
   if (state.chr) state.chr.removeEventListener('characteristicvaluechanged', onNotify);
   state.chr = null;
+  dropStatus();
+  renderDevice();
   if (state.want) {
     say('Lost the unit. Reconnecting.', true);
     scheduleReconnect();
@@ -147,7 +185,10 @@ function disconnect() {
   clearTimeout(state.retryTimer);
   if (state.device && state.device.gatt.connected) state.device.gatt.disconnect();
   state.chr = null;
+  dropStatus();
+  state.statusSupport = 'unknown';
   setLink('idle');
+  renderDevice();
   wakeOff();
 }
 
@@ -176,6 +217,41 @@ async function handleValue(dataView, via) {
     return;
   }
   addShot(res.packet, via, false);
+}
+
+// One UnitStatus value, from a notification, a read or the demo.
+function handleStatus(dataView, via, demo = false) {
+  const res = P.parseUnitStatus(dataView);
+  if (!res.ok) {
+    // Rejected whole. The last good status stays on screen and goes stale.
+    state.statusRejected += 1;
+    if (res.error !== state.lastStatusError) say(`Unit status rejected, not shown: ${res.error}.`, true);
+    state.lastStatusError = res.error;
+    renderDevice();
+    return;
+  }
+  state.lastStatusError = null;
+  const st = res.status;
+  const prev = state.status && state.status.status;
+  if (st.anomalies.length && (!prev || prev.hex !== st.hex)) {
+    say(`Unit status carried an unexpected combination (${st.anomalies.join('; ')}); that part is shown as unknown.`, true);
+  }
+  if (prev && !demo && st.uptimeMs < prev.uptimeMs) say('The unit restarted.');
+  state.status = { status: st, receivedAt: Date.now(), via, demo };
+  renderDevice();
+  if (!demo) readMissedShot(st.shotSeq);
+}
+
+// The status names the unit's last shot. If this session does not hold it (a
+// lost notification, or one cut short whose read failed), read it once.
+async function readMissedShot(seq) {
+  const last = state.real[state.real.length - 1];
+  if (!seq || !state.chr || (last && last.packet.shotSeq === seq) || state.missedReadFor === seq) return;
+  state.missedReadFor = seq;
+  try {
+    const v = await state.chr.readValue();
+    if (v.byteLength > 0) handleValue(v, 'read (notification missed)');
+  } catch { /* the next shot's notification comes as usual */ }
 }
 
 function addShot(packet, via, demo) {
@@ -231,13 +307,14 @@ document.addEventListener('visibilitychange', () => {
 function startDemo() {
   if (state.link !== 'idle') { say('Disconnect from the unit before starting the demo.'); return; }
   state.demo = [];
+  state.status = null;
   state.noticeOpen = false;
   document.body.classList.add('is-demo');
   state.demoFeed = new DemoFeed((dv) => {
-    const res = P.parseShotSummary(dv);        // the real parser, on synthetic bytes
+    const res = P.parseShotSummary(dv);        // the real parsers, on synthetic bytes
     if (res.ok) addShot(res.packet, 'demo', true);
     else say(`Demo packet rejected: ${res.error}`, true);
-  });
+  }, (dv) => handleStatus(dv, 'demo', true));
   render();
   state.demoFeed.start({ prefill: 5 });
 }
@@ -247,6 +324,7 @@ function stopDemo() {
   state.demoFeed.stop();
   state.demoFeed = null;
   state.demo = [];
+  state.status = null;
   document.body.classList.remove('is-demo');
   render();
 }
@@ -353,34 +431,146 @@ function renderShot() {
 
 function volts(mv) { return `${(mv / 1000).toFixed(2)} V`; }
 
+// One status item: text in <b>, and optionally a second word in its own
+// colour ("3.95 V · charging").
+function setDev(el, text, cls = '', word = null, wordCls = '') {
+  el.textContent = text;
+  el.className = cls;
+  if (word) {
+    const w = document.createElement('span');
+    w.className = `word ${wordCls}`.trim();
+    w.textContent = word;
+    if (text) el.append(' \u00b7 ');
+    el.append(w);
+  }
+}
+
+const POD_TITLES = {
+  connected: 'Linked to the unit and not on the dock: the unit treats it as on the club and arms on its swings.',
+  charging: 'Parked on the unit and charging from its contacts. Charging and charged are the pod\u2019s own estimates from its cell voltage.',
+  charged: 'Parked and charged (the pod\u2019s estimate). It goes to sleep on the dock a minute after.',
+  charged_asleep: 'The pod reported charged, then went to sleep on the dock. The contacts are still live. Lift it to wake it.',
+  parked: 'On the dock, with no charge estimate from the pod.',
+  parked_no_link: 'The unit\u2019s contacts are powering a parked pod that has no Bluetooth link: asleep, or its cell too low to run it.',
+  usb: 'The pod\u2019s own USB-C is on a computer. The unit keeps its contacts off meanwhile.',
+  not_connected: 'No Bluetooth link to a pod.',
+};
+
 function renderDevice() {
   const e = latest();
-  const g = $('batt-ground'), p = $('batt-pod'), s = $('pod-state');
-  for (const el of [g, p, s]) { el.className = ''; el.title = ''; }
+  const live = state.status;
+  const g = $('batt-ground'), p = $('batt-pod'), s = $('pod-state'), d = $('dock-state'), src = $('dev-src');
+  for (const el of [g, p, s, d]) { el.className = ''; el.title = ''; }
+  src.className = 'dev-src';
+  src.title = '';
+
+  // Pod data at the shot, from its IMU readings. Shown only without a live
+  // status: with one, the live row gives the link and the shot's own IMU
+  // reasons are in the panel above.
+  $('dev-shotpod').hidden = !!live;
+  if (e) {
+    const pod = P.podAtShot(e.packet);
+    s.textContent = { data: 'yes', no_samples: 'none at impact', not_connected: 'not connected' }[pod] || 'unknown';
+    if (pod !== 'data') s.className = 'unknown';
+    s.title = `Whether the pod\u2019s samples covered shot ${e.packet.shotSeq}, from its IMU readings.`;
+  } else {
+    s.textContent = DASH;
+  }
+
+  if (live) { renderLiveStatus(live); return; }
+
+  // No live status: a unit on firmware 0.2 or older, not connected, or not yet
+  // received. Show what the latest shot carried, and say that is the source.
+  $('dev-dock').hidden = true;
+  const noLive = state.link === 'connected' && state.statusSupport === 'no';
+  const note = noLive ? ' This unit\u2019s firmware (0.2 or older) sends no live status: values arrive only with a shot.' : '';
   if (!e) {
-    g.textContent = p.textContent = s.textContent = DASH;
+    g.textContent = p.textContent = DASH;
+    src.textContent = noLive ? 'no live status' : '';
+    src.title = note.trim();
     return;
   }
   const b = e.packet.battery, seq = e.packet.shotSeq;
+  src.textContent = e.demo ? '' : `at shot ${seq}`;
+  src.title = `Sent by the unit with shot ${seq}.${note}`;
   if (b.groundKnown) {
     g.textContent = `${volts(b.groundMv)}${b.groundLow ? ' low' : ''}`;
     if (b.groundLow) g.className = 'low';
-    g.title = `Ground unit cell, sent with shot ${seq}${b.groundLow ? '; under the unit\u2019s 3.50 V low-battery level' : ''}`;
+    g.title = `Ground unit cell, sent with shot ${seq}${b.groundLow ? '; under the unit\u2019s 3.50 V low-battery level' : ''}.${note}`;
   } else {
     g.textContent = 'not read'; g.className = 'unknown';
-    g.title = `The unit had no battery reading at shot ${seq}`;
+    g.title = `The unit had no battery reading at shot ${seq}.${note}`;
   }
   if (b.podKnown) {
     p.textContent = volts(b.podMv);
-    p.title = `The last value the pod reported before shot ${seq}. The unit keeps it after the pod disconnects.`;
+    p.title = `The pod\u2019s cell as last reported before shot ${seq}.${note}`;
   } else {
     p.textContent = 'no report'; p.className = 'unknown';
-    p.title = 'No pod status received by the unit since it started';
+    p.title = `No pod battery reported to the unit at shot ${seq}.${note}`;
   }
-  const pod = P.podAtShot(e.packet);
-  s.textContent = { data: 'yes', no_samples: 'none at impact', not_connected: 'not connected' }[pod] || 'unknown';
-  if (pod !== 'data') s.className = 'unknown';
-  s.title = 'Whether the pod\u2019s samples covered this shot, from its IMU readings. Firmware 0.2 sends no live pod link, dock or charge state to the phone.';
+}
+
+function renderLiveStatus(live) {
+  const st = live.status;
+  const g = $('batt-ground'), p = $('batt-pod'), d = $('dock-state'), src = $('dev-src');
+  const ageMs = Math.max(0, Date.now() - live.receivedAt);
+  const stale = ageMs > STATUS_STALE_MS;
+  const ageText = ageMs < 2000 ? 'just now' : `${Math.round(ageMs / 1000)} s ago`;
+  const u = st.unit;
+  const modes = [
+    `firmware ${st.fw.text}`,
+    u.userArmed ? 'armed' : 'disarmed (serial a)',
+    u.buzzerFitted ? `buzzer ${u.buzzerOn ? 'on' : 'off'}` : 'no buzzer fitted',
+    u.dockFitted ? 'pod dock fitted' : 'no pod dock fitted',
+    u.rawStreaming ? 'raw USB streaming on' : null,
+  ].filter(Boolean).join(', ');
+
+  // Unit
+  if (u.adcFault) {
+    setDev(g, u.batteryKnown ? volts(u.batteryMv) : '', 'low', 'radar fault');
+    g.title = 'The radar\u2019s ADC stream failed to start or restart: the unit captures no shots. Power it off and on.';
+  } else if (u.batteryKnown) {
+    setDev(g, `${volts(u.batteryMv)}${u.batteryLow ? ' low' : ''}`, u.batteryLow ? 'low' : '');
+    g.title = `Ground unit cell, read every 30 s${u.batteryLow ? '; under the unit\u2019s 3.50 V low-battery level' : ''}.`;
+  } else {
+    setDev(g, 'not read', 'unknown');
+    g.title = 'The unit has no usable battery reading.';
+  }
+  g.title += ` Unit: ${modes}.`;
+
+  // Pod
+  const pod = P.describePod(st);
+  const quiet = pod.key === 'not_connected' || pod.key === 'parked_no_link';
+  const wordCls = { charging: 'charging', charged: 'charged', charged_asleep: 'charged' }[pod.key] || (quiet ? 'unknown' : '');
+  setDev(p, st.pod.batteryKnown ? volts(st.pod.batteryMv) : '', '', pod.text, wordCls);
+  p.title = POD_TITLES[pod.key] || '';
+  if (st.pod.connected && !st.pod.powerKnown) p.title += ' This pod sends no power state (pod firmware before 0.2), so charging is not known.';
+  if (st.pod.batteryKnown) p.title += ' Battery: the pod\u2019s cell, reported each second.';
+
+  // Dock: only when there is something to say beyond the pod's own state.
+  const retryNow = Math.max(0, st.dock.retryS - Math.floor(ageMs / 1000));
+  const dock = P.describeDock(st, retryNow);
+  $('dev-dock').hidden = !dock;
+  if (dock) {
+    setDev(d, dock.text, dock.key === 'unknown' ? 'unknown' : 'low');
+    d.title = `Pod charging contacts: ${dock.detail}.`;
+  }
+
+  // Source
+  if (live.demo) {
+    src.textContent = 'DEMO';
+    src.className = 'dev-src chip demo';
+    src.title = 'Synthetic status, not from a unit';
+  } else if (stale) {
+    src.textContent = `${Math.round(ageMs / 1000)} s old`;
+    src.className = 'dev-src stale';
+    src.title = `No status from the unit for ${Math.round(ageMs / 1000)} s; it sends one at least every 30 s outside a capture.`;
+    for (const el of [g, p, d]) el.classList.add('unknown');
+  } else {
+    src.textContent = 'live';
+    src.className = 'dev-src live';
+    src.title = `Live from the unit, last update ${ageText}.`;
+  }
 }
 
 function renderSession() {
@@ -491,6 +681,10 @@ function init() {
       render();
     });
   }
+
+  // The status row ages: the dock's retry countdown and "stale" are worked
+  // out here from the time the last status arrived.
+  setInterval(() => { if (state.status) renderDevice(); }, 1000);
 
   restore();
   const params = new URLSearchParams(location.search);

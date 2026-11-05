@@ -36,6 +36,9 @@
 //     downswing tempo ratio (derived; refused if the swing events are not found).
 //  6. Output: one JSON line per shot on USB serial, one binary summary as a
 //     BLE notification, and optionally the raw I/Q capture on USB.
+//  Between shots a second BLE characteristic carries the live status: the
+//  unit's battery, the pod's link, battery and charge state, and the dock's
+//  state, notified on a change and every 30 s (docs/wiring_schematic.md 3.4).
 //
 //  WHAT IT WILL NOT REPORT
 //  Spin rate, spin axis, face angle, club path, attack angle and swing plane.
@@ -101,7 +104,7 @@
 //  Configuration
 // -----------------------------------------------------------------------------
 namespace cfg {
-constexpr uint8_t  FW_MAJOR = 0, FW_MINOR = 2;
+constexpr uint8_t  FW_MAJOR = 0, FW_MINOR = 3;   // 0.3: the live status characteristic (UnitStatus)
 
 constexpr int      PIN_I         = 0;     // ADC1_CH0
 constexpr int      PIN_Q         = 1;     // ADC1_CH1
@@ -180,6 +183,14 @@ constexpr size_t   POD_RING      = 4096;     // ~2.5 s at 1.66 kHz
 const char* const  BLE_NAME      = "STEM-RADAR";
 const char* const  UUID_GND_SVC  = "7d2a0101-5b1c-4f6e-9c1e-3a6f1f0c2b10";
 const char* const  UUID_GND_SHOT = "7d2a0102-5b1c-4f6e-9c1e-3a6f1f0c2b10";
+const char* const  UUID_GND_STATUS = "7d2a0103-5b1c-4f6e-9c1e-3a6f1f0c2b10";
+// Live status (UnitStatus): notified on a change, at most once per
+// STATUS_MIN_GAP_MS, and at least every STATUS_PERIOD_MS. A voltage that moves
+// less than STATUS_MV_STEP since the last notification is not a change: it
+// rides on the next periodic one, so cell noise cannot drive notifications.
+constexpr uint32_t STATUS_MIN_GAP_MS = 250;
+constexpr uint32_t STATUS_PERIOD_MS  = 30000;
+constexpr uint16_t STATUS_MV_STEP    = 25;
 
 constexpr uint32_t BATT_PERIOD_MS = 30000;
 constexpr float    BATT_DIVIDER   = 2.0f;
@@ -296,6 +307,44 @@ struct __attribute__((packed)) ShotSummary {
 };
 static_assert(sizeof(ShotSummary) == 42, "the phone results screen (launchmon-hw/results) decodes 42 bytes");
 
+// Live status sent to the phone (docs/wiring_schematic.md 3.4). Little-endian,
+// packed, 20 bytes: a notification fits the default ATT MTU (23) whole, so it
+// is never cut short the way a 42-byte ShotSummary can be.
+struct __attribute__((packed)) UnitStatus {
+  uint8_t  magic = 0x5B, version = 1;
+  uint8_t  fw_major, fw_minor;
+  uint32_t uptime_ms;                 // millis(): the clock ShotSummary.impact_ms is on
+  uint16_t battery_mv_ground;         // as in ShotSummary; <= 1000 = no usable reading
+  uint16_t battery_mv_pod;            // 0 = no pod connected, or none reported on this link yet
+  uint8_t  pod_flags;                 // podflag::
+  uint8_t  unit_flags;                // unitflag::
+  uint8_t  dock_state;                // DockState, as a number
+  uint8_t  dock_reason;               // DockReason of the last pod_dock report; 0 = none since boot
+  uint16_t dock_retry_s;              // in a fault lockout, seconds until the contacts are tried again; else 0
+  uint16_t shot_seq;                  // the last ShotSummary's shot_seq; 0 = no shot since boot
+};
+static_assert(sizeof(UnitStatus) == 20, "the phone results screen (launchmon-hw/results) decodes 20 bytes");
+namespace podflag {
+constexpr uint8_t CONNECTED     = 1 << 0;   // BLE link to the pod is up
+constexpr uint8_t POWER_KNOWN   = 1 << 1;   // the pod sent power fields (fw 0.2+) in the last 5 s; bits 2-5 are its report
+constexpr uint8_t DOCK_POWER    = 1 << 2;   // the pod sees 5 V on its DOCK+ pad
+constexpr uint8_t USB_HOST      = 1 << 3;   // the pod's own USB-C is on a computer
+constexpr uint8_t CHARGING      = 1 << 4;   // the pod's estimate
+constexpr uint8_t CHARGED       = 1 << 5;   // the pod's estimate
+constexpr uint8_t PARKED        = 1 << 6;   // podDocked(): the unit treats the pod as parked, not on a club
+constexpr uint8_t CHARGED_ASLEEP = 1 << 7;  // link down, but the pod said charged before it dropped and has
+                                            // stayed on live contacts since: it is asleep on the dock (4.7)
+}
+namespace unitflag {
+constexpr uint8_t DOCK_FITTED   = 1 << 0;   // built with STEM_POD_DOCK
+constexpr uint8_t BUZZER_FITTED = 1 << 1;   // built with STEM_BUZZER
+constexpr uint8_t BUZZER_ON     = 1 << 2;   // fitted and not turned off with serial 'b'
+constexpr uint8_t USER_ARMED    = 1 << 3;   // not disarmed with serial 'a'
+constexpr uint8_t RAW_STREAMING = 1 << 4;   // raw captures go to USB after each shot (serial 'r', BOOT button)
+constexpr uint8_t BATT_LOW      = 1 << 5;   // the unit's cell is under BATT_LOW_MV
+constexpr uint8_t ADC_FAULT     = 1 << 6;   // the radar's ADC stream failed to start or restart
+}
+
 // -----------------------------------------------------------------------------
 //  I/Q capture ring (heap; 112 KB).
 // -----------------------------------------------------------------------------
@@ -315,6 +364,7 @@ static volatile bool         g_debug_trigger = false;
 static adc_continuous_handle_t g_adc = nullptr;
 static TaskHandle_t            g_adc_task = nullptr;
 static SemaphoreHandle_t       g_adc_lock = nullptr;   // held while reading DMA, and while stopping/starting
+static bool                    g_adc_fault = false;    // the stream failed to start or restart (setup(), loop())
 
 static bool IRAM_ATTR onAdcFrame(adc_continuous_handle_t, const adc_continuous_evt_data_t*, void*) {
   BaseType_t woken = pdFALSE;
@@ -376,7 +426,10 @@ template <typename F> static void withAdcPaused(F&& fn) {
     fn(unit);
     adc_oneshot_del_unit(unit);
   }
-  if (was_streaming && !adcStreamStart()) Serial.println("{\"type\":\"error\",\"msg\":\"ADC restart failed\"}");
+  if (was_streaming) {
+    g_adc_fault = !adcStreamStart();
+    if (g_adc_fault) Serial.println("{\"type\":\"error\",\"msg\":\"ADC restart failed\"}");
+  }
   if (g_adc_lock) xSemaphoreGive(g_adc_lock);
 }
 
@@ -642,6 +695,7 @@ static std::atomic<uint8_t>   g_pod_power{0};                // PodPower flags f
 static std::atomic<uint16_t>  g_pod_pad_mv{0};
 static std::atomic<uint32_t>  g_pod_power_ms{0};             // millis() of that status
 static std::atomic<uint32_t>  g_pod_power_seq{0};            // counts statuses that carried PodPower
+static std::atomic<uint8_t>   g_pod_power_last{0};           // g_pod_power when the link last dropped
 static std::atomic<bool>      g_pod_evt_connect{false};      // set in BLE callbacks, consumed by loop()
 static std::atomic<bool>      g_pod_evt_disconnect{false};
 
@@ -708,11 +762,13 @@ class PodScanCallbacks : public NimBLEScanCallbacks {
 class PodClientCallbacks : public NimBLEClientCallbacks {
   void onConnect(NimBLEClient*) override {
     Serial.println("{\"type\":\"event\",\"msg\":\"pod connected\"}");
+    g_pod_power_last = 0;       // it speaks for itself again
     g_pod_evt_connect = true;
   }
   void onDisconnect(NimBLEClient*, int reason) override {
     Serial.printf("{\"type\":\"event\",\"msg\":\"pod disconnected\",\"reason\":%d}\n", reason);
     g_pod_offset_us = INT64_MAX;
+    g_pod_power_last = g_pod_power.load();   // a charged pod drops the link to sleep on the dock
     g_pod_power = 0;
     g_pod_batt_mv = 0;          // otherwise later shots report a stale pod voltage
     g_pod_evt_disconnect = true;
@@ -749,8 +805,11 @@ static void podService() {
 // -----------------------------------------------------------------------------
 static NimBLEServer*         g_server = nullptr;
 static NimBLECharacteristic* g_chr_shot = nullptr;
+static NimBLECharacteristic* g_chr_status = nullptr;
+static std::atomic<bool>     g_phone_evt_connect{false};   // set in the BLE callback, consumed by loop()
 
 class PhoneServerCallbacks : public NimBLEServerCallbacks {
+  void onConnect(NimBLEServer*, NimBLEConnInfo&) override { g_phone_evt_connect = true; }
   void onDisconnect(NimBLEServer*, NimBLEConnInfo&, int) override { NimBLEDevice::startAdvertising(); }
 };
 static PhoneServerCallbacks g_phone_cb;
@@ -763,6 +822,7 @@ static void bleInit() {
   g_server->setCallbacks(&g_phone_cb, false);
   NimBLEService* svc = g_server->createService(cfg::UUID_GND_SVC);
   g_chr_shot = svc->createCharacteristic(cfg::UUID_GND_SHOT, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+  g_chr_status = svc->createCharacteristic(cfg::UUID_GND_STATUS, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
   svc->start();
   NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();
   adv->setName(cfg::BLE_NAME);
@@ -1120,7 +1180,25 @@ static void buzzerService(uint32_t now, bool may_sound, bool quiet) {
 static uint16_t g_batt_mv = 0;
 
 enum class DockState : uint8_t { OFF, CONFIRMING, CHARGING, LOCKOUT, LOW_BATTERY };
+static_assert(uint8_t(DockState::OFF) == 0 && uint8_t(DockState::CONFIRMING) == 1 &&
+              uint8_t(DockState::CHARGING) == 2 && uint8_t(DockState::LOCKOUT) == 3 &&
+              uint8_t(DockState::LOW_BATTERY) == 4, "the numbers are UnitStatus.dock_state");
 static DockState g_dock = DockState::OFF;
+
+// Why the contacts last changed state: the reason in the pod_dock USB line,
+// and UnitStatus.dock_reason. Append only; the numbers are on the wire.
+enum class DockReason : uint8_t {
+  NONE = 0,              // no change reported since boot
+  POD_PARKED,
+  POD_LIFTED,            // no beacon on the contacts any more
+  OVERLOAD,
+  FOREIGN_VOLTAGE,
+  UNIT_BATT_LOW,
+  UNIT_BATT_RECOVERED,
+  POD_ON_USB,
+  LOCKOUT_OVER,          // a fault's lockout ran out: looking for a pod again
+};
+static DockReason g_dock_reason = DockReason::NONE;
 static uint32_t  g_dock_changed_ms = 0;        // last time the switch changed state
 
 static bool podDocked(uint32_t now) {
@@ -1145,9 +1223,25 @@ static const char* dockStateText(DockState d) {
   return "unknown";
 }
 
-static void dockReport(const char* reason, uint16_t off_mv, uint16_t on_mv) {
+static const char* dockReasonText(DockReason r) {
+  switch (r) {
+    case DockReason::NONE: return "";
+    case DockReason::POD_PARKED: return "pod parked";
+    case DockReason::POD_LIFTED: return "no pod on the contacts (lifted, or contacts wet)";
+    case DockReason::OVERLOAD: return "overload: DOCK+ sagged with the switch on";
+    case DockReason::FOREIGN_VOLTAGE: return "voltage on the contacts with the switch off";
+    case DockReason::UNIT_BATT_LOW: return "ground unit battery low";
+    case DockReason::UNIT_BATT_RECOVERED: return "ground unit battery recovered";
+    case DockReason::POD_ON_USB: return "pod is on its own USB power";
+    case DockReason::LOCKOUT_OVER: return "fault lockout over: looking for a pod again";
+  }
+  return "unknown";
+}
+
+static void dockReport(DockReason reason, uint16_t off_mv, uint16_t on_mv) {
+  g_dock_reason = reason;
   Serial.printf("{\"type\":\"pod_dock\",\"state\":\"%s\",\"reason\":\"%s\",\"off_mv\":%u,\"on_mv\":%u}\n",
-                dockStateText(g_dock), reason, off_mv, on_mv);
+                dockStateText(g_dock), dockReasonText(reason), off_mv, on_mv);
 }
 
 static void dockSwitch(bool on) {
@@ -1160,7 +1254,7 @@ static uint16_t dockMv(adc_oneshot_unit_handle_t unit) {
   return uint16_t(float(oneshotMv(unit, cfg::CH_DOCK)) * cfg::DOCK_DIVIDER);
 }
 
-static void dockFault(uint32_t now, const char* reason, uint16_t off_mv, uint16_t on_mv) {
+static void dockFault(uint32_t now, DockReason reason, uint16_t off_mv, uint16_t on_mv) {
   g_dock = DockState::LOCKOUT;
   g_dock_lockout_until = now + g_dock_lockout_ms;
   g_dock_lockout_ms = std::min(g_dock_lockout_ms * 2, cfg::DOCK_LOCKOUT_MAX_MS);
@@ -1197,11 +1291,11 @@ static void dockCheck(uint32_t now) {
                   off_mv, on_mv);
 
   if (overload) {
-    dockFault(now, "overload: DOCK+ sagged with the switch on", off_mv, on_mv);
+    dockFault(now, DockReason::OVERLOAD, off_mv, on_mv);
     return;
   }
   if (off_mv >= cfg::DOCK_FOREIGN_MV) {
-    dockFault(now, "voltage on the contacts with the switch off", off_mv, 0);
+    dockFault(now, DockReason::FOREIGN_VOLTAGE, off_mv, 0);
     return;
   }
   switch (g_dock) {
@@ -1213,7 +1307,7 @@ static void dockCheck(uint32_t now) {
       if (switched_on) {
         g_dock = DockState::CHARGING;
         g_dock_on_ms = now;
-        dockReport("pod parked", off_mv, on_mv);
+        dockReport(DockReason::POD_PARKED, off_mv, on_mv);
         beep(Beep::POD_PARKED);
       } else {
         g_dock = DockState::OFF;
@@ -1222,7 +1316,7 @@ static void dockCheck(uint32_t now) {
     case DockState::CHARGING:
       if (!switched_on) {
         g_dock = DockState::OFF;
-        dockReport("no pod on the contacts (lifted, or contacts wet)", off_mv, on_mv);
+        dockReport(DockReason::POD_LIFTED, off_mv, on_mv);
       } else if (now - g_dock_on_ms > 60000) {
         g_dock_lockout_ms = cfg::DOCK_LOCKOUT_MS;   // a session that ran a minute clears past faults
       }
@@ -1258,19 +1352,20 @@ static void dockService(uint32_t now, bool may_check, bool quiet) {
   if (g_dock == DockState::LOW_BATTERY) {
     if (batt_known && g_batt_mv >= cfg::DOCK_RESUME_BATT_MV) {
       g_dock = DockState::OFF;
-      dockReport("ground unit battery recovered", 0, 0);
+      dockReport(DockReason::UNIT_BATT_RECOVERED, 0, 0);
     }
     return;
   }
   if (batt_known && g_batt_mv < cfg::DOCK_MIN_BATT_MV) {
     if (g_dock == DockState::CHARGING) dockSwitch(false);
     g_dock = DockState::LOW_BATTERY;
-    dockReport("ground unit battery low", 0, 0);
+    dockReport(DockReason::UNIT_BATT_LOW, 0, 0);
     return;
   }
   if (g_dock == DockState::LOCKOUT) {
     if (int32_t(now - g_dock_lockout_until) < 0) return;
     g_dock = DockState::OFF;
+    dockReport(DockReason::LOCKOUT_OVER, 0, 0);
   }
   // A pod whose own USB-C is on a computer has power already. The SuperMini
   // ties VBUS straight to its 5V pin, so charging it from here too could push
@@ -1281,7 +1376,7 @@ static void dockService(uint32_t now, bool may_check, bool quiet) {
     g_dock = DockState::OFF;
     if (was_on) {
       dockSwitch(false);
-      dockReport("pod is on its own USB power", 0, 0);
+      dockReport(DockReason::POD_ON_USB, 0, 0);
     }
     return;
   }
@@ -1322,6 +1417,102 @@ static uint16_t g_shot_seq = 0;
 static bool     g_stream_raw = false;
 
 static uint32_t g_ready_beep_ms = 0;   // when to sound the ready chirp; 0 = not pending
+
+// -----------------------------------------------------------------------------
+//  Live status to the phone (docs/wiring_schematic.md 3.4). Built only from
+//  values loop() already holds: it never pauses the radar stream, takes the
+//  ADC lock or touches the capture ring. It is built, stored and notified only
+//  while no capture is triggered or being analysed and the pod reports no
+//  swing, the gate the dock checks and the buzzer also use. A read during a
+//  capture returns the value from just before it.
+// -----------------------------------------------------------------------------
+static UnitStatus buildStatus(uint32_t now) {
+  UnitStatus st{};
+  st.fw_major = cfg::FW_MAJOR;
+  st.fw_minor = cfg::FW_MINOR;
+  st.uptime_ms = now;
+  st.battery_mv_ground = g_batt_mv;
+  const bool linked = podConnected();
+  st.battery_mv_pod = linked ? g_pod_batt_mv : 0;
+
+  uint8_t pf = 0;
+  if (linked) {
+    pf |= podflag::CONNECTED;
+    // Signed: the BLE task may stamp a status after `now` was read.
+    if (g_pod_power_seq.load() && int32_t(now - g_pod_power_ms.load()) < 5000) {
+      const uint8_t pw = g_pod_power.load();
+      pf |= podflag::POWER_KNOWN;
+      if (pw & podpower::DOCK_POWER) pf |= podflag::DOCK_POWER;
+      if (pw & podpower::USB_HOST) pf |= podflag::USB_HOST;
+      if (pw & podpower::CHARGING) pf |= podflag::CHARGING;
+      if (pw & podpower::CHARGED) pf |= podflag::CHARGED;
+    }
+  }
+  if (podDocked(now)) pf |= podflag::PARKED;
+  // A charged pod reports for a minute, then deep-sleeps on the dock and its
+  // link drops. Keep its last word while the contacts stay live; forget it
+  // once the contacts change state (here) or the pod is back on the link (its
+  // connect callback). g_dock changes only in dockService(), which never runs
+  // while this is held off, so no change of state is missed.
+  if (g_dock != DockState::CHARGING) g_pod_power_last = 0;
+  else if (!linked && (g_pod_power_last.load() & podpower::CHARGED)) pf |= podflag::CHARGED_ASLEEP;
+  st.pod_flags = pf;
+
+  uint8_t uf = 0;
+#if STEM_POD_DOCK
+  uf |= unitflag::DOCK_FITTED;
+#endif
+#if STEM_BUZZER
+  uf |= unitflag::BUZZER_FITTED;
+  if (g_buzzer_on) uf |= unitflag::BUZZER_ON;
+#endif
+  if (g_user_armed) uf |= unitflag::USER_ARMED;
+  if (g_stream_raw) uf |= unitflag::RAW_STREAMING;
+  if (g_batt_mv > 1000 && g_batt_mv < cfg::BATT_LOW_MV) uf |= unitflag::BATT_LOW;
+  if (g_adc_fault) uf |= unitflag::ADC_FAULT;
+  st.unit_flags = uf;
+
+  st.dock_state = uint8_t(g_dock);
+  st.dock_reason = uint8_t(g_dock_reason);
+#if STEM_POD_DOCK
+  if (g_dock == DockState::LOCKOUT) {
+    int32_t left = int32_t(g_dock_lockout_until - now);
+    st.dock_retry_s = left > 0 ? uint16_t((left + 999) / 1000) : 0;
+  }
+#endif
+  st.shot_seq = g_shot_seq;
+  return st;
+}
+
+static bool mvMoved(uint16_t a, uint16_t b) {
+  if ((a == 0) != (b == 0)) return true;   // a pod appearing or going is always a change
+  return (a > b ? a - b : b - a) >= cfg::STATUS_MV_STEP;
+}
+
+// uptime_ms and the dock_retry_s countdown are not changes: the phone can
+// count those itself.
+static bool statusChanged(const UnitStatus& a, const UnitStatus& b) {
+  return a.pod_flags != b.pod_flags || a.unit_flags != b.unit_flags || a.dock_state != b.dock_state ||
+         a.dock_reason != b.dock_reason || a.shot_seq != b.shot_seq ||
+         mvMoved(a.battery_mv_ground, b.battery_mv_ground) || mvMoved(a.battery_mv_pod, b.battery_mv_pod);
+}
+
+static void statusService(uint32_t now, bool may_send) {
+  static UnitStatus sent{};
+  static uint32_t built_ms = 0, sent_ms = 0;
+  static bool sent_any = false, phone_new = false;
+  if (g_phone_evt_connect.exchange(false)) phone_new = true;   // a phone just connected: send it the state
+  if (!may_send || (sent_any && now - built_ms < cfg::STATUS_MIN_GAP_MS)) return;
+  built_ms = now;
+  UnitStatus st = buildStatus(now);
+  g_chr_status->setValue(reinterpret_cast<uint8_t*>(&st), sizeof st);   // what a read returns
+  if (sent_any && !phone_new && !statusChanged(st, sent) && now - sent_ms < cfg::STATUS_PERIOD_MS) return;
+  g_chr_status->notify();
+  sent = st;
+  sent_ms = now;
+  sent_any = true;
+  phone_new = false;
+}
 
 void setup() {
 #if STEM_POD_DOCK
@@ -1367,8 +1558,10 @@ void setup() {
   if (!adcStreamStart()) {
     Serial.println("{\"type\":\"error\",\"msg\":\"ADC continuous mode failed to start\"}");
     g_led = LedMode::FAULT;
+    g_adc_fault = true;
   }
   bleInit();
+  statusService(millis(), true);   // the status is readable from the first connection on
   Serial.printf("{\"type\":\"ready\",\"battery_mv\":%u}\n", g_batt_mv);
   // Chirp once the trigger has learnt its noise level (64 blocks, 0.4 s), so
   // the chirp is not part of what it learns.
@@ -1463,6 +1656,10 @@ void loop() {
   // Pod charging contacts: never during a capture, a tone or a pod swing.
   dockService(now, !capture_busy && !swing_coming && buzzerSilentFor(now, cfg::BUZZER_SETTLE_MS), quiet);
   now = millis();              // a check pauses for up to ~60 ms
+
+  // Live status to the phone: never during a capture or a pod swing. The
+  // trigger flags are read afresh: the ADC task may have fired since.
+  statusService(now, !g_triggered && !g_capture_ready && !swing_coming);
 
   if (g_ready_beep_ms && int32_t(now - g_ready_beep_ms) >= 0) {
     g_ready_beep_ms = 0;

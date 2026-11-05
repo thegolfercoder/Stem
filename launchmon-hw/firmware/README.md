@@ -111,6 +111,27 @@ reader keeps them in `messages` and reads only `"type":"shot"`):
   `charge` is `charging`, `charged` or `not_charging`, an estimate (wiring doc 4.7).
 - `dock_debug`, with trigger debug on: the readings from every contact check.
 
+The end of a fault's lockout is a `pod_dock` line too (`"state":"off"`,
+reason `fault lockout over: looking for a pod again`), from firmware 0.3.
+
+## Ground unit output (BLE, to a phone)
+
+The unit advertises as `STEM-RADAR` with one service, `7d2a0101-…`, and two
+characteristics, both read and notify. Layouts are in the wiring doc, section 3.
+
+- **Shot summary** (`7d2a0102-…`, 42 bytes, 3.3): one notification per shot,
+  sent with the capture ring frozen. The same readings as the `shot` line.
+- **Live status** (`7d2a0103-…`, 20 bytes, 3.4; firmware 0.3 and later): the
+  unit's battery, whether the pod is connected, parked, charging or charged
+  and its battery, the dock state machine's state, reason and lockout
+  countdown, the last `shot_seq`, and a few build and mode flags. Notified on a
+  change (at most four a second; a voltage must move 25 mV), every 30 s, and
+  when a phone connects; readable at any time. Never built or sent while a
+  capture is triggered or analysed or the pod reports a swing, and it never
+  pauses the radar stream. It fits a default-MTU notification whole.
+
+`launchmon-hw/results/` is a phone page that reads both.
+
 Serial commands: `r` toggles raw capture streaming, `d` toggles the trigger
 debug print (and the `dock_debug` lines), `a` arms or disarms, `b` turns the
 buzzer on or off.
