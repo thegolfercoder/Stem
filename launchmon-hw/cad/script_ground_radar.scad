@@ -44,6 +44,13 @@
 //  `fit_report()` prints every clearance at render time, so a change to any
 //  part size shows up as a number rather than as a part that won't go in.
 //
+//  POD PARK: the club pod parks on the back of this unit, left of the dock's
+//  stem, hanging +X end up in a small hood screwed to the lid, and charges
+//  there from the MT3608's 5 V. One object to carry, one cable to charge.
+//  SIGHT: a front post and rear notch on the top face, over the boresight.
+//  BUZZER: a bare piezo disc on the inside of the left end wall, sounding
+//  through louvred slots hidden in the grip ribs.
+//
 //  PRINTED PARTS (set `part`):
 //      "shell"             front face + side walls (print front face DOWN)
 //      "lid"               rear cover, carries the MT3608   (print flat, lip UP)
@@ -52,13 +59,18 @@
 //      "esp32_clamp_tab"   x2, M2 clamp tabs for the SuperMini (no holes on it)
 //      "dock_base"         dock base with lips and the stem's socket
 //      "dock_stem"         stem with the 1/4"-20 stud cap, or the MagSafe ring (print flat)
+//      "pod_park_hood"     the hood the pod parks and charges in, on the lid (print rear face down)
 //      "assembly"          everything placed, with ghost components (viewing only)
 //      "print_plate"       shell + lid + small parts laid out for one export
 // =============================================================================
 
+// The pod's own geometry and numbers, for the parked pod and the hood's socket.
+// `use` imports its modules and functions only; its variables stay its own.
+use <script_shaft_imu.scad>
+
 /* [Render] */
-part            = "assembly";   // [assembly, shell, lid, radome, led_pipe, esp32_clamp_tab, dock_base, dock_stem, print_plate, section]
-// Also: "in_place:shell|lid|radome|led_pipe|tab0|tab1|dock_base|dock_stem" and "ghost:<name>" export one
+part            = "assembly";   // [assembly, shell, lid, radome, led_pipe, esp32_clamp_tab, dock_base, dock_stem, pod_park_hood, print_plate, section]
+// Also: "in_place:shell|lid|radome|led_pipe|tab0|tab1|dock_base|dock_stem|pod_park_hood" and "ghost:<name>" export one
 // part in its assembled position (used by cad/blender/).
 show_components = true;         // ghost components in the assembly view
 explode         = 0;            // [0:1:40] pull the lid back in the assembly view
@@ -194,6 +206,57 @@ phone         = [71.6, 147.6, 8.3];  // stand-in phone for fit checks and render
 phone_lens_from_top = 25;       // main camera centre below the phone's top edge (typical)
 phone_vfov    = 65;             // camera vertical field of view, portrait, degrees
 
+/* [Pod park - the club pod parks on the lid and charges from this unit] */
+// Not the dock: the dock is the stand. The pod hangs +X end up (its arrow
+// points into the hood) under a hood screwed to the lid from inside, left of
+// the stem. Two magnet pairs pull it up against two spring pins, which meet
+// the brass contacts in the pod's end face (script_shaft_imu.scad, "pod park").
+// The pins carry the MT3608's 5 V through the protection board in the pocket
+// on the lid behind them. Everything for it lives on the lid.
+pod_park        = true;         // false: no hood, no holes in the lid, no board pocket
+pod_park_cx     = 18;           // pod centre line, X: between the left end and the stem neck (X 36)
+pod_park_z0     = 11;           // pod's USB end, Z: above the lower-left lid screw and the dock's rear lip
+pod_park_gap    = 0.6;          // pod's jaw tips to the lid's outer face
+pod_park_hood   = [30, 11.4, 4, 0.8];  // [X, Z, corner R, chamfer]: the stem cap's face, so the two read as a pair
+pod_park_wall   = 1.6;
+pod_park_rim    = 2.0;          // hood behind the pod's lid
+pod_park_socket = [1.5, 0.25];  // [depth, clearance] of the pocket the pod's end sits in: its outline keys it
+// Spring (pogo) pins, one per contact, pointing down. MEASURE THE PINS YOU BUY
+// and set these: the defaults are a common 2 x 6 mm, 1 mm stroke pin.
+pod_park_pogo   = [2.0, 6.0, 1.0, 1.5, 1.0];  // [barrel d, length extended, stroke, plunger exposed, tip d]
+pod_park_pogo_fit = -0.05;      // bore = barrel d + this: a press fit, plus a drop of CA
+pod_park_recess = 0.5;          // extended pin tip above the socket floor, up inside its well: a coin or a
+                                // wet leaf across the socket cannot reach both, and the hood faces down
+pod_park_well   = 0.8;          // well diameter over the pod's contact head
+pod_park_plate  = 5.5;          // pin plate, socket floor up to the wiring space
+pod_park_screws = [6.5, 29.5];  // X of the two M2 x 6 that hold the hood, driven from inside the lid
+pod_park_wire   = [[16.5, 19.5], 1.6];  // [[X, X], d] one hole per wire through the lid, behind the hood
+pod_park_board  = [15, 12, 4];  // protection board [X, Z, height off the lid]: MOSFET switch, polyfuse, passives
+pod_park_board_pos = [10.0, 35.7];  // its pocket's lower-left [X, Z] on the lid's inner face
+
+/* [Sight - front post and rear notch over the boresight] */
+// Lines the unit up with the target line quickly and repeatably. The speed
+// error from a small misaim is tiny (1 - cos), so this is for fast setup and
+// for keeping the target well inside the beam, not for precision.
+sight_h      = 2.5;           // post tip and notch top above the top face
+sight_post   = [1.2, 1.2];    // front post [width X, flat top along Y]
+sight_notch  = [1.8, 1.4];    // rear notch [width, depth]: 0.3 mm of light each side of the post
+sight_blade  = 8.0;           // rear blade width, X
+
+/* [Buzzer - bare piezo disc] */
+// Brass face toward the inside of the left end wall, glued by its rim onto a
+// seat that holds it pz_cavity off the wall: a disc glued down flat cannot
+// flex and is nearly silent. It sounds through louvred slots in the grip ribs.
+pz_d        = 15.0;           // brass disc diameter
+pz_t        = 0.3;            // brass thickness
+pz_ceramic  = [10.0, 0.25];   // piezo ceramic on the inner face [d, t]
+pz_seat     = 0.8;            // rim glued to the seat
+pz_cavity   = 1.2;            // air between the brass and the wall
+pz_cy       = 10.5;           // disc centre, Y (middle of the inside depth)
+pz_slot_ribs = [0, 2, 4, 6];  // which grip-rib grooves (from the lowest) open through as slots
+pz_slot_len = 8.0;            // along Y
+pz_slant    = 45;             // slots rise inward, so rain cannot run in and water inside drains out
+
 /* [Fasteners - M2] */
 m2_pilot    = 1.7;    // thread-forming M2 straight into PETG/ABS
 m2_clear    = 2.4;
@@ -228,6 +291,42 @@ stem_y1       = stem_y0 + stem_t;           // stem rear face (the phone side)
 stud_y        = stem_y1 + stud_behind;      // 1/4"-20 stud axis, Y
 radar_back_y  = radar_stack * cos(win_tilt) + win_size * sin(win_tilt);
 radar_low_z   = win_zb - (win_t + radar_gap) * sin(win_tilt);  // module bottom edge
+
+// Pod park: the pod's numbers come from its own script.
+pp       = pod_park_spec();     // [size, pads, magnets, pad, magnet, skin, back z]
+pp_size  = pp[0];
+pp_pad   = pp[3];
+pp_mag   = pp[4];
+pp_tx    = pod_park_cx - pp_size[1] / 2;             // pod (x, y, z) -> unit (pp_tx + y, pp_ty + z, pp_tz + x)
+pp_ty    = body_d + pod_park_gap - pp[6];
+pp_tz    = pod_park_z0;
+function pp_at(p) = [pp_tx + p[0], pp_ty + p[1]];    // a point on the pod's end face, [Y, Z] -> unit [X, Y]
+pp_pads  = [for (p = pp[1]) pp_at(p)];               // [0] GND, [1] +5 V
+pp_mags  = [for (m = pp[2]) pp_at(m)];
+pp_floor = pp_tz + pp_size[0];                       // socket floor = the pod's +X end face
+pp_hz0   = pp_floor - pod_park_socket[0];
+pp_hz1   = pp_hz0 + pod_park_hood[1];
+pp_hx0   = pod_park_cx - pod_park_hood[0] / 2;
+pp_hx1   = pod_park_cx + pod_park_hood[0] / 2;
+pp_hy1   = pp_ty + pp_size[2] + pod_park_rim;
+pp_well_top = pp_floor + pod_park_recess + pod_park_pogo[3];   // barrel's lower end
+pp_tail  = pp_floor + pod_park_recess + pod_park_pogo[1];      // barrel's upper end
+pp_screw_z = pp_floor + pod_park_plate / 2;
+pp_wire_z  = (pp_floor + pod_park_plate + pp_hz1 - 1.2) / 2;   // middle of the wiring space
+pp_bin   = [pod_park_board[0] + 0.4, pod_park_board[1] + 0.4]; // board pocket inside the fence [X, Z]
+
+// Sight
+sight_rear_y = (y_back + reveal[1] + body_d) / 2;     // rear blade, mid-thickness
+sight_radius = sight_rear_y - sight_post[1] / 2;
+
+// Buzzer: the slots rise from the rib grooves outside to the cavity inside;
+// the disc is centred on their inner ends.
+pz_rise  = wall * tan(pz_slant);
+pz_slot_z = [for (k = pz_slot_ribs) rib_z[0] + k * rib_pitch];   // outer ends
+pz_cz    = (pz_slot_z[0] + pz_slot_z[len(pz_slot_z) - 1]) / 2 + pz_rise;
+pz_seat_r = pz_d / 2 + 0.15;
+pz_x1    = wall + pz_cavity + pz_t + 0.1;             // inner face of the mount
+pz_block = [y_front - 0.01, min(y_back - 0.2, pz_cy + pz_seat_r + 0.25), pz_cz - pz_seat_r - 1.0, pz_cz + pz_seat_r + 1.0];  // [y0, y1, z0, z1]
 
 assert(win_t >= 1.0 && win_t <= 1.2, "Radar window must be 1.0 - 1.2 mm for 24 GHz transparency");
 assert(win_tilt == 15, "Brief specifies a 15 degree upward tilt; remove this assert to experiment");
@@ -314,6 +413,8 @@ module shell() {
             battery_bay();
             tp4056_pocket();
             switch_holder();
+            sight_post();
+            pz_mount();
         }
         // Holes and cutouts through everything above.
         lid_screw_pilots();
@@ -325,6 +426,7 @@ module shell() {
         window_bevel();
         side_ribs();
         front_wordmark();
+        pz_cuts();
     }
 }
 
@@ -542,12 +644,63 @@ module led_pipe() {
 }
 module led_pipe_in_place() { translate([led_pos[0], led_pos[1], body_h - wall]) led_pipe(); }
 
-// ---- Aiming index ---------------------------------------------------------------
+// ---- Aiming: sight and groove ----------------------------------------------------
 module aim_groove() {
     // A round-ended groove on the top face, directly over the radar boresight,
-    // for lining the unit up with the target line.
-    hull() for (y = [3.5, y_back - 1.6])
+    // joining the front post to the rear notch, so the three read as one line.
+    hull() for (y = [sight_post[1] + sight_h + 1.0, y_back - 1.6])
         translate([win_cx, y, body_h - mark_depth]) cylinder(h = 1, d = 0.8, $fn = 16);
+}
+
+module sight_post() {
+    // Front post: a ramped blade at the top front edge, over the window centre.
+    // Its front face is in the plane of the front face, so it starts on the bed
+    // as the shell prints; the ramp behind it faces up. No supports.
+    t = body_h + sight_h; f = sight_post[1];
+    yz_extrude(win_cx - sight_post[0] / 2, win_cx + sight_post[0] / 2)
+        polygon([[0, body_h - front_chamfer - 0.4], [0, t], [f, t], [f + sight_h + 0.5, body_h - 0.5],
+                 [front_chamfer, body_h - 0.5]]);
+}
+
+module sight_rear() {
+    // Rear blade with a U notch, on the lid's top edge behind the shadow gap.
+    // Its rear face is the lid's outer face, so it starts on the bed as the lid
+    // prints. Its bed edges are chamfered 0.4 mm like every other.
+    y0 = y_back + reveal[1]; z0 = body_h - rear_chamfer - 0.5; z1 = body_h + sight_h;
+    x0 = win_cx - sight_blade / 2;
+    difference() {
+        hull() {
+            translate([x0 + 0.4, body_d - 0.01, z0]) cube([sight_blade - 0.8, 0.01, z1 - z0 - 0.4]);
+            translate([x0, y0, z0]) cube([sight_blade, body_d - 0.4 - y0, z1 - z0]);
+        }
+        translate([win_cx - sight_notch[0] / 2, y0 - 1, z1 - sight_notch[1]]) cube([sight_notch[0], 4, 2]);
+    }
+}
+
+// ---- Buzzer: piezo disc on the left end wall ------------------------------------
+module pz_mount() {
+    // A frame on the inside of the left wall. The disc's brass face sits in a
+    // shallow seat on it, glued by its rim, over a cavity that opens through
+    // the wall into the grip-rib grooves.
+    b = pz_block;
+    translate([wall - 0.01, b[0], b[2]]) cube([pz_x1 - wall + 0.01, b[1] - b[0], b[3] - b[2]]);
+}
+
+module pz_cuts() {
+    // Cavity (teardrop-topped: the shell prints with Y up), the disc's seat,
+    // and the louvred slots: each rises pz_slant from a rib groove outside to
+    // the cavity inside.
+    r = pz_d / 2 - pz_seat;
+    yz_extrude(wall, pz_x1 - pz_t - 0.1 + 0.01) intersection() {
+        translate([pz_cy, pz_cz]) hull() { circle(r = r); translate([r * sqrt(2), 0]) circle(r = 0.01); }
+        translate([0, 0]) square([pz_cy + pz_seat_r, 100]);
+    }
+    yz_extrude(pz_x1 - pz_t - 0.1, pz_x1 + 0.01) translate([pz_cy, pz_cz]) circle(r = pz_seat_r);
+    for (z = pz_slot_z)
+        translate([0, pz_cy - pz_slot_len / 2, 0]) rotate([90, 0, 0]) mirror([0, 0, 1]) linear_extrude(pz_slot_len)
+            polygon([[-1, z - rib_w / 2 - tan(pz_slant)], [-1, z + rib_w / 2 - tan(pz_slant)],
+                     [wall + 0.5, z + rib_w / 2 + (wall + 0.5) * tan(pz_slant)],
+                     [wall + 0.5, z - rib_w / 2 + (wall + 0.5) * tan(pz_slant)]]);
 }
 
 // ---- Grip ribs and wordmark -------------------------------------------------------
@@ -601,9 +754,12 @@ module lid() {
                 }
                 for (p = lid_bosses) translate([p[0], 0, p[1]]) y_cylinder(body_d, boss_d + 3.6);
                 switch_lid_relief();
+                pz_lid_relief();
             }
             mt3608_fence();
             tp4056_presser();
+            if (pod_park) pod_park_board_fence();
+            sight_rear();
         }
         // Shadow gap at the seam: the lid's edge steps in for its first 0.8 mm.
         xz_extrude(y_back - 0.01, y_back + reveal[1]) difference() { outline(-2); outline(reveal[0]); }
@@ -612,6 +768,32 @@ module lid() {
             translate([p[0], body_d - m2_head_h, p[1]]) y_cylinder(m2_head_h + 1, m2_head_d);
             translate([p[0], body_d - 0.4, p[1]]) y_cone(0.41, m2_head_d, m2_head_d + 0.8);
         }
+        if (pod_park) pod_park_lid_holes();
+    }
+}
+
+module pz_lid_relief() {
+    // The lip steps round the buzzer's mount.
+    translate([-1, 0, pz_block[2] - 0.5]) cube([wall + fit_clear + lid_lip_w + 2, body_d, pz_block[3] - pz_block[2] + 1]);
+}
+
+module pod_park_lid_holes() {
+    // Clearance for the hood's two screws, driven from inside, and one hole per
+    // wire into the hood's wiring space. The hood covers all of them.
+    for (x = pod_park_screws) translate([x, y_back - 1, pp_screw_z]) y_cylinder(lid_t + 2, m2_clear);
+    for (x = pod_park_wire[0]) translate([x, y_back - 1, pp_wire_z]) y_cylinder(lid_t + 2, pod_park_wire[1]);
+}
+
+module pod_park_board_fence() {
+    // Pocket for the protection board (MOSFET switch, polyfuse, resistors) on
+    // the lid's inner face, just below where the pins' wires come through.
+    // Gaps top and bottom for its wires. Fix it with a dab of hot glue.
+    t = 1.0; h = 1.6;
+    x0 = pod_park_board_pos[0]; z0 = pod_park_board_pos[1];
+    translate([0, y_back - h, 0]) difference() {
+        translate([x0 - t, 0, z0 - t]) cube([pp_bin[0] + 2 * t, h + 0.01, pp_bin[1] + 2 * t]);
+        translate([x0, -1, z0]) cube([pp_bin[0], h + 2, pp_bin[1]]);
+        translate([x0 + pp_bin[0] / 2 - 3, -1, z0 - t - 1]) cube([6, h + 2, pp_bin[1] + 2 * t + 2]);
     }
 }
 
@@ -785,12 +967,83 @@ module dock_base_print() { translate([0, -dock_y0, dock_t]) dock_base(); }
 module dock_stem_print()  { translate([0, holder == "magsafe" ? ring_center[1] + ring_od / 2 + 3 : cap_top + 1, -stem_y0]) rotate([90, 0, 0]) dock_stem(); }
 
 // ----------------------------------------------------------------------------
+//  Pod park hood: the pod hangs in it, +X end up, and charges
+// ----------------------------------------------------------------------------
+// The pod's place, as parked: its +X end up (the arrow points into the hood),
+// its lid facing back, its clamp toward the lid.
+module pod_park_place() {
+    multmatrix([[0, 1, 0, pp_tx], [0, 0, 1, pp_ty], [1, 0, 0, pp_tz], [0, 0, 0, 1]]) children();
+}
+
+module pp_hood_profile(i = 0) {
+    // Front view [X, Z]: the stem cap's rounded rectangle, square at the bottom
+    // where the pod enters.
+    translate([pp_hx0 + i, pp_hz0 + i]) {
+        rrect(pod_park_hood[0] - 2 * i, pod_park_hood[1] - 2 * i, max(0.5, pod_park_hood[2] - i));
+        square([pod_park_hood[0] - 2 * i, pod_park_hood[1] / 2]);
+    }
+}
+
+module pp_socket_2d() {
+    // Plan [X, Y] of the pocket: the outline of the pod's last 1.5 mm, clamp
+    // included, so it only goes in one way round. Open toward the lid.
+    module slab() intersection() {
+        pod_park_place() pod_park_solid();
+        translate([-1, -1, pp_floor - pod_park_socket[0]]) cube([body_w, 100, pod_park_socket[0] + 0.01]);
+    }
+    offset(delta = pod_park_socket[1]) union() { projection() slab(); translate([0, -4]) projection() slab(); }
+}
+
+// Teardrop hole along Z, its point toward -Y: as the hood prints, -Y is up.
+module pp_tear(h, d) {
+    linear_extrude(h) hull() { circle(d = d, $fn = 32); translate([0, -d / 2 * sqrt(2)]) circle(d = 0.01); }
+}
+
+module pod_park_hood() {
+    c = pod_park_hood[3];
+    difference() {
+        hull() {
+            xz_extrude(body_d, body_d + 0.01)          pp_hood_profile(c);
+            xz_extrude(body_d + c, pp_hy1 - c)         pp_hood_profile(0);
+            xz_extrude(pp_hy1 - 0.01, pp_hy1)          pp_hood_profile(c);
+        }
+        // The pocket the pod's end sits in.
+        translate([0, 0, pp_hz0 - 1]) linear_extrude(pod_park_socket[0] + 1) pp_socket_2d();
+        // Wells over the pod's contact heads, then the pins' bores.
+        for (p = pp_pads) translate([p[0], p[1], 0]) {
+            translate([0, 0, pp_floor - 0.01]) pp_tear(pp_well_top - pp_floor + 0.01, pp_pad[0] + pod_park_well);
+            translate([0, 0, pp_well_top - 0.01]) pp_tear(pp_floor + pod_park_plate - pp_well_top + 0.02,
+                                                         pod_park_pogo[0] + pod_park_pogo_fit);
+        }
+        // Magnets, flush with the socket floor.
+        for (m = pp_mags) translate([m[0], m[1], pp_floor - 0.01]) pp_tear(pp_mag[1] + 0.1, pp_mag[0] + 0.1);
+        // "+" by the +5 V pin, for wiring.
+        translate([pp_pads[1][0], pp_pads[1][1] - 5.0, pp_floor - 0.01]) linear_extrude(mark_depth + 0.01)
+            for (r = [0, 90]) rotate(r) square([2.4, 0.6], center = true);
+        // Wiring space above the pins, open to the lid; a rib keeps the two wires apart.
+        xz_extrude(body_d - 1, pp_hy1 - pod_park_wall) difference() {
+            intersection() {
+                pp_hood_profile(pod_park_wall);
+                translate([0, pp_floor + pod_park_plate]) square([body_w, 30]);
+            }
+            translate([pod_park_cx - 0.6, 0]) square([1.2, body_h * 2]);
+        }
+        // Pilots for the two M2 x 6 from inside the lid.
+        for (x = pod_park_screws) translate([x, body_d - 1, pp_screw_z]) y_cylinder(5.5, m2_pilot);
+    }
+}
+// Print rear face down on the textured sheet: that is the face seen from
+// behind. The wiring space then opens upward and the pin bores lie across.
+module pod_park_hood_print() { translate([-pp_hx0, -pp_hz0, pp_hy1]) rotate([-90, 0, 0]) pod_park_hood(); }
+
+// ----------------------------------------------------------------------------
 //  Ghost components (assembly view only)
 // ----------------------------------------------------------------------------
 // Each component is a named ghost so other tools can export them one at a
 // time: `part = "ghost:battery"` exports just the cell, in place. The Blender
 // scenes in cad/blender/ are built that way.
-ghost_names = ["battery", "tp4056", "mt3608", "esp32", "lm358", "radar", "switch", "led", "boresight", "phone", "magsafe_ring", "stud_bolt"];
+ghost_names = ["battery", "tp4056", "mt3608", "esp32", "lm358", "radar", "switch", "led", "boresight", "phone", "magsafe_ring", "stud_bolt",
+               "parked_pod", "pod_park_pogo", "pod_park_magnets", "pod_park_board", "piezo"];
 // The radome and light pipe are printed parts, exported with "in_place:radome" and "in_place:led_pipe".
 
 module ghosts() { for (n = ghost_names) ghost(n); }
@@ -840,6 +1093,23 @@ module ghost(name) {
             y_cylinder(ring_depth - 0.2, ring_od - 0.4);
             translate([0, -1, 0]) y_cylinder(ring_depth + 2, ring_id + 0.4);
         }
+    // Pod park: the pod as it hangs in the hood, the hood's pins (pressed in by
+    // the pod's contact heads) and magnets, and the protection board.
+    if (name == "parked_pod" && pod_park) pod_park_place() pod_parked_parts(true);
+    if (name == "pod_park_pogo" && pod_park) color("Gold") for (p = pp_pads) translate([p[0], p[1], 0]) {
+        translate([0, 0, pp_well_top]) cylinder(h = pp_tail - pp_well_top, d = pod_park_pogo[0], $fn = 24);
+        translate([0, 0, pp_floor + pp_pad[1]]) cylinder(h = pp_well_top - pp_floor - pp_pad[1], d = pod_park_pogo[4], $fn = 16);
+    }
+    if (name == "pod_park_magnets" && pod_park) color("Silver") for (m = pp_mags)
+        translate([m[0], m[1], pp_floor]) cylinder(h = pp_mag[1], d = pp_mag[0], $fn = 32);
+    if (name == "pod_park_board" && pod_park) color("ForestGreen", 0.7)
+        translate([pod_park_board_pos[0] + 0.2, y_back - pod_park_board[2], pod_park_board_pos[1] + 0.2])
+            cube([pod_park_board[0], pod_park_board[2], pod_park_board[1]]);
+    // Piezo disc: brass on the seat, ceramic toward the inside.
+    if (name == "piezo") {
+        color("Goldenrod") translate([pz_x1 - pz_t - 0.1, pz_cy, pz_cz]) rotate([0, 90, 0]) cylinder(h = pz_t, d = pz_d);
+        color("WhiteSmoke") translate([pz_x1 - 0.1, pz_cy, pz_cz]) rotate([0, 90, 0]) cylinder(h = pz_ceramic[1], d = pz_ceramic[0]);
+    }
     // Boresight indicator: a cone along the radar's 15-degree axis
     if (name == "boresight") color("Orange", 0.5) in_window_frame() translate([0, 0, win_size / 2])
         rotate([90, 0, 0]) cylinder(h = 60, d1 = 1, d2 = 20);
@@ -901,10 +1171,96 @@ module fit_report() {
         chk("cap above the unit's top edge   ", (cap_top - cap[2]) - body_h + 3),
     ];
     stem_lines = !phone_mount ? [] : [chk("stem face past the screw pilots  ", stem_t - 3.4 - 0.4)];
-    for (l = concat(lines, ms_lines, st_lines, stem_lines)) echo(l);
+
+    // Pod park. The neck widens into the cap's fillet from z_fillet up.
+    neck_x0  = ring_center[0] - stem_neck_w / 2;
+    cap_x0   = ring_center[0] - cap[0] / 2;
+    z_fillet = (cap_top - cap[2] + 4) - sqrt(pow(stem_fillet + 4, 2) - pow(cap_x0 + 4 - (neck_x0 - stem_fillet), 2));
+    comp     = pp_pad[1] - pod_park_recess;           // pin compression with the pod parked
+    hb       = [pod_park_board_pos[0] - 1, pod_park_board_pos[0] + pp_bin[0] + 1,
+                pod_park_board_pos[1] - 1, pod_park_board_pos[1] + pp_bin[1] + 1];   // fence [x0, x1, z0, z1]
+    esp_usb_z = esp_pos[1] + esp_pcb[1] / 2;
+    pp_lines = !pod_park ? [] : [
+        chk("pod park: hood clear of stem neck", neck_x0 - pp_hx1 - 0.5),
+        chk("pod park: hood below stem fillet ", z_fillet - pp_hz1),
+        chk("pod park: hood lifts under cap   ", (cap_top - cap[2]) - (pp_hz1 + dock_lip_h + 1)),
+        chk("pod park: hood below top-left screw", (lid_bosses[2][1] - m2_head_d / 2) - pp_hz1 - 0.4),
+        chk("pod park: pod above low-left screw", pp_tz - (lid_bosses[0][1] + m2_head_d / 2) - 0.4),
+        chk("pod park: pod drops clear of lip ", (pp_tz - pod_park_socket[0]) - dock_lip_h - 1),
+        chk("pod park: hood inside left edge  ", pp_hx0 - rear_chamfer - 1),
+        chk("pod park: socket rim, sides      ", (pp_tx - pod_park_socket[1]) - pp_hx0 - 1.2),
+        chk("pod park: socket rim, back       ", pp_hy1 - (pp_ty + pp_size[2] + pod_park_socket[1]) - 1.2),
+        chk("pod park: pin compression >= 0.4 ", comp - 0.4),
+        chk("pod park: pin stroke left >= 0.1 ", pod_park_pogo[2] - comp - 0.1),
+        chk("pod park: pin tip recessed       ", pod_park_recess - 0.3),
+        chk("pod park: well deeper than head  ", (pp_well_top - pp_floor) - pp_pad[1] - 0.3),
+        chk("pod park: pin tail in wiring space", (pp_tail - (pp_floor + pod_park_plate)) - 0.5),
+        chk("pod park: solder room over tails ", (pp_hz1 - 1.2) - pp_tail - 1.5),
+        chk("pod park: wells apart            ", (pp_pads[1][0] - pp_pads[0][0]) - (pp_pad[0] + pod_park_well) - 1.0),
+        chk("pod park: magnet to well         ", (pp_pads[0][0] - (pp_pad[0] + pod_park_well) / 2)
+                                                 - (pp_mags[0][0] + pp_mag[0] / 2 + 0.05) - 0.6),
+        chk("pod park: magnet pocket in plate ", pod_park_plate - pp_mag[1] - 0.1 - 1.2),
+        chk("pod park: hood screws in plate   ", pod_park_plate / 2 - m2_pilot / 2 - 1.0),
+        chk("pod park: wire holes in wiring sp.", ((pp_hz1 - 1.2) - (pp_floor + pod_park_plate)) / 2 - pod_park_wire[1] / 2 - 0.2),
+        chk("pod park: wires either side of rib", min(pod_park_cx - 0.6 - (pod_park_wire[0][0] + pod_park_wire[1] / 2),
+                                                     (pod_park_wire[0][1] - pod_park_wire[1] / 2) - (pod_park_cx + 0.6))),
+        chk("board pocket >= 15 x 12 (X)      ", pp_bin[0] - 15),
+        chk("board pocket >= 15 x 12 (Z)      ", pp_bin[1] - 12),
+        chk("board pocket >= 4 deep           ", pod_park_board[2] - 4),
+        chk("board depth clear of SuperMini   ", (y_back - pod_park_board[2]) - (y_front + esp_rail_h + esp_pcb[2] + esp_usb[1])),
+        chk("board depth clear of the cell    ", (y_back - pod_park_board[2]) - (y_front + batt[2] + 1.0)),
+        chk("board pocket above MT3608        ", hb[2] - (mt_pos[1] + mt_pcb[1] + 1 + fit_clear)),
+        chk("board pocket below the LED       ", (body_h - wall - 8.6) - hb[3]),
+        chk("board pocket below the wire holes", (pp_wire_z - pod_park_wire[1] / 2) - hb[3]),
+        chk("board pocket to hood screw heads ", min(hb[0] - (pod_park_screws[0] + m2_head_d / 2),
+                                                    (pod_park_screws[1] - m2_head_d / 2) - hb[1])),
+        chk("board pocket to buzzer mount     ", hb[0] - pz_x1),
+        chk("board pocket inside the lid lip  ", hb[0] - (wall + fit_clear + lid_lip_w)),
+    ];
+
+    // Sight
+    top_on_face2 = win_size * cos(win_tilt) + win_size * tan(win_tilt) * sin(win_tilt);
+    sight_lines = [
+        chk("sight: light each side of post   ", (sight_notch[0] - sight_post[0]) / 2 - 0.2),
+        chk("sight: notch bottom over top face", (sight_h - sight_notch[1]) - 0.5),
+        chk("sight: post above window bevel   ", (body_h - front_chamfer - 0.4) - (win_zb + top_on_face2 + win_chamfer)),
+        chk("sight: rear blade clear of cap   ", (win_cx - sight_blade / 2) - (ring_center[0] + cap[0] / 2) - 1),
+        chk("sight: rear blade inside corner  ", (body_w - corner_r) - (win_cx + sight_blade / 2)),
+        chk("sight: groove starts behind ramp ", (sight_post[1] + sight_h + 1.0 - 0.4) - (sight_post[1] + sight_h)),
+    ];
+
+    // Buzzer
+    pz_inner = [for (z = pz_slot_z) z + pz_rise];
+    pz_far = max([for (z = pz_inner) abs(z - pz_cz)]) + rib_w / 2;
+    pz_r = pz_d / 2 - pz_seat;
+    pz_lines = [
+        chk("buzzer seat inside depth, front  ", (pz_cy - pz_seat_r) - y_front),
+        chk("buzzer seat inside depth, lid    ", (y_back - 0.2) - (pz_cy + pz_seat_r)),
+        chk("buzzer mount below SuperMini USB ", (esp_usb_z - 6) - pz_block[3]),
+        chk("buzzer mount above low-left boss ", pz_block[2] - (lid_bosses[0][1] + boss_d / 2 + 2)),
+        chk("buzzer + wires to battery fence  ", (batt_pos[0] - 1.2) - (pz_x1 + pz_ceramic[1] + 1.5)),
+        chk("buzzer slots inside the cavity   ", sqrt(max(0, pz_r * pz_r - pz_far * pz_far)) - pz_slot_len / 2),
+        chk("buzzer slots in the grip ribs (Z)", rib_z[1] - pz_slot_z[len(pz_slot_z) - 1]),
+        chk("buzzer slots in the grip ribs (Y)", (pz_cy - pz_slot_len / 2) - (front_chamfer + 2)),
+    ];
+    for (l = concat(lines, ms_lines, st_lines, stem_lines, pp_lines, sight_lines, pz_lines)) echo(l);
     echo(str("  info  radar window centre ", [win_cx, win_zb + top_on_face / 2],
              ", boresight ", win_tilt, " deg up, skin ", win_t, " mm"));
     echo(str("  info  USB-C receptacle centre X ", tp_usb_x, " Y ", tp_usb_y));
+    theta = atan(0.3 / sight_radius);
+    echo(str("  info  sight radius ", sight_radius, " mm: 0.3 mm of eye misalignment = ", theta,
+             " deg of aim, a Doppler speed error (1 - cos) of ", 100 * (1 - cos(theta)), " %; eyeballing 10 deg off costs ",
+             100 * (1 - cos(10)), " %"));
+    if (pod_park) {
+        echo(str("  info  pod park: pod centre X ", pod_park_cx, ", Z ", pp_tz, " to ", pp_floor,
+                 "; hood X ", pp_hx0, "-", pp_hx1, ", Z ", pp_hz0, "-", pp_hz1, ", reaches Y ", pp_hy1, " (",
+                 pp_hy1 - body_d, " mm behind the lid)"));
+        echo(str("  info  pod park pins at X ", pp_pads[0][0], " (GND) and ", pp_pads[1][0], " (+5 V), Y ", pp_pads[0][1],
+                 ", pitch ", pp_pads[1][0] - pp_pads[0][0], " mm; compressed ", pp_pad[1] - pod_park_recess, " of ",
+                 pod_park_pogo[2], " mm"));
+    }
+    echo(str("  info  buzzer disc centre [Y, Z] ", [pz_cy, pz_cz], " on the left wall, ",
+             win_cx - win_size / 2 - win_frame - pz_x1, " mm from the radar housing"));
     if (st) echo(str("  info  1/4-20 stud stands ", stud_proud, " mm proud of the cap, top ", cap_top, " mm above the unit's bottom"));
     if (ms) {
         echo(str("  info  tallest phone that clears the buttress: ", 2 * (ring_center[1] - buttress[2] - 1), " mm"));
@@ -934,6 +1290,8 @@ if (part == "shell") {
     dock_base_print();
 } else if (part == "dock_stem") {
     dock_stem_print();
+} else if (part == "pod_park_hood") {
+    pod_park_hood_print();
 } else if (part == "section") {
     // 2D cut through the radar boresight (the Y/Z plane at X = win_cx), for
     // checking the window skin thickness and tilt. Horizontal = Y, vertical = Z.
@@ -957,6 +1315,8 @@ if (part == "shell") {
     dock_base();
 } else if (part == "in_place:dock_stem") {
     dock_stem();
+} else if (part == "in_place:pod_park_hood") {
+    pod_park_hood();
 } else if (len(part) > 6 && part[0] == "g" && part[5] == ":") {
     ghost(str_join(part, 6));
 } else if (part == "print_plate") {
@@ -966,6 +1326,7 @@ if (part == "shell") {
     translate([-10, 20, 0]) esp32_clamp_tab();
     translate([-40, 0, 0]) radome_print();
     translate([-10, 30, 0]) led_pipe();
+    if (pod_park) translate([-40, 32, 0]) pod_park_hood_print();
 } else {
     shell();
     radome();
@@ -974,6 +1335,7 @@ if (part == "shell") {
     for (i = [0, 1]) esp32_clamp_tab_in_place(i);
     dock_base();
     if (phone_mount) translate([0, 2 * explode, 0]) dock_stem();
+    if (pod_park) translate([0, explode, 0]) pod_park_hood();
     if (show_components) ghosts();
 }
 

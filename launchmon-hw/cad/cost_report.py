@@ -60,6 +60,7 @@ PARTS = [
     Part("ground_radar_esp32_clamp_tab_x2.stl", "ground", qty=2),
     Part("ground_radar_dock_base.stl", "ground"),
     Part("ground_radar_dock_stem.stl", "ground", note="1/4-20 stud head (the MagSafe head is an alternative)"),
+    Part("ground_radar_pod_park_hood.stl", "ground", note="pod park: the pod hangs and charges here"),
     Part("shaft_pod_base.stl", "pod"),
     Part("shaft_pod_lid.stl", "pod"),
 ]

@@ -30,6 +30,7 @@ export_part script_ground_radar.scad esp32_clamp_tab ground_radar_esp32_clamp_ta
 export_part script_ground_radar.scad dock_base       ground_radar_dock_base.stl
 export_part script_ground_radar.scad dock_stem       ground_radar_dock_stem.stl
 export_part script_ground_radar.scad dock_stem       ground_radar_dock_stem_magsafe.stl 'holder="magsafe"'
+export_part script_ground_radar.scad pod_park_hood   ground_radar_pod_park_hood.stl
 echo "shaft motion pod"
 export_part script_shaft_imu.scad    base            shaft_pod_base.stl
 export_part script_shaft_imu.scad    lid             shaft_pod_lid.stl

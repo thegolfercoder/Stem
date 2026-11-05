@@ -39,6 +39,15 @@
 //  the C. FIT THE TIE: at clubhead speed a pod that comes loose is a
 //  projectile. The clamp alone is not enough to rely on.
 //
+//  POD PARK
+//  The pod parks on the ground unit, +X end up in a hood on the unit's lid
+//  (script_ground_radar.scad, "pod_park"), and charges from it there. Two
+//  brass contacts stand in its +X end face, the end the arrow points to, with
+//  a hidden 4 x 2 mm magnet either side. The magnets pull the pod up into the
+//  hood against the hood's spring pins. The contacts are wired to the
+//  SuperMini's 5V and GND (through D2: docs/wiring_schematic.md, "dock
+//  contacts"). "Park", not "dock": the dock is the radar unit's stand.
+//
 //  PRINTED PARTS (set `part`):
 //      "base"      body + clamp   (print standing on the USB end, bore vertical)
 //      "lid"       snap-on lid    (print flat, outside face down)
@@ -94,6 +103,21 @@ tie_w       = 3.0;                // zip-tie slot width (2.5 mm ties)
 tie_h       = 1.6;
 saddle_clear = 0.6;               // between the jaws the underside follows the shaft at this gap
 
+/* [Pod park - charging contacts in the +X end face] */
+pod_park_pitch = 6.0;  // contact centres across the end face (Y), either side of the centre line
+pod_park_z     = 9.0;  // contact and magnet centres above the floor's underside: over the charger, under the lid lip
+// Contacts: M2 x 4 brass cheese-head screws (DIN 84), threaded into the end wall
+// and glued, wire soldered to the tip inside. MEASURE THE ONES YOU BUY.
+pod_park_pad   = [3.8, 1.3, 4.0, 1.7]; // [head d, head height (= how far it stands proud), length under the head, pilot d]
+pod_park_mag   = [4.0, 2.0];  // N52 disc magnet [d, t]. 6 x 2 mm does not fit behind the end wall: fit_report()
+pod_park_mag_y = 4.8;         // magnet centres in from each side face
+pod_park_skin  = 0.4;         // plastic over the magnets: two layers
+// Two 4 x 2 mm N52 pairs, 0.4 mm apart, pull about 3.7 N each (coaxial-loop
+// model, Br 1.43 T): 7 N against about 1 N from the two pins and 0.15 N of pod.
+// The LSM6DS3TR-C / LSM6DSOX have no magnetometer, so the magnets do not
+// disturb them. Do not fit a 9-axis IMU with a magnetometer.
+pod_park_diode = [3.7, 1.6, 1.2];  // D2 (SOD-123 / SOD-323) beside the DOCK+ contact [X, Y, Z]
+
 /* [Surface details] */
 mark_depth  = 0.4;                // debossed arrow on the lid: two layers at 0.20 mm
 reveal      = [0.3, 0.5];         // shadow gap at the lid seam [depth, height]
@@ -122,11 +146,21 @@ batt_y0 = (pod[1] - batt[1]) / 2;
 chg_x0  = batt_x0 + batt[0] + 0.6;
 chg_y0  = (pod[1] - chg[1]) / 2;
 
+// Pod park positions on the +X end face, [Y, Z]. Contact [0] is GND (DOCK-),
+// [1] is +5 V (DOCK+), marked "+". Magnet [0] and [1] face out with opposite poles.
+function pod_park_pads() = [[pod[1] / 2 - pod_park_pitch / 2, pod_park_z], [pod[1] / 2 + pod_park_pitch / 2, pod_park_z]];
+function pod_park_mags() = [[pod_park_mag_y, pod_park_z], [pod[1] - pod_park_mag_y, pod_park_z]];
+
 bore_r  = shaft_d / 2;
 jaw_R   = bore_r + jaw_t;
 bore_z  = -(bore_r + web);                       // bore centre
 bore_y  = pod[1] / 2;
 jaw_xs  = [[0, jaw_w], [pod[0] - jaw_w, pod[0]]];
+
+// What the ground unit's script reads through `use <script_shaft_imu.scad>`,
+// so the hood it parks in is drawn from the pod's own numbers.
+function pod_back_z() = bore_z - jaw_R * cos((360 - wrap_deg) / 2);   // jaw tips: the clamp side's lowest point
+function pod_park_spec() = [pod, pod_park_pads(), pod_park_mags(), pod_park_pad, pod_park_mag, pod_park_skin, pod_back_z()];
 
 // ----------------------------------------------------------------------------
 //  Helpers
@@ -166,10 +200,25 @@ module base() {
         pry_notch();
         clamp_bore();
         saddle_relief();
+        park_cuts();
     }
     imu_pocket();
     battery_stops();
 }
+
+module park_cuts() {
+    // Pilots for the two contact screws through the +X end wall (vertical as
+    // printed), pockets for the magnets behind a two-layer skin, opening
+    // inward, and a "+" beside the +5 V contact.
+    for (p = pod_park_pads()) translate([pod[0] - wall - 1, p[0], p[1]])
+        rotate([0, 90, 0]) cylinder(h = wall + 2, d = pod_park_pad[3], $fn = 24);
+    for (m = pod_park_mags()) translate([pod[0] - pod_park_skin - pod_park_mag[1] - 0.1, m[0], m[1]])
+        rotate([0, 90, 0]) cylinder(h = pod_park_mag[1] + 0.1, d = pod_park_mag[0] + 0.1, $fn = 32);
+    translate([pod[0] - mark_depth, pod_park_pads()[1][0], pod_park_z - pod_park_pad[0] / 2 - 2.0])
+        rotate([0, 90, 0]) linear_extrude(1) plus_mark();
+}
+
+module plus_mark() { for (r = [0, 90]) rotate(r) square([2.4, 0.6], center = true); }
 
 module imu_pocket() {
     // Fence around the breakout on the datum floor. Crush ribs on the inside
@@ -351,7 +400,7 @@ module esp32_retainer() {
 // ----------------------------------------------------------------------------
 // Named ghosts, so each can be exported alone in place (`part = "ghost:imu"`).
 // The Blender scene in cad/blender/ is built that way.
-ghost_names = ["imu", "imu_axes", "battery", "charger", "esp32", "shaft", "liner"];
+ghost_names = ["imu", "imu_axes", "battery", "charger", "esp32", "shaft", "liner", "park_contacts", "park_magnets", "park_diode"];
 
 module ghosts() { for (n = ghost_names) ghost(n); }
 
@@ -381,7 +430,28 @@ module ghost(name) {
             }
             circle(r = bore_r - liner_proud);
         }
+    // Pod park: the two brass contact screws, the magnets behind the end wall,
+    // and D2 behind the wall between the screws.
+    if (name == "park_contacts") color("Gold") for (p = pod_park_pads())
+        translate([pod[0], p[0], p[1]]) rotate([0, 90, 0]) {
+            cylinder(h = pod_park_pad[1], d = pod_park_pad[0], $fn = 24);
+            translate([0, 0, -pod_park_pad[2]]) cylinder(h = pod_park_pad[2], d = 2.0, $fn = 16);
+        }
+    if (name == "park_magnets") color("Silver") for (m = pod_park_mags())
+        translate([pod[0] - pod_park_skin - pod_park_mag[1], m[0], m[1]]) rotate([0, 90, 0])
+            cylinder(h = pod_park_mag[1], d = pod_park_mag[0], $fn = 32);
+    if (name == "park_diode") color("Black")
+        translate([park_parts_x0(), pod[1] / 2 - pod_park_diode[1] / 2, z_batt + chg[2] + 0.2]) cube(pod_park_diode);
 }
+function park_parts_x0() = esp_x0 + esp_pcb[0] + 0.2 + 0.8 + 0.2;   // just past the lid's fence at the antenna end
+
+// The whole pod as it parks, for the ground unit's script: body and lid, and
+// optionally its parts (not the shaft).
+module pod_parked_parts(with_parts = true) {
+    color("#2b2b2b") { base(); lid(); }
+    if (with_parts) for (n = ghost_names) if (n != "shaft" && n != "imu_axes") ghost(n);
+}
+module pod_park_solid() { base(); lid(); }
 
 // ----------------------------------------------------------------------------
 //  Fit report
@@ -402,6 +472,31 @@ module fit_report() {
     echo(str("  info  clamp mouth ", mouth, " mm for a ", shaft_d, " mm bore; each jaw deflects ",
              (shaft_d - mouth) / 2, " mm to snap on"));
     echo(str("  info  overall height incl. clamp: ", pod[2] - (bore_z - jaw_R), " mm"));
+    // Pod park: contacts and magnets in the +X end, and D2 behind it.
+    pads = pod_park_pads(); mags = pod_park_mags();
+    mr = pod_park_mag[0] / 2 + 0.05;  // pocket radius
+    ye = pod_park_mag_y - mr;         // magnet pocket's outer edge, toward the side face
+    skin_min = (ye >= edge_r ? pod[0] : pod[0] - edge_r + sqrt(edge_r * edge_r - pow(edge_r - ye, 2)))
+             - (pod[0] - pod_park_skin);
+    lip_low = base_h - lip_h;         // lowest point of the lid's lip
+    echo(chk("park contacts in the end-face flat ", (pod[2] - edge_r) - (pod_park_z + pod_park_pad[0] / 2)));
+    echo(chk("park contact screws over charger  ", (pod_park_z - 1.0) - (z_batt + chg[2])));
+    echo(chk("park contact screws under lid lip ", lip_low - (pod_park_z + 1.0)));
+    echo(chk("park screw tips + solder to fence ", (pod[0] - pod_park_pad[2] - 1.0) - (esp_x0 + esp_pcb[0] + 0.2 + 0.8)));
+    echo(chk("park magnets under the lid lip    ", lip_low - (pod_park_z + mr)));
+    echo(chk("park magnets beside the charger   ", chg_y0 - (pod_park_mag_y + mr)));
+    echo(chk("park magnets inside the side walls", ye - wall));
+    echo(chk("park magnets to contact heads     ", (pads[0][0] - pod_park_pad[0] / 2) - (pod_park_mag_y + mr)));
+    echo(chk("park magnet skin, thinnest - 0.3  ", skin_min - 0.3));
+    echo(chk("park D2 space along X             ", (pod[0] - wall) - park_parts_x0() - pod_park_diode[0]));
+    echo(chk("park D2 space between the screws  ", (pod_park_pitch - 2.0 - 0.4) - pod_park_diode[1]));
+    echo(chk("park D2 + divider height          ", lip_low - (z_batt + chg[2]) - 0.2 - pod_park_diode[2] - 1.0));
+    echo(str("  info  park contacts: pitch ", pod_park_pitch, " mm, heads ", pod_park_pad[0], " mm standing ",
+             pod_park_pad[1], " mm proud of the +X end, ", pod_park_z, " mm up; magnets ",
+             pod_park_mag[0], " x ", pod_park_mag[1], " mm, ", pod[0] - pod_park_skin - pod_park_mag[1] - (esp_x0 + esp_pcb[0]),
+             " mm past the antenna end"));
+    echo(str("  info  park magnets: the largest disc that fits behind the end wall is ",
+             lip_low - (z_batt + chg[2]), " mm across (a 6 x 2 mm disc does not)"));
 }
 
 // ----------------------------------------------------------------------------

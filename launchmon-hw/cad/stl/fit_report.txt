@@ -18,8 +18,58 @@
   ok   hex pocket inside the cap (X)   : 7.695 mm
   ok   cap above the unit's top edge   : 1.6 mm
   ok   stem face past the screw pilots  : 0.2 mm
+  ok   pod park: hood clear of stem neck: 2.5 mm
+  ok   pod park: hood below stem fillet : 5.03975 mm
+  ok   pod park: hood lifts under cap   : 2.7 mm
+  ok   pod park: hood below top-left screw: 0.5 mm
+  ok   pod park: pod above low-left screw: 0.4 mm
+  ok   pod park: pod drops clear of lip : 2.5 mm
+  ok   pod park: hood inside left edge  : 1 mm
+  ok   pod park: socket rim, sides      : 0.55 mm
+  ok   pod park: socket rim, back       : 0.55 mm
+  ok   pod park: pin compression >= 0.4 : 0.4 mm
+  ok   pod park: pin stroke left >= 0.1 : 0.1 mm
+  ok   pod park: pin tip recessed       : 0.2 mm
+  ok   pod park: well deeper than head  : 0.4 mm
+  ok   pod park: pin tail in wiring space: 0.5 mm
+  ok   pod park: solder room over tails : 0.7 mm
+  ok   pod park: wells apart            : 0.4 mm
+  ok   pod park: magnet to well         : 0.25 mm
+  ok   pod park: magnet pocket in plate : 2.2 mm
+  ok   pod park: hood screws in plate   : 0.9 mm
+  ok   pod park: wire holes in wiring sp.: 0.6 mm
+  ok   pod park: wires either side of rib: 0.1 mm
+  ok   board pocket >= 15 x 12 (X)      : 0.4 mm
+  ok   board pocket >= 15 x 12 (Z)      : 0.4 mm
+  ok   board pocket >= 4 deep           : 0 mm
+  ok   board depth clear of SuperMini   : 5.44 mm
+  ok   board depth clear of the cell    : 3.2 mm
+  ok   board pocket above MT3608        : 4.45 mm
+  ok   board pocket below the LED       : 3.9 mm
+  ok   board pocket below the wire holes: 0.2 mm
+  ok   board pocket to hood screw heads : 0.3 mm
+  ok   board pocket to buzzer mount     : 5 mm
+  ok   board pocket inside the lid lip  : 5.15 mm
+  ok   sight: light each side of post   : 0.1 mm
+  ok   sight: notch bottom over top face: 0.6 mm
+  ok   sight: post above window bevel   : 1.90399 mm
+  ok   sight: rear blade clear of cap   : 8.1 mm
+  ok   sight: rear blade inside corner  : 3.9 mm
+  ok   sight: groove starts behind ramp : 0.6 mm
+  ok   buzzer seat inside depth, front  : 0.45 mm
+  ok   buzzer seat inside depth, lid    : 0.25 mm
+  ok   buzzer mount below SuperMini USB : 1.15 mm
+  ok   buzzer mount above low-left boss : 12.75 mm
+  ok   buzzer + wires to battery fence  : 3.45 mm
+  ok   buzzer slots inside the cavity   : 0.224926 mm
+  ok   buzzer slots in the grip ribs (Z): 12.4 mm
+  ok   buzzer slots in the grip ribs (Y): 2.9 mm
   info  radar window centre [76.1, 46.148], boresight 15 deg up, skin 1 mm
   info  USB-C receptacle centre X 73 Y 7.15
+  info  sight radius 19.6 mm: 0.3 mm of eye misalignment = 0.876908 deg of aim, a Doppler speed error (1 - cos) of 0.0117118 %; eyeballing 10 deg off costs 1.51922 %
+  info  pod park: pod centre X 18, Z 11 to 43; hood X 3-33, Z 41.5-52.9, reaches Y 50.9768 (29.9768 mm behind the lid)
+  info  pod park pins at X 15 (GND) and 21 (+5 V), Y 43.9768, pitch 6 mm; compressed 0.8 of 1 mm
+  info  buzzer disc centre [Y, Z] [10.5, 34.2] on the left wall, 58.2 mm from the radar housing
   info  1/4-20 stud stands 5.52 mm proud of the cap, top 74 mm above the unit's bottom
   ok   phone bottom above buttress     : 19.2 mm
   ok   phone clears unit top           : 72.3636 mm
@@ -37,3 +87,17 @@
   info  antenna zone over the cell: 1.88 mm of 4 (0 is ideal; a 1-3 m link tolerates a little)
   info  clamp mouth 11.782 mm for a 13 mm bore; each jaw deflects 0.608999 mm to snap on
   info  overall height incl. clamp: 32.4 mm
+  ok   park contacts in the end-face flat : 0.1 mm
+  ok   park contact screws over charger  : 0.9 mm
+  ok   park contact screws under lid lip : 1.3 mm
+  ok   park screw tips + solder to fence : 1.88 mm
+  ok   park magnets under the lid lip    : 0.25 mm
+  ok   park magnets beside the charger   : 0.15 mm
+  ok   park magnets inside the side walls: 1.15 mm
+  ok   park magnets to contact heads     : 1.25 mm
+  ok   park magnet skin, thinnest - 0.3  : 0.0895652 mm
+  ok   park D2 space along X             : 1.38 mm
+  ok   park D2 space between the screws  : 2 mm
+  ok   park D2 + divider height          : 1.8 mm
+  info  park contacts: pitch 6 mm, heads 3.8 mm standing 1.3 mm proud of the +X end, 9 mm up; magnets 4 x 2 mm, 5.48 mm past the antenna end
+  info  park magnets: the largest disc that fits behind the end wall is 4.2 mm across (a 6 x 2 mm disc does not)
