@@ -544,7 +544,7 @@ function renderLiveStatus(live) {
   const wordCls = { charging: 'charging', charged: 'charged', charged_asleep: 'charged' }[pod.key] || (quiet ? 'unknown' : '');
   setDev(p, st.pod.batteryKnown ? volts(st.pod.batteryMv) : '', '', pod.text, wordCls);
   p.title = POD_TITLES[pod.key] || '';
-  if (st.pod.connected && !st.pod.powerKnown) p.title += ' This pod sends no power state (pod firmware before 0.2), so charging is not known.';
+  if (st.pod.connected && !st.pod.powerKnown) p.title += ' No power state from the pod in the last 5 s (a pod before firmware 0.2 sends none), so whether it is charging is not known.';
   if (st.pod.batteryKnown) p.title += ' Battery: the pod\u2019s cell, reported each second.';
 
   // Dock: only when there is something to say beyond the pod's own state.
