@@ -6,6 +6,7 @@ struct SwingStudioApp: App {
     @StateObject private var history = HistoryStore()
     @StateObject private var settings = AppSettings()
     @StateObject private var practice = PracticeStore()
+    @StateObject private var launch = LaunchStore()
 
     var body: some Scene {
         WindowGroup {
@@ -13,6 +14,8 @@ struct SwingStudioApp: App {
                 .environmentObject(history)
                 .environmentObject(settings)
                 .environmentObject(practice)
+                .environmentObject(launch)
+                .environmentObject(launch.link)
                 .tint(Theme.accent)
                 .preferredColorScheme(.dark)
         }

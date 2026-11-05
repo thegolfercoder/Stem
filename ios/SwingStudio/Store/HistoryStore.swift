@@ -43,7 +43,7 @@ final class HistoryStore: ObservableObject {
 
     @discardableResult
     func add(result: SwingResult, keyFrames: [UIImage], sourceName: String, club: String?,
-             practiceId: Int? = nil) -> SwingRecord {
+             practiceId: Int? = nil, clipStartedAt: Date? = nil) -> SwingRecord {
         let id = UUID()
         let names = keyFrames.enumerated().compactMap { index, image -> String? in
             let name = "\(id.uuidString)-\(index).jpg"
@@ -52,7 +52,8 @@ final class HistoryStore: ObservableObject {
             return name
         }
         let record = SwingRecord(id: id, date: Date(), club: club, label: nil, sourceName: sourceName,
-                                 result: result, keyFrames: names, coach: nil, practiceId: practiceId)
+                                 result: result, keyFrames: names, coach: nil, practiceId: practiceId,
+                                 clipStartedAt: clipStartedAt)
         // The same clip analysed again replaces its practice reading (PracticeLog.add),
         // so its earlier entry here goes too, pictures and all.
         if let practiceId {
@@ -116,13 +117,20 @@ final class AppSettings: ObservableObject {
     @Published var handedness: String {
         didSet { UserDefaults.standard.set(handedness, forKey: "handedness") }
     }
+    /// The radar's speeds are shown in this unit: "mph", "mps" or "kmh".
+    @Published var speedUnit: String {
+        didSet { UserDefaults.standard.set(speedUnit, forKey: "speedUnit") }
+    }
 
     init() {
         let defaults = UserDefaults.standard
         ollamaAddress = defaults.string(forKey: "ollamaAddress") ?? ""
         preferredModel = defaults.string(forKey: "preferredModel") ?? ""
         handedness = defaults.string(forKey: "handedness") ?? "auto"
+        speedUnit = defaults.string(forKey: "speedUnit") ?? SpeedUnit.mph.rawValue
     }
+
+    var unit: SpeedUnit { SpeedUnit(rawValue: speedUnit) ?? .mph }
 
     var chosenHandedness: Handedness? {
         handedness == "left" ? .left : handedness == "right" ? .right : nil

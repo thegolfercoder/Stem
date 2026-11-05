@@ -30,6 +30,10 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSPhotoLibraryUsageDescription: Swing Studio reads the swing videos you choose, on this iPhone. Nothing is uploaded.
         NSLocalNetworkUsageDescription: The coach talks to Ollama running on your own computer, over your Wi-Fi.
+        NSBluetoothAlwaysUsageDescription: Swing Studio connects to your STEM-RADAR launch monitor over Bluetooth to show the radar's ball and club speed beside your swing. Nothing is uploaded.
+        # Shots keep arriving while the golfer films with the Camera app and Swing
+        # Studio is in the background.
+        UIBackgroundModes: [bluetooth-central]
         # Ollama on a computer at home is plain http on a local address.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

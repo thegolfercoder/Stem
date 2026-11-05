@@ -27,10 +27,16 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Swing Studio connects to your STEM-RADAR launch monitor over Bluetooth to show the radar's ball and club speed beside your swing. Nothing is uploaded.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>The coach talks to Ollama running on your own computer, over your Wi-Fi.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Swing Studio reads the swing videos you choose, on this iPhone. Nothing is uploaded.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

@@ -4,6 +4,17 @@ import CoreImage
 import ImageIO
 import UIKit
 
+/// When the clip's recording started, from its own metadata (QuickTime's creation
+/// date, which iPhone video carries to the whole second), or nil when it has none:
+/// a clip saved by another app, or a screen recording, may not. Pairs the clip with
+/// a radar shot by the clock (SwingCore ShotPairing.swift). That the date is when
+/// recording started is assumed, not yet checked on a device.
+func recordingStart(of url: URL) async -> Date? {
+    let asset = AVURLAsset(url: url)
+    guard let item = try? await asset.load(.creationDate) else { return nil }
+    return try? await item.load(.dateValue)
+}
+
 /// Every frame of a video file, decoded in order, the right way up and shrunk.
 ///
 /// AVAssetReader decodes each frame explicitly - H.264, HEVC, 10-bit HDR, slow

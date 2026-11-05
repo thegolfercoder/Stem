@@ -1,4 +1,5 @@
 import SwiftUI
+import SwingCore
 
 struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
@@ -41,6 +42,17 @@ struct SettingsView: View {
                     4. Enter your computer's address above.
                     Nothing is sent to the internet: the phone talks only to your computer.
                     """)
+                }
+                Section {
+                    NavigationLink("Ground unit (\(LaunchMonitor.deviceName))") { LaunchMonitorView() }
+                    Picker("Speeds in", selection: $settings.speedUnit) {
+                        ForEach(SpeedUnit.allCases, id: \.self) { unit in Text(unit.label).tag(unit.rawValue) }
+                    }
+                } header: {
+                    Text("Launch monitor")
+                } footer: {
+                    Text("Ball and club speed come only from the radar, never from the camera. The decimals shown "
+                         + "are a display choice, not an accuracy.")
                 }
                 Section("About") {
                     Text("The pose tracker, the swing model and every measurement run on this iPhone. The model "

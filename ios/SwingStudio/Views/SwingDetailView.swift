@@ -9,6 +9,7 @@ struct SwingDetailView: View {
     @EnvironmentObject private var history: HistoryStore
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var practice: PracticeStore
+    @EnvironmentObject private var launch: LaunchStore
     @State private var coachText = ""
     @State private var coachStatus = ""
     @State private var coaching = false
@@ -29,11 +30,14 @@ struct SwingDetailView: View {
                         PriorityCard(insight: practice.log.insight(rules, upTo: practiceId), swingId: practiceId,
                                      canStart: practice.log.activePlan == nil)
                     }
+                    // The radar's shot of this swing, beside the camera's analysis. Only once
+                    // the phone has heard from the unit: otherwise every page would say so.
+                    let radarInUse = !launch.log.shots.isEmpty
+                    if radarInUse { PairedShotSection(record: record) }
                     positions(record)
                     measurements(record)
                     coach(record)
-                    Text("Everything was measured on this iPhone from one camera. Nothing here is a club, ball "
-                         + "or launch measurement: one camera on a body tracker cannot make those.")
+                    Text(radarInUse ? Self.footnoteWithRadar : Self.footnote)
                         .font(.footnote).foregroundStyle(Theme.faint)
                 }
                 .padding()
@@ -49,6 +53,13 @@ struct SwingDetailView: View {
     }
 
     struct Enlarged: Identifiable { let index: Int; var id: Int { index } }
+
+    private static let footnote = "Everything was measured on this iPhone from one camera. Nothing here is a "
+        + "club, ball or launch measurement: one camera on a body tracker cannot make those."
+    private static let footnoteWithRadar = "The swing analysis was measured on this iPhone from one camera, and "
+        + "none of it is a club, ball or launch measurement: one camera on a body tracker cannot make those. Ball "
+        + "and club speed come only from the radar, as the ground unit sent them; nothing from the camera goes "
+        + "into them, and they do not go to the coach."
 
     private func tempo(_ record: SwingRecord) -> some View {
         let m = record.result.metrics

@@ -70,6 +70,8 @@ struct AnalyseView: View {
                     TextField("Club (optional), e.g. 7 iron", text: $club)
                         .textFieldStyle(.roundedBorder)
 
+                    RadarStatusRow()
+
                     if let plan = practice.log.activePlan {
                         Toggle("Count the next clip as a retest swing for your plan: "
                                + (practice.rules?.drill(id: plan.drillId)?.title ?? plan.focus), isOn: $forPlan)
@@ -153,6 +155,8 @@ struct AnalyseView: View {
         let handedness = settings.chosenHandedness
         // The same clip analysed again is one swing in the practice log (#29).
         let key = clipKey(of: url)
+        // What puts the clip beside the radar's shot of the same swing.
+        let startedAt = await recordingStart(of: url)
         do {
             let outcome = try await Task.detached(priority: .userInitiated) {
                 try await ClipAnalyzer(analyzer: analyzer).analyse(url: url, handedness: handedness) { text, value in
@@ -170,7 +174,7 @@ struct AnalyseView: View {
                     .analysed(result, sequence: outcome.sequence, club: clubName, clipKey: key),
                     forPlan: countsForPlan)
                 opened = history.add(result: result, keyFrames: outcome.keyFrames, sourceName: name,
-                                     club: clubName, practiceId: practiceId)
+                                     club: clubName, practiceId: practiceId, clipStartedAt: startedAt)
             case .refused(let reason, let advice, _):
                 let id = practice.record(.refused(reason, detectionRate: nil, club: clubName, clipKey: key),
                                          forPlan: countsForPlan)

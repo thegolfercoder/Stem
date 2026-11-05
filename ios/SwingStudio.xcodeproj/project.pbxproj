@@ -8,11 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		15480FF7B8C2430FD03817A5 /* PracticeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC32FD73CAABC9D5C32A03E5 /* PracticeView.swift */; };
+		28B047A6D7E4680802563AF5 /* LaunchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC23BF5AAB8FB63C1964ABB9 /* LaunchStore.swift */; };
 		2A0C19595111395A8B8782CB /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9066DFC5562321BB8357EB0 /* ChatView.swift */; };
 		3332536DAA8153CF863458D7 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFE6BB2BE9F3DB8B0FE2139B /* SettingsView.swift */; };
 		372869EBAF17F080A4CAEEAA /* OllamaClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B61C592E3A3D94745EE3183 /* OllamaClient.swift */; };
 		3D871E128529E77D385ADD81 /* ClipAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A3AAD363E1D198C2518744E /* ClipAnalyzer.swift */; };
 		48890A20F98BC455EE017598 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A976EFB421C895DF596244 /* HistoryView.swift */; };
+		4B925214B2390A1DAFF52A61 /* RadarLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 904199FC7BF627D45ABF60B0 /* RadarLink.swift */; };
 		50697D52EC2A0F2EF3E7CF7F /* SwingStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0880834F85F6366C79199C7F /* SwingStudioApp.swift */; };
 		68D336E6CF71FF7F64B65854 /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E0EB78045A6CE5EB64BDC37 /* HistoryStore.swift */; };
 		7EA368A62AEFB72CD431272D /* PracticeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEB6D1A9C2BE22242C069417 /* PracticeStore.swift */; };
@@ -21,19 +23,23 @@
 		EFBBA7803247D4F9F72E14E5 /* SwingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5F0CCA54BB7AE63E4DE89C /* SwingDetailView.swift */; };
 		F5DA7B8C1C8D185A0EBF3BED /* AnalyseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE7354B34AC66BB4DF970C41 /* AnalyseView.swift */; };
 		F99610ADC5DD2A4A0CDE9A66 /* PoseTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5335B142D96F6B124681124F /* PoseTracker.swift */; };
+		FFA7B3A72F18F8F781B5394C /* LaunchMonitorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0076C447B2714BEBB59ED062 /* LaunchMonitorView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0076C447B2714BEBB59ED062 /* LaunchMonitorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchMonitorView.swift; sourceTree = "<group>"; };
 		02A821B43E8379AF38756145 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
 		0880834F85F6366C79199C7F /* SwingStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwingStudioApp.swift; sourceTree = "<group>"; };
 		0A3AAD363E1D198C2518744E /* ClipAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipAnalyzer.swift; sourceTree = "<group>"; };
 		0E0EB78045A6CE5EB64BDC37 /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
 		5335B142D96F6B124681124F /* PoseTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseTracker.swift; sourceTree = "<group>"; };
+		904199FC7BF627D45ABF60B0 /* RadarLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadarLink.swift; sourceTree = "<group>"; };
 		960B3DAF0942F18403776384 /* SwingCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SwingCore; path = SwingCore; sourceTree = SOURCE_ROOT; };
 		9A5F0CCA54BB7AE63E4DE89C /* SwingDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwingDetailView.swift; sourceTree = "<group>"; };
 		9B61C592E3A3D94745EE3183 /* OllamaClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaClient.swift; sourceTree = "<group>"; };
 		B64B2F4FE05960F0FB6A17F8 /* SwingStudio.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SwingStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C8A976EFB421C895DF596244 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		CC23BF5AAB8FB63C1964ABB9 /* LaunchStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchStore.swift; sourceTree = "<group>"; };
 		CEB6D1A9C2BE22242C069417 /* PracticeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeStore.swift; sourceTree = "<group>"; };
 		D73A20F1DF89B1EBD2F93661 /* FrameReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameReader.swift; sourceTree = "<group>"; };
 		D9066DFC5562321BB8357EB0 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
@@ -77,6 +83,7 @@
 				DE7354B34AC66BB4DF970C41 /* AnalyseView.swift */,
 				D9066DFC5562321BB8357EB0 /* ChatView.swift */,
 				C8A976EFB421C895DF596244 /* HistoryView.swift */,
+				0076C447B2714BEBB59ED062 /* LaunchMonitorView.swift */,
 				DC32FD73CAABC9D5C32A03E5 /* PracticeView.swift */,
 				DFE6BB2BE9F3DB8B0FE2139B /* SettingsView.swift */,
 				9A5F0CCA54BB7AE63E4DE89C /* SwingDetailView.swift */,
@@ -110,6 +117,14 @@
 			path = Coach;
 			sourceTree = "<group>";
 		};
+		7BB19E6734DFE0590C067DE2 /* Radar */ = {
+			isa = PBXGroup;
+			children = (
+				904199FC7BF627D45ABF60B0 /* RadarLink.swift */,
+			);
+			path = Radar;
+			sourceTree = "<group>";
+		};
 		8113306488C59BCB5BDBD3D4 /* SwingStudio */ = {
 			isa = PBXGroup;
 			children = (
@@ -117,6 +132,7 @@
 				B91019FFBC56E9E0FB754BD2 /* App */,
 				6F432C21DD9D86457D1A678A /* Coach */,
 				550AC69C1FF3E705D87D13F7 /* Pipeline */,
+				7BB19E6734DFE0590C067DE2 /* Radar */,
 				1CD92912831ED899DF4EBC7C /* Resources */,
 				C26D3B488260801E561A309E /* Store */,
 				4298C23416E103220886C8CD /* Views */,
@@ -136,6 +152,7 @@
 			isa = PBXGroup;
 			children = (
 				0E0EB78045A6CE5EB64BDC37 /* HistoryStore.swift */,
+				CC23BF5AAB8FB63C1964ABB9 /* LaunchStore.swift */,
 				CEB6D1A9C2BE22242C069417 /* PracticeStore.swift */,
 			);
 			path = Store;
@@ -240,10 +257,13 @@
 				D86ADC1B84FF43912A20232F /* FrameReader.swift in Sources */,
 				68D336E6CF71FF7F64B65854 /* HistoryStore.swift in Sources */,
 				48890A20F98BC455EE017598 /* HistoryView.swift in Sources */,
+				FFA7B3A72F18F8F781B5394C /* LaunchMonitorView.swift in Sources */,
+				28B047A6D7E4680802563AF5 /* LaunchStore.swift in Sources */,
 				372869EBAF17F080A4CAEEAA /* OllamaClient.swift in Sources */,
 				F99610ADC5DD2A4A0CDE9A66 /* PoseTracker.swift in Sources */,
 				7EA368A62AEFB72CD431272D /* PracticeStore.swift in Sources */,
 				15480FF7B8C2430FD03817A5 /* PracticeView.swift in Sources */,
+				4B925214B2390A1DAFF52A61 /* RadarLink.swift in Sources */,
 				3332536DAA8153CF863458D7 /* SettingsView.swift in Sources */,
 				EFBBA7803247D4F9F72E14E5 /* SwingDetailView.swift in Sources */,
 				50697D52EC2A0F2EF3E7CF7F /* SwingStudioApp.swift in Sources */,

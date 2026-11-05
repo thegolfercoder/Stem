@@ -69,6 +69,29 @@ than on a phone. For the coach, Ollama running on the same Mac is
 The coach is told what a single camera can and cannot measure, and a guard drops
 any sentence about club face, path, plane, spin or distance before you see it.
 
+## The launch monitor
+
+Swing Studio also reads the ground radar unit (`STEM-RADAR`, `launchmon-hw/`) over
+Bluetooth: **Analyse > Launch monitor**, or **Settings > Launch monitor**, then
+**Connect**. Each shot's ball speed, club speed and smash appear as the unit sent
+them, each labelled with the provenance the unit gave it; a refused reading shows
+the unit's own reason. Ball and club speed come only from the radar, never from
+the camera, and none of it goes into the swing analysis, the practice log or the
+coach. The unit sends radial speeds (along its line of sight), as its on-device
+preview. Spin, face angle, club path, attack angle and swing plane are not shown.
+
+A swing's page shows the radar shot of that swing beside the camera's analysis
+when exactly one shot fell inside a window around the clip's strike by the
+phone's clock (from 1 s before to 4 s after; `SwingCore/ShotPairing.swift` says
+why), and otherwise says why none is shown: no recording time in the clip, slow
+motion, no shot near it, or two shots too close to tell apart. Every packet is
+kept raw in the app's folder (`shots.json`). A demo makes synthetic shots to see
+the screen without a unit; they are labelled, never saved and never paired.
+
+Not yet run against a unit: nothing in `launchmon-hw` has been built. The packet
+decoder is tested byte for byte against the firmware's struct in
+`SwingCore/Tests/SwingCoreTests/LaunchMonitorTests.swift`.
+
 ## Changing the project
 
 `SwingStudio.xcodeproj` is generated from `project.yml` by XcodeGen. After adding
@@ -82,6 +105,8 @@ a file or changing `project.yml`, run `xcodegen generate` and commit the project
 | `SwingCore/` | The analysis in plain Swift: features, the swing event network, the ordered decoder, measurements, error bands, handedness detection, the long-clip scan, the slow-motion retry, the practice loop's rules and log (`Practice.swift`), and the coach's prompts and guard. No Apple-only frameworks, so `swift test` runs on Linux too. |
 | `SwingCore/Tests` | Holds the Swift code to the browser engine's answers on a real swing (and through them to the Python pipeline): features to 1e-5, network scores, positions, every measurement. `make_golden.py` regenerates the reference after a model change. `PracticeTests` holds the practice rules to answers the Python gave for the same swings; `make_practice_golden.py` regenerates them. |
 | `SwingStudio/Pipeline` | AVFoundation reads every frame (H.264, HEVC, HDR, slow motion) the right way up; MediaPipe's pose landmarker tracks the body; the same orientation probe and candidate-stretch search as the web app. |
+| `SwingCore` launch monitor | `LaunchMonitor.swift` decodes the ground unit's 42-byte `ShotSummary` exactly as the firmware packs it (the same rules as `launchmon-hw/results/protocol.js`); `ShotPairing.swift` places the unit's clock on the phone's and pairs a shot with a clip, or refuses with the reason. |
+| `SwingStudio/Radar` | The CoreBluetooth link: scan for the unit's service, connect, subscribe, read on connecting, reconnect when the link drops. |
 | `SwingStudio/Views` | Analyse, the swing (tempo, the priority after it, eight positions, measurements, coach), Practice (priority, drill, plan, retest verdict, export and erase), history with a tempo chart, the coach chat, settings. |
 
 The model file (`SwingCore/Sources/SwingCore/Resources/model.json`) is the same
