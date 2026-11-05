@@ -1,5 +1,5 @@
 // Tests for results/protocol.js. Node built-ins only:
-//   node --test launchmon-hw/results/test/
+//   cd launchmon-hw/results && node --test     (or npm test; no dependencies)
 //
 // Packets are built here byte by byte from the firmware's struct, not with the
 // module's own encoder, so a layout mistake in protocol.js cannot hide itself:

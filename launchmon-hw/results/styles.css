@@ -479,3 +479,16 @@ body.is-demo .shot-tag { color: var(--demo); font-weight: 700; }
 @media (prefers-reduced-motion: reduce) {
   .shot.flash, .dot { animation: none !important; }
 }
+
+/* Shown only if app.js never runs (e.g. opened from file://, where module
+   scripts are blocked). app.js removes it at once; the delay stops a flash. */
+.boot {
+  position: absolute; inset: 0; z-index: 2;
+  padding: 18px 16px; border-radius: inherit;
+  background: var(--surface);
+  opacity: 0; animation: boot-appear 0.2s 1.5s forwards;
+}
+.boot h2 { margin: 0 0 8px; font-size: 20px; }
+.boot p { margin: 0; color: var(--muted); }
+.boot code { background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+@keyframes boot-appear { to { opacity: 1; } }
