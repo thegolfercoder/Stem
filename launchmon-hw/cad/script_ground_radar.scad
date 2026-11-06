@@ -293,6 +293,21 @@ lid_lip_h   = 2.0;
 lid_lip_w   = 1.2;
 fit_clear   = 0.25;
 
+/* [Lid seam gasket - TPU 95A, printed flat] */
+// A groove round the lid's inner face, between the shadow gap and the lip,
+// holds a flat-printed TPU ring: a base that sits in the groove and a single
+// fin that stands gasket[4] proud and meets the shell's rim when the four lid
+// screws are driven. Hidden: the shadow gap and the outer size are unchanged.
+gasket       = [1.35, 1.2, 1.0, 0.5, 0.2];  // [groove's outer edge in from the outline, groove width, groove depth,
+                                            //  fin width (one line), fin proud of the lid face]
+gasket_base  = 0.6;    // base thickness (three layers); the fin rises gasket[2] + gasket[4] - this above it
+gasket_fit   = 0.05;   // base narrower than the groove, each side: it presses in and stays when the lid is off
+
+/* [Power / wake board - on the lid's inner face, beside the protection board] */
+power_board     = [20, 15, 4.3];   // perfboard [X, Z, room reserved off the lid]
+power_board_pos = [36.0, 41.0];    // its pocket's lower-left [X, Z] on the lid's inner face: where the
+                                   // LM358 was, between the SuperMini's clamp tabs and the radar housing
+
 // ----------------------------------------------------------------------------
 //  Derived values
 // ----------------------------------------------------------------------------
@@ -767,6 +782,7 @@ module lid() {
             mt3608_fence();
             tp4056_presser();
             if (pod_park) pod_park_board_fence();
+            board_fence(power_board_pos, pb_bin);
             sight_rear();
         }
         // Shadow gap at the seam: the lid's edge steps in for its first 0.8 mm.
@@ -777,6 +793,39 @@ module lid() {
             translate([p[0], body_d - 0.4, p[1]]) y_cone(0.41, m2_head_d, m2_head_d + 0.8);
         }
         if (pod_park) pod_park_lid_holes();
+        gasket_groove();
+    }
+}
+
+// ---- Lid seam gasket --------------------------------------------------------------
+gk_in  = gasket[0];                       // groove, outer edge (in from the outline)
+gk_out = gasket[0] + gasket[1];           // groove, inner edge
+gk_c   = gasket[0] + gasket[1] / 2;       // fin centre line
+gk_h   = gasket[2] + gasket[4];           // gasket overall height
+module gasket_groove() {
+    xz_extrude(y_back - 0.01, y_back + gasket[2]) difference() { outline(gk_in); outline(gk_out); }
+}
+// Printed flat, base down (the 2D outline's [X, Z] laid on the bed as [X, Y]).
+module lid_gasket() {
+    linear_extrude(gasket_base) difference() { outline(gk_in + gasket_fit); outline(gk_out - gasket_fit); }
+    linear_extrude(gk_h) difference() { outline(gk_c - gasket[3] / 2); outline(gk_c + gasket[3] / 2); }
+}
+// As fitted, in the lid's groove, fin toward the shell (for the assembly view).
+module lid_gasket_in_place() { translate([0, y_back + gasket[2], 0]) rotate([90, 0, 0]) lid_gasket(); }
+// How far in from the outline a point [X, Z] on the lid is.
+function inset_of(p) = let(cx = min(max(p[0], corner_r), body_w - corner_r), cz = min(max(p[1], corner_r), body_h - corner_r))
+    (cx == p[0] && cz == p[1]) ? min(p[0], body_w - p[0], p[1], body_h - p[1]) : corner_r - norm([p[0] - cx, p[1] - cz]);
+
+// ---- Power / wake board pocket ------------------------------------------------------
+pb_bin = [power_board[0] + 0.4, power_board[1] + 0.4];   // pocket inside its fence [X, Z]
+module board_fence(pos, bin) {
+    // A pocket on the lid's inner face, 1.6 mm deep, with gaps top and bottom for
+    // its wires. Fix the board with a dab of hot glue.
+    t = 1.0; h = 1.6;
+    translate([0, y_back - h, 0]) difference() {
+        translate([pos[0] - t, 0, pos[1] - t]) cube([bin[0] + 2 * t, h + 0.01, bin[1] + 2 * t]);
+        translate([pos[0], -1, pos[1]]) cube([bin[0], h + 2, bin[1]]);
+        translate([pos[0] + bin[0] / 2 - 3, -1, pos[1] - t - 1]) cube([6, h + 2, bin[1] + 2 * t + 2]);
     }
 }
 
@@ -795,14 +844,7 @@ module pod_park_lid_holes() {
 module pod_park_board_fence() {
     // Pocket for the protection board (MOSFET switch, polyfuse, resistors) on
     // the lid's inner face, just below where the pins' wires come through.
-    // Gaps top and bottom for its wires. Fix it with a dab of hot glue.
-    t = 1.0; h = 1.6;
-    x0 = pod_park_board_pos[0]; z0 = pod_park_board_pos[1];
-    translate([0, y_back - h, 0]) difference() {
-        translate([x0 - t, 0, z0 - t]) cube([pp_bin[0] + 2 * t, h + 0.01, pp_bin[1] + 2 * t]);
-        translate([x0, -1, z0]) cube([pp_bin[0], h + 2, pp_bin[1]]);
-        translate([x0 + pp_bin[0] / 2 - 3, -1, z0 - t - 1]) cube([6, h + 2, pp_bin[1] + 2 * t + 2]);
-    }
+    board_fence(pod_park_board_pos, pp_bin);
 }
 
 module switch_lid_relief() {
