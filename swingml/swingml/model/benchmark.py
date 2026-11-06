@@ -36,6 +36,7 @@ import torch
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict
 
+from swingml.dataset.manifest import guard_archive
 from swingml.events import NUM_EVENTS, EventSequence, SwingEvent
 from swingml.features import CANONICAL_RATE_HZ
 from swingml.model.decode import decode_events
@@ -112,6 +113,7 @@ def load_samples(paths: Sequence[Path]) -> list[Sample]:
     for path in paths:
         if not Path(path).is_file():
             continue
+        guard_archive(Path(path))
         data = np.load(path)
         features = data["features"]
         events = data["events"]

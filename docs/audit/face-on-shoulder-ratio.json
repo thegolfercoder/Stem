@@ -1,0 +1,439 @@
+{
+  "manifest": "swingml/manifests/golfdb-validation-v2.json",
+  "model": "swing_event_net.pt",
+  "holdout_read": false,
+  "threshold": 0.6,
+  "summary": {
+    "face on": {
+      "n": 29,
+      "min": 0.632,
+      "p5": 0.66,
+      "median": 0.764,
+      "max": 0.909,
+      "at_or_above_threshold": 29
+    },
+    "down the line": {
+      "n": 36,
+      "min": 0.006,
+      "p5": 0.021,
+      "median": 0.069,
+      "max": 0.346,
+      "at_or_above_threshold": 0
+    },
+    "other": {
+      "n": 15,
+      "min": 0.024,
+      "p5": 0.036,
+      "median": 0.286,
+      "max": 0.792,
+      "at_or_above_threshold": 1
+    }
+  },
+  "clips": [
+    {
+      "clip": 136,
+      "view": "other",
+      "shoulder_ratio": 0.2994
+    },
+    {
+      "clip": 200,
+      "view": "down the line",
+      "shoulder_ratio": 0.0832
+    },
+    {
+      "clip": 204,
+      "view": "face on",
+      "shoulder_ratio": 0.8515
+    },
+    {
+      "clip": 220,
+      "view": "down the line",
+      "shoulder_ratio": 0.0848
+    },
+    {
+      "clip": 248,
+      "view": "face on",
+      "shoulder_ratio": 0.7429
+    },
+    {
+      "clip": 368,
+      "view": "other",
+      "shoulder_ratio": 0.2325
+    },
+    {
+      "clip": 372,
+      "view": "face on",
+      "shoulder_ratio": 0.7637
+    },
+    {
+      "clip": 384,
+      "view": "face on",
+      "shoulder_ratio": 0.9095
+    },
+    {
+      "clip": 400,
+      "view": "other",
+      "shoulder_ratio": 0.7923
+    },
+    {
+      "clip": 416,
+      "view": "face on",
+      "shoulder_ratio": 0.7994
+    },
+    {
+      "clip": 496,
+      "view": "down the line",
+      "shoulder_ratio": 0.0355
+    },
+    {
+      "clip": 532,
+      "view": "face on",
+      "shoulder_ratio": 0.8052
+    },
+    {
+      "clip": 588,
+      "view": "down the line",
+      "shoulder_ratio": 0.0532
+    },
+    {
+      "clip": 612,
+      "view": "face on",
+      "shoulder_ratio": 0.8009
+    },
+    {
+      "clip": 636,
+      "view": "other",
+      "shoulder_ratio": 0.3032
+    },
+    {
+      "clip": 648,
+      "view": "down the line",
+      "shoulder_ratio": 0.0427
+    },
+    {
+      "clip": 672,
+      "view": "face on",
+      "shoulder_ratio": 0.8087
+    },
+    {
+      "clip": 45,
+      "view": "down the line",
+      "shoulder_ratio": 0.0397
+    },
+    {
+      "clip": 121,
+      "view": "down the line",
+      "shoulder_ratio": 0.0785
+    },
+    {
+      "clip": 137,
+      "view": "other",
+      "shoulder_ratio": 0.2861
+    },
+    {
+      "clip": 229,
+      "view": "face on",
+      "shoulder_ratio": 0.7765
+    },
+    {
+      "clip": 273,
+      "view": "face on",
+      "shoulder_ratio": null
+    },
+    {
+      "clip": 353,
+      "view": "down the line",
+      "shoulder_ratio": 0.175
+    },
+    {
+      "clip": 357,
+      "view": "down the line",
+      "shoulder_ratio": 0.006
+    },
+    {
+      "clip": 621,
+      "view": "down the line",
+      "shoulder_ratio": 0.0185
+    },
+    {
+      "clip": 138,
+      "view": "other",
+      "shoulder_ratio": 0.2946
+    },
+    {
+      "clip": 198,
+      "view": "down the line",
+      "shoulder_ratio": 0.1626
+    },
+    {
+      "clip": 202,
+      "view": "down the line",
+      "shoulder_ratio": 0.0769
+    },
+    {
+      "clip": 214,
+      "view": "down the line",
+      "shoulder_ratio": 0.1076
+    },
+    {
+      "clip": 266,
+      "view": "down the line",
+      "shoulder_ratio": 0.0529
+    },
+    {
+      "clip": 302,
+      "view": "face on",
+      "shoulder_ratio": 0.8206
+    },
+    {
+      "clip": 402,
+      "view": "down the line",
+      "shoulder_ratio": 0.1898
+    },
+    {
+      "clip": 422,
+      "view": "face on",
+      "shoulder_ratio": 0.7031
+    },
+    {
+      "clip": 466,
+      "view": "other",
+      "shoulder_ratio": 0.0636
+    },
+    {
+      "clip": 570,
+      "view": "other",
+      "shoulder_ratio": 0.0688
+    },
+    {
+      "clip": 590,
+      "view": "down the line",
+      "shoulder_ratio": 0.0499
+    },
+    {
+      "clip": 618,
+      "view": "face on",
+      "shoulder_ratio": 0.7316
+    },
+    {
+      "clip": 638,
+      "view": "down the line",
+      "shoulder_ratio": 0.0398
+    },
+    {
+      "clip": 646,
+      "view": "other",
+      "shoulder_ratio": 0.0418
+    },
+    {
+      "clip": 650,
+      "view": "down the line",
+      "shoulder_ratio": 0.0215
+    },
+    {
+      "clip": 674,
+      "view": "face on",
+      "shoulder_ratio": 0.8401
+    },
+    {
+      "clip": 682,
+      "view": "face on",
+      "shoulder_ratio": 0.7985
+    },
+    {
+      "clip": 55,
+      "view": "down the line",
+      "shoulder_ratio": 0.1395
+    },
+    {
+      "clip": 119,
+      "view": "down the line",
+      "shoulder_ratio": 0.0764
+    },
+    {
+      "clip": 191,
+      "view": "down the line",
+      "shoulder_ratio": 0.0797
+    },
+    {
+      "clip": 199,
+      "view": "down the line",
+      "shoulder_ratio": 0.062
+    },
+    {
+      "clip": 279,
+      "view": "face on",
+      "shoulder_ratio": 0.6318
+    },
+    {
+      "clip": 423,
+      "view": "face on",
+      "shoulder_ratio": 0.7311
+    },
+    {
+      "clip": 727,
+      "view": "down the line",
+      "shoulder_ratio": 0.3463
+    },
+    {
+      "clip": 731,
+      "view": "face on",
+      "shoulder_ratio": 0.6856
+    },
+    {
+      "clip": 751,
+      "view": "down the line",
+      "shoulder_ratio": 0.0756
+    },
+    {
+      "clip": 1020,
+      "view": "down the line",
+      "shoulder_ratio": 0.0542
+    },
+    {
+      "clip": 1088,
+      "view": "face on",
+      "shoulder_ratio": 0.7758
+    },
+    {
+      "clip": 1160,
+      "view": "face on",
+      "shoulder_ratio": 0.7817
+    },
+    {
+      "clip": 1256,
+      "view": "face on",
+      "shoulder_ratio": 0.7468
+    },
+    {
+      "clip": 1288,
+      "view": "down the line",
+      "shoulder_ratio": 0.1237
+    },
+    {
+      "clip": 1344,
+      "view": "down the line",
+      "shoulder_ratio": 0.0451
+    },
+    {
+      "clip": 1352,
+      "view": "face on",
+      "shoulder_ratio": 0.6428
+    },
+    {
+      "clip": 849,
+      "view": "face on",
+      "shoulder_ratio": 0.7358
+    },
+    {
+      "clip": 865,
+      "view": "down the line",
+      "shoulder_ratio": 0.0591
+    },
+    {
+      "clip": 937,
+      "view": "down the line",
+      "shoulder_ratio": 0.033
+    },
+    {
+      "clip": 997,
+      "view": "other",
+      "shoulder_ratio": 0.3083
+    },
+    {
+      "clip": 1061,
+      "view": "down the line",
+      "shoulder_ratio": 0.0761
+    },
+    {
+      "clip": 1105,
+      "view": "face on",
+      "shoulder_ratio": 0.7296
+    },
+    {
+      "clip": 1249,
+      "view": "face on",
+      "shoulder_ratio": 0.7378
+    },
+    {
+      "clip": 826,
+      "view": "down the line",
+      "shoulder_ratio": 0.0531
+    },
+    {
+      "clip": 842,
+      "view": "face on",
+      "shoulder_ratio": 0.7439
+    },
+    {
+      "clip": 1098,
+      "view": "other",
+      "shoulder_ratio": 0.3695
+    },
+    {
+      "clip": 1282,
+      "view": "other",
+      "shoulder_ratio": 0.1884
+    },
+    {
+      "clip": 1346,
+      "view": "down the line",
+      "shoulder_ratio": 0.0574
+    },
+    {
+      "clip": 1374,
+      "view": "face on",
+      "shoulder_ratio": 0.7394
+    },
+    {
+      "clip": 851,
+      "view": "down the line",
+      "shoulder_ratio": 0.0862
+    },
+    {
+      "clip": 867,
+      "view": "down the line",
+      "shoulder_ratio": 0.083
+    },
+    {
+      "clip": 875,
+      "view": "face on",
+      "shoulder_ratio": 0.7189
+    },
+    {
+      "clip": 891,
+      "view": "other",
+      "shoulder_ratio": 0.3361
+    },
+    {
+      "clip": 1115,
+      "view": "other",
+      "shoulder_ratio": 0.1818
+    },
+    {
+      "clip": 1151,
+      "view": "down the line",
+      "shoulder_ratio": 0.0628
+    },
+    {
+      "clip": 1255,
+      "view": "face on",
+      "shoulder_ratio": 0.779
+    },
+    {
+      "clip": 1295,
+      "view": "down the line",
+      "shoulder_ratio": 0.1487
+    },
+    {
+      "clip": 1323,
+      "view": "face on",
+      "shoulder_ratio": 0.7668
+    },
+    {
+      "clip": 1331,
+      "view": "other",
+      "shoulder_ratio": 0.0236
+    }
+  ]
+}

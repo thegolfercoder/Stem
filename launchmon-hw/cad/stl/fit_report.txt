@@ -1,0 +1,57 @@
+  ok   depth behind radar module      : 0.628072 mm
+  ok   radar module above TP4056       : 1.3365 mm
+  ok   window opening inside outline   : 0.866625 mm
+  ok   ESP32 tab posts to radar housing: 23.88 mm
+  ok   battery bay to TP4056 guide     : 0.4 mm
+  ok   cell + MT3608 depth stack       : 1.4 mm
+  ok   divider to ESP32 board          : 2.4 mm
+  ok   radar housing to right wall     : 3.6 mm
+  ok   window bevel inside outline     : 0.0666252 mm
+  ok   radar posts on their corner pads: 0.3 mm
+  ok   radar post pilot under its depth: 0.5 mm
+  ok   light pipe flange to ESP32 board: 2.6 mm
+  ok   sight: light each side of post   : 0.3 mm
+  ok   sight: notch bottom over top face: 0.6 mm
+  ok   sight: post above window bevel   : 1.90399 mm
+  ok   sight: rear blade clear of cap   : 8.1 mm
+  ok   sight: rear blade inside corner  : 3.9 mm
+  ok   sight: groove starts behind ramp : 0.6 mm
+  ok   phone's lower edge over unit, 0 deg: 4.7 mm
+  ok   phone's lower edge over unit, 25 deg: 8.52264 mm
+  ok   phone's lower edge over unit, 35 deg: 12.0786 mm
+  ok   lens sightline over the unit (front): 110.433 mm
+  ok   lens sightline over the unit (rear) : 113.087 mm
+  ok   slide still 12 mm in the spine, open: 2 mm
+  ok   spine below the unit's top edge     : 1 mm
+  ok   folded head inside the dock (Z)     : 2 mm
+  ok   folded head clear of pocket wall    : 0.3 mm
+  ok   folded head inside the lid's width  : 16 mm
+  ok   pod pocket walls hold half the pod  : 1 mm
+  info  open arm, 25 deg: lens at [Y, Z] [48, 65.4641, 185.206] mm; phone's centre 48.4202 mm behind the unit's front, base ends at 68.5 (the phone is over the base: it cannot tip it backwards)
+  info  radar window centre [76.1, 46.148], boresight 15 deg up, skin 1 mm
+  info  USB-C receptacle centre X 73 Y 7.15
+  info  sight radius 19.6 mm: 0.3 mm of eye misalignment = 0.876908 deg of aim, a Doppler speed error (1 - cos) of 0.0117118 %; eyeballing 10 deg off costs 1.51922 %
+  ok   stack height under the lid      : 0.74 mm
+  ok   IMU board inside the walls (X)  : 1.1 mm
+  ok   cell + charger along X          : 0.3 mm
+  ok   SuperMini inside the walls (Y)  : 2.8 mm
+  info  body height needed for this stack: 13.26 mm (body is 14)
+  info  antenna zone over the cell: 1.88 mm of 4 (0 is ideal; a 1-3 m link tolerates a little)
+  info  clamp mouth 11.782 mm for a 13 mm bore; each jaw deflects 0.608999 mm to snap on
+  info  overall height incl. clamp: 32.4 mm
+  ok   strap band clear of the jaws (X)   : 1 mm
+  ok   strap band clear of the USB-C end  : 9.4 mm
+  ok   strap posts outside the side walls : 1.6 mm
+  ok   strap slot above the lower edge rnd: 0.3 mm
+  ok   strap tab below the pry notch      : 0.4 mm
+  ok   strap post head below the pry notch: 3.9 mm
+  ok   strap leaves the body above Z 0    : 1.48153 mm
+  ok   strap meets the shaft below centre : 3.03693 mm
+  ok   strap latch: upper lip over the slot: 0.4 mm
+  ok   strap latch: strap clear under head: 0.3 mm
+  ok   strap latch: detent (head - slot)  : 0.3 mm
+  ok   strap: bars beside the slot >= 1.6 : 0.45 mm
+  ok   strap: tab beyond the slot  >= 3.0 : 1.5 mm
+  info  strap 8 x 1 mm TPU 95A, 62.3443 mm long; slots [3.9, 3.3] mm, bearing edges 53.3443 mm apart; fitted path 57.6118 mm on a 13 mm shaft (8 % stretch)
+  info  strap section 8 mm2, 4.1 mm2 at the slots; preload about 16.64 N per leg at E = 26 MPa
+  info  strap strength: about 102-144 N at the slots from TPU 95A's 25-35 MPa datasheet tensile strength; the hold on a club needs a physical pull test

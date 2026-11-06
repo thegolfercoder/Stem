@@ -120,3 +120,87 @@ necessary rather than optional: hum harmonics are tones, and every stage after t
 transform is looking for tones, so hum can be picked as the club, as the ball, or
 as both. What separates hum from a golf shot is not amplitude but motion — every
 real component here sweeps, and an interferer locked to the mains does not.
+
+## Fusion: radar, club IMU and phone camera on one timeline
+
+The ground unit in `launchmon-hw/` reads a two-channel (I/Q) radar on its own
+ESP32-C3 and receives the club pod's IMU over Bluetooth. A phone films the
+swing, and swingml analyses the clip. `launchmon.ingest`, `launchmon.imu` and
+`launchmon.fusion` turn the three into one shot.
+
+```bash
+python scripts/record_ground_unit.py /dev/ttyACM0 session.bin   # raw USB stream (pyserial)
+swingml analyse swing1.mov --json camera.json                   # the phone clip
+PYTHONPATH=. python scripts/fuse_shot.py session.bin --camera camera.json \
+    --video swing1.mov --club driver --camera-distance 3.0 --json fused.json
+```
+
+**Radar.** `ingest.iq` keeps only the half of the I/Q spectrum that holds
+targets moving away from the radar (the downswing and the ball), after removing
+each channel's DC and the half-sample lag between I and Q conversions on the
+C3's single ADC. What comes out is the real signal a single-channel radar would
+have recorded with nothing approaching it in the beam, so the Stage 1 pipeline
+and its cross-checks run unchanged. `presets.ground_unit_radar_pipeline()` uses
+1024-point frames at 40 kHz; 2048 points there is a 51 ms window, which on
+synthetic driver shots read the clubhead about 5 percent low.
+
+**IMU.** `imu.swing` finds the takeaway, the top and the impact shock in the
+pod's raw samples, and the shaft's rotation rate, refused wherever the gyro
+was at full scale. The top is where the backswing's rotation, on its own axis,
+crosses zero, not merely the slowest point, which noise moves around by several
+milliseconds because the downswing starts gently.
+
+**One timeline.** Every sensor finds the strike on its own clock and that
+becomes zero: the radar from its capture, the IMU from the shock (searched for
+near the radar's impact as mapped over Bluetooth, so the mapping's residual is
+measured and removed), the camera from the strike in the clip's audio, corrected
+for sound travel when the distance is recorded, otherwise from swingml's impact
+event. Each event comes from the sensor that measures it best: impact from the
+radar, top and takeaway from the IMU, the other five from the camera. Where two
+sensors place the same event, the difference is compared with the camera's
+frame time (or swingml's measured band) and reported if it is larger.
+
+**What stays modelled.** True ball speed needs a launch angle; until the
+camera measures one it is the club's prior, and the result is MODELLED with
+that assumption. Clubhead speed from the IMU needs a radius to the clubhead,
+which is a calibration; `effective_clubhead_radius` measures it shot by shot
+from the radar's clubhead speed so it can be fitted. Spin, face angle, club
+path, attack angle and swing plane are not outputs here either.
+
+**Per-club radius calibration.** `fusion.calibration` keeps those measured
+radii per club in a JSON file you name, and `fuse_shot.py` uses it when given
+`--calibration`:
+
+```bash
+PYTHONPATH=. python scripts/fuse_shot.py session.bin --club 7-iron \
+    --calibration ~/launchmon/radius.json
+```
+
+`--club` (a name from `config/clubs.yaml`) is required with `--calibration`,
+because it is the key the samples are filed under. Each shot that both the
+radar and the IMU measured offers its radius. It is refused, and the refusal
+is printed and kept in the file with its reason, if either input is not
+MEASURED, if it is outside 0.6 to 1.8 m (two thirds of a wedge's length up to
+the longest legal driver plus a straight arm, swung as one lever about the
+shoulder), or, once the club has 5 accepted samples, if it is more than 3.5
+robust deviations (1.4826 x MAD, floored at 2 cm) from their median. The same
+capture fused twice is counted once. The last 50 accepted and 50 refused
+samples are kept; the file is replaced atomically, and a file that cannot be
+read stops the script rather than being overwritten.
+
+The calibration is the median of the accepted samples, with their robust
+spread and count, and is used once there are 5. Then, and only for a shot whose
+clubhead speed the radar did not measure, `clubhead_speed_from_imu` is the
+IMU's rate times the calibrated radius: DERIVED, source `imu+calibration`,
+rather than MODELLED from the assumed radius. The shot also carries
+`imu_speed_calibration`: the calibration used and a speed spread, the rate
+times the radius spread widened by the median's own uncertainty
+(`sqrt(1 + pi/2n)`). That spread is the scatter of this golfer's samples with
+this club, not an accuracy figure for the instrument. When the radar measured
+the clubhead nothing changes, and without `--calibration` the script reads
+and writes no file and its output is exactly as before.
+
+**What has been checked.** All of it against synthetic shots with known
+truth (`tests/test_iq.py`, `test_imu_swing.py`, `test_fusion.py`,
+`test_ground_unit_ingest.py`, `test_radius_calibration.py`), including a USB
+stream built the way the firmware writes it. None of it has seen real hardware yet.

@@ -1,14 +1,47 @@
-# Stem
+# Launch Monitor ML
 
-[![checks](https://github.com/thegolfercoder/Stem/actions/workflows/checks.yml/badge.svg)](https://github.com/thegolfercoder/Stem/actions/workflows/checks.yml)
+[![checks](https://github.com/thegolfercoder/launch-monitor-ml/actions/workflows/checks.yml/badge.svg)](https://github.com/thegolfercoder/launch-monitor-ml/actions/workflows/checks.yml)
 
-Two pieces of work on measuring a golf swing without a launch monitor's price
-tag. They share a set of principles and no code.
+> ## 📱 Open the iPhone app in Xcode
+>
+> **[`ios/SwingStudio.xcodeproj`](ios/SwingStudio.xcodeproj)** is committed. Download, double-click it, press Run.
+>
+> 1. Download this repository: **Code → Download ZIP** (on the branch with the app:
+>    [download link](https://github.com/thegolfercoder/Stem/archive/refs/heads/claude/prompt-usage-0oy6wa.zip)), and unzip it.
+> 2. Double-click **`ios/SwingStudio.xcodeproj`**. Xcode 15 or later opens it.
+> 3. Choose an iPhone simulator at the top of the window and press **Run** (⌘R).
+>    To run on your own iPhone instead, pick it there and choose your Apple ID under
+>    *SwingStudio target → Signing & Capabilities → Team*.
+>
+> The app opens with history, practice, settings and the coach working. **Analysing a
+> swing needs Google's MediaPipe pose tracker**, which Google ships for iPhone only
+> through CocoaPods, so it cannot be inside a download. Until it is added, the app
+> says so on its first screen and refuses to analyse rather than guess. To add it,
+> once, in Terminal:
+>
+> ```sh
+> brew install xcodegen cocoapods
+> cd ios && ./setup.sh
+> open SwingStudio.xcworkspace     # from now on open this, not the .xcodeproj
+> ```
+>
+> More in [ios/README.md](ios/README.md).
+
+Measuring a golf swing and a golf ball without a launch monitor's price tag. One
+project in three parts, sharing a set of principles: swing analysis from a phone
+camera (`swingml/`, and `ios/` for iPhone), the hardware for a radar and club
+sensor (`launchmon-hw/`), and the radar signal processing and the fusion that
+puts all three on one timeline (`launchmon-py/`). Fusion reads swingml's JSON
+output and imports none of its code. Each part measures only what its sensor can:
+ball and club speed come from the radar, never from the camera.
 
 | Path | What it is | State |
 |---|---|---|
-| `swingml/` | **Swing analysis from a single phone camera.** Pose estimation, a temporal model over the eight swing events, and the metrics that follow. Runs as a local web app, a command line tool, or one self-contained HTML file with no install. | Working. |
+| `swingml/` | **Swing analysis from a single phone camera.** Pose estimation, a temporal model over the eight swing events, the metrics that follow, and a practice loop (priority, drill, retest, verdict). Runs as a desktop app, a local web app, a command line tool, or one self-contained HTML file with no install. | Working; accuracy measured on broadcast footage. |
+| `ios/` | **Swing Studio for iPhone.** The analysis ported to Swift, held to the browser engine by tests. | Builds in CI; not yet run on a device. |
 | `launchmon-py/` | **Radar DSP for a launch monitor.** A 24 GHz CW Doppler front end arriving as USB-C audio, and the signal processing that turns it into ball and club speed. | Working. No hardware yet. |
+| `launchmon-hw/` | **Hardware for a two-part launch monitor.** A ground radar unit (BGT24LTR11 I/Q radar, ESP32-C3) and a separate club-mounted IMU pod, linked over BLE: OpenSCAD enclosures with print-ready STLs, firmware for both, and the build documentation. | Designed and syntax-checked. Not yet compiled for the target or built. |
+| [`GolfLaunchMonitor_V1_Proposal.pdf`](GolfLaunchMonitor_V1_Proposal.pdf) | The V1 build proposal both halves are aimed at. | — |
 
 Both suites run on every push - lint, types and tests - and the badge above is
 the only place a test count belongs. Written into prose it goes stale the day
@@ -25,13 +58,30 @@ Video of a swing goes in. Out comes the eight positions of the swing with a time
 for each, the tempo ratio, rotation at the top and movement against the ground -
 each carrying a measured error band and a label saying how it was arrived at.
 
-Accuracy on a freshly generated holdout no model has trained on: **83% of events
-within one frame and 93% within two**, with tempo carrying a measured spread of
-**±12%**. Those figures are for the ensemble, they come from rendered swings put
-through the real pose estimator, and `swingml/README.md` is explicit about both -
-and about the one real clip in the repository, which is the only evidence here
-about an actual person and is treated as a gate on what ships rather than as a
-score.
+On **real swings no model trained on** - 201 clips from GolfDB in 35 golfer/video
+groups, frozen as `swingml/swingml/manifests/golfdb-holdout-v1.json` - the shipped
+model, with the slow-motion rule that ships, places address, the top, mid-downswing and
+impact **within one frame 49.0% of the time**, with a median tempo error of **15.3%**;
+its tempo band, **±27%**, contained the truth for 84.9% of those swings
+(`docs/audit/release-gate-slowmo-rule.json`, point estimates; that report gives no
+intervals). Measured before that rule, at commit 429fb30
+(`docs/audit/benchmark-baseline.json`): within one frame 48.9% (95% CI 44.8-52.9),
+within two 64.1%, tempo error 15.1%. It beats four simple baselines fitted on the same
+data, scored at 429fb30 (the best, a one-layer temporal classifier, 40.7%).
+
+Two weaknesses matter more than those averages. Tempo readings are **compressed
+toward about 3.3** (a true 2.35 reads 2.95, a true 5.12 reads 3.65), so a golfer's
+change shows smaller than it is. And every figure is on broadcast and range video:
+the one phone swing checked by hand reads tempo 3.20 against a true 2.10.
+
+**Where to start reading:** `docs/audit/current-state.md` (what works, what does
+not, which claims hold), `docs/audit/failure-inventory.md`, `docs/ml/model-card.md`,
+`docs/product/known-limitations.md`, and `docs/architecture.md`. A candidate model
+ships only through `python -m swingml.model.release_gate` (`docs/runbooks/model-release.md`).
+
+Those are lower than the figures on rendered swings, which is the point:
+`swingml/README.md` explains why the rendered numbers flattered the model and what
+changed.
 
 ```bash
 cd swingml
@@ -55,7 +105,13 @@ clone has no `out/`.
 A 24 GHz CW Doppler radar over USB-C audio, a club-mounted IMU over BLE, and the
 phone's own camera down the line, with everything computed on the phone. The
 Python here is the research environment where the algorithms are developed and
-proven; the iOS and firmware sides are not started.
+proven; the iOS side is not started. `launchmon-hw/` holds a hardware variant in
+which the radar is digitised on its own ESP32-C3 rather than as phone audio. See
+its [README](launchmon-hw/README.md) for what has and has not been checked.
+`launchmon-py`'s fusion layer puts that unit's radar, the club pod's IMU and
+swingml's analysis of the phone video on one timeline, aligned by the strike
+each of them sees, and takes each event and number from the sensor that measures
+it best.
 
 The contract between the Python and any later Swift implementation is a golden
 vector suite: Python generates synthetic inputs with known ground truth plus its
