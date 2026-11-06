@@ -141,44 +141,15 @@ final class ShotPairingTests: XCTestCase {
     func testSoundTravelIsRemovedFromAnAudioStrikeWhenTheDistanceIsKnown() throws {
         let s = shot(1, impactMs: 100_000, at: 2.0)
         let heard = ClipTiming(recordingStarted: t0, strike: .audio(seconds: 1.5))
-        let corrected = try XCTUnwrap(pairShot(heard, shots: [s], camera: .elsewhere(distanceMetres: 3.43)).pairing)
+        let corrected = try XCTUnwrap(pairShot(heard, shots: [s], cameraToBallM: 3.43).pairing)
         XCTAssertEqual(corrected.strikeAt.timeIntervalSince(t0), 1.49, accuracy: 1e-6)  // 3.43 m / 343 m/s
         XCTAssertTrue(corrected.notes.contains { $0.contains("sound travel over 3.4 m removed") })
-        XCTAssertFalse(corrected.notes.contains { $0.contains("assumed") }, "a given distance is not an assumption")
 
-        let left = try XCTUnwrap(pairShot(heard, shots: [s], camera: .unknown).pairing)
+        let left = try XCTUnwrap(pairShot(heard, shots: [s]).pairing)
         XCTAssertEqual(left.strikeAt.timeIntervalSince(t0), 1.5, accuracy: 1e-6)
         XCTAssertTrue(left.notes.contains { $0.contains("sound travel left in") })
 
-        XCTAssertNotNil(reason(pairShot(heard, shots: [s], camera: .elsewhere(distanceMetres: -1))))
-        XCTAssertNotNil(reason(pairShot(heard, shots: [s], camera: .onUnit(distanceMetres: .nan))))
-    }
-
-    func testByDefaultThePhoneIsOnTheUnitAtItsSetUpDistance() throws {
-        XCTAssertEqual(CameraPlacement.standard, .onUnit(distanceMetres: 1.4))
-        XCTAssertEqual(CameraPlacement.onUnit().distanceMetres, groundUnitBehindBallM)
-        XCTAssertNil(CameraPlacement.unknown.distanceMetres)
-
-        let s = shot(1, impactMs: 100_000, at: 2.0)
-        let heard = ClipTiming(recordingStarted: t0, strike: .audio(seconds: 1.5))
-        let pairing = try XCTUnwrap(pairShot(heard, shots: [s]).pairing)
-        XCTAssertEqual(pairing.strikeAt.timeIntervalSince(t0), 1.5 - 1.4 / 343, accuracy: 1e-6)  // 4.1 ms
-        XCTAssertTrue(pairing.notes.contains { $0.contains("sound travel over 1.4 m removed") }, "\(pairing.notes)")
-        XCTAssertTrue(pairing.notes.contains { $0.contains("on the ground unit, 1.40 m behind the ball")
-                && $0.contains("configured, not measured") }, "\(pairing.notes)")
-
-        // A unit set up at another distance carries it.
-        let further = try XCTUnwrap(pairShot(heard, shots: [s], camera: .onUnit(distanceMetres: 1.715)).pairing)
-        XCTAssertEqual(further.strikeAt.timeIntervalSince(t0), 1.495, accuracy: 1e-6)
-    }
-
-    func testWhereTheCameraWasDoesNotMoveASeenStrike() throws {
-        let s = shot(1, impactMs: 100_000, at: 1.0)
-        for camera in [CameraPlacement.standard, .elsewhere(distanceMetres: 3), .unknown] {
-            let pairing = try XCTUnwrap(pairShot(clip(strikeAt: 0.4), shots: [s], camera: camera).pairing)
-            XCTAssertEqual(pairing.strikeAt.timeIntervalSince(t0), 0.4, accuracy: 1e-6)
-            XCTAssertFalse(pairing.notes.contains { $0.contains("sound travel") })
-        }
+        XCTAssertNotNil(reason(pairShot(heard, shots: [s], cameraToBallM: -1)))
     }
 
     func testACaptureWithNoImpactPairsSayingItsTimeIsTheCapturesStart() throws {

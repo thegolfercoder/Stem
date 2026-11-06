@@ -175,7 +175,7 @@ public enum UnitClock {
 public enum ClipStrike: Equatable, Sendable {
     /// The onset of the strike's sound (launchmon-py `fusion/audio.py`). Late by
     /// the sound's travel from ball to phone, which is removed when the distance
-    /// is known (`CameraPlacement`). Nothing in SwingCore finds it yet.
+    /// is known. Nothing in SwingCore finds it yet.
     case audio(seconds: Double)
     /// The swing model's impact position. Seen, not heard: no travel to remove.
     case impactEvent(seconds: Double)
@@ -239,49 +239,12 @@ public enum PairingOutcome: Equatable, Sendable {
 
 public let speedOfSoundMps = 343.0
 
-/// How far behind the ball the ground unit is set up, in metres: the distance
-/// `launchmon-hw/docs/build_instructions.md` (4.2) gives for placing it and
-/// launchmon-py's `config/hardware.yaml` holds (`radar_geometry.range_from_tee_m`).
-/// It is the set-up distance, not a measurement of any session: the app has no
-/// setting for the distance a session measured, so a unit placed elsewhere is
-/// passed as `.onUnit(distanceMetres:)`.
-public let groundUnitBehindBallM = 1.4
-
-/// Where the phone that filmed the clip was, for the strike's sound travel.
-///
-/// The phone films from the ground unit, on the dock's stem by MagSafe or a
-/// clamp, so it sits where the radar does: about 1.4 m behind the ball on the
-/// target line. Only an audio strike uses this: the swing model's impact
-/// position is seen, not heard.
-public enum CameraPlacement: Equatable, Sendable {
-    /// On the ground unit. Its distance to the ball is taken to be the unit's,
-    /// configured, not measured for the phone. The few centimetres from the
-    /// radar to the phone's microphone are not added: 0.03 ms a centimetre.
-    case onUnit(distanceMetres: Double = groundUnitBehindBallM)
-    /// Anywhere else, such as a tripod, at a distance given for the session.
-    case elsewhere(distanceMetres: Double)
-    /// Not known: the sound's travel is left in the strike, and said to be.
-    case unknown
-
-    /// The phone on the unit, at the unit's set-up distance.
-    public static let standard = CameraPlacement.onUnit()
-
-    public var distanceMetres: Double? {
-        switch self {
-        case .onUnit(let d), .elsewhere(let d): return d
-        case .unknown: return nil
-        }
-    }
-}
-
 /// The radar shot that goes with a clip, or the reason there is none.
 ///
 /// Pairs only when exactly one live shot's placed impact is inside
 /// `tolerance.window` of the clip's strike. Two inside it is a refusal, not a
 /// choice of the nearer one: inside the window the clock cannot tell them apart.
-/// An audio strike has the sound's travel from `camera` removed; by default the
-/// phone is on the unit.
-public func pairShot(_ clip: ClipTiming, shots: [ReceivedShot], camera: CameraPlacement = .standard,
+public func pairShot(_ clip: ClipTiming, shots: [ReceivedShot], cameraToBallM: Double? = nil,
                      tolerance: PairingTolerance = .standard) -> PairingOutcome {
     guard let started = clip.recordingStarted else {
         return .refused(reason: "this clip carries no recording time, so it cannot be put beside the "
@@ -297,16 +260,12 @@ public func pairShot(_ clip: ClipTiming, shots: [ReceivedShot], camera: CameraPl
     var notes: [String] = []
     var strikeS = s
     if case .audio = clip.strike {
-        if let d = camera.distanceMetres {
+        if let d = cameraToBallM {
             guard d.isFinite, d >= 0 else {
                 return .refused(reason: "the camera distance is not a usable number of metres")
             }
             strikeS -= d / speedOfSoundMps
             notes.append(String(format: "sound travel over %.1f m removed from the strike", d))
-            if case .onUnit = camera {
-                notes.append(String(format: "assumed: the phone is on the ground unit, %.2f m behind the ball "
-                    + "as the unit is set up; configured, not measured for the phone", d))
-            }
         } else {
             notes.append("sound travel left in the strike: no camera distance given (about 3 ms a metre)")
         }

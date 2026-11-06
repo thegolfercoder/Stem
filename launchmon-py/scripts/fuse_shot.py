@@ -8,18 +8,10 @@
 
     # 3. Fuse
     PYTHONPATH=. python scripts/fuse_shot.py session.bin --camera camera.json \\
-        --video swing1.mov swing2.mov --club driver --json fused.json
+        --video swing1.mov swing2.mov --club driver --camera-distance 3.0 --json fused.json
 
 Shots and clips are paired in order: the first shot with a raw capture goes
 with the first clip. Any input can be left out, and fusion uses what is there.
-
-The phone films from the ground unit's dock stem, so by default the camera is
-taken to be the radar's distance from the ball, `radar_geometry.range_from_tee_m`
-in the hardware config, and the strike's sound travel over it is removed from
-the clip's audio. That is configured geometry, not a measurement of the phone's
-distance, and the camera's alignment notes say so. A phone elsewhere (on a
-tripod) takes its own distance, `--camera-distance 3.0`; `--camera-distance
-none` says the distance is not known, and the travel is left in and said to be.
 
 Per-club radius calibration (optional):
 
@@ -38,11 +30,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 from datetime import UTC, datetime
 from pathlib import Path
 
-from launchmon.config import RadarGeometryConfig, load_clubs, load_hardware
+from launchmon.config import load_clubs, load_hardware
 from launchmon.dsp.pipeline import analyse_radar_capture
 from launchmon.dsp.presets import ground_unit_radar_pipeline
 from launchmon.fusion.audio import impact_transient_time, read_audio
@@ -56,38 +47,10 @@ from launchmon.fusion.calibration import (
     save_calibration,
 )
 from launchmon.fusion.camera import IMPACT, CameraSwing, load_swingml_json
-from launchmon.fusion.shot import FusedShot, FusionConfig, camera_on_the_unit, fuse_shot
+from launchmon.fusion.shot import FusedShot, FusionConfig, fuse_shot
 from launchmon.ingest.ground_unit import read_ground_unit_log
 from launchmon.ingest.iq import iq_to_receding_real
 from launchmon.quantity import NoReading, Reading
-
-UNKNOWN_DISTANCE = "none"
-
-
-def camera_distance(text: str) -> float | str:
-    """`--camera-distance`: metres from the phone to the ball, or "none" for not known."""
-    if text.strip().lower() == UNKNOWN_DISTANCE:
-        return UNKNOWN_DISTANCE
-    try:
-        metres = float(text)
-    except ValueError:
-        raise argparse.ArgumentTypeError(
-            f"{text!r} is not a distance in metres, or 'none' for not known"
-        ) from None
-    if not math.isfinite(metres) or metres < 0:
-        raise argparse.ArgumentTypeError(f"{text!r} is not a distance in metres")
-    return metres
-
-
-def fusion_config(distance: float | str | None, geometry: RadarGeometryConfig) -> FusionConfig:
-    """The camera distance fusion uses: on the unit when not given, as given, or none."""
-    if distance is None:
-        metres, basis = camera_on_the_unit(geometry)
-        return FusionConfig(camera_to_ball_m=metres, camera_to_ball_basis=basis)
-    if distance == UNKNOWN_DISTANCE:
-        return FusionConfig(camera_to_ball_m=None)
-    assert isinstance(distance, float)
-    return FusionConfig(camera_to_ball_m=distance)
 
 
 def _fmt(r: Reading) -> str:
@@ -178,16 +141,7 @@ def main() -> None:
         metavar="PATH",
         help="per-club radius calibration file (JSON), read and updated; needs --club",
     )
-    p.add_argument(
-        "--camera-distance",
-        type=camera_distance,
-        default=None,
-        metavar="METRES|none",
-        help=(
-            "phone to ball, m, for a phone not on the unit; 'none' if not known. "
-            "Default: the phone is on the ground unit, at the radar's range_from_tee_m"
-        ),
-    )
+    p.add_argument("--camera-distance", type=float, default=None, help="phone to ball, m")
     p.add_argument("--hardware", type=Path, default=None, help="hardware.yaml for this session")
     p.add_argument("--json", type=Path, default=None)
     args = p.parse_args()
@@ -202,7 +156,7 @@ def main() -> None:
         except CalibrationFileError as e:
             p.error(str(e))
     geometry = load_hardware(args.hardware).radar_geometry
-    config = fusion_config(args.camera_distance, geometry)
+    config = FusionConfig(camera_to_ball_m=args.camera_distance)
     cameras: list[CameraSwing] = load_swingml_json(args.camera) if args.camera else []
 
     log = read_ground_unit_log(args.log) if args.log else None

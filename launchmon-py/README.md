@@ -125,15 +125,14 @@ real component here sweeps, and an interferer locked to the mains does not.
 
 The ground unit in `launchmon-hw/` reads a two-channel (I/Q) radar on its own
 ESP32-C3 and receives the club pod's IMU over Bluetooth. A phone films the
-swing from the unit itself, held on the dock's stem by MagSafe or a clamp, and
-swingml analyses the clip. `launchmon.ingest`, `launchmon.imu` and
+swing, and swingml analyses the clip. `launchmon.ingest`, `launchmon.imu` and
 `launchmon.fusion` turn the three into one shot.
 
 ```bash
 python scripts/record_ground_unit.py /dev/ttyACM0 session.bin   # raw USB stream (pyserial)
 swingml analyse swing1.mov --json camera.json                   # the phone clip
 PYTHONPATH=. python scripts/fuse_shot.py session.bin --camera camera.json \
-    --video swing1.mov --club driver --json fused.json
+    --video swing1.mov --club driver --camera-distance 3.0 --json fused.json
 ```
 
 **Radar.** `ingest.iq` keeps only the half of the I/Q spectrum that holds
@@ -155,46 +154,11 @@ milliseconds because the downswing starts gently.
 becomes zero: the radar from its capture, the IMU from the shock (searched for
 near the radar's impact as mapped over Bluetooth, so the mapping's residual is
 measured and removed), the camera from the strike in the clip's audio, corrected
-for sound travel when the distance is known, otherwise from swingml's impact
+for sound travel when the distance is recorded, otherwise from swingml's impact
 event. Each event comes from the sensor that measures it best: impact from the
 radar, top and takeaway from the IMU, the other five from the camera. Where two
 sensors place the same event, the difference is compared with the camera's
 frame time (or swingml's measured band) and reported if it is larger.
-
-**The camera is on the unit.** The phone sits where the radar does, about
-1.4 m behind the ball on the target line with its lens about 0.2 m up, looking
-down the line toward the target. So `fuse_shot.py` takes the camera's distance
-to the ball to be the radar's, `radar_geometry.range_from_tee_m` in the
-session's hardware config (1.40 m in `config/hardware.yaml`), and removes the
-strike's 4.1 ms of travel over it from the clip's audio. That distance is
-configured geometry, not a measurement of the phone, and the camera's
-alignment notes say so beside the correction ("assumed: the phone is on the
-ground unit ... configured geometry, not a measurement of the phone's
-distance"). The few centimetres from the radar to the phone's microphone are
-not added: they are 0.03 ms a centimetre, the microphone's place differs from
-phone to phone, and nobody has measured it. A phone anywhere else gives its
-own distance, `--camera-distance 3.0` for a tripod 3 m back, and
-`--camera-distance none` says the distance is not known, so the travel is left
-in and the notes say that instead. A distance that is not a non-negative
-number of metres is refused. In code, `fusion.shot.camera_on_the_unit(geometry)`
-gives the distance and its basis for `FusionConfig`; `FusionConfig` itself
-still defaults to no distance.
-
-Without `--camera-distance` the output changes from before only where a clip's
-audio strike was used: the camera's impact on its own clock is 4.1 ms earlier
-(range / 343 m/s), every time the camera supplies (its events, its
-alternatives, and durations and tempo built from them) moves with it, the
-audio-against-event impact comparison moves by the same amount, and the
-"sound travel not removed" note becomes the correction and its basis. With
-no clip audio nothing changes.
-
-**What the low view has not been checked for.** swingml's measured event
-accuracy, and every error band it quotes, was measured on broadcast and range
-footage filmed from about hip height, not from 0.2 m off the ground behind the
-ball. Nothing has been measured from this view, so no accuracy is claimed for
-it; the camera-placed events and the comparisons against them stand on
-swingml's figures only as far as those carry to a view they were not measured
-on, which is not known until clips filmed from the unit are labelled and scored.
 
 **What stays modelled.** True ball speed needs a launch angle; until the
 camera measures one it is the club's prior, and the result is MODELLED with

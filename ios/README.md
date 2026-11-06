@@ -88,24 +88,6 @@ motion, no shot near it, or two shots too close to tell apart. Every packet is
 kept raw in the app's folder (`shots.json`). A demo makes synthetic shots to see
 the screen without a unit; they are labelled, never saved and never paired.
 
-The phone films from the unit: it sits on the dock's stem by MagSafe or a
-clamp, about 1.4 m behind the ball on the target line with its lens about
-0.2 m up, looking down the line toward the target. No tripod. Pairing takes
-that as its default (`CameraPlacement.onUnit`, at the unit's set-up distance of
-1.4 m), so a strike found in the clip's sound has the sound's 4.1 ms of travel
-over that distance removed, and the pairing's notes say the distance was
-assumed from where the unit is set up, not measured for the phone. A phone
-elsewhere is `.elsewhere(distanceMetres:)`, and `.unknown` leaves the travel in
-and says so. Today the app times a clip by the swing model's impact position,
-which is seen, not heard, so where the phone was changes nothing yet.
-
-The swing analysis has not been checked from this view. Its measured event
-accuracy and the error bands it shows were measured on broadcast and range
-footage filmed from about hip height, not from 0.2 m off the ground behind the
-ball, and nothing has been measured from the low view. No accuracy is claimed
-for swings filmed from the unit until clips filmed there are labelled and
-scored.
-
 Not yet run against a unit: nothing in `launchmon-hw` has been built. The packet
 decoder is tested byte for byte against the firmware's struct in
 `SwingCore/Tests/SwingCoreTests/LaunchMonitorTests.swift`.
