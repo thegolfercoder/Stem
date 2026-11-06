@@ -3,12 +3,14 @@
 //
 // Packets are built here byte by byte from the firmware's struct, not with the
 // module's own encoder, so a layout mistake in protocol.js cannot hide itself:
-//   ground_unit.ino:285  struct __attribute__((packed)) WireReading { float value; uint8_t prov; uint8_t refusal; };
-//   ground_unit.ino:286  struct __attribute__((packed)) ShotSummary {
-//                          uint8_t magic = 0x5A, version = 1; uint16_t shot_seq; uint32_t impact_ms;
-//                          WireReading ball_speed_radial, club_speed_radial, smash, peak_shaft_rate, tempo_ratio;
-//                          uint16_t battery_mv_ground, battery_mv_pod; };
+//   ground_unit.ino  struct __attribute__((packed)) WireReading { float value; uint8_t prov; uint8_t refusal; };
+//   ground_unit.ino  struct __attribute__((packed)) ShotSummary {
+//                      uint8_t magic = 0x5A, version = 1; uint16_t shot_seq; uint32_t impact_ms;
+//                      WireReading ball_speed_radial, club_speed_radial, smash, peak_shaft_rate, tempo_ratio;
+//                      uint16_t battery_mv_ground, battery_mv_pod; };
 // ESP32-C3 (RISC-V) is little-endian; IEEE-754 binary32 for float.
+// The tests at the end also read ground_unit.ino itself, so the page and the
+// sketch cannot drift apart unnoticed.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -16,10 +18,11 @@ import { readFileSync } from 'node:fs';
 import {
   parseShotSummary, encodeShotSummary, convertSpeed, formatReading, sessionStats, toCsv, CSV_COLUMNS,
   float32Text, isSameShot, podAtShot, PACKET_BYTES, SERVICE_UUID, SHOT_CHAR_UUID, DEVICE_NAME, REFUSAL,
-  parseUnitStatus, encodeUnitStatus, describePod, describeDock, STATUS_CHAR_UUID, STATUS_BYTES,
-  DOCK_REASON, DOCK_STATE,
 } from '../protocol.js';
-import { DemoFeed, demoWorld } from '../demo.js';
+import { DemoFeed } from '../demo.js';
+import * as protocol from '../protocol.js';
+
+const FW = readFileSync(new URL('../../firmware/ground_unit/ground_unit.ino', import.meta.url), 'utf8');
 
 const u8 = (v) => [v & 0xff];
 const u16le = (v) => [v & 0xff, (v >> 8) & 0xff];
@@ -28,7 +31,8 @@ const f32le = (v) => { const b = Buffer.alloc(4); b.writeFloatLE(v, 0); return [
 const NAN32 = [0x00, 0x00, 0xc0, 0x7f];   // quiet NaN, as NAN is on the target
 const reading = (valueBytes, prov, refusal) => [...valueBytes, ...u8(prov), ...u8(refusal)];
 
-// The example in firmware/README.md's JSON (format only, not a result), as the BLE packet.
+// The example in firmware/README.md's JSON (format only, not a result), as the
+// BLE packet. Battery fields 0 and 0, "not read", as ground firmware 0.5 sends.
 function examplePacket() {
   return Uint8Array.from([
     0x5a, 0x01,                                   // magic, version
@@ -39,11 +43,11 @@ function examplePacket() {
     ...reading(f32le(1.394), 2, 0),               // smash, derived
     ...reading(NAN32, 0, 10),                     // peak shaft rate refused: GYRO_CLIPPED
     ...reading(f32le(3.02), 2, 0),                // tempo, derived
-    ...u16le(3987), ...u16le(4011),               // battery mV
+    ...u16le(0), ...u16le(0),                     // battery mV: 0 = not read
   ]);
 }
 
-test('UUIDs and name match the firmware (ground_unit.ino:180-182)', () => {
+test('UUIDs and name match the firmware', () => {
   assert.equal(DEVICE_NAME, 'STEM-RADAR');
   assert.equal(SERVICE_UUID, '7d2a0101-5b1c-4f6e-9c1e-3a6f1f0c2b10');
   assert.equal(SHOT_CHAR_UUID, '7d2a0102-5b1c-4f6e-9c1e-3a6f1f0c2b10');
@@ -83,11 +87,23 @@ test('parses every field at its offset with its scaling', () => {
   assert.equal(p.readings.tempo_ratio.value, Math.fround(3.02));
   assert.equal(p.readings.tempo_ratio.provenance, 'derived');
 
+  // Firmware 0.5: both 0, "not read". The page shows them as unavailable, not 0 V.
+  assert.equal(p.battery.groundMv, 0);
+  assert.equal(p.battery.groundKnown, false);
+  assert.equal(p.battery.podMv, 0);
+  assert.equal(p.battery.podKnown, false);
+});
+
+test('a battery value from older firmware (0.2-0.4) is still read for what it is', () => {
+  const b = examplePacket();
+  b.set([...u16le(3987), ...u16le(4011)], 38);
+  const p = parseShotSummary(b).packet;
   assert.equal(p.battery.groundMv, 3987);
   assert.equal(p.battery.groundKnown, true);
-  assert.equal(p.battery.groundLow, false);
   assert.equal(p.battery.podMv, 4011);
   assert.equal(p.battery.podKnown, true);
+  b.set(u16le(900), 38);
+  assert.equal(parseShotSummary(b).packet.battery.groundKnown, false, '1000 mV or less was "no reading" there too');
 });
 
 test('a refused reading has no number, and carries the firmware reason', () => {
@@ -101,7 +117,7 @@ test('a refused reading has no number, and carries the firmware reason', () => {
   assert.equal(formatReading(r, 'mph'), null);
 });
 
-test('smash implausible refuses ball and smash but keeps club (ground_unit.ino:858-860)', () => {
+test('smash implausible refuses ball and smash but keeps club (analyseRadar)', () => {
   const pkt = Uint8Array.from([
     0x5a, 0x01, ...u16le(7), ...u32le(100000),
     ...reading(NAN32, 0, 7),
@@ -109,7 +125,7 @@ test('smash implausible refuses ball and smash but keeps club (ground_unit.ino:8
     ...reading(NAN32, 0, 7),
     ...reading(NAN32, 0, 8),
     ...reading(NAN32, 0, 8),
-    ...u16le(3400), ...u16le(0),
+    ...u16le(0), ...u16le(0),
   ]);
   const p = parseShotSummary(pkt).packet;
   assert.equal(p.readings.ball_speed_radial.ok, false);
@@ -118,8 +134,8 @@ test('smash implausible refuses ball and smash but keeps club (ground_unit.ino:8
   assert.equal(p.readings.club_speed_radial.ok, true);
   assert.equal(p.readings.club_speed_radial.value, 40);
   assert.equal(p.readings.peak_shaft_rate.reason, 'pod not connected');
-  assert.equal(p.battery.groundLow, true, '3400 mV is under cfg::BATT_LOW_MV 3500');
-  assert.equal(p.battery.podKnown, false, '0 mV means no pod status since boot');
+  assert.equal(p.battery.groundKnown, false);
+  assert.equal(p.battery.podKnown, false);
 });
 
 test('a refusal that carries a number still yields no number, flagged as an anomaly', () => {
@@ -273,7 +289,7 @@ test('float32Text gives the shortest round-trip text', () => {
   assert.equal(float32Text(NaN), '');
 });
 
-test('every refusal code in enum class Refusal has its text (ground_unit.ino:230-263)', () => {
+test('every refusal code in enum class Refusal has its text', () => {
   assert.equal(Object.keys(REFUSAL).length, 13);
   assert.equal(REFUSAL[12], 'depends on a refused reading');
 });
@@ -291,209 +307,58 @@ test('podAtShot reads only the IMU refusal codes', () => {
   assert.equal(podAtShot(imu(3)), null, 'no impact: the IMU analysis never ran');
 });
 
-// ---- UnitStatus (ground firmware 0.3) -------------------------------------------
-//   ground_unit.ino  struct __attribute__((packed)) UnitStatus {
-//     uint8_t magic = 0x5B, version = 1; uint8_t fw_major, fw_minor; uint32_t uptime_ms;
-//     uint16_t battery_mv_ground, battery_mv_pod;
-//     uint8_t pod_flags, unit_flags, dock_state, dock_reason;
-//     uint16_t dock_retry_s, shot_seq; };                       static_assert(sizeof(UnitStatus) == 20)
-// Built here byte by byte, not with encodeUnitStatus.
+// ---- Against the sketch itself ---------------------------------------------------
 
-const FW = readFileSync(new URL('../../firmware/ground_unit/ground_unit.ino', import.meta.url), 'utf8');
-
-// pod_flags bits (namespace podflag) and unit_flags bits (namespace unitflag), spelled out.
-const PF = { CONNECTED: 0x01, POWER_KNOWN: 0x02, DOCK_POWER: 0x04, USB_HOST: 0x08, CHARGING: 0x10, CHARGED: 0x20, PARKED: 0x40, CHARGED_ASLEEP: 0x80 };
-const UF = { DOCK_FITTED: 0x01, BUZZER_FITTED: 0x02, BUZZER_ON: 0x04, USER_ARMED: 0x08, RAW_STREAMING: 0x10, BATT_LOW: 0x20, ADC_FAULT: 0x40 };
-
-function statusBytes({
-  magic = 0x5b, version = 1, fwMajor = 0, fwMinor = 3, uptime = 0x01020304, ground = 3991, pod = 3954,
-  podFlags = PF.CONNECTED | PF.POWER_KNOWN, unitFlags = UF.DOCK_FITTED | UF.BUZZER_FITTED | UF.BUZZER_ON | UF.USER_ARMED,
-  dockState = 0, dockReason = 0, retry = 0, shotSeq = 0x0203,
-} = {}) {
-  return Uint8Array.from([
-    ...u8(magic), ...u8(version), ...u8(fwMajor), ...u8(fwMinor),   // 0..3
-    ...u32le(uptime),                                                // 4
-    ...u16le(ground), ...u16le(pod),                                 // 8, 10
-    ...u8(podFlags), ...u8(unitFlags), ...u8(dockState), ...u8(dockReason),   // 12..15
-    ...u16le(retry), ...u16le(shotSeq),                              // 16, 18
-  ]);
-}
-const parsed = (o) => {
-  const r = parseUnitStatus(statusBytes(o));
-  assert.equal(r.ok, true, r.error);
-  return r.status;
-};
-
-test('status: UUID, magic, size and reason texts match the firmware source', () => {
-  assert.equal(STATUS_CHAR_UUID, '7d2a0103-5b1c-4f6e-9c1e-3a6f1f0c2b10');
-  assert.match(FW, /UUID_GND_STATUS = "7d2a0103-5b1c-4f6e-9c1e-3a6f1f0c2b10"/);
-  assert.match(FW, /struct __attribute__\(\(packed\)\) UnitStatus \{\s*uint8_t  magic = 0x5B, version = 1;/);
-  assert.match(FW, /static_assert\(sizeof\(UnitStatus\) == 20,/);
-  assert.equal(STATUS_BYTES, 20);
-  assert.equal(statusBytes().length, 20);
-  // dockReasonText(): every case, in enum order, word for word.
-  const body = FW.slice(FW.indexOf('static const char* dockReasonText'), FW.indexOf('static void dockReport'));
-  const texts = [...body.matchAll(/case DockReason::\w+: return "([^"]*)";/g)].map((m) => m[1]);
-  assert.deepEqual(texts, Object.keys(DOCK_REASON).map((k) => DOCK_REASON[k]));
-  assert.match(FW, /enum class DockState : uint8_t \{ OFF, CONFIRMING, CHARGING, LOCKOUT, LOW_BATTERY \};/);
-  assert.deepEqual(Object.values(DOCK_STATE), ['off', 'confirming', 'charging', 'fault', 'low_battery']);
-  // Flag bits as the firmware defines them.
-  for (const [name, bit] of Object.entries(PF)) assert.match(FW, new RegExp(`constexpr uint8_t ${name}\\s*= 1 << ${Math.log2(bit)};`), name);
-  for (const [name, bit] of Object.entries(UF)) assert.match(FW, new RegExp(`constexpr uint8_t ${name}\\s*= 1 << ${Math.log2(bit)};`), name);
+test('firmware: the ShotSummary struct, its size and the UUIDs are as this page reads them', () => {
+  assert.match(FW, /struct __attribute__\(\(packed\)\) WireReading \{ float value; uint8_t prov; uint8_t refusal; \};/);
+  assert.match(FW, new RegExp([
+    'struct __attribute__\\(\\(packed\\)\\) ShotSummary \\{\\s*',
+    'uint8_t\\s+magic = 0x5A, version = 1;\\s*',
+    'uint16_t\\s+shot_seq;[^\\n]*\\s*',
+    'uint32_t\\s+impact_ms;[^\\n]*\\s*',
+    'WireReading ball_speed_radial;[^\\n]*\\s*',
+    'WireReading club_speed_radial;[^\\n]*\\s*',
+    'WireReading smash;[^\\n]*\\s*',
+    'WireReading peak_shaft_rate;[^\\n]*\\s*',
+    'WireReading tempo_ratio;[^\\n]*\\s*',
+    'uint16_t\\s+battery_mv_ground, battery_mv_pod;',
+  ].join('')));
+  assert.match(FW, /static_assert\(sizeof\(ShotSummary\) == 42,/);
+  assert.match(FW, /BLE_NAME\s+= "STEM-RADAR"/);
+  assert.match(FW, /UUID_GND_SVC\s+= "7d2a0101-5b1c-4f6e-9c1e-3a6f1f0c2b10"/);
+  assert.match(FW, /UUID_GND_SHOT = "7d2a0102-5b1c-4f6e-9c1e-3a6f1f0c2b10"/);
 });
 
-test('status: every field at its offset, little-endian', () => {
-  const s = parsed({ fwMajor: 1, fwMinor: 7, uptime: 0x0a0b0c0d, ground: 0x0f9e, pod: 0x0e81, shotSeq: 0x1234,
-    podFlags: PF.CONNECTED | PF.POWER_KNOWN | PF.DOCK_POWER | PF.CHARGING | PF.PARKED,
-    unitFlags: UF.DOCK_FITTED | UF.USER_ARMED | UF.RAW_STREAMING, dockState: 2, dockReason: 1 });
-  assert.equal(s.version, 1);
-  assert.deepEqual(s.fw, { major: 1, minor: 7, text: '1.7' });
-  assert.equal(s.uptimeMs, 0x0a0b0c0d);
-  assert.equal(s.unit.batteryMv, 3998);
-  assert.equal(s.pod.batteryMv, 3713);
-  assert.equal(s.shotSeq, 0x1234);
-  assert.deepEqual(s.pod, { connected: true, powerKnown: true, dockPower: true, usbHost: false, charging: true,
-    charged: false, parked: true, chargedAsleep: false, batteryMv: 3713, batteryKnown: true });
-  assert.equal(s.unit.dockFitted, true);
-  assert.equal(s.unit.buzzerFitted, false);
-  assert.equal(s.unit.userArmed, true);
-  assert.equal(s.unit.rawStreaming, true);
-  assert.equal(s.unit.adcFault, false);
-  assert.deepEqual(s.dock, { fitted: true, stateCode: 2, state: 'charging', reasonCode: 1, reason: 'pod parked', retryS: 0 });
-  assert.deepEqual(s.anomalies, []);
-  assert.equal(s.hex, Buffer.from(statusBytes({ fwMajor: 1, fwMinor: 7, uptime: 0x0a0b0c0d, ground: 0x0f9e, pod: 0x0e81, shotSeq: 0x1234,
-    podFlags: PF.CONNECTED | PF.POWER_KNOWN | PF.DOCK_POWER | PF.CHARGING | PF.PARKED,
-    unitFlags: UF.DOCK_FITTED | UF.USER_ARMED | UF.RAW_STREAMING, dockState: 2, dockReason: 1 })).toString('hex'));
+test('firmware: refusal texts match refusalText() word for word, in enum order', () => {
+  const body = FW.slice(FW.indexOf('static const char* refusalText'), FW.indexOf('struct Reading {'));
+  const texts = [...body.matchAll(/case Refusal::\w+: return "([^"]*)";/g)].map((m) => m[1]);
+  assert.deepEqual(texts, Object.keys(REFUSAL).map((k) => REFUSAL[k]));
 });
 
-test('status: the demo encoder produces the firmware bytes exactly', () => {
-  const o = { uptime: 98765, ground: 3870, pod: 4102, podFlags: PF.CONNECTED | PF.POWER_KNOWN | PF.DOCK_POWER | PF.CHARGED | PF.PARKED,
-    unitFlags: UF.DOCK_FITTED | UF.BUZZER_FITTED, dockState: 3, dockReason: 3, retry: 27, shotSeq: 41 };
-  const out = encodeUnitStatus({ fwMajor: 0, fwMinor: 3, uptimeMs: o.uptime, groundMv: o.ground, podMv: o.pod, podFlags: o.podFlags,
-    unitFlags: o.unitFlags, dockState: o.dockState, dockReason: o.dockReason, dockRetryS: o.retry, shotSeq: o.shotSeq });
-  assert.deepEqual([...out], [...statusBytes(o)]);
-});
-
-test('status: battery thresholds as the unit uses them', () => {
-  assert.equal(parsed({ ground: 3499 }).unit.batteryLow, true);
-  assert.equal(parsed({ ground: 3500 }).unit.batteryLow, false);
-  assert.equal(parsed({ ground: 1000 }).unit.batteryKnown, false, '<= 1000 mV is "not read"');
-  assert.equal(parsed({ ground: 1000 }).unit.batteryLow, false);
-  const noPod = parsed({ podFlags: 0, pod: 0 });
-  assert.equal(noPod.pod.batteryKnown, false);
-  assert.equal(noPod.pod.connected, false);
-});
-
-test('status: the pod in a word, for every state the firmware can send', () => {
-  const linked = PF.CONNECTED | PF.POWER_KNOWN;
-  const onDock = linked | PF.DOCK_POWER | PF.PARKED;
-  const cases = [
-    [{ podFlags: linked }, 'connected'],
-    [{ podFlags: PF.CONNECTED }, 'connected'],                          // pod firmware before 0.2: no power fields
-    [{ podFlags: onDock | PF.CHARGING }, 'charging'],
-    [{ podFlags: onDock | PF.CHARGED }, 'charged'],
-    [{ podFlags: onDock }, 'parked'],
-    [{ podFlags: PF.CONNECTED | PF.PARKED }, 'parked'],                 // dock charging, old pod
-    [{ podFlags: linked | PF.USB_HOST }, 'usb'],
-    [{ podFlags: PF.PARKED | PF.CHARGED_ASLEEP, pod: 0 }, 'charged_asleep'],
-    [{ podFlags: PF.PARKED, pod: 0 }, 'parked_no_link'],
-    [{ podFlags: 0, pod: 0 }, 'not_connected'],
-  ];
-  for (const [o, key] of cases) assert.equal(describePod(parsed(o)).key, key, JSON.stringify(o));
-  assert.equal(describePod(parsed({ podFlags: onDock | PF.CHARGING })).text, 'charging');
-  assert.equal(parsed({ podFlags: PF.CONNECTED }).pod.powerKnown, false);
-});
-
-test('status: dock states and reasons; the countdown only in a fault', () => {
-  assert.equal(describeDock(parsed({ dockState: 0 })), null);
-  assert.equal(describeDock(parsed({ dockState: 1 })), null, 'confirming: nothing to say yet');
-  assert.equal(describeDock(parsed({ dockState: 2, dockReason: 1 })), null, 'charging: the pod says it');
-  const fault = parsed({ dockState: 3, dockReason: 3, retry: 30 });
-  assert.equal(fault.dock.state, 'fault');
-  assert.equal(fault.dock.retryS, 30);
-  assert.deepEqual(describeDock(fault), { key: 'fault', text: 'fault · retry 30 s', detail: 'overload: DOCK+ sagged with the switch on' });
-  assert.equal(describeDock(fault, 12).text, 'fault · retry 12 s', 'the page counts down from the value\'s age');
-  assert.equal(describeDock(fault, 0).text, 'fault · retrying');
-  const low = parsed({ dockState: 4, dockReason: 5 });
-  assert.equal(describeDock(low).key, 'low_battery');
-  assert.equal(low.dock.reason, 'ground unit battery low');
-  assert.equal(parsed({ dockReason: 8 }).dock.reason, 'fault lockout over: looking for a pod again');
-  const unknownReason = parsed({ dockReason: 77 });
-  assert.match(unknownReason.dock.reason, /code 77/);
-  assert.ok(unknownReason.anomalies.length);
-  const unknownState = parsed({ dockState: 9 });
-  assert.equal(unknownState.dock.state, 'unknown');
-  assert.equal(describeDock(unknownState).key, 'unknown');
-  const notFitted = parsed({ unitFlags: UF.USER_ARMED });
-  assert.equal(notFitted.dock.state, 'not_fitted');
-  assert.equal(describeDock(notFitted), null);
-  assert.deepEqual(notFitted.anomalies, []);
-});
-
-test('status: contradictions the firmware never sends are flagged and read as unknown', () => {
-  const check = (o, pattern, fn) => {
-    const s = parsed(o);
-    assert.ok(s.anomalies.some((a) => pattern.test(a)), `${JSON.stringify(o)} -> ${s.anomalies}`);
-    fn(s);
-  };
-  check({ podFlags: PF.CONNECTED | PF.CHARGING | PF.DOCK_POWER }, /without power_known/, (s) => { assert.equal(s.pod.charging, false); assert.equal(s.pod.dockPower, false); });
-  check({ podFlags: PF.POWER_KNOWN | PF.DOCK_POWER, pod: 0 }, /no pod link/, (s) => { assert.equal(s.pod.powerKnown, false); assert.equal(s.pod.dockPower, false); });
-  check({ podFlags: PF.CONNECTED | PF.POWER_KNOWN | PF.DOCK_POWER | PF.CHARGING | PF.CHARGED }, /both charging and charged/, (s) => { assert.equal(s.pod.charging, false); assert.equal(s.pod.charged, false); });
-  check({ podFlags: PF.CONNECTED | PF.POWER_KNOWN | PF.CHARGING }, /without dock power/, (s) => assert.equal(s.pod.charging, false));
-  check({ podFlags: PF.CONNECTED | PF.CHARGED_ASLEEP }, /charged_asleep while linked/, (s) => assert.equal(s.pod.chargedAsleep, false));
-  check({ podFlags: 0, pod: 3900 }, /battery with no pod link/, (s) => { assert.equal(s.pod.batteryMv, 0); assert.equal(s.pod.batteryKnown, false); });
-  check({ unitFlags: UF.DOCK_FITTED | 0x80 }, /bit 7/, () => {});
-  check({ unitFlags: UF.BUZZER_ON }, /buzzer on but not fitted/, (s) => assert.equal(s.unit.buzzerOn, false));
-  check({ unitFlags: 0, dockState: 2 }, /built without the dock/, (s) => assert.equal(s.dock.state, 'not_fitted'));
-  check({ dockState: 0, retry: 5 }, /countdown outside a fault/, (s) => assert.equal(s.dock.retryS, 0));
-});
-
-test('status: short, long and garbled values are rejected whole', () => {
-  const full = statusBytes();
-  for (const n of [0, 1, 4, 12, 19]) {
-    const r = parseUnitStatus(full.slice(0, n));
-    assert.equal(r.ok, false, `length ${n}`);
-    assert.equal(r.code, 'short');
-    assert.equal(r.status, undefined);
+test('firmware 0.5: one characteristic, and battery sent as 0 = not read', () => {
+  assert.match(FW, /FW_MAJOR = 0, FW_MINOR = 5;/);
+  assert.doesNotMatch(FW, /7d2a0103/, 'the live-status characteristic is gone');
+  assert.doesNotMatch(FW, /struct[^\n]*UnitStatus/);
+  assert.match(FW, /sum\.battery_mv_ground = 0;/);
+  assert.match(FW, /sum\.battery_mv_pod = 0;/);
+  // This page no longer looks for a status characteristic either.
+  for (const name of ['STATUS_CHAR_UUID', 'parseUnitStatus', 'encodeUnitStatus', 'describePod', 'describeDock']) {
+    assert.equal(name in protocol, false, name);
   }
-  assert.equal(parseUnitStatus(Uint8Array.from([...full, 0])).code, 'length');
-  assert.equal(parseUnitStatus(statusBytes({ magic: 0x5a })).code, 'magic', 'a ShotSummary magic');
-  assert.equal(parseUnitStatus(statusBytes({ magic: 0xa7 })).code, 'magic', 'a pod packet magic');
-  assert.equal(parseUnitStatus(statusBytes({ version: 2 })).code, 'version');
-  assert.equal(parseUnitStatus(statusBytes({ version: 0 })).code, 'version');
-  const noise = Uint8Array.from({ length: 20 }, (_, i) => (i * 97 + 3) & 0xff);
-  assert.equal(parseUnitStatus(noise).ok, false);
-  assert.equal(parseUnitStatus(null).ok, false);
-  assert.equal(parseUnitStatus('5b01').ok, false);
-  // The two characteristics cannot be mistaken for each other.
-  assert.equal(parseUnitStatus(examplePacket()).ok, false, 'a shot summary is not a status');
-  assert.equal(parseShotSummary(statusBytes()).code, 'short', 'a status is not a shot summary');
 });
 
-test('status: accepts a DataView at an offset', () => {
-  const backing = new Uint8Array(30);
-  backing.set(statusBytes({ shotSeq: 9 }), 7);
-  const r = parseUnitStatus(new DataView(backing.buffer, 7, 20));
-  assert.equal(r.ok, true);
-  assert.equal(r.status.shotSeq, 9);
-});
-
-test('demo: two full cycles of statuses and shots parse cleanly and agree', () => {
-  const statuses = [], shots = [];
-  const feed = new DemoFeed((dv) => shots.push(parseShotSummary(dv)), (dv) => statuses.push(parseUnitStatus(dv)));
-  feed.status(true);
-  for (let i = 0; i < 180; i++) feed.tick();          // 180 demo seconds, no timers
-  assert.ok(statuses.length > 10 && shots.length > 30);
-  for (const r of [...statuses, ...shots]) assert.equal(r.ok, true, r.error);
-  for (const r of statuses) assert.deepEqual(r.status.anomalies, [], r.status.hex);
-  const keys = new Set(statuses.map((r) => describePod(r.status).key));
-  for (const k of ['connected', 'charging', 'charged', 'charged_asleep']) assert.ok(keys.has(k), k);
-  assert.ok(statuses.some((r) => describeDock(r.status)?.key === 'fault'));
-  // A shot while the pod is parked has no pod data at impact, as on the unit.
-  const parkedAt = (t) => !demoWorld(t).podOnClub;
-  assert.equal(parkedAt(30), true);
-  assert.equal(demoWorld(30).phase, 'charging');
-  assert.ok(shots.some((r) => r.packet.readings.peak_shaft_rate.refusalCode === 9));
-  // The status names the last shot sent.
-  assert.equal(statuses[statuses.length - 1].status.shotSeq <= shots[shots.length - 1].packet.shotSeq, true);
+test('demo: shots parse cleanly, battery unavailable, nothing anomalous', () => {
+  const shots = [];
+  const feed = new DemoFeed((dv) => shots.push(parseShotSummary(dv)));
+  for (let i = 0; i < 40; i++) feed.next();          // no timers
+  assert.equal(shots.length, 40);
+  for (const r of shots) {
+    assert.equal(r.ok, true, r.error);
+    assert.equal(r.packet.battery.groundKnown, false);
+    assert.equal(r.packet.battery.podKnown, false);
+    for (const x of Object.values(r.packet.readings)) assert.equal(x.anomaly, null, r.packet.hex);
+  }
+  assert.ok(shots.some((r) => r.packet.readings.ball_speed_radial.ok));
+  assert.ok(shots.some((r) => !r.packet.readings.ball_speed_radial.ok));
+  assert.deepEqual(shots.map((r) => r.packet.shotSeq), Array.from({ length: 40 }, (_, i) => i + 1));
 });

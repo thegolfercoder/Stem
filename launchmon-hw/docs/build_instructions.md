@@ -23,10 +23,6 @@ these with calipers, change the parameter, and re-export with
 | Shaft diameter where the pod will sit | `shaft_d` | pod |
 | Micro LiPo | `batt` | pod |
 | MagSafe magnet ring, if you use the MagSafe-ring head | `ring_od`, `ring_id`, `ring_depth` | ground |
-| Spring (pogo) pins for the pod park: barrel, length, stroke | `pod_park_pogo` | ground |
-| The pod's brass contact screws: head diameter and height | `pod_park_pad` | pod |
-| Piezo disc diameter | `pz_d` | ground |
-| Magnet pocket fit (hood) and clearance (pod) | `pod_park_mag_fit`, `pod_park_mag_clear` | ground, pod |
 | 1/4"-20 hex bolt pocket | `bolt_clear` | ground |
 
 The **fit test piece** (section 2) tells you which of these your printer needs
@@ -62,7 +58,7 @@ a radome filament, run the bench check in 4.5.
 
 | Part | Filament | Finish |
 |---|---|---|
-| Shell, lid, dock base and stem, pod park hood, clamp tabs, pod base and lid | Matte black PETG | Textured PEI sheet under the shell, lid, stem and hood |
+| Shell, lid, dock base and stem, clamp tabs, pod base and lid | Matte black PETG | Textured PEI sheet under the shell, lid and stem |
 | Radome | Translucent PETG, not carbon-black: smoke, ice (natural) or amber | Outer face up, ironing on |
 | Light pipe | Natural (translucent) PETG | As printed |
 
@@ -90,26 +86,9 @@ built from the same CAD as the real parts. Each label is an offset from the
 current setting: if the `+.1` hole fits best, add 0.1 to that parameter and
 re-export with `cad/export_stl.sh`.
 
-- **Pin bores** (the standing block, `-.1` to `+.2`): the spring pin should
-  press in with a firm push and not turn. Change `pod_park_pogo_fit`.
-- **Pin height:** press two pins into neighbouring bores with the key's two
-  round heads until the key meets the block. A caliper depth rod from the block
-  face to the pin tip should read 0.6 mm (0.4-0.9 works). Outside that range,
-  measure your pins and set `pod_park_pogo`.
-- **Hood magnets** (the large holes at the block's ends): the 4 x 2 mm magnet
-  should go in flush with a finger push. Change `pod_park_mag_fit`.
-- **Pod magnets** (ringed, open underneath): turn the piece over; the magnet
-  should seat against the skin, and the skin should be closed and flat. Change
-  `pod_park_mag_clear` in the pod script.
-- **M2x4:** a brass contact screw threads in and its head sits square.
-  **M2x6:** a lid screw drives in without splitting the boss. Change
-  `pod_park_pad` or `m2_pilot`.
+- **M2x6:** a lid screw drives in without splitting the boss. Change
+  `m2_pilot`.
 - **1/4:** the bolt head pushes in snug with no rattle. Change `bolt_clear`.
-- **Socket:** the loose key slides through the frame with a light push and no
-  rattle. Change `pod_park_socket`.
-
-**Keep the key.** It sets the hood's spring pins to the right height (section 4,
-step 11).
 
 ### Part-specific notes
 
@@ -130,10 +109,6 @@ is tiny: print it on the same plate as the radome.
 
 **Ground lid.** Flat, outside face down on the textured sheet, no supports.
 The sight's rear notch blade stands on its top edge.
-
-**Pod park hood (`ground_radar_pod_park_hood.stl`).** Rear face down on the
-textured sheet, no supports. The two spring-pin bores lie across the print as
-small teardrops; a drop of CA holds the pins.
 
 **Clamp tabs (x2).** Flat. Small: print them with the lid.
 
@@ -157,44 +132,32 @@ shaft. Use a brim. The zip-tie tunnels and the USB port bridge without supports.
 
 Wire each unit on the bench first, with the parts loose.
 
-1. **Ground power.** Cell → TP4056 → MT3608 VIN+, with the MT3608's VIN-/VOUT-
-   wired to the cell's negative **for adjustment only**, and nothing on its
-   output. **Set the MT3608 to 5.0 V** with a multimeter, then move VIN-/VOUT-
-   to Q3's drain (wiring doc 1.1: the boost is switched in its ground). Then
-   charge through the TP4056's USB-C and confirm its LED goes red, then blue/green.
-2. **Ground signal.** Connect the SuperMini, the pre-amp and the radar per the
-   wiring doc. Check the radar's supply (section 1.3 of the wiring doc)
-   **before** powering it. Flash `firmware/ground_unit`. The serial monitor
-   should print a `boot` line, then `ready` with a battery voltage.
-3. **Pod.** Flash `firmware/shaft_pod` over the SuperMini's USB-C. The serial
-   monitor should name the IMU it found (`LSM6DS3TR-C` or `LSM6DSOX`). Remove the
-   SuperMini's red power LED once it works.
-4. **Link.** Power both. The ground unit prints `pod connected`, and its LED goes
+1. **Ground power.** Cell → TP4056 (B+/B-) → OUT+ → slide switch → MT3608
+   VIN+, with MT3608 VIN- and VOUT- on TP4056 OUT- (wiring doc 1.1) and nothing
+   on its output yet. Switch on and **set the MT3608 to 5.0 V** with a
+   multimeter. Switch off: VOUT+ should fall to 0 V. Then charge through the
+   TP4056's USB-C with the switch off and confirm its LED goes red, then blue
+   or green.
+2. **Radar module, before it touches the ESP32.** Check its supply (wiring doc
+   1.3) **before** powering it. Power it alone and measure IFI and IFQ to ground
+   with a multimeter: each should sit at a steady level between about 0.2 V
+   and 2.3 V, and never above 3.3 V. Wave a hand in front of it: on an
+   oscilloscope, or a multimeter on AC, both outputs should move. A module
+   whose outputs barely move has no IF amplifiers and will not work here
+   (wiring doc 1.3).
+3. **Ground signal.** Connect the radar's IFI to GPIO0 and IFQ to GPIO1
+   directly, and the LED through its 330 Ω resistor to GPIO10. Flash
+   `firmware/ground_unit`. The serial monitor should print a `boot` line with
+   `"fw":"0.5"`, then `ready`, and the LED should blip every 2 s.
+4. **Pod power.** Wire the cell, P5 and the charger as in wiring doc 2.1 and
+   check before connecting the SuperMini: with no USB, the 5V pin reads the
+   cell voltage less about 0.3 V. With USB in, the cell's + reads at most
+   4.2 V, never 5 V; if it reads 5 V, P5 is in backwards or bypassed.
+5. **Pod.** Flash `firmware/shaft_pod` over the SuperMini's USB-C. The serial
+   monitor should print `fw 0.3` and name the IMU it found (`LSM6DS3TR-C` or
+   `LSM6DSOX`). Remove the SuperMini's red power LED once it works.
+6. **Link.** Power both. The ground unit prints `pod connected`, and its LED goes
    from a brief blip every 2 s to steady.
-5. **Buzzer.** Wire the piezo disc through 470 Ω to GPIO7, its brass lead
-   straight to a SuperMini GND pin. One chirp about a second after boot. Tune
-   `BUZZER_HZ` by ear once it is glued in (4, step 7): free discs usually
-   resonate a little above the 4 kHz default.
-6. **Pod charging.** Build the protection board (wiring doc, section 4) and test
-   it before it goes in: GPIO6 low, the + pin reads 0 V; GPIO6 high, about 5 V;
-   a 22 Ω load across the pins does not trip the fuse at once. Then run the
-   checks in wiring doc 4.8: with `d` on and no pod, `off_mv` under 300; a wet
-   paper towel across the pins never switches them on; a parked pod gives three
-   chirps and `"state":"charging"`, and lifting it gives `"state":"off"` within a
-   few seconds.
-7. **Soft power.** Remove the SuperMini's red power LED first (with soft power
-   the board is always powered, and the LED alone draws about 1 mA). Then:
-   - Switched off and asleep, measure the cell current in series with the
-     cell's lead: expect about 50 µA. Over 150 µA is a fault; about 1 mA means
-     the LED is still fitted.
-   - Switch on: `boot`, `ready`, one chirp. Switch off: `power` lines `off`,
-     then `off_sleeping`.
-   - Asleep, park the pod: `off_charging`, then `charging`, and the LED blips
-     every 4 s. Lift it: `off_sleeping`.
-   - Plug USB in with no pod: it wakes and sleeps again.
-   - With the cell under 3.85 V and no USB, park the pod: it waits. Plug USB in
-     and it charges.
-   - At switch-on, Q3's gate ramps to about 2.8 V over a few ms, with no reset.
 
 ## 4. Ground unit assembly
 
@@ -211,50 +174,28 @@ Front view, as used: the window is upper right, the battery lower left.
    the window at 6.2 mm, half a free-space wavelength at 24.125 GHz, so
    reflections from the window skin return in a known phase rather than an
    arbitrary one. Do not shim it closer.
-3. **Pre-amp board.** Four M2 x 6 into the standoffs left of the radar.
-4. **ESP32-C3 SuperMini.** USB end first: hook it under the two lips at the left
+3. **ESP32-C3 SuperMini.** USB end first: hook it under the two lips at the left
    of its bay, lower the far end onto the rails, and fit the two printed clamp
    tabs with M2 x 6. Its USB-C stays reachable with the lid off, for flashing.
-5. **Status light.** Push the printed light pipe into the top-face hole **from
+4. **Status light.** Push the printed light pipe into the top-face hole **from
    inside** until its flange seats; its end sits flush with the top face. Hold
    the 5 mm LED's dome against the flange and fix it with a drop of hot glue or
-   clear silicone. The light then shows as a small soft dot.
-6. **Switch.** Press it into the pocket on the inside of the right wall, lever
+   clear silicone. The light then shows as a small soft dot. Its 330 Ω
+   resistor goes inline in one LED lead, under heat-shrink.
+5. **Switch.** Press it into the pocket on the inside of the right wall, lever
    through the slot. A drop of CA on the body.
-7. **Buzzer.** Glue the 15 mm piezo disc onto the round seat inside the left end
-   wall, **brass face toward the wall, by its rim only**: a thin ring of CA or
-   silicone. Glued over its whole face it can barely flex and is nearly silent.
-   It sounds through the four lowest grip-rib grooves, which are cut through and
-   rise inward, so rain runs out rather than in.
-8. **Wire up** per the wiring doc. Keep the radar → pre-amp → ESP32 leads short
+6. **Wire up** per the wiring doc. Keep the radar → ESP32 IF leads short
    and twisted with ground. Add a dab of hot glue as strain relief at every joint
    on a board pad.
-9. **Cell.** 1 mm foam tape on its back, Kapton over the face that will sit
+7. **Cell.** 1 mm foam tape on its back, Kapton over the face that will sit
    behind the MT3608. Place it in the lower-left bay, leads out through the gap
    in the right-hand fence.
-10. **MT3608 on the lid.** Lay it PCB-down inside the fence on the lid's inner
+8. **MT3608 on the lid.** Lay it PCB-down inside the fence on the lid's inner
     face (components toward the cell), with a dab of hot glue. Leave about 8 cm
     of wire so the lid can lie open beside the shell.
-11. **Pod park hood.** On the bench first:
-    - *Magnets.* Check polarity before any glue: let each of the pod's magnets
-      jump onto the hood magnet it will face; the face that touched goes outward
-      in the pod. Glue the two hood magnets flush in the socket floor, opposite
-      poles facing out, so the pod only parks one way round.
-    - *Pins.* Solder a wire to each pin's tail. Press each pin into its bore from
-      the socket side, then push both home with the test piece's key: its round
-      heads in the wells, pressed until the key meets the socket floor. That sets
-      each pin 0.6 mm up its well. Do not push with a flat tool against the well
-      floor: it drives the plunger past its stroke and sets the pin about 0.5 mm
-      too deep, so the pod barely presses it. A drop of CA at the tail. The pin next to the "+" is +5 V.
-    - *Fit.* Feed the two wires through the small holes in the lid, one each side
-      of the rib, and fix the hood with two M2 x 6 screws driven from inside the
-      lid. Seal the wire holes with silicone.
-    - *Protection board.* Wire it per the wiring doc, section 4, and glue it in the
-      pocket on the lid's inside face, just below the wire holes, between the
-      MT3608's output and the pins.
-12. **Close.** Fit the lid (the lip locates it) and drive the four M2 x 6
+9. **Close.** Fit the lid (the lip locates it) and drive the four M2 x 6
     screws. Snug them up; do not over-tighten into plastic.
-13. **Radome, last.** With the radar module tested (4.5), run a thin bead of
+10. **Radome, last.** With the radar module tested (4.5), run a thin bead of
     clear silicone or epoxy round the ledge behind the window pocket and press
     the radome in from the front, ironed face out. It sits flush with the front
     face at its bottom edge and steps back into the pocket toward the top.
@@ -304,14 +245,7 @@ height matters for the cosine correction.
 Use the **dock** on grass or a mat: a 21 mm deep box standing on its edge is
 easy to knock over. The base reaches behind the unit, the side a phone on the
 stud pulls it toward. Charge the unit out of the dock: its USB-C port is on the
-bottom edge. Lay it on its back; with the pod parked, it rests on the hood and
-the lid's edge, tilted about 20°.
-
-**Beeps.** One chirp: armed and ready. Two: a shot was read. Three quick ones:
-the pod is parked and charging. Long-short and short-long: the pod connected
-or disconnected over Bluetooth. Three long ones every 5 minutes: the unit's own
-battery is low. One very long one: a charging fault. Send `b` over serial to
-turn them off. Switched off, the unit is silent.
+bottom edge. Lay it on its back, switched off.
 
 **The camera.** Film the swing from a tripod, not from the unit. Put the phone
 or tablet in an ordinary 1/4"-20 clamp on any tripod about **3 m behind the
@@ -333,7 +267,8 @@ which pin. With the unit running and a serial monitor open, send `d` to print
 the trigger metric ten times a second. Move a hand **away** from the window,
 quickly. The `ratio` should jump strongly **positive**. If it goes negative,
 change `RECEDING_SIGN` to `-1` in `ground_unit.ino` and re-flash. If nothing
-moves, check the radar supply and the pre-amp.
+moves, check the radar supply and that the module's IF outputs move (bench
+test 2).
 
 ### 4.4 Raw captures
 
@@ -352,37 +287,21 @@ drop means the radome's filament is lossy (see section 1): reprint it in
 another. Do this for every new radome colour; a dye that looks translucent can
 still be lossy.
 
-### 4.6 Parking and charging the pod
+### 4.6 Charging
 
-The pod lives on the back of the unit between sessions: one object to carry
-and one cable to charge.
+Each unit charges from its own USB-C port. Neither reads its battery, so
+**charge both after each session**.
 
-- **To park it,** push its arrow end up into the hood, clamp toward the unit.
-  The magnets pull it home. **To take it,** pull it down and out. The unit
-  still lifts out of the dock with the pod parked.
-- **It charges even with the unit switched off.** Off means the unit is
-  asleep, not unpowered (firmware 0.4, soft power). A parked pod wakes it:
-  - **on USB,** it always charges the pod. To charge both overnight, plug the
-    unit in, park the pod and leave it. Plugging the unit in also starts a pod
-    that was waiting;
-  - **on the unit's own battery,** only if the unit is above about 60%, and it
-    stops at about 45%, so the unit keeps enough for its next session.
-  While it charges the pod with the switch off, the LED blips every 4 s and it
-  is silent. It goes back to sleep by itself when the pod is charged or lifted.
-  Nothing needs switching off. About 1.5 hours from flat.
-- A full pod charge costs the unit about 15% of its own battery. Below 3.55 V
-  on its cell the unit stops charging the pod.
-- A pod with a completely flat cell cannot announce itself to the unit (the
-  unit looks for the pod's 3.3 V before it powers the pins). Plug the pod's own
-  USB-C in for a minute first.
-- The pins stay dead whenever no pod is parked, so wet grass or a coin across
-  them does nothing.
-- **Switched off, the unit draws about 50 µA** (estimated; measure it with
-  bench test 7). It can sit for well over a year from half charge. For
-  shipping or storage longer than that, unplug the cell's connector inside: a
-  true zero.
-- **To flash the unit, switch it on.** Switched off, it goes back to sleep
-  within about 0.2 s (or hold BOOT and tap RESET).
+- **Ground unit:** through the TP4056's USB-C on the bottom edge, **switched
+  off**. With it switched on, its own load keeps the charger from finishing.
+  The module's LED is red while charging and blue or green when full, about 2
+  hours from flat at 1 A. Switched off, nothing after the switch draws: the
+  unit can sit for months, losing only the cell's own self-discharge and a few
+  microamps of protection circuits.
+- **Pod:** through the SuperMini's USB-C, the same port used for flashing,
+  from a powered charger or computer. About 1-1.5 hours from flat at 100 mA.
+  Unplug it when done; do not leave it plugged into a device that is switched
+  off (wiring doc 2.1).
 
 ## 5. Shaft pod assembly
 
@@ -397,23 +316,15 @@ and one cable to charge.
 3. **Kapton** over the IMU. **Cell** on top of it, leads toward the charger end.
    **Charger** board beside the cell at the clubhead end. The two posts on the
    side walls separate them.
-4. **Schottky and divider** soldered inline in the leads and covered with
+4. **Schottky P5** soldered inline between the cell's + lead and the
+   SuperMini's 5V pin, anode at the cell (wiring doc 2.1), and covered with
    heat-shrink.
-5. **Charging contacts.** Glue the two 4 x 2 mm magnets into the pockets behind
-   the +X end wall from inside, outward faces as found in step 11 of section 4.
-   Drive the two M2 x 4 brass cheese-head screws into the pilots in the +X end
-   with a drop of epoxy. Solder 30 AWG Kynar wire to each tip inside: the screw
-   by the debossed "+" through the Schottky D2 (anode at the screw) to the
-   SuperMini's 5V pin, the other to GND. Fit the 220 kΩ beacon resistor from 3V3
-   to the + screw, and the 2.2 MΩ / 1 MΩ divider with its 100 nF from the + screw
-   to GPIO1 (wiring doc, section 4). D2 lies along X between the two screws,
-   above the charger; the resistors go dead-bug above it.
-6. **0.5 mm foam** on top of the cell, then the **SuperMini**, USB-C into the port
+5. **0.5 mm foam** on top of the cell, then the **SuperMini**, USB-C into the port
    in the end wall.
-7. **Lid.** Snap it on. Its fences locate the SuperMini, and its pads press the
+6. **Lid.** Snap it on. Its fences locate the SuperMini, and its pads press the
    whole stack down onto the datum floor. That preload is what couples the IMU
    rigidly to the shell.
-8. **Liner.** Stick one 8 x 42 mm strip of 0.8 mm silicone or neoprene into the
+7. **Liner.** Stick one 8 x 42 mm strip of 0.8 mm silicone or neoprene into the
    recessed band of each jaw. Trim it flush with the jaw tips.
 
 ### 5.1 Mounting on the club
@@ -447,7 +358,7 @@ passing shower if you then dry them. Do not leave them in rain.
   is not charging, and before setting the unit on wet grass.
 - Pod: the port faces the grip, away from turf and the clubhead.
 - Seal the inside of each receptacle to its wall with a thin bead of neutral-cure
-  silicone (step 4.1). Keep silicone out of the receptacle itself.
+  silicone (section 4, step 1). Keep silicone out of the receptacle itself.
 - **Never charge a wet unit.** Dry it with the plug out first.
 
 **Strain relief**

@@ -5,8 +5,8 @@ made of **two physically separate units** that talk only over Bluetooth LE:
 
 | Unit | What it is | Measures |
 |---|---|---|
-| **Ground radar unit** | Infineon BGT24LTR11 24 GHz I/Q Doppler radar, LM358 pre-amp, ESP32-C3, 1500 mAh LiPo, in a 96 x 64 x 21 mm case shaped like a MagSafe battery pack. Stands behind the ball. | Radial ball and club speed (on-device preview), raw I/Q captures for launchmon-py |
-| **Shaft motion pod** | Adafruit LSM6DS3TR-C / LSM6DSOX IMU, ESP32-C3, 100 mAh LiPo, in a 32 x 26 x 14 mm pod that clips onto a 13 mm shaft | Raw 6-axis motion at 1.66 kHz, streamed per swing |
+| **Ground radar unit** | Infineon BGT24LTR11 24 GHz I/Q Doppler radar module with its own IF amplifiers, ESP32-C3, 1500 mAh LiPo, TP4056 charger, MT3608 boost at 5 V, slide switch, status LED, in a 96 x 64 x 21 mm case shaped like a MagSafe battery pack. Stands behind the ball. | Radial ball and club speed (on-device preview), raw I/Q captures for launchmon-py |
+| **Shaft motion pod** | Adafruit LSM6DS3TR-C / LSM6DSOX IMU, ESP32-C3, 100-150 mAh LiPo, micro charger, in a 32 x 26 x 14 mm pod that clips onto a 13 mm shaft | Raw 6-axis motion at 1.66 kHz, streamed per swing |
 
 State: **designed, rendered and syntax-checked; not built.** Nothing here has
 been compiled for the target or run on hardware, and no number in this
@@ -17,7 +17,7 @@ directory comes from a measurement of a real shot. See "What has been checked".
 ```
 launchmon-hw/
   cad/
-    script_ground_radar.scad   ground unit: shell, lid, radome, light pipe, ESP32 clamp tabs, dock, pod park hood
+    script_ground_radar.scad   ground unit: shell, lid, radome, light pipe, ESP32 clamp tabs, dock
     script_shaft_imu.scad      pod: base with C-clamp, snap lid
     export_stl.sh              regenerates cad/stl/, its fit report and its cost report
     cost_report.py             filament, print time and cost per kit, from the STLs
@@ -40,7 +40,7 @@ launchmon-hw/
     README.md                  toolchain, board settings, output format, verification status
   docs/
     bill_of_materials.md
-    wiring_schematic.md        pinouts, power paths, pre-amp, BLE packet format
+    wiring_schematic.md        pinouts, power paths, radar module requirements, BLE packet format
     build_instructions.md      printing, assembly, weatherproofing, axis rules
     design_language.md         what the units look like and why; print-cost budget
 ```
@@ -59,10 +59,6 @@ clubhead, and a saddle that makes its clamp one form. No part needs supports.
 
 What sets it apart, for little or no added cost:
 
-- **The pod parks on the unit and charges from it.** It hangs under a small
-  hood on the back, held by magnets, and charges through two spring pins: one
-  object to carry and one cable to charge. The pins stay dead until the unit
-  sees a pod, so wet grass cannot short them.
 - **A gun sight** (front post, rear notch) over the radar's boresight, for
   lining the unit up quickly and the same way every session.
 - **A results screen on the phone**: a web page (`results/`) that connects to
@@ -70,8 +66,6 @@ What sets it apart, for little or no added cost:
   in type readable from the address position, with a session list and CSV
   export. Chrome on Android and desktop; iPhone needs a Web Bluetooth browser
   such as Bluefy, since Safari has none.
-- **A ready beep** from a piezo disc behind the grip ribs: armed, shot read, pod
-  parked, low battery. The golfer is looking at the ball, not at a light.
 - **Self-calibrating club speed from the pod.** Each shot the radar and pod both
   see measures the club's effective radius; once five agree, launchmon-py uses
   it for swings the radar misses (`fuse_shot.py --club 7-iron --calibration`).
@@ -99,6 +93,16 @@ $3.30 a kit on your own printer or $8.10 at a print-farm rate
 - **The pod needs the IMU's STEMMA QT sockets removed** to keep the 14 mm
   height with a 100 mAh cell. The fit report gives the height needed to keep
   them (about 15 mm), and one parameter switches to that.
+- **One part on the pod beyond the parts list: the Schottky diode P5.** It is
+  required to wire the original charging path (LiPo → charger → ESP32) safely:
+  the SuperMini's 5V pin is its USB-C VBUS with no diode, so without P5 every
+  USB cable would put 5 V straight onto the cell, bypassing the charger. No
+  listed part can do its job ([wiring doc 2.1](docs/wiring_schematic.md)).
+- **No battery readings.** The parts list has no battery-sense parts, so
+  neither unit reports its cell (0, "not read", in the shot summary). Charge
+  both after each session.
+- **The radar module must have its own IF amplifiers.** There is no pre-amp:
+  the module's I and Q outputs go straight to the ESP32's ADC pins.
 - **Zip-tie retention on the pod clamp.** Not asked for, but a snap clamp alone
   is not something to trust at clubhead speed.
 - **The phone is not mounted on the unit to film.** A phone on the dock sits
@@ -128,8 +132,7 @@ Each of these is also explained where it happens, in the CAD and the docs.
 | Clearances in the fit report | All `ok`. Tightest: 0.07 mm (window bevel inside the R12 corner), 0.2 mm (radar posts on their pads, screw pilots in the stem) |
 | Radar window: 1.0 mm radome, 15° tilt, module parallel behind it | Confirmed on a rendered cutaway |
 | Printed-part cost | Estimated from the STLs (`cost_report.py`): 71 g, 4.2 h, $8.12 a kit at $1.50/h. Not yet sliced |
-| Firmware: C++ syntax, `-Wall -Wextra` | Clean, against stub headers, with the buzzer and pod charging on and off (see `firmware/README.md` for what that does not prove) |
-| Pod charging circuit: divider, threshold and RC values | Calculated, including wet contacts; not built |
+| Firmware: C++ syntax, `-Wall -Wextra` | Clean, against stub headers: ground 0.5, pod 0.3 (see `firmware/README.md` for what that does not prove) |
 | I/Q skew-correction arithmetic | Checked on synthetic tones: about 62 dB image rejection |
 | Compiled for the ESP32-C3 | **No** |
 | Printed, assembled, run | **No** |

@@ -56,7 +56,7 @@ Build options, each a `#define` or constant near the top of its sketch:
 | Option | Sketch | Default | What |
 |---|---|---|---|
 | `PIN_RADAR_EN` | ground unit | -1 (none) | Set to 5 if your radar module has an enable pin |
-| `RECEDING_SIGN` | ground unit | +1 | Set with the bench check in the build instructions (5.1) |
+| `RECEDING_SIGN` | ground unit | +1 | Set with the bench check in the build instructions (4.3) |
 | `STEM_USE_2M_PHY` | pod | 1 | Set to 0 if NimBLE lacks `updatePhy()` |
 
 ## Verification status

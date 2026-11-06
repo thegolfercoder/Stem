@@ -1,7 +1,9 @@
-// Stem ground unit BLE protocol: the ShotSummary and UnitStatus values, parsed.
+// Stem ground unit BLE protocol: the ShotSummary value, parsed.
 //
-// Source of truth: launchmon-hw/firmware/ground_unit/ground_unit.ino, fw 0.3
-// (ShotSummary is unchanged since 0.2; UnitStatus is new in 0.3, further down)
+// Source of truth: launchmon-hw/firmware/ground_unit/ground_unit.ino, fw 0.5.
+// ShotSummary is the unit's one characteristic; its layout is unchanged since
+// fw 0.2. (fw 0.3-0.4 had a second, live-status characteristic, 7d2a0103,
+// for the pod's charging and the batteries. Those parts are gone, and so is it.)
 //   struct WireReading { float value; uint8_t prov; uint8_t refusal; }   (packed)
 //   struct ShotSummary {
 //     uint8_t magic = 0x5A, version = 1; uint16_t shot_seq; uint32_t impact_ms;
@@ -58,10 +60,11 @@ export const FIELDS = Object.freeze([
   { key: 'tempo_ratio', label: 'Tempo', unit: 'ratio', kind: 'ratio', source: 'imu+radar' },
 ]);
 
-// The ground unit treats a battery reading at or below 1000 mV as "not read"
-// (batt_known = g_batt_mv > 1000) and below 3500 mV as low (cfg::BATT_LOW_MV).
+// Battery fields. From ground fw 0.5 both are always 0, "not read": neither
+// unit has a battery-sense part. Firmware 0.2-0.4 sent the ground cell (1000 mV
+// or less meant no reading) and the pod's last report (0 meant none), so a
+// non-zero value from an older unit is still shown for what it is.
 export const GROUND_BATT_KNOWN_ABOVE_MV = 1000;
-export const GROUND_BATT_LOW_MV = 3500;
 
 function toBytes(input) {
   if (input instanceof Uint8Array) return input;
@@ -156,11 +159,7 @@ export function parseShotSummary(input) {
       battery: {
         groundMv,
         groundKnown: groundMv > GROUND_BATT_KNOWN_ABOVE_MV,
-        groundLow: groundMv > GROUND_BATT_KNOWN_ABOVE_MV && groundMv < GROUND_BATT_LOW_MV,
         podMv,
-        // 0 until a pod status has arrived since boot. The firmware keeps the
-        // last value after the pod disconnects, so a non-zero value is "last
-        // reported", not necessarily current.
         podKnown: podMv > 0,
       },
       hex: toHex(bytes),
@@ -228,7 +227,7 @@ export function provenanceLabel(p) {
 
 // What one shot's IMU readings say about the pod at that shot, and nothing
 // more: it reads only analyseImu()'s outcome (ground_unit.ino, analyseImu()).
-// The live pod link, dock and charge state come from UnitStatus, below.
+// It is the page's only word on the pod: the unit sends nothing between shots.
 //   'data'         the pod had samples around impact (a reading, or a refusal
 //                  that is only reached with >= 100 samples: 10, 11)
 //   'no_samples'   refusal 9: connected at some point, nothing covers the impact
@@ -303,234 +302,4 @@ export function toCsv(rows) {
     lines.push(cells.map(csvCell).join(','));
   }
   return lines.join('\r\n') + '\r\n';
-}
-
-// ---- Live status (ground firmware 0.3 and later) ------------------------------
-//   struct UnitStatus {
-//     uint8_t magic = 0x5B, version = 1; uint8_t fw_major, fw_minor; uint32_t uptime_ms;
-//     uint16_t battery_mv_ground, battery_mv_pod;
-//     uint8_t pod_flags, unit_flags, dock_state, dock_reason;
-//     uint16_t dock_retry_s, shot_seq;
-//   }                                                                     (packed, little-endian)
-// 4 + 4 + 4 + 4 + 4 = 20 bytes: it fits a default-MTU notification whole.
-// docs/wiring_schematic.md 3.4. A unit on firmware 0.2 or older does not have
-// this characteristic at all.
-
-export const STATUS_CHAR_UUID = '7d2a0103-5b1c-4f6e-9c1e-3a6f1f0c2b10';
-export const STATUS_MAGIC = 0x5b;
-export const STATUS_VERSION = 1;
-export const STATUS_BYTES = 20;
-
-// namespace podflag (ground_unit.ino)
-export const POD_FLAG = Object.freeze({
-  CONNECTED: 1 << 0, POWER_KNOWN: 1 << 1, DOCK_POWER: 1 << 2, USB_HOST: 1 << 3,
-  CHARGING: 1 << 4, CHARGED: 1 << 5, PARKED: 1 << 6, CHARGED_ASLEEP: 1 << 7,
-});
-const POD_POWER_BITS = POD_FLAG.DOCK_POWER | POD_FLAG.USB_HOST | POD_FLAG.CHARGING | POD_FLAG.CHARGED;
-
-// namespace unitflag (ground_unit.ino). Bit 7 is unused and sent as 0.
-export const UNIT_FLAG = Object.freeze({
-  DOCK_FITTED: 1 << 0, BUZZER_FITTED: 1 << 1, BUZZER_ON: 1 << 2, USER_ARMED: 1 << 3,
-  RAW_STREAMING: 1 << 4, BATT_LOW: 1 << 5, ADC_FAULT: 1 << 6,
-});
-
-// enum class DockState (ground_unit.ino), by number.
-export const DOCK_STATE = Object.freeze({ 0: 'off', 1: 'confirming', 2: 'charging', 3: 'fault', 4: 'low_battery' });
-
-// enum class DockReason and dockReasonText() (ground_unit.ino), verbatim: the
-// same words as the reason in the unit's pod_dock USB line.
-export const DOCK_REASON = Object.freeze({
-  0: '',
-  1: 'pod parked',
-  2: 'no pod on the contacts (lifted, or contacts wet)',
-  3: 'overload: DOCK+ sagged with the switch on',
-  4: 'voltage on the contacts with the switch off',
-  5: 'ground unit battery low',
-  6: 'ground unit battery recovered',
-  7: 'pod is on its own USB power',
-  8: 'fault lockout over: looking for a pod again',
-});
-
-const has = (obj, k) => Object.prototype.hasOwnProperty.call(obj, k);
-
-// Parses one UnitStatus. Returns { ok: true, status } or { ok: false, error, code }.
-// As with the shot summary, a value of the wrong length, magic or version is
-// rejected whole. Inside an accepted value, a combination the firmware never
-// sends is not shown as if it meant something: that part reads as unknown and
-// the contradiction is listed in status.anomalies.
-export function parseUnitStatus(input) {
-  const bytes = toBytes(input);
-  if (!bytes) return { ok: false, error: 'not a byte buffer' };
-  if (bytes.length < STATUS_BYTES) {
-    return { ok: false, error: `short status: ${bytes.length} of ${STATUS_BYTES} bytes`, code: 'short', length: bytes.length };
-  }
-  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const magic = dv.getUint8(0);
-  if (magic !== STATUS_MAGIC) {
-    return { ok: false, error: `wrong status magic byte 0x${magic.toString(16).padStart(2, '0')} (expected 0x5b)`, code: 'magic' };
-  }
-  const version = dv.getUint8(1);
-  if (version !== STATUS_VERSION) {
-    return { ok: false, error: `unknown status version ${version} (this page reads version ${STATUS_VERSION})`, code: 'version' };
-  }
-  if (bytes.length !== STATUS_BYTES) {
-    return { ok: false, error: `version 1 status is ${STATUS_BYTES} bytes, got ${bytes.length}`, code: 'length', length: bytes.length };
-  }
-
-  const anomalies = [];
-  const fwMajor = dv.getUint8(2), fwMinor = dv.getUint8(3);
-  const groundMv = dv.getUint16(8, true);
-  let podMv = dv.getUint16(10, true);
-  const pf = dv.getUint8(12), uf = dv.getUint8(13);
-  const stateCode = dv.getUint8(14), reasonCode = dv.getUint8(15);
-  let retryS = dv.getUint16(16, true);
-
-  // Pod. Bits 2-5 are the pod's own report and mean something only with
-  // POWER_KNOWN, which needs a link.
-  const connected = !!(pf & POD_FLAG.CONNECTED);
-  let powerKnown = !!(pf & POD_FLAG.POWER_KNOWN);
-  let power = pf & POD_POWER_BITS;
-  if (!connected && (powerKnown || power)) {
-    anomalies.push('pod power report with no pod link');
-    powerKnown = false; power = 0;
-  }
-  if (!powerKnown && power) {
-    anomalies.push('pod power bits without power_known');
-    power = 0;
-  }
-  if ((power & POD_FLAG.CHARGING) && (power & POD_FLAG.CHARGED)) {
-    anomalies.push('pod both charging and charged');
-    power &= ~(POD_FLAG.CHARGING | POD_FLAG.CHARGED);
-  }
-  if ((power & (POD_FLAG.CHARGING | POD_FLAG.CHARGED)) && !(power & POD_FLAG.DOCK_POWER)) {
-    anomalies.push('pod charge state without dock power');
-    power &= ~(POD_FLAG.CHARGING | POD_FLAG.CHARGED);
-  }
-  let chargedAsleep = !!(pf & POD_FLAG.CHARGED_ASLEEP);
-  if (chargedAsleep && connected) {
-    anomalies.push('pod charged_asleep while linked');
-    chargedAsleep = false;
-  }
-  if (!connected && podMv !== 0) {
-    anomalies.push('pod battery with no pod link');
-    podMv = 0;
-  }
-
-  // Unit and dock.
-  if (uf & 0x80) anomalies.push('unused unit flag bit 7 set');
-  const dockFitted = !!(uf & UNIT_FLAG.DOCK_FITTED);
-  const buzzerFitted = !!(uf & UNIT_FLAG.BUZZER_FITTED);
-  let buzzerOn = !!(uf & UNIT_FLAG.BUZZER_ON);
-  if (buzzerOn && !buzzerFitted) { anomalies.push('buzzer on but not fitted'); buzzerOn = false; }
-  let dockState = has(DOCK_STATE, stateCode) ? DOCK_STATE[stateCode] : 'unknown';
-  if (dockState === 'unknown') anomalies.push(`unknown dock state code ${stateCode}`);
-  if (!dockFitted && (stateCode !== 0 || reasonCode !== 0 || retryS !== 0)) {
-    anomalies.push('dock state from a unit built without the dock');
-    dockState = 'not_fitted';
-  } else if (!dockFitted) {
-    dockState = 'not_fitted';
-  }
-  if (retryS !== 0 && dockState !== 'fault') {
-    anomalies.push('dock retry countdown outside a fault');
-    retryS = 0;
-  }
-  const reasonKnown = has(DOCK_REASON, reasonCode);
-  if (!reasonKnown) anomalies.push(`unknown dock reason code ${reasonCode}`);
-
-  return {
-    ok: true,
-    status: {
-      version,
-      fw: { major: fwMajor, minor: fwMinor, text: `${fwMajor}.${fwMinor}` },
-      uptimeMs: dv.getUint32(4, true),
-      shotSeq: dv.getUint16(18, true),
-      unit: {
-        batteryMv: groundMv,
-        batteryKnown: groundMv > GROUND_BATT_KNOWN_ABOVE_MV,
-        // The flag and the number follow one rule in the firmware; the number is used here.
-        batteryLow: groundMv > GROUND_BATT_KNOWN_ABOVE_MV && groundMv < GROUND_BATT_LOW_MV,
-        dockFitted,
-        buzzerFitted,
-        buzzerOn,
-        userArmed: !!(uf & UNIT_FLAG.USER_ARMED),
-        rawStreaming: !!(uf & UNIT_FLAG.RAW_STREAMING),
-        adcFault: !!(uf & UNIT_FLAG.ADC_FAULT),
-      },
-      pod: {
-        connected,
-        powerKnown,
-        dockPower: !!(power & POD_FLAG.DOCK_POWER),
-        usbHost: !!(power & POD_FLAG.USB_HOST),
-        charging: !!(power & POD_FLAG.CHARGING),
-        charged: !!(power & POD_FLAG.CHARGED),
-        parked: !!(pf & POD_FLAG.PARKED),
-        chargedAsleep,
-        batteryMv: podMv,
-        batteryKnown: podMv > 0,
-      },
-      dock: {
-        fitted: dockFitted,
-        stateCode,
-        state: dockState,
-        reasonCode,
-        reason: reasonKnown ? DOCK_REASON[reasonCode] : `code ${reasonCode} (unknown to this page)`,
-        retryS,
-      },
-      anomalies,
-      hex: toHex(bytes),
-    },
-  };
-}
-
-// The inverse, for demo mode: raw field values in, the firmware's 20 bytes out.
-export function encodeUnitStatus({
-  fwMajor = 0, fwMinor = 3, uptimeMs = 0, groundMv = 0, podMv = 0,
-  podFlags = 0, unitFlags = 0, dockState = 0, dockReason = 0, dockRetryS = 0, shotSeq = 0,
-}) {
-  const buf = new ArrayBuffer(STATUS_BYTES);
-  const dv = new DataView(buf);
-  dv.setUint8(0, STATUS_MAGIC);
-  dv.setUint8(1, STATUS_VERSION);
-  dv.setUint8(2, fwMajor);
-  dv.setUint8(3, fwMinor);
-  dv.setUint32(4, uptimeMs >>> 0, true);
-  dv.setUint16(8, groundMv & 0xffff, true);
-  dv.setUint16(10, podMv & 0xffff, true);
-  dv.setUint8(12, podFlags);
-  dv.setUint8(13, unitFlags);
-  dv.setUint8(14, dockState);
-  dv.setUint8(15, dockReason);
-  dv.setUint16(16, dockRetryS & 0xffff, true);
-  dv.setUint16(18, shotSeq & 0xffff, true);
-  return new Uint8Array(buf);
-}
-
-// The pod, in a word or two, from a parsed status. key is stable for styling
-// and tests; text is what the status row shows.
-export function describePod(status) {
-  const p = status.pod;
-  if (!p.connected) {
-    if (p.chargedAsleep) return { key: 'charged_asleep', text: 'charged, asleep' };
-    if (p.parked) return { key: 'parked_no_link', text: 'parked, no link' };
-    return { key: 'not_connected', text: 'not connected' };
-  }
-  if (p.usbHost) return { key: 'usb', text: 'on USB' };
-  if (p.charged) return { key: 'charged', text: 'charged' };
-  if (p.charging) return { key: 'charging', text: 'charging' };
-  if (p.parked) return { key: 'parked', text: 'parked' };
-  return { key: 'connected', text: 'connected' };
-}
-
-// The dock, when there is something to say about it; null when there is not
-// (not fitted, off, or charging: the pod's own state already says that).
-// retryS is the countdown as of now, which the caller works out from the
-// value's age; the unit does not notify each second of it.
-export function describeDock(status, retryS = status.dock.retryS) {
-  const d = status.dock;
-  if (d.state === 'fault') {
-    return { key: 'fault', text: retryS > 0 ? `fault · retry ${retryS} s` : 'fault · retrying', detail: d.reason };
-  }
-  if (d.state === 'low_battery') return { key: 'low_battery', text: 'off · unit battery low', detail: d.reason };
-  if (d.state === 'unknown') return { key: 'unknown', text: 'unknown state', detail: `state code ${d.stateCode}` };
-  return null;
 }

@@ -1,7 +1,7 @@
 // Keeps the results screen usable offline once it has been opened: a driving
 // range often has no signal. Serves the cached copy at once and refreshes it
 // in the background, so an update shows on the next visit.
-const CACHE = 'stem-results-v1';
+const CACHE = 'stem-results-v2';   // v2: firmware 0.5, no live status
 const FILES = ['./', './index.html', './styles.css', './app.js', './protocol.js', './demo.js'];
 
 self.addEventListener('install', (e) => {
