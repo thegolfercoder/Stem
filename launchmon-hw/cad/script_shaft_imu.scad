@@ -103,6 +103,27 @@ tie_w       = 3.0;                // zip-tie slot width (2.5 mm ties)
 tie_h       = 1.6;
 saddle_clear = 0.6;               // between the jaws the underside follows the shaft at this gap
 
+/* [Strap - reusable TPU 95A strap, in place of the zip ties] */
+// One strap round the middle of the pod: from a hook post on one side face,
+// round the body's lower edge, under the shaft between the jaws, and up to the
+// same post on the other side. It holds the shaft up in the C, so the shaft
+// cannot leave through the mouth without stretching the strap. Both ends are
+// the same: a slot that hooks over the post, and a tab with a lift ridge.
+// Its length comes from shaft_d, so it follows the bore. The tie tunnels and
+// grooves stay, so zip ties still work as a fallback.
+strap_w       = 8.0;   // across the strap (along X), centred between the jaws
+strap_t       = 1.0;   // five 0.20 mm layers of TPU
+strap_preload = 0.08;  // stretch with the shaft in: 8 % of TPU 95A (E about 26 MPa) is about 17 N per leg
+strap_tab     = 4.5;   // tab beyond each slot's bearing edge
+strap_ridge   = [1.2, 0.8];  // lift ridge across each tab's tip, on the inner face [width, height]
+strap_clear   = 0.2;   // slot over the post, and the saddle cut clear of the strap
+// Hook post on each side face: a shank and a head with a lip above and below it.
+// The strap's slot bears on the shank's top; the upper lip covers that edge, the
+// lower lip is the click (the slot is shorter than the head).
+strap_post_z  = 5.6;   // shank centre above the floor's underside
+strap_post    = [2.4, 2.0, 1.0, 0.6, 1.0];  // [shank width X at its outer end, shank height Z,
+                       //  upper lip (engagement), lower lip (detent), head thickness]
+
 /* [Pod park - charging contacts in the +X end face] */
 pod_park_pitch = 6.0;  // contact centres across the end face (Y), either side of the centre line
 pod_park_z     = 8.8;  // contact and magnet centres above the floor's underside: over the charger, under the lid lip.
@@ -161,6 +182,28 @@ jaw_R   = bore_r + jaw_t;
 bore_z  = -(bore_r + web);                       // bore centre
 bore_y  = pod[1] / 2;
 jaw_xs  = [[0, jaw_w], [pod[0] - jaw_w, pod[0]]];
+
+// ---- Strap geometry (pod frame, the cut across the shaft: [Y, Z]) ----
+strap_x      = pod[0] / 2;                          // strap and posts centred along X
+st_shank_l   = strap_t + 0.3;                       // shank stands out past the strap
+st_hole      = [strap_post[0] + st_shank_l + strap_clear,      // slot across the strap: the post's
+                strap_post[1] + strap_post[2] + 0.3];          // 45-degree underside widens it at the root
+st_zb        = strap_post_z + strap_post[1] / 2;    // the slot's bearing edge: the shank's top
+st_c1        = [edge_r, edge_r];                    // the body's lower edge round, -Y side
+st_r1        = edge_r + strap_t / 2;                // strap centre line round it
+st_c2        = [pod[1] / 2, -(shaft_d / 2 + web)];  // the shaft (bore centre)
+st_r2        = shaft_d / 2 + strap_t / 2;           // strap centre line round the shaft
+// The external tangent from the edge round to the shaft, on the outside (lower left).
+st_d   = norm(st_c2 - st_c1);
+st_n   = atan2(st_c2[1] - st_c1[1], st_c2[0] - st_c1[0]) - acos((st_r1 - st_r2) / st_d);  // normal angle
+st_t1  = st_c1 + st_r1 * [cos(st_n), sin(st_n)];   // leaves the body here
+st_t2  = st_c2 + st_r2 * [cos(st_n), sin(st_n)];   // meets the shaft here
+st_tan = sqrt(st_d * st_d - pow(st_r2 - st_r1, 2));
+st_arc1 = st_r1 * (st_n + 360 - 180) * PI / 180;   // round the body's edge, from the side face
+st_arc2 = st_r2 * (2 * (st_n + 360) - 540) * PI / 180;  // under the shaft, tangent to tangent
+st_path = 2 * ((st_zb - edge_r) + st_arc1 + st_tan) + st_arc2;  // bearing edge to bearing edge, fitted
+st_span = st_path / (1 + strap_preload);           // the same, as printed
+st_len  = st_span + 2 * strap_tab;                 // overall
 
 // What the ground unit's script reads through `use <script_shaft_imu.scad>`,
 // so the hood it parks in is drawn from the pod's own numbers.
