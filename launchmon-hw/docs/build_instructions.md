@@ -22,11 +22,7 @@ these with calipers, change the parameter, and re-export with
 | TP4056 module length and width | `tp_pcb` | ground |
 | Shaft diameter where the pod will sit | `shaft_d` | pod |
 | Micro LiPo | `batt` | pod |
-| MagSafe magnet ring, if you use the MagSafe-ring head | `ring_od`, `ring_id`, `ring_depth` | ground |
-| 1/4"-20 hex bolt pocket | `bolt_clear` | ground |
-
-The **fit test piece** (section 2) tells you which of these your printer needs
-changed before you print the real parts.
+| MagSafe magnet ring for the arm's head | `ring_od`, `ring_id`, `ring_depth`, `orient_slot` | ground |
 
 A line marked `FAIL` in the fit report is a collision: fix it before printing.
 
@@ -58,7 +54,8 @@ a radome filament, run the bench check in 4.5.
 
 | Part | Filament | Finish |
 |---|---|---|
-| Shell, lid, dock base and stem, clamp tabs, pod base and lid | Matte black PETG | Textured PEI sheet under the shell, lid and stem |
+| Shell, lid, dock base, arm slide, head and pin, clamp tabs, pod base and lid | Matte black PETG | Textured PEI sheet under the shell, lid and head |
+| Pod strap | **TPU 95A** (flexible), any colour; black matches | Flat, outer face down |
 | Radome | Translucent PETG, not carbon-black: smoke, ice (natural) or amber | Outer face up, ironing on |
 | Light pipe | Natural (translucent) PETG | As printed |
 
@@ -72,23 +69,11 @@ a radome filament, run the bench check in 4.5.
 | Top / bottom layers | 5 / 5 (1.0 mm) |
 | Infill | **20 % gyroid** |
 | Supports | **None.** No part needs them. If your slicer insists, tree supports touching the build plate only |
-| Build sheet | **Textured PEI** for the shell, lid and dock stem: the face on the bed is the face people see, and the texture gives it an even matte grain with no layer lines |
+| Build sheet | **Textured PEI** for the shell, lid and arm head: the face on the bed is the face people see, and the texture gives it an even matte grain with no layer lines |
 | Brim | 5 mm on the pod base (it stands on a small footprint); none elsewhere |
 | PETG temperatures | about 235-245 °C nozzle, 75-85 °C bed, cooling 30-50 % |
 
 Each STL is already in its print orientation.
-
-### Print the test piece first
-
-Print `fit_test_coupon.stl` (about 15 minutes, 4 g, no supports) with the
-settings you will use for everything else, and try the real parts in it. It is
-built from the same CAD as the real parts. Each label is an offset from the
-current setting: if the `+.1` hole fits best, add 0.1 to that parameter and
-re-export with `cad/export_stl.sh`.
-
-- **M2x6:** a lid screw drives in without splitting the boss. Change
-  `m2_pilot`.
-- **1/4:** the bolt head pushes in snug with no rattle. Change `bolt_clear`.
 
 ### Part-specific notes
 
@@ -112,13 +97,24 @@ The sight's rear notch blade stands on its top edge.
 
 **Clamp tabs (x2).** Flat. Small: print them with the lid.
 
-**Dock base (`ground_radar_dock_base.stl`).** As it sits, no supports.
+**Dock base (`ground_radar_dock_base.stl`).** As it sits, no supports. The
+arm's spine rises from it behind the lid's centre, with the slide's channel
+open at the top and two detent holes in its rear wall; the pod pocket sits
+behind the spine. Check the channel is clear of stringing all the way down
+before fitting the slide.
 
-**Dock stem (`ground_radar_dock_stem.stl`).** Flat, front face down on the
-textured sheet, ring pocket facing up, no supports. Printed flat, both faces
-are smooth and the ring's opening is a clean vertical hole; printed upright it
-would be 600 layers of a thin wall. Check the magnet ring drops into its
-pocket and sits flush or very slightly below the surface.
+**Arm slide (`ground_radar_arm_slide.stl`).** Flat, hinge tab up, no
+supports. Check it slides the full length of the spine's channel (0.3 mm
+clearance each side) and clicks at both ends. If it is tight, sand its faces
+rather than forcing it; if it is loose, the clicks will be weak.
+
+**Arm head (`ground_radar_arm_head_magsafe.stl`).** On its plain face on the
+textured sheet, ring pocket up, no supports: the face that shows when the arm
+is folded is the one on the bed. Check the magnet ring drops into its pocket
+and sits flush or very slightly below the surface.
+
+**Arm pin (`ground_radar_arm_pin.stl`).** Flat. A printed 3 mm pin; print a
+spare. A 3 mm steel pin or a length of 3 mm rod cut to 28 mm can replace it.
 
 **Pod base (`shaft_pod_base.stl`).** Prints **standing on its USB end, with
 the clamp bore vertical**. Every layer then contains a complete C, so the
@@ -127,6 +123,11 @@ the jaws and they would split at the root the first time they snap onto a
 shaft. Use a brim. The zip-tie tunnels and the USB port bridge without supports.
 
 **Pod lid.** Flat, outside face down.
+
+**Pod strap (`shaft_pod_strap_TPU.stl`).** **TPU 95A**, flat, outer face down,
+no supports: 1.0 mm thick, five 0.20 mm layers. Print slowly (about 20-30
+mm/s) as TPU needs. Its length is computed from `shaft_d`, so re-export it if
+you change the bore. Print a spare.
 
 ## 3. Bench test before anything goes in a box
 
@@ -202,31 +203,39 @@ Front view, as used: the window is upper right, the battery lower left.
     Wipe off any squeeze-out before it cures. Silicone lets it be prised out
     again; epoxy does not.
 
-### 4.1 Dock
+### 4.1 Dock and phone arm
 
-The dock is the stand and a phone holder in one: a base with a lip in front of
-the unit and two short lips behind it, and a stem rising behind the unit to a
-cap with a standard **1/4"-20 tripod stud**.
+The dock is the stand, the phone holder and the pod's storage in one: a base
+with a lip in front of the unit, a slim spine rising from it behind the lid's
+centre (30 x 5 mm, its top 1 mm under the unit's top edge), and a pocket for
+the club pod behind the spine. The arm is a slide that pulls up out of the
+spine and a round 60 mm MagSafe head hinged to the top of the slide. Folded,
+the slide is in the spine and the head hangs flat over it, plain face out:
+nothing stands above the unit. There are no screws in the dock.
 
-1. **Stud.** Put a little epoxy in the hex pocket under the cap and push the
-   1/4"-20 x 1/2" hex bolt in from below, head first, until it seats. Its
-   thread stands 5.5 mm above the cap. Keep epoxy off the thread, and let it cure.
-2. Push the stem's foot into the socket in the base, front face toward the
-   unit's side, and fix it with two **M2 x 6** screws from behind, through the
-   buttress.
-3. Stick four 8 mm silicone bumpers into the recesses under the base for hard
-   floors and hitting mats.
+1. **Magnet ring.** Check its orientation with a phone first: it should pull
+   the phone in and centre it; if it repels or slides, turn it over. Glue it
+   and its alignment magnet into their pockets in the head with epoxy or CA,
+   and let it cure. Cover the ring with the 0.5 mm grip pad. Folded, the ring
+   sits a few millimetres behind the lid, near the MT3608: measure the
+   MT3608's output with the arm folded and open, and it should not move.
+2. **Hinge.** Set the slide's middle knuckle between the head's two outer
+   knuckles and push the 3 mm pin through all three. The head should hold at
+   each detent (0, 10, 20, 25, 30, 35°); how firmly has not been tested on a
+   print yet. If the pin works loose, a drop of CA in one outer knuckle holds
+   it; keep CA off the middle knuckle, which has to turn.
+3. **Slide into the spine.** Push the slide down into the spine's channel from
+   the top, bump toward the rear, until it clicks into the lower (stored)
+   detent. Fold the head down over the back of the spine.
+4. **Feet.** Stick four 8 mm silicone bumpers into the recesses under the base
+   for hard floors and hitting mats.
 
-Any smartphone tripod clamp screws onto the stud and holds a phone, whatever
-its size or make, as a **results screen** facing the golfer. The phone on the
-dock is not the camera that films the swing: see 4.2.
+**The pod.** Between sessions the club pod lies on a side face in the pocket
+behind the spine; the finger notch in the rear wall lifts it out. It charges
+out of the pocket, on its own USB-C.
 
-**MagSafe-ring head (optional).** Print `ground_radar_dock_stem_magsafe.stl`
-instead. Check the magnet ring's orientation with a phone first (it should pull
-the phone in and centre it; if it repels or slides, turn it over), glue it and
-the alignment magnet into their pockets, and cover the ring with a 0.5 mm grip
-pad. The ring ends up about 6.5 mm from the MT3608 on the inside of the lid:
-measure the MT3608's output with and without the phone, and it should not move.
+**Phones without MagSafe.** A clamp head for those is not built yet. Today
+such a phone needs a MagSafe-compatible case or a stick-on magnetic ring.
 
 ### 4.2 Placing it
 
@@ -243,22 +252,36 @@ session and record them; launchmon-py's `hardware.yaml` explains why the
 height matters for the cosine correction.
 
 Use the **dock** on grass or a mat: a 21 mm deep box standing on its edge is
-easy to knock over. The base reaches behind the unit, the side a phone on the
-stud pulls it toward. Charge the unit out of the dock: its USB-C port is on the
-bottom edge. Lay it on its back, switched off.
+easy to knock over. The base reaches behind the unit, under the phone. Charge
+the unit out of the dock: its USB-C port is on the bottom edge. Lay it on its
+back, switched off.
 
-**The camera.** Film the swing from a tripod, not from the unit. Put the phone
-or tablet in an ordinary 1/4"-20 clamp on any tripod about **3 m behind the
-ball, at hip height** (about 1 m), on or just beside the target line, so the
-whole golfer and the club at the top are in frame. Any phone works, with or
-without MagSafe, and so does an iPad in a tablet clamp. Record the distance
-from the camera to the ball: fusion uses it to remove the time the sound of
-the strike takes to reach the phone (`fuse_shot.py --camera-distance 3.0`).
+**The camera is the phone, on the unit.** No tripod. To open the arm:
 
-Why not on the unit: a phone on the dock sits about 15 cm off the ground,
-1.4 m behind the ball. With its normal lens the golfer's head is about 46°
-above it and their body about 27° to the side, outside the frame in either
-orientation. A tablet is also heavy enough to tip the dock over.
+1. Swing the head up off the back of the spine.
+2. Pull the slide straight up until it clicks at the open detent, 46 mm up.
+   About 12 mm of it stays in the spine.
+3. Tilt the head back to the **25° detent** (the default; 0-35° are there).
+4. Put the phone on the head, back to the ring, in portrait, camera at the
+   top, screen toward you.
+
+At 25° the phone's lower edge clears the unit by 8.5 mm, the lens's sightline
+clears its top by over 100 mm, and the phone's centre is over the base, so it
+cannot tip the dock backwards. Those numbers are from the CAD's fit report for
+a 147.6 mm stand-in phone; they have not been checked with a printed arm yet.
+
+**Use the 0.5x ultra-wide lens** (most phones since about 2019). The head
+does not swivel toward the golfer yet, so with the 1x lens the golfer may sit
+at the edge of the frame. Check the framing before the first shot: the whole
+golfer and the club at the top should be in it. A more upright detent aims
+the lens lower, with more of the ground and the ball; a further one aims it
+higher, with more of the club at the top.
+
+Fusion removes the time the sound of the strike takes to reach the phone, so
+give it the phone-to-ball distance: with the phone on the unit that is the
+unit's distance you measured, about 1.4 m by default (`fuse_shot.py
+--camera-distance 1.4`). Fold the arm before picking
+the unit up: head up, slide down to its stored click, head flat over the spine.
 
 ### 4.3 Set the Doppler sign (one-time bench check)
 
@@ -333,11 +356,16 @@ Each unit charges from its own USB-C port. Neither reads its battery, so
    Shafts taper, so slide the pod to where it is snug, usually a few
    centimetres below the grip, not in contact with either hand.
 2. Push it on until both jaws snap round the shaft.
-3. **Fit a zip tie through each jaw**: in through the tunnel at the top of the
-   jaw, down round the outside groove, across the mouth under the shaft, and
-   back. Pull tight and trim. **Do not swing without them.** The clamp keeps the
-   pod in place for handling. The ties are what keep it on the club at
-   clubhead speed.
+3. **Fit the TPU strap.** Hook one end's slot over the post on one side face,
+   take the strap round the body's lower edge, under the shaft between the
+   jaws and up to the post on the other side, and hook that end on: the lower
+   lip clicks it home. The lift ridge at each tip takes it off again. **Do not
+   swing without the strap or the zip ties.** The clamp keeps the pod in place for
+   handling; the strap is what keeps it on the club at clubhead speed. Its
+   hold has not been pull-tested yet: until it has, check it is still hooked
+   after every few swings. **Fallback:** a zip tie through each jaw, in through
+   the tunnel at the top of the jaw, round the outside groove, across the
+   mouth under the shaft and back, pulled tight and trimmed.
 4. Orientation rule: **USB port toward the grip**, and **lid facing the target**
    at address (+Z along the face normal). Mount it the same way every session so
    recordings stay comparable.

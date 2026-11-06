@@ -17,8 +17,8 @@ directory comes from a measurement of a real shot. See "What has been checked".
 ```
 launchmon-hw/
   cad/
-    script_ground_radar.scad   ground unit: shell, lid, radome, light pipe, ESP32 clamp tabs, dock
-    script_shaft_imu.scad      pod: base with C-clamp, snap lid
+    script_ground_radar.scad   ground unit: shell, lid, radome, light pipe, ESP32 clamp tabs, dock, folding phone arm
+    script_shaft_imu.scad      pod: base with C-clamp, snap lid, TPU strap
     export_stl.sh              regenerates cad/stl/, its fit report and its cost report
     cost_report.py             filament, print time and cost per kit, from the STLs
     stl/                       print-ready STLs, already in print orientation
@@ -51,11 +51,14 @@ Both units share one design language, set out in
 [docs/design_language.md](docs/design_language.md): matte black, one focal
 point, details that each do a job, and parts drawn for the printer. On the
 ground unit the focal point is the radar window, a separate smoked radome in a
-bevelled pocket. The unit stands in a dock whose stem ends in a standard
-1/4"-20 tripod stud, so any phone clamp fits it (a MagSafe-ring head is the
-alternative). The camera that films the swing goes on its own tripod 3 m back,
-not on the unit. The pod has an arrow pointing to the
-clubhead, and a saddle that makes its clamp one form. No part needs supports.
+bevelled pocket. The back is one flat lid. The unit stands in a dock whose
+slim spine, behind the lid's centre and just under the unit's top edge, holds a
+folding phone arm: a slide pulls up 46 mm and a round MagSafe head flips up on
+it and tilts back (25° by default), so the phone films the swing from the
+unit, with no tripod. Folded, nothing stands above the unit. The club pod
+stores in a pocket in the dock's base. The pod has an arrow pointing to the
+clubhead, a saddle that makes its clamp one form, and a reusable TPU strap. No
+part needs supports.
 
 What sets it apart, for little or no added cost:
 
@@ -72,9 +75,9 @@ What sets it apart, for little or no added cost:
 - **The radome is the one colour choice:** smoke, ice or amber, on a matte black
   body.
 
-All printed parts for both units come to about 71 g and 4.2 hours, an estimated
-$3.30 a kit on your own printer or $8.10 at a print-farm rate
-(`cad/stl/cost_report.txt`).
+All printed parts for both units come to about 84 g and 4.9 hours, an estimated
+$3.84 a kit on your own printer or $9.53 at a print-farm rate, within the
+$5-10 budget (`cad/stl/cost_report.txt`).
 
 ## Where it departs from the brief, and why
 
@@ -103,19 +106,21 @@ $3.30 a kit on your own printer or $8.10 at a print-farm rate
   both after each session.
 - **The radar module must have its own IF amplifiers.** There is no pre-amp:
   the module's I and Q outputs go straight to the ESP32's ADC pins.
-- **Zip-tie retention on the pod clamp.** Not asked for, but a snap clamp alone
-  is not something to trust at clubhead speed.
-- **The phone is not mounted on the unit to film.** A phone on the dock sits
-  15 cm off the ground and 1.4 m behind the ball: with its normal lens the
-  golfer's head is about 46° above it and their body about 27° to the side,
-  outside the frame. The camera goes on its own tripod about 3 m back at hip
-  height, which also takes any phone or tablet in a standard clamp. Fusion
-  lines the video up by the sound of the strike, so it does not need to be on
-  the unit; record its distance from the ball.
-- **The dock's phone holder is a standard 1/4"-20 tripod stud**, not a MagSafe
-  ring. Any phone clamp screws on, whatever the phone's size or make, for a
-  results screen facing the golfer. A MagSafe-ring head is kept as an option
-  (`holder = "magsafe"`, `ground_radar_dock_stem_magsafe.stl`).
+- **A retaining strap on the pod clamp.** Not asked for, but a snap clamp alone
+  is not something to trust at clubhead speed. A printed TPU 95A strap hooks
+  over a post on each side, under the shaft; it is reusable, and zip ties
+  still fit as a fallback. Its hold has not been pull-tested.
+- **The phone films from the unit, on a folding MagSafe arm** (owner's
+  decision). At the default 25° the CAD puts the phone's lower edge 8.5 mm
+  clear of the unit, the lens sightline over 100 mm clear of it, and the
+  phone's centre over the base. The phone sits low, about 1.4 m behind the
+  ball, and the head does not swivel toward the golfer yet, so use the
+  phone's 0.5x ultra-wide lens: with the 1x lens the golfer may be at the edge
+  of the frame. Untested on a print.
+- **MagSafe only, for now.** The head holds a phone by an aftermarket
+  MagSafe-compatible magnet ring. A clamp head for other phones is not built
+  yet; today a phone without MagSafe needs a MagSafe-compatible case or a
+  stick-on ring. The earlier 1/4"-20 tripod stud is gone, with its stem.
 - **The radar window is a separate part.** Printed into the shell, the 1.0-1.2
   mm window needed supports, came out rough and varied in thickness, and tied
   the whole shell to an RF-safe filament colour. As a flat-printed radome it is
@@ -129,9 +134,10 @@ Each of these is also explained where it happens, in the CAD and the docs.
 | Check | Result |
 |---|---|
 | Both OpenSCAD scripts render in OpenSCAD 2021.01, every part | Yes; STLs in `cad/stl/` |
-| Clearances in the fit report | All `ok`. Tightest: 0.07 mm (window bevel inside the R12 corner), 0.2 mm (radar posts on their pads, screw pilots in the stem) |
+| Clearances in the fit report | All `ok`. Tightest: 0.07 mm (window bevel inside the R12 corner), 0.3 mm (radar posts on their pads, the folded phone head clear of the pod pocket's wall, the pod strap's latch) |
+| Phone on the open arm, 25° | From the fit report, with a 147.6 mm stand-in phone: lower edge 8.5 mm over the unit, lens sightline over 100 mm clear, centre over the base. Not checked on a print |
 | Radar window: 1.0 mm radome, 15° tilt, module parallel behind it | Confirmed on a rendered cutaway |
-| Printed-part cost | Estimated from the STLs (`cost_report.py`): 71 g, 4.2 h, $8.12 a kit at $1.50/h. Not yet sliced |
+| Printed-part cost | Estimated from the STLs (`cost_report.py`): 84 g, 4.9 h, $3.84 a kit on your own printer, $9.53 at $1.50/h (within $10). Not yet sliced |
 | Firmware: C++ syntax, `-Wall -Wextra` | Clean, against stub headers: ground 0.5, pod 0.3 (see `firmware/README.md` for what that does not prove) |
 | I/Q skew-correction arithmetic | Checked on synthetic tones: about 62 dB image rejection |
 | Compiled for the ESP32-C3 | **No** |
@@ -188,7 +194,9 @@ xvfb-run -a python3 launchmon-hw/cad/blender/make_showcase.py OUT_DIR   # blende
 
 This renders eight captioned 1080p, 24 fps shots in EEVEE from the generated `.blend`
 files, and joins them, with title and end cards, into
-`stem_launch_monitor_showcase.mp4` (about 55 s):
+`stem_launch_monitor_showcase.mp4` (about 55 s). The shots were made for an
+earlier design (a stud stem, a pod parked on the unit's back, a tripod camera)
+and need re-rendering for the folding arm and the pod pocket:
 
 - the ground unit turning in its dock, the pod parked on its back
 - the ground unit assembling

@@ -34,13 +34,13 @@ consistently:
 | Principle | Ground unit | Pod |
 |---|---|---|
 | **One focal point** | The radar window: a **smoked translucent radome** in a bevelled, rounded pocket, flush at its bottom edge and stepping back 15° to the top. The radar board shows faintly behind it, which says what the unit is. | The clamp's single continuous arch under a plain body. |
-| **Every detail has a job** | A **front post and rear notch**, joined by a groove, over the boresight: a gun sight for lining the unit up quickly and the same way every time. **Grip ribs** on both ends, where it is held. A **light pipe** that shows the status LED as a flush 2.8 mm dot. A **pill recess** that keeps the switch below the surface. | The **arrow** on the lid points to the clubhead, the pod's +X axis and the way round it must go on. The zip-tie grooves are left visible, because they are the safety feature. |
+| **Every detail has a job** | A **front post and rear notch**, joined by a groove, over the boresight: a gun sight for lining the unit up quickly and the same way every time. **Grip ribs** on both ends, where it is held. A **light pipe** that shows the status LED as a flush 2.8 mm dot. A **pill recess** that keeps the switch below the surface. | The **arrow** on the lid points to the clubhead, the pod's +X axis and the way round it must go on. The strap's two hook posts and the zip-tie grooves are left visible, because they are the safety feature. |
 | **A family resemblance** | Matte black, soft edges, a 0.5 mm shadow gap at the seam, 0.4 mm debossed marks. | The same: matte black, rounded body, shadow gap at the lid, one 0.4 mm debossed mark. |
-| **Made for the printer** | Chamfers, not fillets, on every edge that lies on the bed. They print crisply and stop the first layers squashing out. The faces people see print **face down on a textured sheet**, so they have an even grain and no layer lines. **No part needs supports.** The radome prints flat: smooth, and exactly 1.0 mm. The dock's stem prints flat, so its faces are clean and its opening is a true circle. | The base prints standing up, so every layer is a complete C and the jaws flex along the layers. The saddle between the jaws adds no supports. |
-| **Hidden structure** | The seam is a deliberate **shadow gap**, so a printed lid that sits 0.2 mm proud does not show. The lid screws are sunk in chamfered counterbores at the back. The dock's screws are behind the stem, low down. | The seam is a shadow gap; the lid snaps on with no fasteners. |
-| **Restraint in CMF** | Matte black PETG body. One contrasting finish: the radome's **ironed, slightly glossy** face, and the radome is the one place a colour is offered: **smoke, ice or amber**. Natural PETG only where light passes. | Matte black. The liner, under the clamp, is the only other material. |
-| **Accessories belong** | The **dock** replaces a separate stand and a phone plate screwed to the lid. Its stem rises behind the unit to a small chamfered cap, like a camera's accessory shoe, with a **standard 1/4"-20 tripod stud**: any phone clamp fits, so the dock does not care what phone you own. It is the unit's width at its base. The unit lifts out and is a clean slab on its own. | None: the pod charges from its own USB-C, the port it is flashed through. |
-| **Proportions agree** | The dock is the unit's width. The stem and its stud are on the unit's centre line. Body corners R12, window corners R3, cap corners R4, dock plan corners R6. | Body 32 x 26 mm; jaws 10 mm wide at each end; the arrow on the centre line. |
+| **Made for the printer** | Chamfers, not fillets, on every edge that lies on the bed. They print crisply and stop the first layers squashing out. The faces people see print **face down on a textured sheet**, so they have an even grain and no layer lines. **No part needs supports.** The radome prints flat: smooth, and exactly 1.0 mm. The arm's head prints on its plain face, so the face that shows when folded is the textured one and the ring pocket is a true circle. | The base prints standing up, so every layer is a complete C and the jaws flex along the layers. The saddle between the jaws adds no supports. |
+| **Hidden structure** | The seam is a deliberate **shadow gap**, so a printed lid that sits 0.2 mm proud does not show. The back is **one flat lid**: its screws are sunk in chamfered counterbores, and nothing else is fixed to it. The dock has no screws; the arm is held by a printed pin and two detents. | The seam is a shadow gap; the lid snaps on with no fasteners. |
+| **Restraint in CMF** | Matte black PETG body. One contrasting finish: the radome's **ironed, slightly glossy** face, and the radome is the one place a colour is offered: **smoke, ice or amber**. Natural PETG only where light passes. | Matte black. The liner under the clamp and the black TPU strap are the only other materials. |
+| **Accessories belong** | The **dock** is the stand, the phone mount and the pod's storage in one. A slim **spine** behind the lid's centre stops 1 mm under the unit's top edge; the phone arm folds into it, the slide inside and the round head flat over it, plain face out, so nothing stands above the unit until you pull it up. The **club pod** lies in a pocket in the base behind the spine. The dock is the unit's width; the unit lifts out and is a clean slab on its own. | The pod lives in the dock's pocket between sessions and charges from its own USB-C, the port it is flashed through. Its reusable **TPU strap** replaces single-use zip ties. |
+| **Proportions agree** | The dock is the unit's width. The spine, the slide, the head and the pod pocket are all on the unit's centre line. The spine's top is 1 mm under the unit's top edge, and the folded head sits inside the lid's width and the dock's height. Body corners R12, window corners R3, dock plan corners R6; the head is a 60 mm circle, the ring's size plus 1.75 mm each side. | Body 32 x 26 mm; jaws 10 mm wide at each end; the arrow on the centre line. |
 
 ### A practical win from the radome
 
@@ -57,20 +57,22 @@ writes `cad/stl/cost_report.txt` each time the STLs are exported.
 
 | | Before (prototype) | Now |
 |---|---|---|
-| Filament, both units | 98 g, including supports | 71 g, no supports |
-| Print time, both units | 5.7 h | 4.2 h |
-| Kit cost, own printer ($0.40/h) | $4.45 | **$3.27** |
-| Kit cost, print farm ($1.50/h) | $11.00 (over budget) | **$8.12** (within $5-10) |
+| Filament, both units | 98 g, including supports | 84 g, no supports |
+| Print time, both units | 5.7 h | 4.9 h |
+| Kit cost, own printer ($0.40/h) | $4.45 | **$3.84** |
+| Kit cost, print farm ($1.50/h) | $11.00 (over budget) | **$9.53** (within $5-10) |
 
-These assume PETG at $20/kg and a conservative 4 mm³/s sustained flow. A
+These assume PETG (and TPU for the strap) at $20/kg and a conservative 4 mm³/s sustained flow. A
 faster printer roughly halves the time and the machine cost. The estimate is
 within about 20% of a slice; slice with your own profile before quoting.
 
-The redesign got cheaper as well as better looking. Merging the stand and the
-phone plate into one dock, printing its stem flat and ending it in a stud
-rather than a plate saved about 31 g and 1.6 hours. Making the radome a
-separate part removed the shell's supports. (The MagSafe-ring stem, if you
-choose it, adds 3.8 g and 12 minutes.)
+The first redesign merged the stand and the phone plate into one dock and made
+the radome a separate part, which removed the shell's supports. The folding
+arm, the pod pocket and the TPU strap (commit 41c82f1) add about 13 g and 0.7
+hours over the stud stem and pod hood they replace. Most of it is the dock
+base, which now carries the spine and the pocket's walls (9.8 g to 23.6 g);
+the arm's three parts are 11.9 g. The print-farm cost is near the top of the
+budget, at $9.53.
 
 ## What was left out, and why
 
@@ -80,7 +82,7 @@ choose it, adds 3.8 g and 12 minutes.)
   radome.
 - **Hiding the lid screws entirely.** A snap-fit lid on the ground unit would
   have to survive being knocked over on a range, and screws do that reliably.
-  They are on the back, counterbored, and mostly behind the dock's stem.
+  They are on the back, counterbored, on an otherwise plain lid.
 - **The pod inside the grip's end.** Some commercial club sensors hide in the
   grip cap, which is better than a clamp on the shaft. It needs a custom circuit
   board the size of a coin; with off-the-shelf boards the pod cannot get that
@@ -92,14 +94,31 @@ choose it, adds 3.8 g and 12 minutes.)
 
 ## Where the camera goes
 
-A phone filming from the dock would sit 15 cm off the ground, 1.4 m behind the
-ball. With its normal lens the golfer's head is about 46° above it and their
-body about 27° to the side: outside the frame, in portrait or landscape. Only
-the ultra-wide lens fits them, distorted and seen from ankle height. So the
-camera is not part of the unit. It goes on any tripod about 3 m behind, at hip
-height, in an ordinary 1/4"-20 phone or tablet clamp. That serves every phone,
-with or without MagSafe, and an iPad, which would tip the dock over. The
-dock's stud still takes a phone as a results screen facing the golfer.
+On the unit (owner's decision, 2026-11-06): the phone films from the dock's
+folding arm, with no tripod. The arm's slide pulls 46 mm up out of the spine
+and clicks; the round MagSafe head flips up on it and tilts back in detents
+from 0 to 35°, 25° by default, which aims the lens up to take in the ball, the
+golfer and the club at the top. From the CAD's fit report, with a 147.6 mm
+stand-in phone at 25°:
+
+- the phone's lower edge clears the unit by 8.5 mm (4.7 mm at 0°, 12.1 mm at
+  35°);
+- the lens sightline clears the unit by over 100 mm, so the unit is not in
+  the shot;
+- the phone's centre is over the base, so its weight cannot tip the dock
+  backwards.
+
+None of that has been checked on a printed arm yet.
+
+The phone sits about 1.4 m behind the ball and low, and the head does not
+swivel toward the golfer yet. With the normal 1x lens the golfer may be at the
+edge of the frame, so use the **0.5x ultra-wide** lens, which most phones
+since about 2019 have. A swivel would let the 1x lens work; it is not built.
+
+The head holds a phone by MagSafe: an aftermarket MagSafe-compatible ring is
+glued in its pocket under a 0.5 mm grip pad. A clamp head for phones without
+MagSafe is not built yet; today such a phone needs a MagSafe-compatible case
+or a stick-on ring. A tablet is too heavy for the arm.
 
 ## Beyond the plastic
 
@@ -116,7 +135,12 @@ enclosures shrink.
 - Shadow gap visible and even all round with the lid on.
 - Radome: 1.0-1.2 mm, flat, sits flush at its bottom edge.
 - Light pipe flush with the top face; LED visible as a soft dot.
-- Stem: clean faces; the stud bolt square to the cap and standing 5.5 mm proud.
-- Pod: arrow toward the clubhead; jaws snap on and the ties close them.
+- Arm: the slide runs the spine's full length and clicks at both ends; the
+  head holds at each tilt detent; folded, the head lies flat over the spine and
+  nothing stands above the unit's top edge.
+- MagSafe ring flush in the head under its grip pad, and a phone snaps on
+  centred.
+- Pod: arrow toward the clubhead; jaws snap on and the TPU strap hooks over
+  both posts (or the ties close them); the pod drops into the dock's pocket.
 - Sight: the post sits centred in the notch with an even sliver of light each
   side.

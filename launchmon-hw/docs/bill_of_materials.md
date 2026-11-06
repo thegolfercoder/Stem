@@ -39,7 +39,7 @@ voltage (wiring doc 1.1).
 
 | # | Part | Qty | Used for |
 |---|---|---|---|
-| G10 | **M2 x 6 mm screws**, pan head, thread-forming for plastics (stainless machine screws also work into the 1.7 mm pilots) | **12** (buy 20) | 4 radar module, 2 ESP32 clamp tabs, 4 lid, 2 dock stem into its base |
+| G10 | **M2 x 6 mm screws**, pan head, thread-forming for plastics (stainless machine screws also work into the 1.7 mm pilots) | **10** (buy 20) | 4 radar module, 2 ESP32 clamp tabs, 4 lid |
 | G11 | Silicone wire, 26-28 AWG, several colours | ~1 m | All internal wiring |
 | G12 | Kapton tape | small roll | Insulating the cell where the MT3608 faces it, and the IMU-to-cell contact in the pod |
 | G13 | Double-sided foam tape, 1 mm | small piece | Under the cell, so it cannot rattle |
@@ -48,29 +48,24 @@ voltage (wiring doc 1.1).
 | G16 | Clear silicone or epoxy | small | Seats the radome on its ledge, and the LED against the light pipe |
 | G17 | Heat-shrink, 1.5-3 mm | assorted | Solder joints |
 
-### Dock
+### Dock and phone arm
+
+The dock base carries the folding phone arm and a pocket for the club pod; the
+arm is three printed parts (section 3) and no screws.
 
 | # | Part | Specification | Qty | Notes |
 |---|---|---|---|---|
-| G18 | **1/4"-20 x 1/2" hex bolt**, steel | 7/16" hex head, about 4 mm tall | 1 | Glued head-down in the hex pocket under the stem's cap with epoxy. Its thread stands 5.5 mm proud, the standard for a tripod screw. |
-| G19 | Two-part epoxy | small | 1 | Holds the bolt |
-| G20 | Smartphone tripod clamp with a 1/4"-20 socket *(optional)* | Any spring clamp for phones about 55-95 mm wide | 1 | Screws onto the stud and holds a phone of any size as a results screen facing the golfer. Not for filming: see below. |
-| G21 | Silicone bumper feet, 8 mm, self-adhesive | 4 | Under the dock base: grip on hard floors and hitting mats |
+| G39 | **MagSafe-compatible magnet ring**, aftermarket | About 56.5 mm OD x 45.5 mm ID x 1-1.8 mm, ideally with its alignment ("tail") magnet | 1 | Glued into the pocket on the arm's round head. **Measure yours** and set `ring_od`, `ring_id`, `ring_depth` and `orient_slot` in the ground CAD before printing the head. |
+| G40 | Grip pad, 0.5 mm, silicone or rubber sheet | Cut to the ring | 1 | Covers the ring, so the phone does not slide on the magnets. Many rings come with one. |
+| G41 | Two-part epoxy or CA | small | 1 | Holds the ring and its alignment magnet in the head |
+| G21 | Silicone bumper feet | 8 mm, self-adhesive | 4 | Under the dock base: grip on hard floors and hitting mats |
 
-**MagSafe-ring head instead of the stud** *(optional)*: print
-`ground_radar_dock_stem_magsafe.stl` in place of `ground_radar_dock_stem.stl`
-and add an aftermarket MagSafe-compatible magnet ring (about 56 mm OD x 45-46 mm
-ID x 1-1.8 mm, ideally with its alignment magnet; **measure it** and set
-`ring_od`, `ring_id`, `ring_depth`, `orient_slot`), a 0.5 mm grip pad cut to the
-ring, and epoxy. It holds iPhones and phones in MagSafe cases with nothing
-else to buy.
-
-### Filming the swing (not part of the kit)
+### Filming the swing
 
 | Part | Notes |
 |---|---|
-| Any tripod or light stand reaching about 1 m | The camera goes about 3 m behind the ball at hip height, not on the unit. |
-| A 1/4"-20 phone clamp, or a tablet clamp for an iPad | Standard clamps fit every phone and tablet, with or without MagSafe. |
+| The phone, on the arm | It films from the unit: the head holds it by MagSafe at 25° back by default. Use the phone's **0.5x ultra-wide** lens (most phones since about 2019); with the 1x lens the golfer can sit at the edge of the frame, because the head does not yet swivel toward them. No tripod. |
+| A MagSafe-compatible case or a stick-on magnetic ring *(only for a phone without MagSafe)* | A clamp head for non-MagSafe phones is not built yet. |
 
 ---
 
@@ -95,22 +90,24 @@ the IMU.
 | # | Part | Qty | Notes |
 |---|---|---|---|
 | P7 | **Anti-slip liner**: silicone or neoprene sheet, 0.8 mm thick, self-adhesive if possible | 2 strips, 8 x 42 mm | One per jaw, laid in the recessed band. It stands 0.2 mm proud of the 13.0 mm bore and does the gripping. |
-| P8 | **Zip ties, 2.5 mm wide** | 2 per session (they are single use) | **Mandatory.** One through each jaw's tunnel and groove, closing the C around the shaft. |
+| P8 | **Printed TPU strap** (`shaft_pod_strap_TPU.stl`, section 3) | 1 (print a spare) | **Mandatory: a strap, or the zip ties below.** It hooks over a post on each side face and runs under the shaft between the jaws, holding the shaft up in the C. Reusable. Its hold on a club has not been pull-tested yet. |
+| P8a | Zip ties, 2.5 mm wide *(fallback)* | 2 per session (single use) | The tie tunnels and grooves are still there: one through each jaw, closing the C, if the strap is missing or untested on your club. |
 | P9 | Foam sheet, 0.5 mm | small piece | Between the cell and the SuperMini, so the lid preloads the stack |
 | P10 | Kapton tape | | Between the IMU board and the cell |
 | P11 | Silicone wire, 30 AWG | ~30 cm | Internal wiring; the pod is tight |
 
-Part numbers G3, G3a, G9, G22-G38, P6 and P12-P15 belonged to parts that are no
-longer fitted (the LM358 pre-amp, battery-sense dividers, buzzer, soft power
-and pod charging on the ground unit). They are not reused, so the remaining
-numbers still match older notes.
+Part numbers G3, G3a, G9, G18-G20, G22-G38, P6 and P12-P15 belonged to parts
+that are no longer fitted (the LM358 pre-amp, battery-sense dividers, buzzer,
+soft power, pod charging on the ground unit, and the dock's 1/4"-20 stud bolt,
+its epoxy and the tripod clamp). They are not reused, so the remaining numbers
+still match older notes.
 
 ---
 
 ## 3. Printed parts
 
 All from `cad/stl/` (regenerate with `cad/export_stl.sh`). **PETG, ABS or ASA
-only**: see [build_instructions.md](build_instructions.md) for why not PLA and
+only**, except the pod strap, which is TPU 95A: see [build_instructions.md](build_instructions.md) for why not PLA and
 for the slicer settings.
 
 | File | Unit | Qty | Print orientation (already set in the STL) |
@@ -120,16 +117,18 @@ for the slicer settings.
 | `ground_radar_radome.stl` | Ground | 1 | Flat, outer face up, ironing on. **Translucent PETG, not carbon-black**: smoke, ice (natural) or amber. This is the one part that can take a colour |
 | `ground_radar_led_pipe.stl` | Ground | 1 | Flange down. Natural PETG |
 | `ground_radar_esp32_clamp_tab_x2.stl` | Ground | **2** | Flat |
-| `ground_radar_dock_base.stl` | Ground | 1 | As it sits |
-| `ground_radar_dock_stem.stl` | Ground | 1 | Flat, front face down on a textured sheet, stud cap up. Or `ground_radar_dock_stem_magsafe.stl` for the MagSafe-ring head |
-| `fit_test_coupon.stl` | Test | 1, once per printer; not part of a kit | Flat as exported, no supports. **Print it first** (build instructions, section 2) |
+| `ground_radar_dock_base.stl` | Ground | 1 | As it sits. Carries the arm's spine and the pod pocket |
+| `ground_radar_arm_slide.stl` | Ground | 1 | Flat, hinge tab up |
+| `ground_radar_arm_head_magsafe.stl` | Ground | 1 | On its plain face, ring pocket up |
+| `ground_radar_arm_pin.stl` | Ground | 1 (print a spare) | Flat. The 3 mm hinge pin; a 3 mm steel pin or a length of 3 mm rod works too |
 | `shaft_pod_base.stl` | Pod | 1 | Standing on its USB end, clamp bore vertical |
 | `shaft_pod_lid.stl` | Pod | 1 | Outside face down |
+| `shaft_pod_strap_TPU.stl` | Pod | 1 (print a spare) | Flat, outer face down. **TPU 95A, not PETG**: it has to stretch. Its length comes from `shaft_d` |
 
-About **71 g** of filament and **4.2 hours** of printing for both units, with no
+About **84 g** of filament and **4.9 hours** of printing for both units, with no
 supports anywhere. `cad/cost_report.py` estimates it from the STLs and writes
-`cad/stl/cost_report.txt`: about $1.45 of PETG, $3.30 a kit on your own printer
-and $8.10 at a print-farm machine rate, against a $5-10 budget for the printed
+`cad/stl/cost_report.txt`: about $1.69 of filament, $3.84 a kit on your own
+printer and $9.53 at a print-farm machine rate, against a $5-10 budget for the printed
 parts. Those are estimates, within about 20% of a slice; slice the STLs with
 your printer's profile before quoting a price.
 
