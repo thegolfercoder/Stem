@@ -1618,6 +1618,7 @@ struct RtcPower {
   uint8_t  vbus;          // USB power was present when the unit last went to sleep
   uint8_t  pod_charged;   // the pod on the contacts is charged and asleep: do not start a session for it
   uint32_t lockout_ms;    // the dock's fault back-off, carried across sleeps
+  uint8_t  from_on;       // this timer wake is the 10 ms sleep of switching off, not a top-up timer
 };
 constexpr uint32_t RTC_POWER_MAGIC = 0x53504F57;   // "SPOW"
 static RTC_DATA_ATTR RtcPower g_rtc;
@@ -1684,13 +1685,14 @@ static void powerSwitchWatch(uint32_t now) {
   if (!off_since) { off_since = now | 1; return; }
   if (now - off_since < cfg::SW_DEBOUNCE_MS) return;
   digitalWrite(cfg::PIN_AN_EN_N, HIGH);
-  g_rtc = RtcPower{RTC_POWER_MAGIC, 0, 0, cfg::DOCK_LOCKOUT_MS};
+  g_rtc = RtcPower{RTC_POWER_MAGIC, 0, 0, cfg::DOCK_LOCKOUT_MS, 0};
 #if STEM_POD_DOCK
   // A charged pod already asleep on the live contacts would never say so
   // again: tell the off state not to start a session for it.
   if (g_dock == DockState::CHARGING && !podConnected() && (g_pod_power_last.load() & podpower::CHARGED))
     g_rtc.pod_charged = 1;
 #endif
+  g_rtc.from_on = 1;
   powerReport("off", "switch off", 0);
   Serial.flush();
   deepSleep(10000);
@@ -1704,14 +1706,17 @@ static uint32_t g_off_session_ms = 0, g_off_session_max_ms = 0;
 static void powerOffSetup() {
   const esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
   const bool from_sleep = cause == ESP_SLEEP_WAKEUP_GPIO || cause == ESP_SLEEP_WAKEUP_TIMER;
-  if (!from_sleep || g_rtc.magic != RTC_POWER_MAGIC) g_rtc = RtcPower{RTC_POWER_MAGIC, 0, 0, cfg::DOCK_LOCKOUT_MS};
+  if (!from_sleep || g_rtc.magic != RTC_POWER_MAGIC) g_rtc = RtcPower{RTC_POWER_MAGIC, 0, 0, cfg::DOCK_LOCKOUT_MS, 0};
   const bool usb = vbusPresent();
   const bool usb_edge = cause == ESP_SLEEP_WAKEUP_GPIO && usb && !g_rtc.vbus;
+  const bool timer_wake = cause == ESP_SLEEP_WAKEUP_TIMER && !g_rtc.from_on;
+  g_rtc.from_on = 0;
   // A WAKE pulse with the switch off and no new USB power was a pod being
   // parked: whatever sat on the contacts before was lifted in between.
   if (cause == ESP_SLEEP_WAKEUP_GPIO && !usb_edge) g_rtc.pod_charged = 0;
   g_batt_mv = readBatteryMv();
 #if !STEM_POD_DOCK
+  (void)timer_wake;
   powerSleep(0, "switch off");
 #else
   if (g_rtc.lockout_ms) g_dock_lockout_ms = g_rtc.lockout_ms;
@@ -1725,7 +1730,7 @@ static void powerOffSetup() {
   bool topup = false;
   if (g_rtc.pod_charged) {
     // Charged and asleep. Only a top-up, and only on USB, on its timer.
-    if (!(usb && cause == ESP_SLEEP_WAKEUP_TIMER))
+    if (!(usb && timer_wake))
       powerSleep(usb ? cfg::OFF_TOPUP_PERIOD_S : 0, "pod parked and charged");
     topup = true;
   }

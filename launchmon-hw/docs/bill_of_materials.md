@@ -21,15 +21,15 @@ include the spares worth having. Wiring for every part is in
 | # | Part | Specification | Qty | Notes |
 |---|---|---|---|---|
 | G1 | **Infineon BGT24LTR11** 24 GHz radar module | Dual-channel I/Q CW Doppler, 24.00-24.25 GHz ISM band, IFI and IFQ outputs | 1 | The enclosure assumes a 25.4 x 25.4 mm board with M2 holes 2.5 mm in from each corner. **Measure yours** and set `radar_pcb` and `radar_holes` in the CAD before printing. The BGT24LTR11 chip runs on 3.3 V. Feed the module's 5 V pin only if it has its own 3.3 V regulator (see the wiring doc). |
-| G2 | **ESP32-C3 SuperMini** | ESP32-C3, 4 MB flash, USB-C, 22.5 x 18 mm | 1 (+1 spare) | It has no mounting holes. The enclosure holds it with rails, two fixed lips and two printed M2 clamp tabs. |
+| G2 | **ESP32-C3 SuperMini** | ESP32-C3, 4 MB flash, USB-C, 22.5 x 18 mm | 1 (+1 spare) | It has no mounting holes. The enclosure holds it with rails, two fixed lips and two printed M2 clamp tabs. **Remove its red power LED** (or its resistor): with soft power the board is always powered, and the LED draws about 1 mA. |
 | G3 | **LM358** dual op-amp pre-amp *(optional)* | DIP-8 or SOIC-8 on a breakout, run from **3.3 V** | 1 | Leave it out if your radar module already has IF amplifiers. **MCP6002** is a drop-in rail-to-rail alternative with more headroom at 3.3 V. Passives are listed under G3a. |
 | G3a | Pre-amp passives, for both channels | 2x 10 kΩ (R_in), 2x 200 kΩ (R_f), 2x 82 nF film or C0G (C_in), 2x 56 pF C0G (C_f), 2x 1 kΩ + 2x 4.7 nF (output RC), 27 kΩ + 10 kΩ (bias divider), 10 µF + 100 nF (bias and supply decoupling) | 1 set | One gain stage per channel: x20, 200 Hz to 14 kHz. Built on a **23 x 20 mm** piece of perfboard (9 x 8 holes), with M2 holes 2.5 mm in from each corner. |
 | G4 | **3.7 V 1500 mAh LiPo** | 803450 class, about 8 x 34 x 50 mm, **with a protection PCB**, JST-PH 2.0 lead | 1 | The bay fits 50 x 34 x 8 mm with 0.5 mm clearance each side. Cells sold as "1500 mAh" vary; measure before printing. |
 | G5 | **TP4056 USB-C charging module** | With DW01A + FS8205 protection (B+/B-/OUT+/OUT- pads), 1 A default (R_PROG 1.2 kΩ) | 1 (+1 spare) | 1 A is 0.67 C for a 1500 mAh cell, which is fine. Its USB-C port lines up with the bottom cutout. |
 | G6 | **MT3608 DC-DC boost module** | 2 V-24 V in, adjustable out, **set to 5.0 V** | 1 (+1 spare) | Set it to 5.0 V on the bench **before** connecting anything to its output. It mounts inside the lid. Measure the height of its trimmer and inductor: the CAD assumes 5 mm. |
-| G7 | **SPST slide switch** | SS12D00-class (SPDT used as SPST), body about 8.6 x 3.6 x 3.5 mm | 1 (+2 spare) | Sits in the right-side wall pocket, with its lever in the recessed slot. |
+| G7 | **SPST slide switch** | SS12D00-class (SPDT used as SPST), body about 8.6 x 3.6 x 3.5 mm | 1 (+2 spare) | Sits in the right-side wall pocket, with its lever in the recessed slot. With soft power it is a **logic switch** (microamps), same part and pocket. |
 | G8 | **5 mm status LED** | Any colour, diffused; plus a **330 Ω** resistor | 1 | Sits inside, under the printed light pipe, which shows it as a flush 2.8 mm dot on the top face. |
-| G9 | Battery-sense divider | 2x **100 kΩ** 1%, 1x 100 nF | 1 set | Wired after the switch, so it draws nothing when the unit is off. |
+| G9 | Battery-sense divider | 2x **1 MΩ** 1%, 1x 100 nF | 1 set | On the cell all the time (soft power): 1.9 µA. |
 
 ### Buzzer
 
@@ -37,6 +37,20 @@ include the spares worth having. Wiring for every part is in
 |---|---|---|---|---|
 | G29 | **Bare piezo disc** | 15 mm brass, 0.3 mm, about 10 mm ceramic, with leads | 1 (+1 spare) | Glued **by its rim only**, brass face to the wall, on the frame inside the left end wall. Glued over its whole face it can barely flex and is nearly silent. It sounds through four of the grip-rib grooves, which are cut through. |
 | G30 | 470 Ω resistor | 0603, 0805 or through-hole | 1 | In series between GPIO7 and the disc (why: wiring doc, section 1.6) |
+
+### Soft power (charging while switched off)
+
+The switch becomes a logic input; "off" is deep sleep, about 53 µA in all
+(estimated). Circuits and reasons: wiring doc, section 1.7.
+
+| # | Part | Specification | Qty | Notes |
+|---|---|---|---|---|
+| G33 | AO3400A N-MOSFET | SOT-23 | 1 (+1) | MT3608 ground switch (Q3) |
+| G34 | AO3401A P-MOSFET | SOT-23 | 1 (+1) | Radar and pre-amp supply switch (Q4); a second one (Q8) for a radar module fed from 5 V |
+| G35 | BSS138 N-MOSFET | SOT-23 | 3 (+1) | Switch inverter, pod detector, USB detector (Q5-Q7) |
+| G36 | BAT54C and BAT54A | SOT-23 dual Schottky | 1 each | OR onto Q3's gate (D3); keeps the two wake pulses apart (D4) |
+| G37 | Soft-power passives | 47k, 470k, 3x 100k, 7x 1M, 100 nF, 2x 47 nF (0603). For a 5 V radar module add a 2N7002 and 2x 100k | 1 set | Values and roles: wiring doc 1.7 |
+| G38 | Perfboard about 20 x 15 mm, or a 15 x 12 mm two-sided PCB | | 1 | The power/wake board, on the lid beside the protection board |
 
 ### Pod park and charging
 

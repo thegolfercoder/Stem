@@ -4,7 +4,7 @@ One sketch per unit. Each folder name matches its `.ino`, as the Arduino IDE req
 
 | Sketch | Runs on | Role |
 |---|---|---|
-| `ground_unit/ground_unit.ino` | Ground radar unit's ESP32-C3 | Captures the radar's I/Q signals, triggers on a shot, runs the FFT analysis, links to the pod as BLE central, serves a phone as BLE peripheral, streams JSON and raw captures over USB, sounds the piezo, switches the pod's charging contacts |
+| `ground_unit/ground_unit.ino` | Ground radar unit's ESP32-C3 | Captures the radar's I/Q signals, triggers on a shot, runs the FFT analysis, links to the pod as BLE central, serves a phone as BLE peripheral, streams JSON and raw captures over USB, sounds the piezo, switches the pod's charging contacts, and with soft power deep-sleeps when switched off and wakes to charge a parked pod |
 | `shaft_pod/shaft_pod.ino` | Pod's ESP32-C3 | Samples the IMU at 1.66 kHz, streams swings as raw counts over BLE, deep-sleeps with wake-on-motion, stands down and reports its charge state while parked on the ground unit |
 
 The two share only the BLE packet format, which is specified in
@@ -49,8 +49,43 @@ that part is not fitted; its GPIOs are then left alone.
 |---|---|---|---|
 | `STEM_BUZZER` | ground unit | 1 | Piezo disc on GPIO7 (wiring doc 1.6) |
 | `STEM_POD_DOCK` | ground unit | 1 | Pod charging switch on GPIO6, DOCK+ sense on GPIO3 (wiring doc 4) |
+| `STEM_SOFT_POWER` | ground unit | 1 | Soft power (wiring doc 1.1, 1.7): the slide switch is a logic input on GPIO5, the radar and pre-amp are switched on GPIO2, USB power is read on GPIO20. **Set it to 0 for a unit wired the older way**, with the switch between the TP4056 and the MT3608: its GPIO5 floats, and a soft-power build would take that for "switched off". A soft-power unit built with 0 never powers its radar |
 | `STEM_DOCK` | pod | 1 | DOCK+ pad sense on GPIO1 (wiring doc 4) |
 | `STEM_USE_2M_PHY` | pod | 1 | Not a part: set to 0 if NimBLE lacks `updatePhy()` |
+
+## Ground unit power states (`STEM_SOFT_POWER`)
+
+| State | When | What runs |
+|---|---|---|
+| on | slide switch on | everything in this README |
+| off, charging | switch off, a pod parked, and allowed: on USB if the unit's cell is at least 3.55 V; on battery from 3.85 V, stopping under 3.70 V | the contacts' logic (wiring doc 4.7), the BLE link to the pod, a 1 s status advertisement, a 40 ms LED blip every 4 s. No radar, no captures, no sound; CPU at 80 MHz |
+| off, asleep | everything else | deep sleep, about 53 µA from the cell (wiring doc 1.7) |
+
+- **Wakes:** the switch going on (GPIO5 held low), a pod being parked or USB
+  power arriving (each a short low pulse on GPIO5), and a timer only where one
+  is needed: on USB, 10 min after a pod had to wait and every 12 h to top up a
+  charged, parked pod for 15 min; after a charging fault, at the end of its
+  lockout.
+- **A session ends** when the pod has said charged and gone to sleep (or said
+  charged for 3 min), is lifted, is on its own USB, faults, or after 2.5 h
+  (pods before firmware 0.2 never report their charge). The unit remembers a
+  charged, parked pod in RTC memory, so a USB wake does not start a new session
+  for it; parking a pod (a new pulse) clears that.
+- **Switching** on or off goes through a 1 ms or 10 ms deep sleep, so each state
+  starts from a clean boot. A pod charging when the unit is switched off loses
+  its contacts for about a second.
+- **The switch is read** 120 ms after start-up (any wake pulse is over by
+  then) with 50 ms of debounce. Switched off, the sketch never waits for a USB
+  host, and goes back to sleep within about 0.2 s: **switch the unit on to
+  flash it**, or hold BOOT and tap RESET.
+- **Status:** `UnitStatus.unit_flags` bit 7 (`soft_off`) is set in the
+  off-charging state. There was one spare bit and no spare field, so USB power
+  is not in the characteristic; it is in the USB `power` line.
+- **Pins held in deep sleep:** GPIO6 low (contacts and boost off) and GPIO2 high
+  (radar off), with `gpio_hold_en` and `gpio_deep_sleep_hold_en`. The resistors
+  on those pins hold the same levels on their own; the hold keeps the pads from
+  being configured otherwise while asleep.
+- **Not started:** `Serial1`. Its RX pin, GPIO20, reads USB power.
 
 ## Verification status
 
@@ -65,7 +100,14 @@ it, set `STEM_USE_2M_PHY` to 0. The buzzer uses the core 3.x LEDC calls
 `ledcAttach(pin, freq, bits)` and `ledcWrite(pin, duty)`; core 2.x's
 channel-based `ledcSetup` is not used. Both sketches were also checked with
 every optional part switched off, and with a full `-c` compile, which reports
-unused functions that `-fsyntax-only` does not.
+unused functions that `-fsyntax-only` does not. The ground unit compiles with
+no warnings for all eight combinations of `STEM_BUZZER`, `STEM_POD_DOCK` and
+`STEM_SOFT_POWER`. The soft-power code uses `esp_sleep.h`
+(`esp_deep_sleep_enable_gpio_wakeup`, `esp_sleep_enable_timer_wakeup`,
+`esp_sleep_get_wakeup_cause`), `driver/gpio.h` (`gpio_hold_en`,
+`gpio_deep_sleep_hold_en`), `RTC_DATA_ATTR` and `setCpuFrequencyMhz`, and
+NimBLE's `setMinInterval`/`setMaxInterval`; those are stubbed, so check them
+first on the real compile. Its off current has not been measured.
 
 The ground unit's I/Q skew correction was checked numerically: a Python port of
 `spectrumFrame()` on synthetic tones with Q sampled half a sample late gives
@@ -75,6 +117,9 @@ near 15 kHz). That checks the arithmetic, not the radar.
 ## Ground unit output (USB serial)
 
 One JSON object per line:
+
+`impact_ms` is on the `millis()` clock, the same as the live status's
+`uptime_ms` (from firmware 0.4; it used to wrap every 71.6 minutes).
 
 ```json
 {"type":"shot","shot_seq":3,"impact_ms":81234,"analysis_ms":910,
@@ -101,7 +146,11 @@ One JSON object per line:
 Other lines, each a JSON object with a `type` (additive; launchmon-py's
 reader keeps them in `messages` and reads only `"type":"shot"`):
 
-- `boot` carries `"buzzer"` and `"pod_dock"`: whether those parts were built in.
+- `boot` carries `"buzzer"`, `"pod_dock"` and `"soft_power"`: whether those were built in.
+- `power` (soft power), on each change of power state:
+  `{"type":"power","state":"off_sleeping","reason":"no pod on the contacts","battery_mv":3912,"usb":false,"wake_timer_s":0}`.
+  `state` is `on` or `off` (the switch moved), `off_charging` or
+  `off_sleeping`; `wake_timer_s` is the sleep's timer wake, 0 for none.
 - `pod_dock`, when the charging contacts change state:
   `{"type":"pod_dock","state":"charging","reason":"pod parked","off_mv":2470,"on_mv":4810}`.
   `state` is `charging`, `off`, `fault` or `low_battery`; the reason says why.
@@ -121,7 +170,8 @@ characteristics, both read and notify. Layouts are in the wiring doc, section 3.
 
 - **Shot summary** (`7d2a0102-…`, 42 bytes, 3.3): one notification per shot,
   sent with the capture ring frozen. The same readings as the `shot` line.
-- **Live status** (`7d2a0103-…`, 20 bytes, 3.4; firmware 0.3 and later): the
+- **Live status** (`7d2a0103-…`, 20 bytes, 3.4; firmware 0.3 and later; bit 7
+  of `unit_flags`, `soft_off`, from 0.4): the
   unit's battery, whether the pod is connected, parked, charging or charged
   and its battery, the dock state machine's state, reason and lockout
   countdown, the last `shot_seq`, and a few build and mode flags. Notified on a

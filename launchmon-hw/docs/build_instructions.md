@@ -157,8 +157,10 @@ shaft. Use a brim. The zip-tie tunnels and the USB port bridge without supports.
 
 Wire each unit on the bench first, with the parts loose.
 
-1. **Ground power.** Cell → TP4056 → switch → MT3608, with nothing on the MT3608
-   output. Switch on and **set the MT3608 to 5.0 V** with a multimeter. Then
+1. **Ground power.** Cell → TP4056 → MT3608 VIN+, with the MT3608's VIN-/VOUT-
+   wired to the cell's negative **for adjustment only**, and nothing on its
+   output. **Set the MT3608 to 5.0 V** with a multimeter, then move VIN-/VOUT-
+   to Q3's drain (wiring doc 1.1: the boost is switched in its ground). Then
    charge through the TP4056's USB-C and confirm its LED goes red, then blue/green.
 2. **Ground signal.** Connect the SuperMini, the pre-amp and the radar per the
    wiring doc. Check the radar's supply (section 1.3 of the wiring doc)
@@ -180,6 +182,19 @@ Wire each unit on the bench first, with the parts loose.
    paper towel across the pins never switches them on; a parked pod gives three
    chirps and `"state":"charging"`, and lifting it gives `"state":"off"` within a
    few seconds.
+7. **Soft power.** Remove the SuperMini's red power LED first (with soft power
+   the board is always powered, and the LED alone draws about 1 mA). Then:
+   - Switched off and asleep, measure the cell current in series with the
+     cell's lead: expect about 50 µA. Over 150 µA is a fault; about 1 mA means
+     the LED is still fitted.
+   - Switch on: `boot`, `ready`, one chirp. Switch off: `power` lines `off`,
+     then `off_sleeping`.
+   - Asleep, park the pod: `off_charging`, then `charging`, and the LED blips
+     every 4 s. Lift it: `off_sleeping`.
+   - Plug USB in with no pod: it wakes and sleeps again.
+   - With the cell under 3.85 V and no USB, park the pod: it waits. Plug USB in
+     and it charges.
+   - At switch-on, Q3's gate ramps to about 2.8 V over a few ms, with no reset.
 
 ## 4. Ground unit assembly
 
@@ -296,7 +311,7 @@ the lid's edge, tilted about 20°.
 the pod is parked and charging. Long-short and short-long: the pod connected
 or disconnected over Bluetooth. Three long ones every 5 minutes: the unit's own
 battery is low. One very long one: a charging fault. Send `b` over serial to
-turn them off.
+turn them off. Switched off, the unit is silent.
 
 **The camera.** Film the swing from a tripod, not from the unit. Put the phone
 or tablet in an ordinary 1/4"-20 clamp on any tripod about **3 m behind the
@@ -345,11 +360,16 @@ and one cable to charge.
 - **To park it,** push its arrow end up into the hood, clamp toward the unit.
   The magnets pull it home. **To take it,** pull it down and out. The unit
   still lifts out of the dock with the pod parked.
-- **It charges from the unit only while the unit is switched on.** The slide
-  switch cuts the 5 V rail, so a switched-off unit cannot charge the pod. To
-  charge both at once, plug a charger into the unit's USB-C, switch the unit
-  on and park the pod: about 1.5 hours from flat. Switch the unit off when the
-  pod reports `"charge":"charged"`. Or charge the pod on its own USB-C.
+- **It charges even with the unit switched off.** Off means the unit is
+  asleep, not unpowered (firmware 0.4, soft power). A parked pod wakes it:
+  - **on USB,** it always charges the pod. To charge both overnight, plug the
+    unit in, park the pod and leave it. Plugging the unit in also starts a pod
+    that was waiting;
+  - **on the unit's own battery,** only if the unit is above about 60%, and it
+    stops at about 45%, so the unit keeps enough for its next session.
+  While it charges the pod with the switch off, the LED blips every 4 s and it
+  is silent. It goes back to sleep by itself when the pod is charged or lifted.
+  Nothing needs switching off. About 1.5 hours from flat.
 - A full pod charge costs the unit about 15% of its own battery. Below 3.55 V
   on its cell the unit stops charging the pod.
 - A pod with a completely flat cell cannot announce itself to the unit (the
@@ -357,6 +377,12 @@ and one cable to charge.
   USB-C in for a minute first.
 - The pins stay dead whenever no pod is parked, so wet grass or a coin across
   them does nothing.
+- **Switched off, the unit draws about 50 µA** (estimated; measure it with
+  bench test 7). It can sit for well over a year from half charge. For
+  shipping or storage longer than that, unplug the cell's connector inside: a
+  true zero.
+- **To flash the unit, switch it on.** Switched off, it goes back to sleep
+  within about 0.2 s (or hold BOOT and tap RESET).
 
 ## 5. Shaft pod assembly
 

@@ -793,7 +793,7 @@ What it has to do:
 
 | Net | Ground unit | Pod |
 |---|---|---|
-| DOCK+ | Pogo pin. Fed from the 5 V rail through Q1 and F1. Sensed on GPIO3 | Flat pad. To the SuperMini 5V pin through D2. Beacon 220k from 3V3. Sensed on GPIO1 |
+| DOCK+ | Pogo pin. Fed from the 5 V rail through Q1 and F1. Sensed on GPIO3, and by Q6 for the wake line (1.7) | Flat pad. To the SuperMini 5V pin through D2. Beacon 220k from 3V3. Sensed on GPIO1 |
 | DOCK- | Pogo pin. GND | Flat pad. GND |
 
 ### 4.2 Ground unit: switch, fuse and sense (pocket board)
@@ -923,8 +923,8 @@ Q1's body diode: 0.3 mAh a day, under 3% a week.
 ### 4.5 Shorts and wet contacts
 
 - **Contacts dead (the normal state).** Nothing on the pins can draw from the
-  ground unit's cell. The only thing connected to DOCK+ is the 800 kΩ to
-  ground, plus D1.
+  ground unit's cell. The only things connected to DOCK+ are the 800 kΩ to
+  ground, D1, and (soft power) Q6's gate through R14, which draws nothing.
 - **A short is never switched into.** A shorted pair reads 0 V, so it never
   passes the presence test. After switch-on, DOCK+ must read at least 4.0 V
   within 20 ms or the switch goes straight back off.
