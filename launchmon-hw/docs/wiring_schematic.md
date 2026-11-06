@@ -28,6 +28,91 @@ unrelated.
 
 ### 1.1 Power path
 
+This is **soft power**, ground firmware `STEM_SOFT_POWER` 1 (the default). The
+slide switch is a logic input and carries microamps. "Off" is deep sleep, with
+the boost converter, the radar and the pre-amp unpowered, so a pod parked on a
+switched-off unit can still charge (4.6). The switch, the wake line and the
+switched rails are in 1.7. The older wiring, with the switch in the power path,
+is at the end of this section; build its firmware with `STEM_SOFT_POWER 0`.
+
+```
+                     +-------------- TP4056 USB-C module (with DW01A/FS8205) --------------+
+   USB-C 5 V in ---> | IN+ ------------------------------------------> VBUS sense (1.7)   |
+   (bottom cutout)   |   B+  B-                                    OUT+          OUT-       |
+                     +---|---|-----------------------------------------|-------------|-------+
+                         |   |                                         |             |
+              LiPo + ----+   +---- LiPo -                              |             |
+              3.7 V 1500 mAh, protected                                |             |
+                                                                       +--- 1M ---+--- 1M --- GND
+                                                                       |          +--> GPIO4 (ADC1_CH4)
+                                                                       |          +--- 100 nF --- GND
+                                                                       v                     |
+                                   +--- MT3608 boost, set to 5.0 V ---+                      |
+                                   | VIN+                       VOUT+ |-----> 5 V rail       |
+                                   | VIN-                       VOUT- |                      |
+                                   +----|----------------------|------+                      |
+                                        +----------+-----------+   "MGND": the MT3608's own  |
+                                                   |                ground, nothing else      |
+                                           Q3 AO3400A drain                                   |
+                                           Q3 gate <-- SW_ON or GPIO6, soft start (1.7)       |
+                                           Q3 source ----------------------------------------+---> GND rail
+```
+
+| From | To | Notes |
+|---|---|---|
+| LiPo + / - | TP4056 **B+ / B-** | The protection chip sits between B- and OUT-. **Never** connect a load to B+/B-. |
+| TP4056 **OUT+** | MT3608 **VIN+**, and the top of the battery divider (1 MΩ / 1 MΩ, 100 nF) | No switch in the path. The divider is on the cell all the time, so it is 1 MΩ / 1 MΩ: 1.9 µA at 3.8 V, where 100k/100k would draw 19 µA |
+| TP4056 **OUT-** | **GND rail** | One ground for everything except the MT3608 |
+| MT3608 **VIN-** and **VOUT-** | joined, to **Q3's drain** only | The module's ground is switched. No other part may use these pads as its ground |
+| Q3 source | GND rail | |
+| MT3608 **VOUT+** (5.0 V) | **5 V rail**: SuperMini **5V** pin, the pod charging switch (4.2), and a 5 V radar module through Q8 (1.3, 1.7) | |
+| SuperMini **3V3** pin | the ESP32, Q4 (radar and pre-amp switch, 1.7), the switch and the wake network's pull-ups (1.7) | The SuperMini's regulator supplies 3.3 V for the whole board |
+| TP4056 **IN+** | VBUS sense, R17 (1.7) | The unit's USB 5 V, before the charger |
+
+How it behaves:
+
+- **On.** The switch turns Q3 on through D3, so the MT3608 runs whatever the
+  firmware is doing. The firmware then powers the radar and pre-amp (GPIO2 low).
+- **Off, asleep.** Q3 is off and the MT3608 has no ground: it cannot switch,
+  and its own feedback divider (about 18 kΩ on the common module: a 2.2 kΩ
+  bottom and the trimmer at about 16 kΩ for 5.0 V) has no path to draw
+  through. The cell still reaches the 5 V rail through the MT3608's inductor
+  and output Schottky, at the cell voltage less about 0.15 V (3.15-4.05 V).
+  That is the ESP32's supply in deep sleep: the SuperMini's regulator makes
+  3.3 V from it. Nothing else on the rail draws: the pod charging switch is off,
+  and the radar is switched off (1.7).
+- **Off, charging a parked pod.** GPIO6 turns on the contacts and, through D3,
+  Q3 with them: the same 5 V as when on, with the radar still off.
+
+**Why the MT3608's ground and not its EN pin.** On the common module EN is tied
+to VIN on the board, so using it means lifting a pin of a SOT-23-6. Worse, a
+disabled boost converter still passes its input through the inductor and
+diode: the 5 V rail would sit at about 3.6 V, and the module's own feedback
+divider would draw about 0.2 mA from it (196 µA at 3.6 V), four times the rest
+of the off budget (1.7). Switching the module's ground stops both, needs no
+rework of the module, and leaves the pass-through as the ESP32's standby supply
+for free. With MGND floating, the MT3608 chip draws no more than Q3's off
+leakage (under 1 µA).
+
+**Set the MT3608 before connecting anything to it.** Power its input from the
+cell with its VIN- on the cell's negative, turn the trimmer until a multimeter
+reads 5.0 V at VOUT+, then wire it as above. A new MT3608 often comes set well
+above 5 V.
+
+**Remove the SuperMini's red power LED** (or its series resistor), as on the
+pod. It is lit from 3V3 whenever the board has power, which with soft power is
+always: of the order of a milliamp, against about 50 µA for everything else
+while off.
+
+**Flashing.** With the unit switched on, as before: the SuperMini's USB 5 V and
+the MT3608's 5 V meet at the SuperMini's 5V pin, and the MT3608's output diode
+blocks reverse current into it. **Switched off, the firmware goes back to
+sleep within about 0.2 s of starting, and its USB port disappears.** Switch the
+unit on to flash it, or hold BOOT and tap RESET. With Q3 off, the SuperMini's
+USB 5 V on the rail does no harm: the MT3608 has no ground to run from.
+
+#### Older wiring: switch in the power path (`STEM_SOFT_POWER 0`)
+
 ```
                      +-------------- TP4056 USB-C module (with DW01A/FS8205) --------------+
    USB-C 5 V in ---> | IN                                                                   |
@@ -53,22 +138,13 @@ unrelated.
    GND rail  <----------------------------------------------------------------+------+
 ```
 
-| From | To | Notes |
-|---|---|---|
-| LiPo + / - | TP4056 **B+ / B-** | The protection chip sits between B- and OUT-. **Never** connect a load to B+/B-. |
-| TP4056 **OUT+** | Switch common | |
-| Switch output | MT3608 **VIN+**, and the top of the 100k/100k divider | The divider is after the switch, so it draws nothing when the unit is off. |
-| TP4056 **OUT-** | MT3608 **VIN-** and the **GND rail** | One ground for everything. |
-| MT3608 **VOUT+** (5.0 V) | **5 V rail**: SuperMini **5V** pin, radar module **VIN** *(only if the module has a 3.3 V regulator: see 1.3)*, the pod charging switch (4.2) | |
-| SuperMini **3V3** pin | Pre-amp V+, bias divider, radar **VCC** if the module is 3.3 V only | The SuperMini's regulator supplies 3.3 V for the whole analogue side. |
-
-**Set the MT3608 before connecting anything to it.** Power its input from the
-cell, turn the trimmer until a multimeter reads 5.0 V at VOUT+, then wire the
-loads. A new MT3608 often comes set well above 5 V.
-
-**Flashing with the unit switched on** is fine. The SuperMini's USB 5 V and the
-MT3608's 5 V meet at the SuperMini's 5V pin. The MT3608's output diode blocks
-reverse current into it, and both sources are about 5 V.
+The switch sits between TP4056 OUT+ and MT3608 VIN+; the 100k/100k battery
+divider is after the switch, so it draws nothing when the unit is off; MT3608
+VIN- goes to the GND rail; the radar and pre-amp are fed directly (5 V rail or
+SuperMini 3V3, 1.3). Off, nothing after the switch has power: the only drain is
+the TP4056 module's and the cell's own protection, about 7.5 µA (1.7), and a
+parked pod cannot charge (4.6). GPIO2, GPIO5 and GPIO20 are used as in the
+older pin table notes in 1.2.
 
 ### 1.2 Signal wiring (SuperMini pins)
 
@@ -77,15 +153,17 @@ reverse current into it, and both sources are about 5 V.
 | **GPIO0** (ADC1_CH0) | in | Pre-amp channel I output (or radar **IFI** if no pre-amp) | Sampled at 40 kS/s |
 | **GPIO1** (ADC1_CH1) | in | Pre-amp channel Q output (or radar **IFQ**) | Sampled 12.5 µs after I; the firmware corrects the skew |
 | **GPIO3** (ADC1_CH3) | in | DOCK+ sense divider midpoint (4.2) | Read between shots only, like the battery |
-| **GPIO4** (ADC1_CH4) | in | Battery divider midpoint | Read between shots only |
-| **GPIO6** | out | 2N7002 gate (pod charging switch, 4.2) | High turns DOCK+ on. 10 kΩ to GND holds it off through reset |
+| **GPIO4** (ADC1_CH4) | in | Battery divider midpoint (1 MΩ / 1 MΩ on the cell, 1.1) | Read between shots only |
+| **GPIO6** | out | 2N7002 gate (pod charging switch, 4.2), and D3 to the boost switch Q3 (1.7) | High turns DOCK+ on, and the MT3608 with it. 10 kΩ to GND holds both off through reset |
+| **GPIO2** | out | Q4 gate, radar and pre-amp power (1.7) | **Low = on.** R11 100 kΩ to 3V3 holds it off through reset and keeps this strapping pin at 1, as SPI boot needs |
+| **GPIO5** | in | WAKE (1.7): Q5 drain, R13 1 MΩ to 3V3, D4 | Low while the switch is on; pulsed low by a pod being parked or USB power arriving. The deep-sleep wake pin |
+| **GPIO20** | in | VBUS_N (1.7): Q7 drain | Low while USB power is on the TP4056. Read while awake |
 | **GPIO7** | out | 470 Ω → piezo disc; disc's other lead → GND (1.6) | LEDC square wave at `BUZZER_HZ` |
 | **GPIO10** | out | 330 Ω → 5 mm LED anode; cathode → GND | Status LED in the top face |
-| **GPIO5** | out | Radar module enable, **if it has one** | Off by default (`PIN_RADAR_EN = -1`) |
 | **GPIO9** | in | On-board BOOT button | Short press toggles raw USB streaming |
-| **GPIO20 / GPIO21** | UART0 RX / TX | Auxiliary serial (`Serial1`, 115200 8N1) | Spare: debug, or a radar board with a digital interface |
+| **GPIO21** | - | spare | `Serial1` is not started: its RX pin, GPIO20, is VBUS_N |
 | **5V / GND / 3V3** | power | as section 1.1 | |
-| GPIO2, GPIO8 | - | **leave unconnected** | Strapping pins. GPIO8 also drives the on-board LED. |
+| GPIO8 | - | **leave unconnected** | Strapping pin. It also drives the on-board LED. |
 | GPIO18 / GPIO19 | - | (USB D- / D+) | Used by USB-C; do not connect |
 
 Only ADC1 is used. On the C3, ADC2 is unreliable and is not used for anything.
@@ -95,18 +173,39 @@ read by pausing the stream for a few milliseconds, between shots.
 Why these pins for the new parts: GPIO3 is the only free ADC1 pin that is not a
 strapping pin (GPIO2 is one). GPIO6 and GPIO7 are free, are not strapping, USB
 or flash pins (the SuperMini's flash is in the package, on pins it does not
-expose), and sit on the opposite header row from the I/Q inputs. GPIO20/21
-stay the auxiliary UART: GPIO21 also carries the ROM's boot log, which would
-chirp a buzzer or toggle a switch at every reset.
+expose), and sit on the opposite header row from the I/Q inputs. GPIO21
+carries the ROM's boot log, which would chirp a buzzer or toggle a switch at
+every reset, so it drives nothing.
+
+**Soft power (1.7) and the pins it took.** Only GPIO0-5 can wake a C3 from deep
+sleep. GPIO0/1 are the I/Q inputs and GPIO3/4 the dock and battery ADC inputs,
+none of which can move. GPIO2 is a strapping pin that must read 1 at every
+reset, deep-sleep wakes included, for the chip to boot from flash: a wake input
+cannot promise that, but an output whose pull-up is its off state can, so
+GPIO2 switches the radar's power. That leaves **one** wake pin, GPIO5, for
+three wake sources (the switch, a pod, USB): the pod and USB arrive on it as
+short pulses, so the switch's level is always readable (1.7). GPIO5 was the
+optional radar enable; the radar's whole supply is switched now, so a module's
+own enable pin is simply tied to its active level. The one cost is the
+auxiliary UART: its RX pin, GPIO20, reads USB power, and `Serial1` is not
+started. With `STEM_SOFT_POWER 0`, GPIO2 is left unconnected, GPIO5 is the
+optional radar enable (`PIN_RADAR_EN`, off by default) and GPIO20/21 are the
+auxiliary UART (`Serial1`, 115200 8N1).
 
 ### 1.3 Radar module supply: check before connecting
 
 The **BGT24LTR11 chip is a 3.3 V part**. Boards built around it come two ways:
 
 - **With an on-board 3.3 V regulator** and a 5 V or VIN pin: feed it from the
-  **5 V rail**. This is what the brief's "5 V to radar" means.
-- **Bare 3.3 V board**: feed it from the **SuperMini 3V3 pin**. **Never** from
-  5 V: that destroys the chip.
+  **5 V rail**. This is what the brief's "5 V to radar" means. With soft power,
+  through Q8, which follows the radar switch Q4 (1.7).
+- **Bare 3.3 V board**: feed it from the **SuperMini 3V3 pin**; with soft power,
+  from **3V3_AN**, Q4's drain (1.7). **Never** from 5 V: that destroys the chip.
+
+With soft power the radar must be fed from a switched rail, one way or the
+other. The BGT24LTR11 draws tens of milliamps whenever it has power, and in
+deep sleep the 5 V rail still carries the cell's pass-through (1.1). A module's
+enable pin, if it has one, is tied to its active level.
 
 Check the board's schematic or measure: a regulator is usually a SOT-23-5 or
 SOT-89 part next to the power pin. Some boards also expose **VTUNE** (the VCO
@@ -135,6 +234,7 @@ drawn for channel I; channel Q is identical, on the LM358's second op-amp.
           0.9 V                                GND
 
    V_bias:  3V3 ---/\/\/\---+---/\/\/\--- GND        LM358 pin 8 -> 3V3, pin 4 -> GND
+            (3V3_AN with soft power, 1.7: the divider alone would draw 89 µA off)
                     27k     |     10k                100 nF from pin 8 to GND, close to the chip
                             +--- 10 uF --- GND
                             +--> to both op-amps' (+) inputs
@@ -226,7 +326,7 @@ Tune `BUZZER_HZ` to the loudest setting by ear on the built unit.
 
 | Event | Pattern | Notes |
 |---|---|---|
-| Ready | 1 chirp, 60 ms | 1 s after boot (once the trigger has learnt its noise level), and when re-armed with serial `a` |
+| Ready | 1 chirp, 60 ms | 1 s after boot (once the trigger has learnt its noise level), and when re-armed with serial `a`. With soft power that is about 1.5 s after the switch goes on. Switched off, the buzzer is silent, charging or not |
 | Shot read | 2 chirps, 60 ms | After a capture in which an impact was found |
 | Pod parked, charging | 3 quick chirps, 40 ms | Section 4 |
 | Pod connected | long, short (200, 60 ms) | Not while it is parked |
@@ -240,6 +340,190 @@ the takeaway, mid-swing, and the radar must not be armed while a tone plays.
 Turn it off at build time with `#define STEM_BUZZER 0` (GPIO7 is then left
 alone), or at run time with serial `b`. The ground unit has no writable BLE
 characteristic, so there is no BLE setting.
+
+### 1.7 Soft power: the switch, the wake line and the switched rails
+
+Ground firmware `STEM_SOFT_POWER` 1. Every part here costs a few cents; the
+lot is about $0.15-0.25 in small quantities, well under $1 at hobby prices.
+
+**Boost switch.** The slide switch, or the pod charging contacts, start the
+MT3608 by switching its ground (1.1).
+
+```
+   SuperMini 3V3 ---o slide switch o--- SW_ON ---+--------------+-------------> Q5 gate (wake line, below)
+                     (its common pin is SW_ON)   |              |
+                                               R12 1M        D3a  BAT54C, common cathode
+                                                 |              |
+                                                GND             +--- R9 47k ---+--- Q3 gate  (AO3400A, 1.1)
+   GPIO6 (DOCK_EN, 4.2) ------------------------- D3b ----------+              +--- C4 100n --- GND
+                                                                               +--- R10 470k --- GND
+```
+
+**Radar and pre-amp switch.** A P-FET from the SuperMini's 3V3, gated by GPIO2.
+
+```
+   SuperMini 3V3 ---+-------------- Q4 AO3401A source
+                    |               Q4 drain ---> 3V3_AN: LM358 pin 8, the 27k/10k bias divider (1.4),
+                  R11 100k                        and a bare 3.3 V radar module's VCC (1.3)
+                    |               Q4 gate
+   GPIO2 -----------+---------------+          low = on; R11 holds it off through reset
+
+   5 V radar modules only (1.3): a second P-FET on the 5 V rail that follows Q4.
+   5 V rail ---+--------- Q8 AO3401A source;  Q8 drain ---> radar VIN
+             R23 100k     Q8 gate
+               +----------+------ Q9 2N7002 drain;  Q9 source --- GND
+                                  Q9 gate <--- 3V3_AN,  R24 100k gate to GND
+```
+
+**Wake line.** One pin, GPIO5, active low. The switch holds it low; a pod being
+parked and USB power arriving each pull it low for a few milliseconds.
+
+```
+                       3V3                3V3                        3V3          3V3
+                        |                  |                          |            |
+                      R13 1M             R15 1M                     R16 1M       R20 1M
+                        |                  |                          |            |
+   GPIO5 (WAKE) --------+--- Q5 drain   POD_N = Q6 drain ---C5 47n----+ node A     + node B
+                        |   (Q5 gate = SW_ON)                         |            |
+                        +------|>|--------------------------------------+            |
+                        |      D4a                                                  |
+                        +------|>|---------------------------------------------------+
+                               D4b   (BAT54A: common anode at WAKE)                 |
+                                                     VBUS_N = Q7 drain ---C6 47n----+
+   DOCK+ (4.2) ---- R14 100k ---- Q6 gate             |  R19 1M to 3V3
+                                                      +---------------------------> GPIO20
+   TP4056 IN+ ---- R17 100k ---+--- Q7 gate
+                             R18 100k --- GND         Q5, Q6, Q7 sources --- GND
+```
+
+| Part | Value | Why |
+|---|---|---|
+| Q3 | AO3400A, SOT-23, N-channel, 30 V, ≤ 48 mΩ at Vgs 2.5 V, Vgs(th) 0.65-1.45 V | In the MT3608's ground return (1.1). Its input draws 0.41-0.46 A when on with the pod charging: 22 mV and 10 mW in Q3 |
+| D3 | BAT54C, SOT-23, dual Schottky, common cathode | ORs SW_ON and GPIO6 onto Q3's gate. GPIO6 is held low through reset by R5 (4.2): even against a 45 kΩ internal pull-up it sits at 0.6 V, which leaves Q3's gate at 0.45 V, under its 0.65 V minimum threshold |
+| R9, C4, R10 | 47 kΩ series, 100 nF and 470 kΩ, gate to ground | Soft start. The gate settles at 2.77 V with τ 4.3 ms and passes the threshold 1-3 ms after the switch, so the MT3608's capacitors charge at tens of milliamps, not the amps an abrupt step would draw from the cell (enough to trip the DW01A's short-circuit detector). Off, τ 47 ms. Draws 5.9 µA while on |
+| Q4 | AO3401A, SOT-23, P-channel, ≤ 85 mΩ at Vgs -2.5 V | Radar and pre-amp supply. 46 mA with a 3.3 V radar: 4 mV |
+| R11 | 100 kΩ, Q4 gate to 3V3 | Off through reset and while asleep. Also holds GPIO2, a strapping pin, at 1. Gate RC 65 µs |
+| Q8, Q9, R23, R24 | AO3401A, 2N7002, 100 kΩ, 100 kΩ | Only for a radar module with its own regulator, fed from 5 V. Q9 turns on with 3V3_AN, so Q8 follows Q4. 50 µA in R23 while on |
+| R12 | 1 MΩ, SW_ON to GND | SW_ON is 0 V when the switch is open. 3.3 µA while on |
+| Q5 | BSS138, SOT-23, N-channel, Vgs(th) 0.8-1.5 V | Inverts SW_ON onto WAKE |
+| R13 | 1 MΩ, WAKE to 3V3 | WAKE's pull-up. 3.3 µA while the switch is on, 0 off |
+| Q6 | BSS138 | Pod detector. A parked pod's beacon puts 2.35-2.6 V on DOCK+ (4.4), over the BSS138's 1.5 V maximum threshold. Water across the pins only pulls DOCK+ down, so it cannot turn Q6 on. Gate leakage is nanoamps: the beacon is not loaded |
+| R14 | 100 kΩ, DOCK+ to Q6 gate | The pin is touchable: D1 clamps it (4.2), R14 limits what reaches the gate |
+| R15 | 1 MΩ, POD_N to 3V3 | 3.3 µA while a pod is parked, 0 otherwise |
+| Q7 | BSS138 | VBUS detector |
+| R17, R18 | 100 kΩ / 100 kΩ, TP4056 IN+ to Q7 gate to GND | 4.5-5.5 V of USB gives 2.25-2.75 V at the gate. 25 µA, from USB. Unplugged, the TP4056's own reverse leakage (≤ 2 µA) lifts the gate at most 0.2 V |
+| R19 | 1 MΩ, VBUS_N to 3V3 | 3.3 µA while USB is present |
+| C5, C6 | 47 nF | Turn a falling POD_N or VBUS_N into a pulse on WAKE |
+| R16, R20 | 1 MΩ, node A and node B to 3V3 | Recharge C5 and C6 after a pulse |
+| D4 | BAT54A, SOT-23, dual Schottky, common anode at WAKE | Isolates the two pulse paths. Without it, whichever detector was already on would ground its capacitor's far end, the two 47 nF would split the step, and WAKE would only fall to 1.65 V, above the 0.83 V a low must reach |
+| Battery divider | 1 MΩ / 1 MΩ 1%, 100 nF (replaces 100k/100k) | On the cell all the time (1.1). The 100 nF is the ADC's source; τ 50 ms |
+
+**Where the parts go.** Q4 and R11 on the pre-amp board, where 3V3 comes in,
+so 3V3_AN feeds the radar from there. Q8, Q9, R23, R24 (5 V radar only) by the
+radar. Everything else (Q3, D3, R9, C4, R10, Q5-Q7, D4, R12-R20, C5, C6) on one
+small board on the lid beside the protection board, where SW_ON, GPIO6, DOCK+,
+the MT3608's ground and the wires to the SuperMini meet: about 20 x 15 mm on
+perfboard with the parts dead-bugged, or 15 x 12 mm as a small two-sided PCB.
+The CAD has no pocket for it yet. The battery divider stays inline at GPIO4,
+now from the cell side.
+
+**The slide switch** is now a logic switch: its common pin to SW_ON, the end
+for "on" to the SuperMini's 3V3, the other end unconnected. The same SS12D00 in
+the same wall pocket.
+
+#### Wake sources
+
+| Event | How it reaches GPIO5 | Notes |
+|---|---|---|
+| Switch on | Q5 holds WAKE low for as long as the switch is on | A level. The firmware reads the switch position as WAKE's level once any pulse has passed: 120 ms after it starts, then 50 ms of debounce |
+| Pod parked | Q6 turns on, POD_N falls, C5 pulls WAKE low through D4a | A pulse. Below 0.83 V for 4.5 ms; back above 2.48 V after 26 ms (τ 23.5 ms). Lifting the pod gives no wake: POD_N rises slowly through R15, so C5 couples at most 3.3 µA |
+| USB power arrives | Q7 turns on, VBUS_N falls, C6 pulses WAKE through D4b | A pulse, as above. Unplugging gives no wake |
+| Timer | Only where needed: on USB, 10 min after a pod had to wait, and every 12 h to top up a charged pod; after a charging fault, at the end of its lockout | None on battery with nothing to do |
+
+The pulses are why one pin is enough. A level from a parked pod or a USB cable
+would hold WAKE low for hours: the chip could not sleep with it low, and could
+not see the switch behind it. Nothing but the switch ever holds WAKE low, so
+the unit never wakes over and over. To tell a pod from USB after a wake, the
+firmware reads VBUS_N on GPIO20 and remembers in RTC memory whether USB was
+present when it went to sleep; the pod is then confirmed with the ADC on GPIO3,
+as in 4.4.
+
+#### States
+
+| | On | Off, charging the pod | Off, asleep |
+|---|---|---|---|
+| When | Switch on | Switch off and a pod parked, and allowed (4.6) | Everything else |
+| MT3608 | On (switch, through D3) | On while the contacts are (GPIO6, through D3) | Off; the cell passes through to the ESP32 |
+| Radar, pre-amp | On (GPIO2 low) | Off | Off |
+| ESP32 | Everything | The dock logic of 4.7, at 80 MHz | Deep sleep |
+| BLE | As in 3 | Central to the pod (to hear it say charged), and a 1 s advertisement so a phone can read the status (3.4, `soft_off`) | None |
+| LED | As now | A 40 ms blip every 4 s | Dark |
+| Sound | As in 1.6; one chirp about 1.5 s after switching on | None | None |
+| Draw from the cell | As now | About 0.24-0.25 A on battery: the pod's 0.13 A at 5 V and the ESP32 | About 53 µA (below) |
+
+The 1 s advertisement costs about 0.1 mA, under 0.1% of the pod's charging
+current, and lets a phone see the pod charging on a switched-off unit. Asleep,
+nothing is sent: there is nothing to say until something wakes the unit.
+
+Switching between on and off goes through a short deep sleep (10 ms off, 1 ms
+on), so each state starts from a clean boot. Switched off while a pod charges,
+the contacts drop for about a second and come back in the off state if 4.6
+allows.
+
+#### Off current budget
+
+Cell at 3.8 V, 25 °C, typical values. The SuperMini figure is the one reported
+for this board in deep sleep with its power LED removed; most of it is its
+regulator's quiescent current, and boards vary. **Measure yours** (bench
+check below).
+
+| What | µA | Note |
+|---|---:|---|
+| SuperMini: ESP32-C3 deep sleep (about 5 µA) and its 3.3 V regulator's quiescent current | 43 | Reported figure, power LED removed. A board whose regulator draws 100 µA makes this about 105 |
+| Battery divider, 1 MΩ / 1 MΩ | 1.9 | 3.8 V / 2 MΩ |
+| Leakage: Q3, Q4 and Q1 off, D1, Q5-Q7 off | ~1 | Each is specified at under 1 µA at its full rated voltage; here they see 4 V or less |
+| MT3608 chip | ~0 | Its ground floats; bounded by Q3's leakage |
+| TP4056 battery pin, no USB | 1.5 | |
+| DW01A on the TP4056 module | 3 | |
+| The cell's own protection board | 3 | |
+| **Total** | **53** | 1.28 mAh a day, under 0.1% of the cell |
+| With a charged pod parked | 57 | adds R15's 3.3 µA |
+
+The last three lines, 7.5 µA, were there with the old hard switch too. Soft
+power adds about 46 µA, almost all of it the SuperMini's regulator.
+
+**Shelf life**, on that drain alone: 1500 mAh lasts about 1170 days (38 months)
+from full, 585 days (19 months) from half charge. With a 100 µA regulator it is
+about 18 months from full, 9 from half. A LiPo's own self-discharge, a few
+percent a month, is of the same order, so the unit can sit switched off for a
+season. Each wake costs about 2 µAh (about 0.3 s at 25 mA), so the wakes
+themselves do not change this.
+
+**Hard off, for shipping or storage beyond a year:** unplug the cell's JST-PH
+connector (lid off, four screws). That is a true zero, and it needs no part.
+Nothing cheaper does better: a firmware "ship mode" cannot switch off the
+SuperMini's regulator, which is most of the 53 µA, and a three-position slide
+switch would put a power contact back in the path and need a new wall pocket.
+
+#### Bench checks (soft power)
+
+1. With the unit switched off and asleep, measure the current out of the cell
+   (meter in series with the cell's lead). **Expect about 50 µA; investigate anything
+   over 150 µA.** About a milliamp means the red power LED is still fitted.
+2. Switch on: `boot` and `ready` as before, and the chirp. Switch off: a
+   `power` line `"state":"off","reason":"switch off"`, then
+   `"state":"off_sleeping"`, and the cell current falls back to item 1.
+3. Asleep, park the pod: within a second `"state":"off_charging"`, then
+   `pod_dock` `"state":"charging"`, and the LED blips every 4 s. Lift it:
+   `"state":"off_sleeping"`, `"reason":"no pod on the contacts"`.
+4. Asleep with no pod, plug USB into the unit: the unit wakes, prints
+   `"usb":true` and sleeps again (`no pod on the contacts`).
+5. With the cell under 3.85 V and no USB, park the pod: the unit wakes and
+   sleeps again, `unit battery under 3.85 V: pod waits for USB`. Plug USB in:
+   it starts charging the pod.
+6. Measure Q3's gate while switching on: it should ramp to about 2.8 V over
+   a few milliseconds, and the 5 V rail should come up without the unit
+   resetting.
 
 ---
 
@@ -376,7 +660,10 @@ firmware and has no power fields. Nothing else in either packet changed.
 each `{value f32, provenance u8, refusal u8}`: `ball_speed_radial` (m/s),
 `club_speed_radial` (m/s), `smash`, `peak_shaft_rate` (deg/s), `tempo_ratio`.
 Then `battery_mv_ground` u16 and `battery_mv_pod` u16 (0 when no pod is
-connected). Packed and little-endian, **42 bytes**; a `static_assert` in the
+connected). `impact_ms` is on the `millis()` clock, the one `uptime_ms` is on
+(3.4), and wraps with it after 49.7 days: from ground firmware 0.4 it is worked
+out from the 64-bit microsecond count. Earlier firmware divided a 32-bit
+microsecond count by 1000, so its `impact_ms` wrapped every 71.6 minutes. Packed and little-endian, **42 bytes**; a `static_assert` in the
 firmware pins the size. A 42-byte notification needs an ATT MTU of at least 45:
 where a phone negotiates less, the notification is cut to 20 bytes, and the
 results screen (`launchmon-hw/results/`) reads the characteristic instead.
@@ -401,7 +688,7 @@ short, unlike the 42-byte shot summary.
 | 0 | u8 | magic | `0x5B` (the shot summary is `0x5A`, pod packets `0xA7`) |
 | 1 | u8 | version | `1` |
 | 2 | u8 | fw_major | ground firmware version: `0` |
-| 3 | u8 | fw_minor | `3` (0.3 added this characteristic) |
+| 3 | u8 | fw_minor | `4` (0.3 added this characteristic; 0.4 added soft power and `unit_flags` bit 7) |
 | 4 | u32 | uptime_ms | `millis()`: the clock `impact_ms` is on (3.3). Going backwards means the unit restarted. Wraps after 49.7 days |
 | 8 | u16 | battery_mv_ground | as in 3.3: read every 30 s between shots; ≤ 1000 = no usable reading |
 | 10 | u16 | battery_mv_pod | the pod's cell, from its status (1 s). **0 when no pod is connected**, or before its first status on this link |
@@ -436,7 +723,7 @@ short, unlike the 42-byte shot summary.
 | 4 | raw_streaming | raw captures go to USB after each shot (serial `r`, BOOT button) |
 | 5 | batt_low | the unit's cell is under 3.50 V (`BATT_LOW_MV`) |
 | 6 | adc_fault | the radar's ADC stream failed to start or restart: no shots will be captured |
-| 7 | — | 0 |
+| 7 | soft_off | built with `STEM_SOFT_POWER` and switched off: the unit is awake only to charge a parked pod (1.7, 4.6). No shots will come. Asleep it sends nothing at all, so a phone sees the link drop. Always 0 in a build without soft power |
 
 `dock_state` (`enum class DockState`; the USB `pod_dock` line's word in brackets):
 
@@ -488,7 +775,7 @@ magic or version is not exactly as above, whole.
 Two recessed spring-loaded pogo pins on the ground unit, **DOCK+** (+5 V) and
 **DOCK-** (GND), touch two flat pads on the pod. Magnets or a clip hold it
 there; that side is in the CAD. The ground unit's parts fit on a small board
-in the 12 x 10 x 4 mm pocket the CAD reserves.
+in the 15 x 12 x 4.3 mm pocket the CAD reserves on the lid.
 
 What it has to do:
 
@@ -625,9 +912,13 @@ for one thing: when a charging pod reports it has lost dock power, the ground
 unit checks the contacts at once instead of at the next scheduled look (4.7).
 
 Drain on the pod: under 1 µA off the dock (the beacon into its own pad
-divider). Parked on a ground unit that is switched off, about 13 µA, through
-the ground unit's divider and Q1's body diode into its unpowered 5 V rail:
-about 0.3 mAh a day, under 3% of the cell a week.
+divider). Parked on a switched-off ground unit with soft power (1.1), 3.2 µA:
+the beacon into the 800 kΩ. The unit's 5 V rail then sits at its cell voltage
+less about 0.15 V, above the beacon, so Q1's body diode is reverse-biased. That
+is 0.08 mAh a day, about 0.5% of the pod's cell a week. On the older wiring
+(`STEM_SOFT_POWER 0`), or a unit whose own cell is cut off by its protection,
+the rail is unpowered and the drain is about 13 µA, through the divider and
+Q1's body diode: 0.3 mAh a day, under 3% a week.
 
 ### 4.5 Shorts and wet contacts
 
@@ -653,27 +944,52 @@ about 0.3 mAh a day, under 3% of the cell a week.
 
 ### 4.6 With the ground unit switched off
 
-**The pod does not charge from a ground unit that is switched off.** The slide
-switch sits between the TP4056 and the MT3608 (1.1). Off, there is no 5 V
-rail, no ESP32 to look for a pod, and nothing at Q1's source. Plugging a charger
-into the ground unit's USB-C does not change that: the TP4056 charges the
-ground unit's cell, and the switch still isolates everything after it. Feeding
-the contacts from the charger input instead would bypass the presence check,
-so it is not done.
+**With soft power (1.1, 1.7), a parked pod charges while the unit is switched
+off.** The slide switch only tells the firmware; the contacts are powered by
+the same MT3608, started by the contacts' own switch (GPIO6, through D3), and
+checked exactly as in 4.4 and 4.7. Whether it charges depends on where the
+power comes from:
 
-To charge both at once: plug a charger into the ground unit's USB-C, **switch
-it on**, and park the pod. The pod charges at 100 mA, roughly 1.5 hours from
-flat. The ground unit's cell charges at the TP4056's 1 A, less the 0.3 A or so
-the running unit draws with the dock on. One caution: while the unit is on,
-its own load keeps the TP4056's current above its 100 mA end-of-charge
-threshold, so it holds the cell at 4.2 V instead of finishing. Switch the
-ground unit off once the pod reports charged (its LED goes dark, and the
-ground unit prints `"charge":"charged"`); the TP4056 then finishes normally.
-Or charge the pod on its own USB-C.
+- **On USB** (a charger in the unit's USB-C): yes, as long as the unit's own
+  cell reads at least 3.55 V, the same rule as when the unit is on. The pod
+  charges at 100 mA, about 1.5 hours from flat. While it does, the dock's load
+  sits on the cell, so the TP4056 holds the cell at 4.2 V rather than finishing;
+  once the pod is done the unit goes back to sleep and the TP4056 finishes
+  normally. Nobody has to switch anything off.
+- **On the unit's own battery:** only if the unit's cell reads at least
+  3.85 V (about 60% charged) when the pod is parked or the unit is switched
+  off, and it stops when the cell falls below 3.70 V under the dock's load
+  (about 45%). A full pod charge costs the unit about 15% of its cell, so a
+  switched-off unit gives away at most about one pod charge and keeps the rest
+  for its next session. Under 3.85 V the pod waits; plugging USB into the unit
+  then starts it.
 
-On battery, a full pod charge costs the ground unit about 15% of its cell. The
-dock stops charging the pod when the ground unit's cell drops below 3.55 V, and
-resumes above 3.7 V.
+Why not always: the unit's own run time is what a session depends on, and a
+pod that empties a forgotten unit is the worse surprise. Why not only on USB:
+the usual end of a session is to park the pod and switch off, and with a
+reasonably charged unit the pod is then full for the next one without anyone
+remembering a cable.
+
+A session ends, the contacts go dead and the unit sleeps, when the pod has
+reported charged and gone to sleep on the contacts (or has said charged for 3
+minutes), when it is lifted, when its own USB-C is on a computer, after a fault
+(the unit wakes to try again when the lockout ends), or after 2.5 hours (a pod
+with firmware before 0.2 never reports its charge). A charged pod left parked
+is topped up for 15 minutes every 12 hours while the unit is on USB, and not on
+battery, where each top-up would keep the ESP32 awake for about 12 mAh.
+
+**With the older wiring (`STEM_SOFT_POWER 0`) the pod does not charge from a
+switched-off unit.** The switch sits between the TP4056 and the MT3608 (1.1):
+off, there is no 5 V rail and no ESP32 to look for a pod, and a charger in the
+unit's USB-C only charges the unit. To charge both at once, plug a charger into
+the unit, switch it on and park the pod. While the unit is on, its own load
+keeps the TP4056's current above its 100 mA end-of-charge threshold, so it
+holds the cell at 4.2 V instead of finishing: switch the unit off once the pod
+reports `"charge":"charged"`.
+
+When the unit is on, with either wiring, a full pod charge costs the unit about
+15% of its cell. The dock stops charging the pod when the ground unit's cell
+drops below 3.55 V, and resumes above 3.7 V.
 
 ### 4.7 Firmware
 
@@ -701,6 +1017,11 @@ resumes above 3.7 V.
   with its readings.
 - The same state, the pod's power report and both batteries go to the phone
   live, in the status characteristic (3.4).
+- **Switched off, with soft power** (1.7, 4.6), the same checks and thresholds
+  run in the off-charging state. With no radar, every check counts as quiet;
+  switching the contacts on waits 50 ms rather than 20, because the MT3608
+  starts with them. No sound. A USB line reports each power change:
+  `{"type":"power","state":"on|off|off_charging|off_sleeping","reason":"...","battery_mv":3912,"usb":false,"wake_timer_s":0}`.
 
 **Pod** (`STEM_DOCK`, default 1):
 
@@ -729,3 +1050,6 @@ resumes above 3.7 V.
 4. Lift the pod: `"state":"off"` within a few seconds.
 5. Plug the pod's USB-C into a computer while it is parked: the ground unit
    turns the contacts off (`pod is on its own USB power`).
+6. With soft power, the checks in 1.7, and then: switch the unit off with the
+   pod parked and charging, on USB. The contacts drop for about a second and
+   come back (`"state":"off_charging"`); the pod keeps charging.

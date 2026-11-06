@@ -53,14 +53,39 @@
 //      GPIO0  ADC1_CH0 <- I channel (pre-amp output)
 //      GPIO1  ADC1_CH1 <- Q channel
 //      GPIO3  ADC1_CH3 <- DOCK+ (pod charging contact) via 470k/330k (read between shots)
-//      GPIO4  ADC1_CH4 <- battery via 100k/100k divider (read between shots)
-//      GPIO5           -> radar enable, if the module has one (optional)
-//      GPIO6           -> pod charging switch: 2N7002 gate, AO3401 high side (high = on)
+//      GPIO4  ADC1_CH4 <- battery via a divider (read between shots): 1M/1M on the
+//                         cell with STEM_SOFT_POWER, 100k/100k after the switch without
+//      GPIO6           -> pod charging switch: 2N7002 gate, AO3401 high side (high = on);
+//                         with STEM_SOFT_POWER it also starts the boost (BAT54C OR)
 //      GPIO7           -> piezo disc through 470 R, LEDC square wave
 //      GPIO10          -> 5 mm status LED through 330 R
 //      GPIO9           <- BOOT button: short press toggles raw USB streaming
+//      GPIO8 is a strapping pin and is left alone.
+//    Without STEM_SOFT_POWER (slide switch in the power path):
+//      GPIO5           -> radar enable, if the module has one (optional)
 //      GPIO20/21       UART0 RX/TX, auxiliary serial (Serial1)
-//      GPIO2, GPIO8 are strapping pins and are left alone.
+//      GPIO2 is a strapping pin and is left alone.
+//    With STEM_SOFT_POWER (slide switch is a logic input; wiring doc 1.7):
+//      GPIO2           -> radar and pre-amp power, AO3401A gate (LOW = on). Its 100k
+//                         pull-up holds the rail off through reset and keeps the
+//                         strapping pin at 1, as SPI boot needs
+//      GPIO5           <- WAKE, active low: held low while the switch is on, pulsed
+//                         low by a pod being parked or USB power arriving. The one
+//                         deep-sleep wake pin (only GPIO0-5 can wake a C3)
+//      GPIO20          <- VBUS_N: low while USB power is on the TP4056 (read awake)
+//      GPIO21          spare; Serial1 is not started (its RX pin is VBUS_N)
+//
+//  POWER (STEM_SOFT_POWER, docs/wiring_schematic.md 1.1 and 1.7)
+//  The slide switch no longer carries current. "Off" is deep sleep with the
+//  boost converter, the radar and the pre-amp unpowered. Three states:
+//    on            the switch is on: everything below.
+//    off-charging  the switch is off and a pod is parked: only the charging
+//                  contacts' logic runs, plus the BLE link to the pod (to hear
+//                  it say "charged") and a 1 s status advertisement. No radar,
+//                  no sound. On USB power always (unit cell >= 3.55 V); on
+//                  battery only from >= 3.85 V, stopping below 3.70 V.
+//    off-sleeping  deep sleep. Wakes on the switch, a pod being parked, USB
+//                  power arriving, and a timer only where one is needed.
 //
 //  BUZZER AND POD CHARGING (docs/wiring_schematic.md, "Buzzer", "Dock charging")
 //  The piezo never sounds while a capture is triggered or being analysed, and
@@ -99,12 +124,25 @@
 #ifndef STEM_POD_DOCK
 #define STEM_POD_DOCK 1    // pod charging contacts: switch on GPIO6, sense on GPIO3
 #endif
+// Soft power: the slide switch is a logic input and "off" is deep sleep, so a
+// parked pod charges while the unit is off. Set to 0 for the older wiring, with
+// the slide switch between the TP4056 and the MT3608: then GPIO2, GPIO5 and
+// GPIO20 are used as before. A unit wired the old way must be built with 0: its
+// GPIO5 floats, and this build would read that as the switch being off.
+#ifndef STEM_SOFT_POWER
+#define STEM_SOFT_POWER 1
+#endif
+
+#if STEM_SOFT_POWER
+#include "driver/gpio.h"
+#include "esp_sleep.h"
+#endif
 
 // -----------------------------------------------------------------------------
 //  Configuration
 // -----------------------------------------------------------------------------
 namespace cfg {
-constexpr uint8_t  FW_MAJOR = 0, FW_MINOR = 3;   // 0.3: the live status characteristic (UnitStatus)
+constexpr uint8_t  FW_MAJOR = 0, FW_MINOR = 4;   // 0.3: UnitStatus; 0.4: soft power (STEM_SOFT_POWER)
 
 constexpr int      PIN_I         = 0;     // ADC1_CH0
 constexpr int      PIN_Q         = 1;     // ADC1_CH1
@@ -231,7 +269,32 @@ constexpr uint32_t DOCK_LOCKOUT_MAX_MS = 600000;
 constexpr uint32_t DOCK_POD_TRUST_MS = 2500;   // a pod status this long after a switch change reflects it
 constexpr uint16_t DOCK_MIN_BATT_MV  = 3550;   // stop charging the pod below this: the unit's own run time first
 constexpr uint16_t DOCK_RESUME_BATT_MV = 3700;
+
+// Soft power (STEM_SOFT_POWER; docs/wiring_schematic.md 1.7).
+constexpr int      PIN_AN_EN_N   = 2;     // LOW powers the radar and pre-amp; 100k pull-up = off, strap = 1
+constexpr int      PIN_WAKE      = 5;     // LOW = switch on (level) or a pod / USB edge (pulse)
+constexpr int      PIN_VBUS_N    = 20;    // LOW = USB power on the TP4056
+constexpr uint32_t SW_SETTLE_MS  = 120;   // after boot: a 47 nF wake pulse is over (above VIH after 26 ms)
+constexpr uint32_t SW_DEBOUNCE_MS = 50;   // the switch must read the same this long
+constexpr uint32_t AN_SETTLE_MS  = 300;   // radar and pre-amp power -> ADC stream: bias RC 73 ms, 4 tau
+constexpr uint32_t DOCK_ON_SETTLE_BOOST_MS = 50;  // off: the boost starts together with the contacts
+// Charging a parked pod while the switch is off. On USB the rule is the same
+// as when on (DOCK_MIN_BATT_MV). On the unit's own battery it starts only from
+// OFF_BATT_START_MV at rest (about 60% charge) and stops under OFF_BATT_STOP_MV
+// read under the dock's load (about 45%): a switched-off unit gives at most
+// about 15% of its cell to the pod, and keeps the rest for its next session.
+constexpr uint16_t OFF_BATT_START_MV = 3850;
+constexpr uint16_t OFF_BATT_STOP_MV  = 3700;
+constexpr uint32_t OFF_SESSION_MAX_MS = 150UL * 60UL * 1000UL;  // a flat pod takes ~1.5 h; pods before fw 0.2 never say "charged"
+constexpr uint32_t OFF_TOPUP_MS       = 15UL * 60UL * 1000UL;   // a top-up of a pod that was already charged
+constexpr uint32_t OFF_CHARGED_LINGER_MS = 3UL * 60UL * 1000UL; // the pod said charged; it sleeps by itself after ~1 min
+constexpr uint32_t OFF_TOPUP_PERIOD_S = 12UL * 3600UL;          // on USB, top up a charged, parked pod this often
+constexpr uint32_t OFF_RECHECK_S      = 10UL * 60UL;            // on USB, look again at a pod that had to wait
+constexpr uint32_t OFF_LED_PERIOD_MS  = 4000;                   // off-charging: a 40 ms blip this often
 }  // namespace cfg
+
+static_assert(!STEM_SOFT_POWER || cfg::PIN_RADAR_EN < 0,
+              "with STEM_SOFT_POWER, GPIO5 is the wake line: the radar's power is switched on GPIO2 instead");
 
 // -----------------------------------------------------------------------------
 //  Readings: a number, or a refusal with a reason. Mirrors launchmon.quantity.
@@ -343,7 +406,14 @@ constexpr uint8_t USER_ARMED    = 1 << 3;   // not disarmed with serial 'a'
 constexpr uint8_t RAW_STREAMING = 1 << 4;   // raw captures go to USB after each shot (serial 'r', BOOT button)
 constexpr uint8_t BATT_LOW      = 1 << 5;   // the unit's cell is under BATT_LOW_MV
 constexpr uint8_t ADC_FAULT     = 1 << 6;   // the radar's ADC stream failed to start or restart
+constexpr uint8_t SOFT_OFF      = 1 << 7;   // STEM_SOFT_POWER: the switch is off and the unit is awake only to
+                                            // charge a parked pod (no radar, no shots). Asleep, it sends nothing
 }
+
+// Power state (STEM_SOFT_POWER). Off-sleeping is deep sleep, where no code runs.
+// Without STEM_SOFT_POWER it is always ON.
+enum class PowerState : uint8_t { ON, OFF_CHARGING };
+static PowerState g_power = PowerState::ON;
 
 // -----------------------------------------------------------------------------
 //  I/Q capture ring (heap; 112 KB).
@@ -724,6 +794,7 @@ static void onPodNotify(NimBLERemoteCharacteristic*, uint8_t* data, size_t len, 
   }
   if (h->type != 1 || len < sizeof(PodHeader) + h->n * sizeof(PodImu)) return;
   if (h->flags & 0x01) g_pod_swing_ms = millis();
+  if (!g_pod) return;   // off-charging allocates no capture rings
   if (g_pod_hold) { g_pod_dropped_held = g_pod_dropped_held + 1; return; }
 
   // Clock alignment. rx time minus the last sample's pod time is the offset
@@ -814,7 +885,9 @@ class PhoneServerCallbacks : public NimBLEServerCallbacks {
 };
 static PhoneServerCallbacks g_phone_cb;
 
-static void bleInit() {
+// slow_adv: the off-charging state advertises once a second, so a phone can
+// still find the unit and read its status, at about 0.1 mA of radio time.
+static void bleInit(bool slow_adv) {
   NimBLEDevice::init(cfg::BLE_NAME);
   NimBLEDevice::setMTU(247);
 
@@ -828,6 +901,10 @@ static void bleInit() {
   adv->setName(cfg::BLE_NAME);
   adv->addServiceUUID(cfg::UUID_GND_SVC);
   adv->enableScanResponse(true);
+  if (slow_adv) {
+    adv->setMinInterval(1600);   // 0.625 ms units: 1 s
+    adv->setMaxInterval(1600);
+  }
   adv->start();
 
   NimBLEScan* scan = NimBLEDevice::getScan();
@@ -1063,7 +1140,7 @@ static void streamImu(uint16_t shot_seq) {
 // -----------------------------------------------------------------------------
 //  Status LED
 // -----------------------------------------------------------------------------
-enum class LedMode { IDLE, POD_LINKED, ANALYSING, LOW_BATTERY, FAULT };
+enum class LedMode { IDLE, POD_LINKED, ANALYSING, LOW_BATTERY, FAULT, OFF_CHARGING };
 static LedMode g_led = LedMode::IDLE;
 
 static void ledService() {
@@ -1075,6 +1152,7 @@ static void ledService() {
     case LedMode::ANALYSING:   on = (t % 200) < 100; break;                              // fast
     case LedMode::LOW_BATTERY: on = (t % 1000) < 60 || ((t % 1000) > 200 && (t % 1000) < 260); break;
     case LedMode::FAULT:       on = (t % 400) < 200; break;
+    case LedMode::OFF_CHARGING: on = (t % cfg::OFF_LED_PERIOD_MS) < 40; break;            // switched off, charging the pod
   }
   digitalWrite(cfg::PIN_LED, on ? HIGH : LOW);
 }
@@ -1110,6 +1188,7 @@ static uint32_t    g_beep_step_ms = 0;
 
 static void beep(Beep b) {
 #if STEM_BUZZER
+  if (g_power != PowerState::ON) return;   // silent while switched off
   if (g_buzzer_on) g_beep_req[size_t(b)] = BeepRequest{true, millis()};
 #else
   (void)b;
@@ -1262,6 +1341,10 @@ static void dockFault(uint32_t now, DockReason reason, uint16_t off_mv, uint16_t
   beep(Beep::DOCK_FAULT);
 }
 
+static bool podOnOwnUsb(uint32_t now) {
+  return podConnected() && (g_pod_power.load() & podpower::USB_HOST) && now - g_pod_power_ms.load() < 5000;
+}
+
 static void dockCheck(uint32_t now) {
   const bool was_on = g_dock == DockState::CHARGING;
   uint16_t on_mv = 0, off_mv = 0;
@@ -1281,7 +1364,8 @@ static void dockCheck(uint32_t now) {
     bool want = (was_on || g_dock == DockState::CONFIRMING) && off_mv >= need && off_mv < cfg::DOCK_FOREIGN_MV;
     if (!want) return;
     dockSwitch(true);
-    delay(cfg::DOCK_ON_SETTLE_MS);
+    // Switched off, GPIO6 also starts the boost (wiring doc 1.7), so DOCK+ takes longer to come up.
+    delay(g_power == PowerState::ON ? cfg::DOCK_ON_SETTLE_MS : cfg::DOCK_ON_SETTLE_BOOST_MS);
     on_mv = dockMv(unit);
     if (on_mv < cfg::DOCK_ON_MIN_MV) { dockSwitch(false); overload = true; return; }
     switched_on = true;
@@ -1370,8 +1454,7 @@ static void dockService(uint32_t now, bool may_check, bool quiet) {
   // A pod whose own USB-C is on a computer has power already. The SuperMini
   // ties VBUS straight to its 5V pin, so charging it from here too could push
   // current up the cable into a sagging host port: leave the contacts off.
-  bool pod_on_usb = podConnected() && (g_pod_power.load() & podpower::USB_HOST) && now - g_pod_power_ms.load() < 5000;
-  if (pod_on_usb) {
+  if (podOnOwnUsb(now)) {
     bool was_on = g_dock == DockState::CHARGING;
     g_dock = DockState::OFF;
     if (was_on) {
@@ -1470,6 +1553,7 @@ static UnitStatus buildStatus(uint32_t now) {
   if (g_stream_raw) uf |= unitflag::RAW_STREAMING;
   if (g_batt_mv > 1000 && g_batt_mv < cfg::BATT_LOW_MV) uf |= unitflag::BATT_LOW;
   if (g_adc_fault) uf |= unitflag::ADC_FAULT;
+  if (g_power == PowerState::OFF_CHARGING) uf |= unitflag::SOFT_OFF;
   st.unit_flags = uf;
 
   st.dock_state = uint8_t(g_dock);
@@ -1514,12 +1598,254 @@ static void statusService(uint32_t now, bool may_send) {
   phone_new = false;
 }
 
+// -----------------------------------------------------------------------------
+//  Soft power (STEM_SOFT_POWER; docs/wiring_schematic.md 1.7)
+//
+//  The slide switch drives SW_ON (3V3 when on). In hardware, SW_ON starts the
+//  MT3608 (an AO3400A in its ground return, gate = SW_ON OR GPIO6 through a
+//  BAT54C) and, through a BSS138, holds WAKE (GPIO5) low. A pod being parked
+//  and USB power arriving each pulse WAKE low for ~5 ms through 47 nF. So:
+//    - the switch's level is WAKE's level once any pulse has passed;
+//    - deep sleep wakes on WAKE low: the switch, a park or a plug-in;
+//    - nothing holds WAKE low but the switch, so sleeping never re-wakes.
+//  Switching between on and off goes through a short deep sleep: the next
+//  boot sees the switch and starts in the right state, from a clean slate.
+// -----------------------------------------------------------------------------
+#if STEM_SOFT_POWER
+// Kept through deep sleep. Re-initialised on any other reset.
+struct RtcPower {
+  uint32_t magic;
+  uint8_t  vbus;          // USB power was present when the unit last went to sleep
+  uint8_t  pod_charged;   // the pod on the contacts is charged and asleep: do not start a session for it
+  uint32_t lockout_ms;    // the dock's fault back-off, carried across sleeps
+};
+constexpr uint32_t RTC_POWER_MAGIC = 0x53504F57;   // "SPOW"
+static RTC_DATA_ATTR RtcPower g_rtc;
+
+static bool switchOnNow() { return digitalRead(cfg::PIN_WAKE) == LOW; }
+static bool vbusPresent() { return digitalRead(cfg::PIN_VBUS_N) == LOW; }
+
+// The switch's position once any wake pulse has passed, debounced.
+static bool switchOnSettled() {
+  while (millis() < cfg::SW_SETTLE_MS) delay(1);
+  bool v = switchOnNow();
+  uint32_t t0 = millis();
+  while (millis() - t0 < cfg::SW_DEBOUNCE_MS) {
+    const bool w = switchOnNow();
+    if (w != v) { v = w; t0 = millis(); }
+    delay(2);
+  }
+  return v;
+}
+
+static void powerReport(const char* state, const char* reason, uint32_t wake_timer_s) {
+  Serial.printf("{\"type\":\"power\",\"state\":\"%s\",\"reason\":\"%s\",\"battery_mv\":%u,\"usb\":%s,"
+                "\"wake_timer_s\":%lu}\n",
+                state, reason, g_batt_mv, vbusPresent() ? "true" : "false", (unsigned long)wake_timer_s);
+}
+
+// Deep sleep: everything that draws current is already off or turned off here,
+// and its off level is held. The resistors hold the same levels on their own
+// (R5 on GPIO6, R10 on GPIO2), so a pin that floats changes nothing; the hold
+// keeps the pads from being configured any other way while asleep.
+[[noreturn]] static void deepSleep(uint64_t timer_us) {
+#if STEM_POD_DOCK
+  dockSwitch(false);   // the contacts, and the boost with them unless the switch is on
+#endif
+  digitalWrite(cfg::PIN_AN_EN_N, HIGH);   // radar and pre-amp
+  digitalWrite(cfg::PIN_LED, LOW);
+  buzzerStop(millis());
+  g_rtc.magic = RTC_POWER_MAGIC;
+  g_rtc.vbus = vbusPresent();
+#if STEM_POD_DOCK
+  g_rtc.lockout_ms = g_dock_lockout_ms;
+  gpio_hold_en(gpio_num_t(cfg::PIN_DOCK_EN));
+#endif
+  gpio_hold_en(gpio_num_t(cfg::PIN_AN_EN_N));
+  gpio_deep_sleep_hold_en();
+  pinMode(cfg::PIN_WAKE, INPUT);   // R14 1M is its pull-up; no internal pulls
+  esp_deep_sleep_enable_gpio_wakeup(1ULL << cfg::PIN_WAKE, ESP_GPIO_WAKEUP_GPIO_LOW);
+  if (timer_us) esp_sleep_enable_timer_wakeup(timer_us);
+  esp_deep_sleep_start();
+  for (;;) {}
+}
+
+[[noreturn]] static void powerSleep(uint32_t timer_s, const char* reason) {
+  powerReport("off_sleeping", reason, timer_s);
+  Serial.flush();
+  deepSleep(uint64_t(timer_s) * 1000000ULL);
+}
+
+// Switched on: watched from loop(). Switched off, the radar goes dark at once
+// and a 10 ms sleep restarts the unit into the off state's decision.
+static void powerSwitchWatch(uint32_t now) {
+  static uint32_t off_since = 0;
+  if (switchOnNow()) { off_since = 0; return; }
+  if (!off_since) { off_since = now | 1; return; }
+  if (now - off_since < cfg::SW_DEBOUNCE_MS) return;
+  digitalWrite(cfg::PIN_AN_EN_N, HIGH);
+  g_rtc = RtcPower{RTC_POWER_MAGIC, 0, 0, cfg::DOCK_LOCKOUT_MS};
+#if STEM_POD_DOCK
+  // A charged pod already asleep on the live contacts would never say so
+  // again: tell the off state not to start a session for it.
+  if (g_dock == DockState::CHARGING && !podConnected() && (g_pod_power_last.load() & podpower::CHARGED))
+    g_rtc.pod_charged = 1;
+#endif
+  powerReport("off", "switch off", 0);
+  Serial.flush();
+  deepSleep(10000);
+}
+
+#if STEM_POD_DOCK
+static uint32_t g_off_session_ms = 0, g_off_session_max_ms = 0;
+#endif
+
+// Boot with the switch off: sleep again, or charge a parked pod.
+static void powerOffSetup() {
+  const esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
+  const bool from_sleep = cause == ESP_SLEEP_WAKEUP_GPIO || cause == ESP_SLEEP_WAKEUP_TIMER;
+  if (!from_sleep || g_rtc.magic != RTC_POWER_MAGIC) g_rtc = RtcPower{RTC_POWER_MAGIC, 0, 0, cfg::DOCK_LOCKOUT_MS};
+  const bool usb = vbusPresent();
+  const bool usb_edge = cause == ESP_SLEEP_WAKEUP_GPIO && usb && !g_rtc.vbus;
+  // A WAKE pulse with the switch off and no new USB power was a pod being
+  // parked: whatever sat on the contacts before was lifted in between.
+  if (cause == ESP_SLEEP_WAKEUP_GPIO && !usb_edge) g_rtc.pod_charged = 0;
+  g_batt_mv = readBatteryMv();
+#if !STEM_POD_DOCK
+  powerSleep(0, "switch off");
+#else
+  if (g_rtc.lockout_ms) g_dock_lockout_ms = g_rtc.lockout_ms;
+  uint16_t mv = 0;
+  withAdcPaused([&](adc_oneshot_unit_handle_t unit) { mv = dockMv(unit); });
+  if (mv >= cfg::DOCK_FOREIGN_MV) powerSleep(0, "voltage on the contacts");
+  if (mv < cfg::DOCK_PRESENT_MV) {
+    g_rtc.pod_charged = 0;
+    powerSleep(0, "no pod on the contacts");
+  }
+  bool topup = false;
+  if (g_rtc.pod_charged) {
+    // Charged and asleep. Only a top-up, and only on USB, on its timer.
+    if (!(usb && cause == ESP_SLEEP_WAKEUP_TIMER))
+      powerSleep(usb ? cfg::OFF_TOPUP_PERIOD_S : 0, "pod parked and charged");
+    topup = true;
+  }
+  const uint16_t need = usb ? cfg::DOCK_MIN_BATT_MV : cfg::OFF_BATT_START_MV;
+  if (g_batt_mv <= 1000 || g_batt_mv < need)
+    powerSleep(usb ? cfg::OFF_RECHECK_S : 0, usb ? "unit battery low" : "unit battery under 3.85 V: pod waits for USB");
+
+  g_power = PowerState::OFF_CHARGING;
+  setCpuFrequencyMhz(80);   // enough for the BLE stack; no FFTs in this state
+  g_led = LedMode::OFF_CHARGING;
+  g_off_session_ms = millis();
+  g_off_session_max_ms = topup ? cfg::OFF_TOPUP_MS : cfg::OFF_SESSION_MAX_MS;
+  bleInit(true);
+  g_dock = DockState::CONFIRMING;   // a beacon was just seen: the next check takes the second look
+  g_dock_check_now = true;
+  statusService(millis(), true);
+  powerReport("off_charging",
+              topup ? "top-up" : usb_edge ? "usb power" : cause == ESP_SLEEP_WAKEUP_GPIO ? "pod parked" : "pod on the contacts",
+              0);
+#endif
+}
+
+// loop() while switched off and charging a parked pod.
+static void powerOffLoop() {
+#if STEM_POD_DOCK
+  static uint32_t sw_on_since = 0, last_batt_ms = 0, charged_since = 0;
+  uint32_t now = millis();
+
+  if (switchOnNow()) {
+    if (!sw_on_since) sw_on_since = now | 1;
+    if (now - sw_on_since >= cfg::SW_DEBOUNCE_MS) {
+      powerReport("on", "switch on", 0);
+      Serial.flush();
+      deepSleep(1000);   // WAKE is low: it wakes at once, into the on state
+    }
+  } else {
+    sw_on_since = 0;
+  }
+
+  podService();
+  podPowerReport();
+  g_pod_evt_connect = false;      // no connect or disconnect beeps while off
+  g_pod_evt_disconnect = false;
+
+  const bool usb = vbusPresent();
+  if (now - last_batt_ms >= cfg::BATT_PERIOD_MS) {
+    last_batt_ms = now;
+    g_batt_mv = readBatteryMv();
+    now = millis();
+  }
+  if (!usb && g_batt_mv > 1000 && g_batt_mv < cfg::OFF_BATT_STOP_MV)
+    powerSleep(0, "unit battery under 3.70 V: stopped charging the pod");
+
+  dockService(now, true, true);   // no radar to keep quiet for
+  now = millis();
+  switch (g_dock) {
+    case DockState::OFF:
+      if (podOnOwnUsb(now)) powerSleep(usb ? cfg::OFF_RECHECK_S : 0, "pod on its own USB power");
+      g_rtc.pod_charged = 0;
+      powerSleep(0, "no pod on the contacts");
+    case DockState::LOCKOUT: {
+      const int32_t left = int32_t(g_dock_lockout_until - now);
+      powerSleep(left > 0 ? uint32_t(left + 999) / 1000 : 1, "charging fault: retry after the lockout");
+    }
+    case DockState::LOW_BATTERY:
+      powerSleep(usb ? cfg::OFF_RECHECK_S : 0, "unit battery low");
+    case DockState::CONFIRMING:
+      break;
+    case DockState::CHARGING: {
+      // Done: the pod said charged and then went to sleep (its link drops), or
+      // it has said charged for a while, or the session ran out of time.
+      const uint32_t next = usb ? cfg::OFF_TOPUP_PERIOD_S : 0;
+      if (!podConnected() && (g_pod_power_last.load() & podpower::CHARGED)) {
+        g_rtc.pod_charged = 1;
+        powerSleep(next, "pod charged and asleep");
+      }
+      const bool says_charged = podConnected() && g_pod_power_seq.load() &&
+                                int32_t(now - g_pod_power_ms.load()) < 5000 &&
+                                (g_pod_power.load() & podpower::CHARGED);
+      if (!says_charged) charged_since = 0;
+      else if (!charged_since) charged_since = now | 1;
+      else if (now - charged_since >= cfg::OFF_CHARGED_LINGER_MS) {
+        g_rtc.pod_charged = 1;
+        powerSleep(next, "pod charged");
+      }
+      if (now - g_off_session_ms >= g_off_session_max_ms) {
+        g_rtc.pod_charged = 1;
+        powerSleep(next, g_off_session_max_ms == cfg::OFF_TOPUP_MS ? "top-up done" : "charging time limit");
+      }
+      break;
+    }
+  }
+
+  statusService(now, true);
+  ledService();
+  delay(10);
+#endif
+}
+#endif  // STEM_SOFT_POWER
+
 void setup() {
 #if STEM_POD_DOCK
   // First thing: the contacts stay dead. The 10k on the 2N7002 gate has held
   // them off through reset; this keeps them off.
   pinMode(cfg::PIN_DOCK_EN, OUTPUT);
   digitalWrite(cfg::PIN_DOCK_EN, LOW);
+#endif
+#if STEM_SOFT_POWER
+  // The radar and pre-amp stay unpowered: R10 has held GPIO2 high through
+  // reset. Then release the levels held through deep sleep; the pins now drive
+  // the same levels themselves.
+  pinMode(cfg::PIN_AN_EN_N, OUTPUT);
+  digitalWrite(cfg::PIN_AN_EN_N, HIGH);
+#if STEM_POD_DOCK
+  gpio_hold_dis(gpio_num_t(cfg::PIN_DOCK_EN));
+#endif
+  gpio_hold_dis(gpio_num_t(cfg::PIN_AN_EN_N));
+  gpio_deep_sleep_hold_dis();
+  pinMode(cfg::PIN_WAKE, INPUT);     // external pull-ups only
+  pinMode(cfg::PIN_VBUS_N, INPUT);
 #endif
   pinMode(cfg::PIN_LED, OUTPUT);
   pinMode(cfg::PIN_BUTTON, INPUT_PULLUP);
@@ -1528,13 +1854,25 @@ void setup() {
     digitalWrite(cfg::PIN_RADAR_EN, cfg::RADAR_EN_ACTIVE_HIGH ? HIGH : LOW);
   }
   Serial.begin(921600);   // USB CDC: the baud rate is ignored, kept for USB-UART adapters
+#if STEM_SOFT_POWER
+  // Switched off: decide before anything else, and without waiting for a USB
+  // host, so a wake that ends in sleep again stays short.
+  if (!switchOnSettled()) {
+    powerOffSetup();   // sleeps, or returns with g_power OFF_CHARGING for loop()
+    return;
+  }
+  digitalWrite(cfg::PIN_AN_EN_N, LOW);   // switched on: power the radar and pre-amp
+  const uint32_t an_on_ms = millis();
+#endif
   uint32_t t0 = millis();
   while (!Serial && millis() - t0 < 1000) delay(10);
-  Serial1.begin(cfg::AUX_BAUD, SERIAL_8N1, cfg::PIN_AUX_RX, cfg::PIN_AUX_TX);
+#if !STEM_SOFT_POWER
+  Serial1.begin(cfg::AUX_BAUD, SERIAL_8N1, cfg::PIN_AUX_RX, cfg::PIN_AUX_TX);   // with soft power, GPIO20 is VBUS_N
+#endif
   Serial.printf("{\"type\":\"boot\",\"fw\":\"%u.%u\",\"fs_hz\":%u,\"fft_n\":%u,\"hz_per_bin\":%.3f,"
-                "\"buzzer\":%s,\"pod_dock\":%s}\n",
+                "\"buzzer\":%s,\"pod_dock\":%s,\"soft_power\":%s}\n",
                 cfg::FW_MAJOR, cfg::FW_MINOR, unsigned(cfg::FS_HZ), unsigned(cfg::FFT_N), HZ_PER_BIN,
-                STEM_BUZZER ? "true" : "false", STEM_POD_DOCK ? "true" : "false");
+                STEM_BUZZER ? "true" : "false", STEM_POD_DOCK ? "true" : "false", STEM_SOFT_POWER ? "true" : "false");
 #if STEM_BUZZER
   // LEDC has its own timers and clock divider; it shares nothing with the ADC's
   // digital controller or its DMA. Duty 0 until a pattern plays.
@@ -1554,13 +1892,17 @@ void setup() {
 
   g_adc_lock = xSemaphoreCreateMutex();
   g_batt_mv = readBatteryMv();   // before the stream starts: nothing to stop yet
+#if STEM_SOFT_POWER
+  // Let the pre-amp's bias settle before the trigger starts learning its noise.
+  while (millis() - an_on_ms < cfg::AN_SETTLE_MS) delay(5);
+#endif
   xTaskCreate(adcTask, "adc", 4096, nullptr, configMAX_PRIORITIES - 3, &g_adc_task);
   if (!adcStreamStart()) {
     Serial.println("{\"type\":\"error\",\"msg\":\"ADC continuous mode failed to start\"}");
     g_led = LedMode::FAULT;
     g_adc_fault = true;
   }
-  bleInit();
+  bleInit(false);
   statusService(millis(), true);   // the status is readable from the first connection on
   Serial.printf("{\"type\":\"ready\",\"battery_mv\":%u}\n", g_batt_mv);
   // Chirp once the trigger has learnt its noise level (64 blocks, 0.4 s), so
@@ -1573,6 +1915,14 @@ void loop() {
   static uint32_t batt_low_beep_ms = 0, radar_busy_ms = 0;
   static bool     batt_low = false;
   uint32_t now = millis();
+
+#if STEM_SOFT_POWER
+  if (g_power == PowerState::OFF_CHARGING) {
+    powerOffLoop();
+    return;
+  }
+  powerSwitchWatch(now);
+#endif
 
   podService();
   podPowerReport();
@@ -1591,15 +1941,22 @@ void loop() {
     RadarResult rr = analyseRadar(first);
     // Ground time of impact, counted back from when the last pair was stored.
     // DMA delivers in 256-result frames, so that stamp is up to 3.2 ms late.
-    uint32_t impact_us = uint32_t(g_capture_end_us -
-                                  int64_t(cfg::CAPTURE_PAIRS - rr.impact_pair) * 1000000 / cfg::FS_HZ);
+    // impact_ms comes from the 64-bit microsecond count, as millis() does, so
+    // it is on UnitStatus.uptime_ms's clock and wraps with it after 49.7 days.
+    // Dividing the 32-bit microseconds by 1000 would wrap every 71.6 minutes.
+    // The pod's sample stamps are 32-bit microseconds, so the IMU analysis
+    // keeps using impact_us.
+    const int64_t impact_us64 =
+        g_capture_end_us - int64_t(cfg::CAPTURE_PAIRS - rr.impact_pair) * 1000000 / cfg::FS_HZ;
+    const uint32_t impact_us = uint32_t(impact_us64);
+    const uint32_t impact_ms = uint32_t(impact_us64 / 1000);
     ImuResult ir;
     if (rr.impact_found) ir = analyseImu(impact_us);
     else ir.peak_rate = ir.tempo = Reading::no(Refusal::NO_IMPACT);
     ++g_shot_seq;
 
     Serial.printf("{\"type\":\"shot\",\"shot_seq\":%u,\"impact_ms\":%lu,\"analysis_ms\":%lu,",
-                  g_shot_seq, (unsigned long)(impact_us / 1000), (unsigned long)(millis() - t_start));
+                  g_shot_seq, (unsigned long)impact_ms, (unsigned long)(millis() - t_start));
     printReading("ball_speed_radial", "m/s", rr.ball, "radar-fw-preview");
     printReading("club_speed_radial", "m/s", rr.club, "radar-fw-preview");
     printReading("smash_factor", "ratio", rr.smash, "radar-fw-preview");
@@ -1611,7 +1968,7 @@ void loop() {
     ShotSummary sum{};
     sum.magic = 0x5A; sum.version = 1;
     sum.shot_seq = g_shot_seq;
-    sum.impact_ms = impact_us / 1000;
+    sum.impact_ms = impact_ms;
     sum.ball_speed_radial = wire(rr.ball);
     sum.club_speed_radial = wire(rr.club);
     sum.smash = wire(rr.smash);
