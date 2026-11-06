@@ -9,9 +9,11 @@ it the best single reference for placing the video on the shot's timeline.
 Two things stand between the sound and the strike, and both are stated rather
 than hidden:
 
-* **Sound travel.** At 343 m/s, three metres between ball and phone is 8.7 ms.
-  Fusion removes it when the session records the distance, and says so when it
-  does not.
+* **Sound travel.** At 343 m/s, each metre between ball and phone is 2.9 ms:
+  4.1 ms for a phone on the ground unit 1.4 m behind the ball, 8.7 ms for one
+  on a tripod 3 m back. Fusion removes it when the distance is known (by
+  default the unit's configured distance, `shot.camera_on_the_unit`), and says
+  so when it is not.
 * **Audio-to-video sync in the file.** Phones keep the two tracks aligned to
   within a few milliseconds, but a phone that does not is not detectable from
   the audio alone. swingml's own impact event is compared against it for that

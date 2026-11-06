@@ -61,7 +61,6 @@ from launchmon.ingest.ground_unit import read_ground_unit_log
 from launchmon.ingest.iq import iq_to_receding_real
 from launchmon.quantity import NoReading, Reading
 
-
 UNKNOWN_DISTANCE = "none"
 
 
