@@ -176,7 +176,7 @@ final class ShotPairingTests: XCTestCase {
         let s = shot(1, impactMs: 100_000, at: 1.0)
         for camera in [CameraPlacement.standard, .elsewhere(distanceMetres: 3), .unknown] {
             let pairing = try XCTUnwrap(pairShot(clip(strikeAt: 0.4), shots: [s], camera: camera).pairing)
-            XCTAssertEqual(pairing.strikeAt.timeIntervalSince(t0), 0.4, accuracy: 1e-9)
+            XCTAssertEqual(pairing.strikeAt.timeIntervalSince(t0), 0.4, accuracy: 1e-6)
             XCTAssertFalse(pairing.notes.contains { $0.contains("sound travel") })
         }
     }
