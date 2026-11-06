@@ -240,10 +240,11 @@ public enum PairingOutcome: Equatable, Sendable {
 public let speedOfSoundMps = 343.0
 
 /// How far behind the ball the ground unit is set up, in metres: the distance
-/// `launchmon-hw/docs/build_instructions.md` places it at and launchmon-py's
-/// `config/hardware.yaml` records (`radar_geometry.range_from_tee_m`). It is the
-/// set-up distance, not a measurement of any session; the app has no setting for
-/// it yet.
+/// `launchmon-hw/docs/build_instructions.md` (4.2) gives for placing it and
+/// launchmon-py's `config/hardware.yaml` holds (`radar_geometry.range_from_tee_m`).
+/// It is the set-up distance, not a measurement of any session: the app has no
+/// setting for the distance a session measured, so a unit placed elsewhere is
+/// passed as `.onUnit(distanceMetres:)`.
 public let groundUnitBehindBallM = 1.4
 
 /// Where the phone that filmed the clip was, for the strike's sound travel.
