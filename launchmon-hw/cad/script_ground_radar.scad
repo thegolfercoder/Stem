@@ -28,7 +28,7 @@
 //  INTERNAL LAYOUT (front view)
 //
 //      Z 64 +--------------------------------------------------------------+
-//           | [ESP32-C3 SuperMini] [LM358 preamp] [ radar, 15 deg tilted ]  |
+//           | [ESP32-C3 SuperMini]                [ radar, 15 deg tilted ]  |
 //           |                                     [  BGT24LTR11 window   ]  |
 //      Z 40 |== divider ====================== |                         |  |
 //           |                                  |                     [SW]-> side slot
@@ -129,12 +129,6 @@ esp_pcb     = [22.52, 18.0, 1.0];  // [X, Z, thickness]
 esp_pos     = [11.5, 41.0];        // lower-left corner of the board, [X, Z]
 esp_rail_h  = 2.5;                 // board underside above the front wall
 esp_usb     = [8.94, 3.26];        // USB-C receptacle [width, height]
-
-/* [LM358 pre-amp board] */
-lm_pcb      = [23.0, 20.0, 1.6];   // [X, Z, thickness]; a 9 x 8 hole perfboard
-lm_pos      = [38.8, 40.5];        // lower-left corner [X, Z]
-lm_hole_inset = 2.5;               // M2 holes inset from each corner
-lm_standoff_h = 4.0;               // clears through-hole leads under the board
 
 /* [Power: LiPo, TP4056, MT3608, switch, LED] */
 batt        = [50.0, 34.0, 8.0];   // 803450-class 1500 mAh cell [X, Z, thickness]
@@ -438,7 +432,6 @@ module shell() {
             }
             radar_posts();
             esp32_mount();
-            lm358_standoffs();
             battery_bay();
             tp4056_pocket();
             switch_holder();
@@ -559,30 +552,16 @@ module esp32_clamp_tab() {
     }
 }
 
-// ---- LM358 pre-amp ------------------------------------------------------------
-function lm_holes() = [
-    for (dx = [lm_hole_inset, lm_pcb[0] - lm_hole_inset])
-        for (dz = [lm_hole_inset, lm_pcb[1] - lm_hole_inset])
-            [lm_pos[0] + dx, lm_pos[1] + dz]
-];
-
-module lm358_standoffs() {
-    for (h = lm_holes())
-        translate([h[0], y_front - 0.01, h[1]]) y_cylinder(lm_standoff_h + 0.01, 5.0);
-}
-
 module standoff_pilots() {
     // Pilot holes are cut after the union so they continue into the front wall
     // where a standoff is shorter than the screw. At least 1.4 mm of front wall
-    // is always left intact.
+    // is always left intact. (The LM358 pre-amp and its four standoffs are gone:
+    // the radar module's own IF amplifiers drive the ADC.)
     max_into_wall = wall - 1.4;
     esp_top = esp_rail_h + esp_pcb[2];
     for (z = esp32_tab_z())
         translate([esp_pos[0] + esp_pcb[0] + 2.2, y_front - min(max_into_wall, 4.4 - esp_top), z])
             y_cylinder(esp_top + 5, m2_pilot);
-    for (h = lm_holes())
-        translate([h[0], y_front - min(max_into_wall, 4.4 - lm_standoff_h), h[1]])
-            y_cylinder(lm_standoff_h + 5, m2_pilot);
 }
 
 // ---- Lower cavity: battery bay ----------------------------------------------
@@ -1228,7 +1207,7 @@ module fit_test_coupon() {
 // Each component is a named ghost so other tools can export them one at a
 // time: `part = "ghost:battery"` exports just the cell, in place. The Blender
 // scenes in cad/blender/ are built that way.
-ghost_names = ["battery", "tp4056", "mt3608", "esp32", "lm358", "radar", "switch", "led", "boresight", "phone", "magsafe_ring", "stud_bolt",
+ghost_names = ["battery", "tp4056", "mt3608", "esp32", "radar", "switch", "led", "boresight", "phone", "magsafe_ring", "stud_bolt",
                "parked_pod", "pod_park_pogo", "pod_park_magnets", "pod_park_board", "piezo"];
 // The radome and light pipe are printed parts, exported with "in_place:radome" and "in_place:led_pipe".
 
@@ -1251,9 +1230,6 @@ module ghost(name) {
         cube([esp_pcb[0], esp_pcb[2], esp_pcb[1]]);
         translate([-0.5, esp_pcb[2], esp_pcb[1] / 2 - esp_usb[0] / 2]) cube([7.3, esp_usb[1], esp_usb[0]]);
     }
-    // LM358 board
-    if (name == "lm358") color("Green", 0.6) translate([lm_pos[0], y_front + lm_standoff_h, lm_pos[1]])
-        cube([lm_pcb[0], lm_pcb[2], lm_pcb[1]]);
     // Radar module, parallel to the window
     if (name == "radar") color("Gold", 0.7) in_window_frame()
         translate([-radar_pcb[0] / 2, win_t + radar_gap, 0]) cube([radar_pcb[0], radar_pcb[2], radar_pcb[1]]);
@@ -1328,8 +1304,7 @@ module fit_report() {
         chk("depth behind radar module      ", y_back - radar_back_y),
         chk("radar module above TP4056       ", radar_low_z - (z_floor + tp_pcb[1] - 0.6)),
         chk("window opening inside outline   ", (corner_r - wall) - sqrt(dx * dx + dz * dz)),
-        chk("LM358 board to radar housing    ", radar_x0 - (lm_pos[0] + lm_pcb[0])),
-        chk("ESP32 tab posts to LM358 board  ", lm_pos[0] - (esp_pos[0] + esp_pcb[0] + 2.2 + 2.1)),
+        chk("ESP32 tab posts to radar housing", radar_x0 - (esp_pos[0] + esp_pcb[0] + 2.2 + 2.1)),
         chk("battery bay to TP4056 guide     ", (tp_x - 1 - fit_clear) - (batt_pos[0] + batt[0] + 2 * batt_clear + 1.2)),
         chk("cell + MT3608 depth stack       ", inner_d - (batt[2] + 0.2 + mt_pcb[2] + mt_parts_h)),
         chk("divider to ESP32 board          ", esp_pos[1] - (batt_pos[1] + batt[1] + 2 * batt_clear + 1.2)),

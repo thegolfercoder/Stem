@@ -51,12 +51,13 @@
 //  PRINTED PARTS (set `part`):
 //      "base"      body + clamp   (print standing on the USB end, bore vertical)
 //      "lid"       snap-on lid    (print flat, outside face down)
+//      "strap"     reusable strap, TPU 95A (print flat, outer face down; sized from shaft_d)
 //      "assembly"  both, with ghost components
 //      "section"   2D cut across the shaft, through the jaw
 // =============================================================================
 
 /* [Render] */
-part            = "assembly";   // [assembly, base, lid, section, print_plate]
+part            = "assembly";   // [assembly, base, lid, strap, section, print_plate]
 // Also: "in_place:base|lid" and "ghost:<name>" export one part in its
 // assembled position (used by cad/blender/).
 show_components = true;
@@ -200,7 +201,7 @@ st_t1  = st_c1 + st_r1 * [cos(st_n), sin(st_n)];   // leaves the body here
 st_t2  = st_c2 + st_r2 * [cos(st_n), sin(st_n)];   // meets the shaft here
 st_tan = sqrt(st_d * st_d - pow(st_r2 - st_r1, 2));
 st_arc1 = st_r1 * (st_n + 360 - 180) * PI / 180;   // round the body's edge, from the side face
-st_arc2 = st_r2 * (2 * (st_n + 360) - 540) * PI / 180;  // under the shaft, tangent to tangent
+st_arc2 = st_r2 * (540 - 2 * (st_n + 360)) * PI / 180;  // under the shaft, tangent to tangent
 st_path = 2 * ((st_zb - edge_r) + st_arc1 + st_tan) + st_arc2;  // bearing edge to bearing edge, fitted
 st_span = st_path / (1 + strap_preload);           // the same, as printed
 st_len  = st_span + 2 * strap_tab;                 // overall
@@ -251,9 +252,88 @@ module base() {
         clamp_bore();
         saddle_relief();
         park_cuts();
+        strap_saddle_cut();
     }
     imu_pocket();
     battery_stops();
+    strap_posts();
+}
+
+// ---- Strap: hook posts, the saddle cut, the strap itself --------------------------
+// One post on each side face. Profile across the shaft [Y, Z]: a shank and a
+// head with an upper lip (it covers the slot's loaded edge) and a lower lip
+// (the click). It prints with X vertical, so its underside is cut at 45
+// degrees and needs no support.
+module strap_post_2d() {
+    sh = strap_post[1]; up = strap_post[2]; lo = strap_post[3]; ht = strap_post[4];
+    c = 0.3;  // the head's outer edges
+    translate([0, strap_post_z]) {
+        translate([-0.01, -sh / 2]) square([st_shank_l + 0.02, sh]);
+        polygon([[st_shank_l, -sh / 2 - lo], [st_shank_l + ht - c, -sh / 2 - lo], [st_shank_l + ht, -sh / 2 - lo + c],
+                 [st_shank_l + ht, sh / 2 + up - c], [st_shank_l + ht - c, sh / 2 + up], [st_shank_l, sh / 2 + up]]);
+    }
+}
+module strap_post_one() {
+    // On the -Y face, standing out along -Y. Its top face (+X) is square; its
+    // underside rises at 45 degrees, X + Y >= x_b, so the post prints unsupported.
+    px1 = strap_x + st_hole[0] / 2 - strap_clear / 2;        // top face
+    x_b = px1 - strap_post[0] - st_shank_l;                   // underside, at the side face
+    intersection() {
+        mirror([0, 1, 0]) x_extrude(x_b - 1, px1) strap_post_2d();
+        translate([x_b, 0, -1]) rotate([0, 0, 45]) translate([0, -50, 0]) cube([100, 100, pod[2] + 2]);
+    }
+}
+module strap_posts() {
+    strap_post_one();
+    translate([0, pod[1], 0]) mirror([0, 1, 0]) strap_post_one();
+}
+// Between the jaws the strap runs straight from the body's edge to the shaft;
+// the bottom corners of the middle saddle are cut back clear of it.
+module strap_saddle_cut() {
+    u = st_t2 - st_t1; nn = [cos(st_n), sin(st_n)];
+    off = strap_t / 2 + strap_clear;          // strap's inner face, less the clearance
+    for (side = [0, 1]) translate([0, side * pod[1], 0]) mirror([0, side, 0])
+        x_extrude(strap_x - strap_w / 2 - 0.4, strap_x + strap_w / 2 + 0.4) intersection() {
+            translate([-50, -50]) square([50 + pod[1] / 2, 50]);   // below the body, this side
+            polygon([st_t1 - off * nn, st_t1 - off * nn + 40 * u / norm(u),
+                     st_t1 - off * nn + 40 * u / norm(u) + 30 * nn, st_t1 - off * nn - 10 * u / norm(u) + 30 * nn,
+                     st_t1 - off * nn - 10 * u / norm(u)]);
+        }
+}
+
+// The strap, printed flat in TPU, outer face down: X along it, Y across.
+module strap() {
+    w = strap_w; t = strap_t; r = w / 2;
+    difference() {
+        union() {
+            hull() {   // 0.2 mm step at the bed edge, then the full outline
+                for (x = [r, st_len - r]) translate([x, 0, 0]) cylinder(h = 0.2, r = r - 0.2);
+                for (x = [r, st_len - r]) translate([x, 0, 0.2]) cylinder(h = t - 0.2, r = r);
+            }
+            // Lift ridges across each tip, on the inner face.
+            for (x = [r - 0.6, st_len - r + 0.6]) translate([x, 0, t - 0.01]) hull() {
+                translate([0, 0, 0]) cube([strap_ridge[0], w - 2.4, 0.01], center = true);
+                translate([0, 0, strap_ridge[1] - 0.2]) cube([strap_ridge[0] - 0.6, w - 2.8, 0.4], center = true);
+            }
+        }
+        // Slots: bearing edges strap_tab in from each tip, st_span apart.
+        for (e = [[strap_tab, 1], [st_len - strap_tab, -1]]) translate([e[0], 0, -1])
+            hull() for (dx = [0, e[1] * (st_hole[1] - 0.8)], dy = [-1, 1])
+                translate([dx + e[1] * 0.4, dy * (st_hole[0] / 2 - 0.4), 0]) cylinder(h = t + 2, r = 0.4, $fn = 16);
+    }
+}
+// The strap as fitted, for the assembly view: sides, edge rounds, tangents, under the shaft.
+module strap_fitted() {
+    c1 = [st_c1, [pod[1] - st_c1[0], st_c1[1]]];
+    x_extrude(strap_x - strap_w / 2, strap_x + strap_w / 2) difference() {
+        offset(delta = strap_t / 2) hull_path();
+        offset(delta = -strap_t / 2) hull_path();
+    }
+    module hull_path() hull() {
+        for (y = [-strap_t / 2, pod[1] + strap_t / 2]) translate([y, st_zb]) circle(r = 0.01);
+        for (c = c1) translate(c) circle(r = st_r1, $fn = 48);
+        translate(st_c2) circle(r = st_r2, $fn = 96);
+    }
 }
 
 module park_cuts() {
@@ -450,7 +530,7 @@ module esp32_retainer() {
 // ----------------------------------------------------------------------------
 // Named ghosts, so each can be exported alone in place (`part = "ghost:imu"`).
 // The Blender scene in cad/blender/ is built that way.
-ghost_names = ["imu", "imu_axes", "battery", "charger", "esp32", "shaft", "liner", "park_contacts", "park_magnets", "park_diode"];
+ghost_names = ["imu", "imu_axes", "battery", "charger", "esp32", "shaft", "liner", "park_contacts", "park_magnets", "park_diode", "strap"];
 
 module ghosts() { for (n = ghost_names) ghost(n); }
 
@@ -490,6 +570,8 @@ module ghost(name) {
     if (name == "park_magnets") color("Silver") for (m = pod_park_mags())
         translate([pod[0] - pod_park_skin - pod_park_mag[1], m[0], m[1]]) rotate([0, 90, 0])
             cylinder(h = pod_park_mag[1], d = pod_park_mag[0], $fn = 32);
+    // The TPU strap as fitted on the shaft (a printed part; "strap" exports it flat).
+    if (name == "strap") color("#3a3a3a") strap_fitted();
     if (name == "park_diode") color("Black")
         translate([park_parts_x0(), pod[1] / 2 - pod_park_diode[1] / 2, z_batt + chg[2] + 0.2]) cube(pod_park_diode);
 }
@@ -499,7 +581,7 @@ function park_parts_x0() = esp_x0 + esp_pcb[0] + 0.2 + 0.8 + 0.2;   // just past
 // optionally its parts (not the shaft).
 module pod_parked_parts(with_parts = true) {
     color("#2b2b2b") { base(); lid(); }
-    if (with_parts) for (n = ghost_names) if (n != "shaft" && n != "imu_axes") ghost(n);
+    if (with_parts) for (n = ghost_names) if (n != "shaft" && n != "imu_axes" && n != "strap") ghost(n);
 }
 module pod_park_solid() { base(); lid(); }
 
@@ -547,6 +629,32 @@ module fit_report() {
              pod_park_pad[1], " mm proud of the +X end, ", pod_park_z, " mm up; magnets ",
              pod_park_mag[0], " x ", pod_park_mag[1], " mm, ", pod[0] - pod_park_skin - pod_park_mag[1] - (esp_x0 + esp_pcb[0]),
              " mm past the antenna end"));
+    // Strap. The strap is outside the walls: nothing of it, or of its posts, reaches the IMU, the cell,
+    // the charger or the SuperMini; these lines check its place on the outside.
+    lo = strap_post[1] / 2 + strap_post[3];
+    echo(chk("strap band clear of the jaws (X)   ", min(jaw_xs[1][0] - (strap_x + strap_w / 2), (strap_x - strap_w / 2) - jaw_xs[0][1]) - 1.0));
+    echo(chk("strap band clear of the USB-C end  ", (strap_x - strap_w / 2) - (wall + 1.0)));
+    echo(chk("strap posts outside the side walls ", wall - 0));
+    echo(chk("strap slot above the lower edge rnd", (st_zb - st_hole[1]) - edge_r));
+    echo(chk("strap tab below the pry notch      ", (base_h - 0.8) - (st_zb + strap_tab) - 0.5));
+    echo(chk("strap post head below the pry notch", (base_h - 0.8) - (st_zb + strap_post[2]) - 0.5));
+    echo(chk("strap leaves the body above Z 0    ", st_t1[1]));
+    echo(chk("strap meets the shaft below centre ", st_c2[1] - st_t2[1]));
+    // The latch: the slot's loaded edge sits under the upper lip; the slot is shorter than the
+    // head, so it clicks over the lower lip and cannot fall off when slack.
+    echo(chk("strap latch: upper lip over the slot", strap_post[2] - 0.6));
+    echo(chk("strap latch: strap clear under head", st_shank_l - strap_t));
+    // Under 0.3 by design: this is the click, the slot stretching 0.3 mm (9 %) over the head.
+    // More makes it hard to fit with gloves; the upper lip, not this, carries the load.
+    echo(chk("strap latch: detent (head - slot)  ", (strap_post[1] + strap_post[2] + strap_post[3]) - st_hole[1]));
+    echo(chk("strap: bars beside the slot >= 1.6 ", (strap_w - st_hole[0]) / 2 - 1.6));
+    echo(chk("strap: tab beyond the slot  >= 3.0 ", strap_tab - 3.0));
+    echo(str("  info  strap ", strap_w, " x ", strap_t, " mm TPU 95A, ", st_len, " mm long; slots ", st_hole, " mm, bearing edges ",
+             st_span, " mm apart; fitted path ", st_path, " mm on a ", shaft_d, " mm shaft (", strap_preload * 100, " % stretch)"));
+    echo(str("  info  strap section ", strap_w * strap_t, " mm2, ", (strap_w - st_hole[0]) * strap_t,
+             " mm2 at the slots; preload about ", 26 * strap_w * strap_t * strap_preload, " N per leg at E = 26 MPa"));
+    echo(str("  info  strap strength: about ", round(25 * (strap_w - st_hole[0]) * strap_t), "-", round(35 * (strap_w - st_hole[0]) * strap_t),
+             " N at the slots from TPU 95A's 25-35 MPa datasheet tensile strength; the hold on a club needs a physical pull test"));
     echo(str("  info  park magnets: the largest disc that fits behind the end wall is ",
              lip_low - (z_batt + chg[2]), " mm across (a 6 x 2 mm disc does not)"));
 }
@@ -560,6 +668,8 @@ if (part == "base") {
     base_print();
 } else if (part == "lid") {
     lid_print();
+} else if (part == "strap") {
+    strap();
 } else if (part == "section") {
     // Cut across the shaft through the middle of the -X jaw, looking along +X.
     rotate([0, 0, -90]) projection(cut = true) rotate([0, -90, 0]) translate([-jaw_w / 2, 0, 0]) union() {
