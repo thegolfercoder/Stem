@@ -75,10 +75,10 @@ GROUND = {
              props={"print_file": "ground_radar_esp32_clamp_tab_x2.stl"}),
         dict(part="in_place:dock_base", name="Dock base", collection=PRINTED, **PETG_TAB,
              explode=[0, 0, -25], props={"print_file": "ground_radar_dock_base.stl"}),
-        dict(part="in_place:dock_stem", name="Dock stem", collection=PRINTED, **PETG_LID,
-             explode=[0, 80, 0], props={"print_file": "ground_radar_dock_stem.stl"}),
-        dict(part="ghost:stud_bolt", name="1/4-20 stud (hex bolt)", collection=COMPONENTS,
-             material="Steel", color=[0.72, 0.72, 0.74, 1.0], roughness=0.3, metallic=1.0, explode=[0, 80, 0]),
+        dict(part="in_place:arm_slide", name="Phone arm slide", collection=PRINTED, **PETG_LID,
+             explode=[0, 60, 30], props={"print_file": "ground_radar_arm_slide.stl"}),
+        dict(part="in_place:arm_head", name="Phone arm MagSafe head", collection=PRINTED, **PETG_LID,
+             explode=[0, 80, 50], props={"print_file": "ground_radar_arm_head_magsafe.stl"}),
         dict(part="ghost:battery", name="LiPo 1500 mAh", collection=COMPONENTS,
              **PCB("Cell", [0.15, 0.35, 0.65]), explode=[0, 32, 0]),
         dict(part="ghost:tp4056", name="TP4056 USB-C charger", collection=COMPONENTS,
@@ -87,31 +87,12 @@ GROUND = {
              **PCB("PCB purple", [0.35, 0.20, 0.55]), explode=[85, 55, 0]),
         dict(part="ghost:esp32", name="ESP32-C3 SuperMini", collection=COMPONENTS,
              **PCB("PCB black", [0.03, 0.03, 0.03]), explode=[0, 22, 0]),
-        dict(part="ghost:lm358", name="LM358 pre-amp", collection=COMPONENTS,
-             **PCB("PCB green", [0.05, 0.35, 0.12]), explode=[0, 22, 0]),
         dict(part="ghost:radar", name="BGT24LTR11 radar module", collection=COMPONENTS,
              **PCB("PCB gold", [0.80, 0.60, 0.15]), explode=[0, 26, 0]),
         dict(part="ghost:switch", name="Slide switch", collection=COMPONENTS,
              material="Metal", color=[0.75, 0.75, 0.78, 1.0], roughness=0.3, metallic=1.0, explode=[12, 0, 0]),
         dict(part="ghost:led", name="Status LED 5 mm", collection=COMPONENTS,
              material="LED red", color=[0.9, 0.05, 0.05, 1.0], roughness=0.2, explode=[0, 0, 14]),
-        dict(part="ghost:piezo", name="Piezo buzzer 15 mm", collection=COMPONENTS, **BRASS, explode=[10, 30, 0]),
-        # Pod park: the hood on the lid, its pins and magnets, the protection
-        # board on the lid's inner face, and the pod itself, hanging in the hood.
-        dict(part="ghost:pod_park_board", name="Pod park protection board", collection=COMPONENTS,
-             **PCB("PCB green", [0.05, 0.35, 0.12]), explode=[85, 45, 0]),
-        dict(part="in_place:pod_park_hood", name="Pod park hood", collection=PRINTED, **PETG_LID,
-             explode=[85, 80, 0], props={"print_file": "ground_radar_pod_park_hood.stl"}),
-        dict(part="ghost:pod_park_pogo", name="Pod park spring pins", collection=COMPONENTS, **GOLD_PINS,
-             explode=[85, 80, 18]),
-        dict(part="ghost:pod_park_magnets", name="Pod park magnets", collection=COMPONENTS, **NICKEL,
-             explode=[85, 80, -7]),
-        dict(part="in_place:base", name="Parked pod base", **PARKED, **PETG, explode=[85, 115, -8],
-             props={"print_file": "shaft_pod_base.stl"}),
-        dict(part="in_place:lid", name="Parked pod lid", **PARKED, **PETG_LID, explode=[85, 115, -8],
-             props={"print_file": "shaft_pod_lid.stl"}),
-        dict(part="ghost:park_contacts", name="Parked pod contacts (brass)", **PARKED, **BRASS,
-             explode=[85, 115, -8]),
         dict(part="ghost:boresight", name="Radar boresight (15 deg)", collection=REFERENCE,
              material="Boresight", color=[1.0, 0.45, 0.0, 0.25], roughness=0.5, hide_render=True),
     ],
@@ -127,13 +108,11 @@ Timeline: frame 1 assembled, frame 60 exploded.
 Collections: Printed parts (print from cad/stl/, see each object's print_file
 property), Components (stand-in boxes at real size and position), Reference
 (the radar's 15 degree boresight cone, hidden in renders).
-The unit stands on the dock base's top face (Z = 0). The dock stem behind it
-ends in a cap with a 1/4"-20 tripod stud, for any phone clamp. (A MagSafe-ring
-head is the alternative: script_ground_radar.scad, holder = "magsafe".)
-Pod park: the club pod hangs, arrow up, in the hood on the lid left of the
-stem, and charges there through two spring pins. The Parked pod collection is
-the pod's own base, lid and brass contacts (from script_shaft_imu.scad),
-rotated into the unit's coordinates. The piezo buzzer is inside the left wall.
+The unit stands on the dock base's top face (Z = 0). Behind it, a slim spine
+on the dock holds a slide that pulls up 46 mm; a round MagSafe head flips up on
+the slide and tilts back. Shown folded: the slide is down in the spine and the head lies
+flat behind it, plain face out (arm_open = true in the OpenSCAD shows it up). The
+club pod stores in the pocket in the dock base behind the spine.
 """,
 }
 
@@ -156,12 +135,8 @@ POD = {
              **PCB("PCB teal", [0.05, 0.45, 0.45]), explode=[0, 0, 12]),
         dict(part="ghost:esp32", name="ESP32-C3 SuperMini", collection=COMPONENTS,
              **PCB("PCB black", [0.03, 0.03, 0.03]), explode=[0, 0, 22]),
-        dict(part="ghost:park_contacts", name="Park contacts (brass M2)", collection=COMPONENTS, **BRASS,
-             explode=[10, 0, 0]),
-        dict(part="ghost:park_magnets", name="Park magnets 4 x 2 mm", collection=COMPONENTS, **NICKEL,
-             explode=[0, 0, 14]),
-        dict(part="ghost:park_diode", name="Park diode D2", collection=COMPONENTS,
-             **PCB("Epoxy black", [0.03, 0.03, 0.035]), explode=[0, 0, 18]),
+        dict(part="ghost:strap", name="Reusable strap (TPU)", collection=COMPONENTS,
+             material="TPU black", color=[0.03, 0.03, 0.03, 1.0], roughness=0.7, explode=[0, 0, -14]),
         dict(part="ghost:liner", name="Anti-slip liner strips", collection=COMPONENTS,
              material="Silicone", color=[0.12, 0.12, 0.12, 1.0], roughness=0.9),
         dict(part="ghost:shaft", name="Golf shaft 13 mm (reference)", collection=REFERENCE,
@@ -178,10 +153,9 @@ These are the pod's reference axes: +X along the shaft toward the clubhead
 Timeline: frame 1 assembled, frame 60 exploded.
 Collections: Printed parts (print from cad/stl/, see each object's print_file
 property), Components (stand-ins at real size and position), Reference (shaft,
-IMU axis markers). The zip ties that must close the clamp are not modelled.
-Pod park: two brass contact screws in the +X end, a 4 x 2 mm magnet either
-side behind the end wall, and the diode D2 behind it; the pod parks, +X end
-up, in the hood on the ground unit's lid and charges there.
+IMU axis markers). The reusable TPU strap closes the clamp on the shaft
+(zip ties through the tunnels still work as a fallback). The pod charges on
+its own USB-C.
 """,
 }
 

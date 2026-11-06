@@ -28,14 +28,14 @@ export_part script_ground_radar.scad radome          ground_radar_radome.stl
 export_part script_ground_radar.scad led_pipe        ground_radar_led_pipe.stl
 export_part script_ground_radar.scad esp32_clamp_tab ground_radar_esp32_clamp_tab_x2.stl
 export_part script_ground_radar.scad dock_base       ground_radar_dock_base.stl
-export_part script_ground_radar.scad dock_stem       ground_radar_dock_stem.stl
-export_part script_ground_radar.scad dock_stem       ground_radar_dock_stem_magsafe.stl 'holder="magsafe"'
-export_part script_ground_radar.scad pod_park_hood   ground_radar_pod_park_hood.stl
+export_part script_ground_radar.scad arm_slide       ground_radar_arm_slide.stl
+export_part script_ground_radar.scad arm_head        ground_radar_arm_head_magsafe.stl
+export_part script_ground_radar.scad arm_pin         ground_radar_arm_pin.stl
 echo "shaft motion pod"
 export_part script_shaft_imu.scad    base            shaft_pod_base.stl
 export_part script_shaft_imu.scad    lid             shaft_pod_lid.stl
+export_part script_shaft_imu.scad    strap           shaft_pod_strap_TPU.stl
 echo "fit test coupon (print it first; not part of a kit)"
-export_part script_ground_radar.scad fit_test_coupon fit_test_coupon.stl
 
 # Keep one copy of each script's fit report rather than one per part.
 awk '!seen[$0]++' stl/fit_report.txt | sed -n 's/^ECHO: "\(.*\)"$/\1/p' > stl/fit_report.tmp

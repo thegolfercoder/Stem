@@ -126,6 +126,7 @@ strap_post    = [2.4, 2.0, 1.0, 0.6, 1.0];  // [shank width X at its outer end, 
                        //  upper lip (engagement), lower lip (detent), head thickness]
 
 /* [Pod park - charging contacts in the +X end face] */
+pod_park       = false;  // no charging contacts or magnets: the pod charges on its own USB-C (owner, 2026-11-06)
 pod_park_pitch = 6.0;  // contact centres across the end face (Y), either side of the centre line
 pod_park_z     = 8.8;  // contact and magnet centres above the floor's underside: over the charger, under the lid lip.
                        // 8.8 keeps the heads 0.3 mm inside the end face's flat (fit report) and the magnets 0.45 under the lip
@@ -251,7 +252,7 @@ module base() {
         pry_notch();
         clamp_bore();
         saddle_relief();
-        park_cuts();
+        if (pod_park) park_cuts();
         strap_saddle_cut();
     }
     imu_pocket();
@@ -530,7 +531,7 @@ module esp32_retainer() {
 // ----------------------------------------------------------------------------
 // Named ghosts, so each can be exported alone in place (`part = "ghost:imu"`).
 // The Blender scene in cad/blender/ is built that way.
-ghost_names = ["imu", "imu_axes", "battery", "charger", "esp32", "shaft", "liner", "park_contacts", "park_magnets", "park_diode", "strap"];
+ghost_names = ["imu", "imu_axes", "battery", "charger", "esp32", "shaft", "liner", "strap"];
 
 module ghosts() { for (n = ghost_names) ghost(n); }
 
@@ -604,6 +605,7 @@ module fit_report() {
     echo(str("  info  clamp mouth ", mouth, " mm for a ", shaft_d, " mm bore; each jaw deflects ",
              (shaft_d - mouth) / 2, " mm to snap on"));
     echo(str("  info  overall height incl. clamp: ", pod[2] - (bore_z - jaw_R), " mm"));
+    if (pod_park) {
     // Pod park: contacts and magnets in the +X end, and D2 behind it.
     pads = pod_park_pads(); mags = pod_park_mags();
     mr = (pod_park_mag[0] + pod_park_mag_clear) / 2;  // pocket radius
@@ -629,6 +631,7 @@ module fit_report() {
              pod_park_pad[1], " mm proud of the +X end, ", pod_park_z, " mm up; magnets ",
              pod_park_mag[0], " x ", pod_park_mag[1], " mm, ", pod[0] - pod_park_skin - pod_park_mag[1] - (esp_x0 + esp_pcb[0]),
              " mm past the antenna end"));
+    }
     // Strap. The strap is outside the walls: nothing of it, or of its posts, reaches the IMU, the cell,
     // the charger or the SuperMini; these lines check its place on the outside.
     lo = strap_post[1] / 2 + strap_post[3];
@@ -655,8 +658,6 @@ module fit_report() {
              " mm2 at the slots; preload about ", 26 * strap_w * strap_t * strap_preload, " N per leg at E = 26 MPa"));
     echo(str("  info  strap strength: about ", round(25 * (strap_w - st_hole[0]) * strap_t), "-", round(35 * (strap_w - st_hole[0]) * strap_t),
              " N at the slots from TPU 95A's 25-35 MPa datasheet tensile strength; the hold on a club needs a physical pull test"));
-    echo(str("  info  park magnets: the largest disc that fits behind the end wall is ",
-             lip_low - (z_batt + chg[2]), " mm across (a 6 x 2 mm disc does not)"));
 }
 
 // ----------------------------------------------------------------------------

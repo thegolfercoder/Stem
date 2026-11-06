@@ -167,7 +167,7 @@ pipe_flange = [6.0, 0.8];          // [diameter, thickness]; the 5 mm LED's dome
 //              any phone size, MagSafe or not, screws on. The default.
 //   "magsafe"  a ring carrying a MagSafe-compatible magnet ring, for iPhones
 //              (or phones in a MagSafe case) with nothing else to buy.
-phone_mount   = true;           // false: dock base only, no stem
+phone_mount   = false;          // the old stud / MagSafe stem: replaced by the folding arm (arm = true)
 holder        = "stud";         // [stud, magsafe]
 dock_t        = 2.4;            // base plate
 dock_lip_h    = 6.0;            // lips up the unit's front and rear faces
@@ -180,6 +180,34 @@ stem_hole_d   = 30;             // opening in the middle of the ring
 stem_chamfer  = 0.6;            // edges of the stem, printed as three 0.2 mm steps
 buttress      = [28, 6, 10];    // block behind the stem's foot [X, Y, Z]
 foot_d        = 8.2;            // recesses for 8 mm silicone bumpers under the base
+
+/* [Folding phone arm and pod pocket - the back as one clean form] */
+// Owner's decision (2026-11-06): the back is one flat lid, nothing stands above
+// the unit when folded, and the phone films from the unit by MagSafe. A slim
+// spine on the dock, behind the lid's centre, holds a slide that pulls up out
+// of it; a round MagSafe head flips up on the slide and tilts back in detents.
+// Folded, the slide is inside the spine and the head lies flat over it, its
+// plain face out. The club pod stores in a pocket in the base behind the spine.
+arm           = true;
+arm_w         = 30;             // spine width, X
+arm_t         = 5.0;            // spine thickness, Y
+arm_top       = 63;             // spine top, Z: 1 mm under the unit's top edge
+slide_w       = 25.4;           // slide plate [width X, thickness Y, length Z]
+slide_t       = 2.4;
+slide_len     = 60;
+slide_clear   = 0.3;            // channel over the slide, each side
+slide_ext     = 46;             // how far the slide pulls up: puts the phone's lower edge clear of the unit
+head_d        = 60;             // MagSafe head: ring_od + 1.75 mm each side
+head_t        = 4.0;
+knuckle_d     = 8.0;            // hinge knuckles; a printed 3 mm pin runs through them
+pin_d         = 3.0;
+pin_clear     = 0.25;
+tilt_default  = 25;             // deg back from vertical: frames ball, golfer and club at the top
+tilt_steps    = [0, 10, 20, 25, 30, 35];   // detents
+arm_open      = false;          // assembly view: arm up (true) or folded flat (false)
+pod_pocket    = [32.6, 33.0, 14];   // pod lying on a side face [X, Y, wall height]: snug, half its height walled
+pod_wall      = 2.0;
+pod_pocket_y0 = 33.5;             // pocket's front inner edge, behind the folded head
 // 1/4"-20 stud: a 1/4"-20 x 1/2" hex bolt, glued head-down in a hex pocket that
 // opens under the cap, thread up. Tripod screws stand 4.5-6 mm proud.
 cap           = [30, 22, 11.4]; // [X, Y from the stem's front face, Z]
@@ -210,7 +238,7 @@ phone_vfov    = 65;             // camera vertical field of view, portrait, degr
 // the brass contacts in the pod's end face (script_shaft_imu.scad, "pod park").
 // The pins carry the MT3608's 5 V through the protection board in the pocket
 // on the lid behind them. Everything for it lives on the lid.
-pod_park        = true;         // false: no hood, no holes in the lid, no board pocket
+pod_park        = false;         // false: no hood, no holes in the lid, no board pocket
 pod_park_cx     = 18;           // pod centre line, X: between the left end and the stem neck (X 36)
 pod_park_z0     = 11;           // pod's USB end, Z: above the lower-left lid screw and the dock's rear lip
 pod_park_gap    = 0.6;          // pod's jaw tips to the lid's outer face
@@ -265,6 +293,7 @@ sight_notch  = [2.2, 1.4];    // rear notch [width, depth]: 0.5 mm of light each
 sight_blade  = 8.0;           // rear blade width, X
 
 /* [Buzzer - bare piezo disc] */
+buzzer      = false;          // not fitted: the owner's parts list has no buzzer (2026-11-06)
 // Brass face toward the inside of the left end wall, glued by its rim onto a
 // seat that holds it pz_cavity off the wall: a disc glued down flat cannot
 // flex and is nearly silent. It sounds through louvred slots in the grip ribs.
@@ -451,7 +480,7 @@ module shell() {
             tp4056_pocket();
             switch_holder();
             sight_post();
-            pz_mount();
+            if (buzzer) pz_mount();
         }
         // Holes and cutouts through everything above.
         lid_screw_pilots();
@@ -463,7 +492,7 @@ module shell() {
         window_bevel();
         side_ribs();
         front_wordmark();
-        pz_cuts();
+        if (buzzer) pz_cuts();
     }
 }
 
@@ -777,12 +806,11 @@ module lid() {
                 }
                 for (p = lid_bosses) translate([p[0], 0, p[1]]) y_cylinder(body_d, boss_d + 3.6);
                 switch_lid_relief();
-                pz_lid_relief();
+                if (buzzer) pz_lid_relief();
             }
             mt3608_fence();
             tp4056_presser();
             if (pod_park) pod_park_board_fence();
-            board_fence(power_board_pos, pb_bin);
             sight_rear();
         }
         // Shadow gap at the seam: the lid's edge steps in for its first 0.8 mm.
@@ -793,7 +821,6 @@ module lid() {
             translate([p[0], body_d - 0.4, p[1]]) y_cone(0.41, m2_head_d, m2_head_d + 0.8);
         }
         if (pod_park) pod_park_lid_holes();
-        gasket_groove();
     }
 }
 
@@ -893,7 +920,8 @@ module dock_outline() {
     // it only has to stop the phone's weight tipping the dock backwards.
     hull() {
         translate([0, dock_y0]) rrect(body_w, stem_y1 + buttress[1] + 4 - dock_y0, 6);
-        translate([ring_center[0] - 34, dock_y0 + dock_depth - 26]) rrect(68, 26, 13);
+        if (!arm) translate([ring_center[0] - 34, dock_y0 + dock_depth - 26]) rrect(68, 26, 13);
+        if (arm) translate([body_w / 2 - pp_out[0] / 2 - 4, pod_pocket_y0 - pod_wall]) rrect(pp_out[0] + 8, pp_out[1] + 4, 10);
     }
 }
 
@@ -909,8 +937,9 @@ module dock_base() {
             // Front lip, bevelled on its top front edge.
             yz_extrude(dock_cx0, dock_cx1) polygon([[dock_y0, -0.01], [-dock_gap, -0.01], [-dock_gap, dock_lip_h],
                 [dock_y0 + 1.2, dock_lip_h], [dock_y0, dock_lip_h - 1.2]]);
-            // Short rear lips at both ends stop the unit turning in the dock.
-            for (x = [dock_cx0, dock_cx1 - 10])
+            // Short rear lips at both ends stop the unit turning in the dock
+            // (only without the arm: then the spine does it).
+            if (!arm) for (x = [dock_cx0, dock_cx1 - 10])
                 yz_extrude(x, x + 10) polygon([[stem_y0, -0.01], [stem_y0 + wall, -0.01],
                     [stem_y0 + wall, dock_lip_h - 1.2], [stem_y0 + wall - 1.2, dock_lip_h], [stem_y0, dock_lip_h]]);
             // Buttress behind the stem's foot: it takes the phone's weight.
@@ -919,6 +948,7 @@ module dock_base() {
                     polygon([[stem_y1 + 0.1, -0.01], [stem_y1 + 0.1 + buttress[1], -0.01],
                              [stem_y1 + 0.1 + buttress[1], buttress[2] - 2], [stem_y1 + 0.1 + buttress[1] - 2, buttress[2]],
                              [stem_y1 + 0.1, buttress[2]]]);
+            if (arm) { arm_spine(); pod_pocket_walls(); }
         }
         if (phone_mount) {
             // Socket for the stem's foot.
@@ -932,8 +962,14 @@ module dock_base() {
         }
         // Recesses for silicone bumpers, for hitting mats and hard floors.
         for (x = [10, body_w - 10], y = [dock_y0 + 6]) translate([x, y, -dock_t - 1]) cylinder(h = 1.6, d = foot_d);
-        for (x = [ring_center[0] - 24, ring_center[0] + 24])
+        if (!arm) for (x = [ring_center[0] - 24, ring_center[0] + 24])
             translate([x, dock_y0 + dock_depth - 9, -dock_t - 1]) cylinder(h = 1.6, d = foot_d);
+        if (arm) {
+            for (x = [body_w / 2 - pp_out[0] / 2 + 2, body_w / 2 + pp_out[0] / 2 - 2])
+                translate([x, pod_pocket_y0 + pp_out[1] - 8, -dock_t - 1]) cylinder(h = 1.6, d = foot_d);
+            arm_spine_cut();
+            pod_pocket_cut();
+        }
     }
 }
 
@@ -1015,6 +1051,130 @@ module dock_stem() {
         stem_cut();
     }
 }
+
+
+// ---- Folding phone arm -------------------------------------------------------------
+spine_y0 = body_d + dock_gap;                       // spine front face, against the lid
+spine_y1 = spine_y0 + arm_t;                        // spine rear face
+ch_w     = slide_w + 2 * slide_clear;               // channel inside the spine
+ch_t     = slide_t + 2 * slide_clear;
+ch_y0    = spine_y0 + (arm_t - ch_t) / 2;
+ch_floor = 3;                                       // channel floor, Z
+slide_y0 = ch_y0 + slide_clear;
+hinge_y  = spine_y1 + head_t / 2 + 0.6;             // hinge axis: the folded head's mid-plane, behind the spine
+detent_z = [ch_floor + 8, ch_floor + 8 + slide_ext];    // spine holes the slide's bump clicks into: stored, open
+pp_out   = [pod_pocket[0] + 2 * pod_wall, pod_pocket[1] + 2 * pod_wall];
+function slide_z0(open) = ch_floor + (open ? slide_ext : 0);
+function hinge_z(open) = slide_z0(open) + slide_len + knuckle_d / 2 - 1;
+
+module chamfer_box(size, c) {
+    // A box with every edge chamfered by c, from the origin.
+    hull() {
+        translate([c, c, 0]) cube([size[0] - 2 * c, size[1] - 2 * c, size[2]]);
+        translate([0, c, c]) cube([size[0], size[1] - 2 * c, size[2] - 2 * c]);
+        translate([c, 0, c]) cube([size[0] - 2 * c, size[1], size[2] - 2 * c]);
+    }
+}
+
+module arm_spine() {
+    // Rises from the base behind the lid's centre, 1 mm short of the unit's top
+    // edge: from behind, a slim bar on the slab, not a post above it.
+    translate([body_w / 2 - arm_w / 2, spine_y0, -0.01]) chamfer_box([arm_w, arm_t, arm_top + 0.01], 0.8);
+}
+module arm_spine_cut() {
+    // The slide's channel, open at the top, and the two detent holes in the
+    // rear wall the slide's bump clicks into (folded, and pulled up).
+    translate([body_w / 2 - ch_w / 2, ch_y0, ch_floor]) cube([ch_w, ch_t, arm_top]);
+    for (z = detent_z) translate([body_w / 2, ch_y0 + ch_t - 0.1, z]) y_cylinder(arm_t, 2.2);
+}
+
+module pod_pocket_walls() {
+    translate([body_w / 2 - pp_out[0] / 2, pod_pocket_y0 - pod_wall, -0.01])
+        chamfer_box([pp_out[0], pp_out[1], pod_pocket[2] + 0.01], 0.6);
+}
+module pod_pocket_cut() {
+    // The pod lies on a side face, snug, half its height walled; a finger
+    // notch in the rear wall lifts it out.
+    translate([body_w / 2 - pod_pocket[0] / 2, pod_pocket_y0, 0]) cube([pod_pocket[0], pod_pocket[1], pod_pocket[2] + 1]);
+    translate([body_w / 2, pod_pocket_y0 + pod_pocket[1] - 1, pod_pocket[2]]) rotate([-90, 0, 0]) cylinder(h = pod_wall + 2, d = 18, $fn = 48);
+}
+
+module arm_slide(open = arm_open) {
+    // A flat plate in the spine's channel. At its top a tab reaches back over
+    // the spine to the hinge, whose middle knuckle carries the tilt detents.
+    z0 = slide_z0(open);
+    translate([body_w / 2 - slide_w / 2, slide_y0, z0]) chamfer_box([slide_w, slide_t, slide_len], 0.4);
+    // Bump that clicks into the spine's detent holes.
+    translate([body_w / 2, slide_y0 + slide_t - 0.01, z0 + 8]) y_cylinder(0.6, 2.0);
+    // Tab and middle knuckle.
+    hz = hinge_z(open);
+    difference() {
+        hull() {
+            translate([body_w / 2 - 6, slide_y0, z0 + slide_len - 3]) cube([12, slide_t, 3]);
+            translate([body_w / 2 - 6, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 12, d = knuckle_d);
+        }
+        translate([body_w / 2 - 7, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 14, d = pin_d + 2 * pin_clear);
+        // Detent notches every tilt step on the knuckle's ends (shown as grooves).
+        for (a = tilt_steps) translate([body_w / 2 - 6.4, hinge_y, hz]) rotate([a, 0, 0])
+            translate([0, -0.4, knuckle_d / 2 - 0.5]) cube([12.8, 0.8, 1]);
+    }
+}
+
+module arm_head_2d() {
+    circle(d = head_d, $fn = 128);
+}
+module arm_head(open = arm_open, tilt = tilt_default) {
+    // The round MagSafe head. Open: up from the hinge, tilted back. Folded:
+    // hanging down over the spine, its plain face out.
+    hz = hinge_z(open);
+    translate([0, hinge_y, hz]) rotate([open ? -tilt : 180, 0, 0]) translate([0, -hinge_y, -hz]) {
+        difference() {
+            union() {
+                // Disc, its centre a radius plus a little above the hinge.
+                translate([body_w / 2, hinge_y - head_t / 2, hz + knuckle_d / 2 + head_d / 2 - 1])
+                    rotate([-90, 0, 0]) hull() {
+                        cylinder(h = head_t, d = head_d - 1.2, $fn = 128);
+                        translate([0, 0, 0.6]) cylinder(h = head_t - 1.2, d = head_d, $fn = 128);
+                    }
+                // Two outer knuckles either side of the slide's.
+                for (x = [body_w / 2 - 13.5, body_w / 2 + 6.5])
+                    hull() {
+                        translate([x, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 7, d = knuckle_d);
+                        translate([x, hinge_y - head_t / 2, hz + knuckle_d / 2]) cube([7, head_t, 2]);
+                    }
+            }
+            // Pin bore.
+            translate([body_w / 2 - 15, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 30, d = pin_d + 2 * pin_clear);
+            // Magnet ring pocket on the phone side (+Y, away from the unit when open).
+            translate([body_w / 2, hinge_y + head_t / 2 - ring_depth, hz + knuckle_d / 2 + head_d / 2 - 1]) difference() {
+                y_cylinder(ring_depth + 1, ring_od);
+                translate([0, -1, 0]) y_cylinder(ring_depth + 3, ring_id);
+            }
+        }
+    }
+}
+module arm_pin() { rotate([0, 90, 0]) cylinder(h = 28, d = pin_d); }
+
+// The phone on the open head: back to the ring, centred on it.
+module phone_ghost(tilt = tilt_default) {
+    hz = hinge_z(true);
+    c = [body_w / 2, hinge_y, hz + knuckle_d / 2 + head_d / 2 - 1];
+    translate([0, hinge_y, hz]) rotate([-tilt, 0, 0]) translate([0, -hinge_y, -hz])
+        translate([c[0] - phone[0] / 2, c[1] + head_t / 2 + 0.2, c[2] - phone[1] / 2]) cube([phone[0], phone[2], phone[1]]);
+}
+// Lens: a point on the phone's back, phone_lens_from_top below its top edge.
+function lens_pos(tilt = tilt_default) = let(hz = hinge_z(true), r = knuckle_d / 2 + head_d / 2 - 1 + phone[1] / 2 - phone_lens_from_top,
+    y = hinge_y + head_t / 2 + 0.2) [body_w / 2, hinge_y + r * sin(tilt) + (y - hinge_y) * cos(tilt), hz + r * cos(tilt) - (y - hinge_y) * sin(tilt)];
+function phone_bottom(tilt) = let(hz = hinge_z(true), r = knuckle_d / 2 + head_d / 2 - 1 - phone[1] / 2)
+    [hinge_y + r * sin(tilt), hz + r * cos(tilt)];
+
+// Print orientations: slide flat (tab up), head on its plain face, pin flat.
+module arm_slide_print() { translate([-body_w / 2 + slide_w / 2, slide_len + slide_z0(false) + 12, -slide_y0]) rotate([90, 0, 0]) arm_slide(false); }
+module arm_head_print() {
+    hz = hinge_z(true);
+    translate([0, 0, head_t / 2]) rotate([90, 0, 0]) translate([-body_w / 2, -hinge_y, -(hz + knuckle_d / 2 + head_d / 2 - 1)]) arm_head(true, 0);
+}
+module arm_pin_print() { translate([0, 0, pin_d / 2]) arm_pin(); }
 
 // Print orientations. Base: as it sits. Stem: flat, front face on the bed,
 // ring pocket facing up.
@@ -1443,7 +1603,7 @@ module fit_report() {
     pz_inner = [for (z = pz_slot_z) z + pz_rise];
     pz_far = max([for (z = pz_inner) abs(z - pz_cz)]) + rib_w / 2;
     pz_r = pz_d / 2 - pz_seat;
-    pz_lines = [
+    pz_lines = !buzzer ? [] : [
         chk("buzzer seat inside depth, front  ", (pz_cy - pz_seat_r) - y_front),
         chk("buzzer seat inside depth, lid    ", (y_back - 0.2) - (pz_cy + pz_seat_r)),
         chk("buzzer mount below SuperMini USB ", (esp_usb_z - 6) - pz_block[3]),
@@ -1453,7 +1613,35 @@ module fit_report() {
         chk("buzzer slots in the grip ribs (Z)", rib_z[1] - pz_slot_z[len(pz_slot_z) - 1]),
         chk("buzzer slots in the grip ribs (Y)", (pz_cy - pz_slot_len / 2) - (front_chamfer + 2)),
     ];
-    for (l = concat(lines, ms_lines, st_lines, stem_lines, pp_lines, sight_lines, pz_lines)) echo(l);
+    // Folding arm
+    ball = [-1400, 0];                                   // [Y, Z]: the ball, 1.4 m in front of the unit
+    function line_z_at(y, t) = let(l = lens_pos(t)) l[2] + (ball[1] - l[2]) * (y - l[1]) / (ball[0] - l[1]);
+    arm_lines = !arm ? [] : [
+        for (tt = [tilt_steps[0], tilt_default, tilt_steps[len(tilt_steps) - 1]])
+            chk(str("phone's lower edge over unit, ", tt, " deg"), phone_bottom(tt)[1] - (body_h + sight_h)),
+        chk("lens sightline over the unit (front)", line_z_at(0, tilt_default) - (body_h + sight_h)),
+        chk("lens sightline over the unit (rear) ", line_z_at(body_d, tilt_default) - (body_h + sight_h)),
+        chk("slide still 12 mm in the spine, open", (arm_top - slide_z0(true)) - 12),
+        chk("spine below the unit's top edge     ", body_h - arm_top),
+        chk("folded head inside the dock (Z)     ", (hinge_z(false) - knuckle_d / 2 - head_d) - 0),
+        chk("folded head clear of pocket wall    ", (pod_pocket_y0 - pod_wall) - (hinge_y + head_t / 2) - 0.3),
+        chk("folded head inside the lid's width  ", (body_w - head_d) / 2 - 2),
+        chk("pod pocket walls hold half the pod  ", pod_pocket[2] - 26 / 2),
+    ];
+    for (l = concat(lines, ms_lines, st_lines, stem_lines, pp_lines, sight_lines, pz_lines, arm_lines)) echo(l);
+    if (arm) {
+        // Tipping backwards about the base's rear edge with a 240 g phone on the
+        // open arm: masses are estimates (unit with its cell and boards about
+        // 150 g at mid-depth; dock and arm about 45 g).
+        rear = pod_pocket_y0 + pp_out[1] - pod_wall;
+        cg_phone = hinge_y + (knuckle_d / 2 + head_d / 2 - 1) * sin(tilt_default) + (head_t / 2 + phone[2] / 2) * cos(tilt_default);
+        restoring = 150 * (rear - body_d / 2) + 45 * (rear - 25);
+        tipping = 240 * (cg_phone - rear);
+        echo(str("  info  open arm, ", tilt_default, " deg: lens at [Y, Z] ", lens_pos(tilt_default), " mm; phone's centre ",
+                 cg_phone, " mm behind the unit's front, base ends at ", rear,
+                 tipping < 0 ? " (the phone is over the base: it cannot tip it backwards)" :
+                 str("; tipping moment ", tipping, " g.mm against ", restoring)));
+    }
     echo(str("  info  radar window centre ", [win_cx, win_zb + top_on_face / 2],
              ", boresight ", win_tilt, " deg up, skin ", win_t, " mm"));
     echo(str("  info  USB-C receptacle centre X ", tp_usb_x, " Y ", tp_usb_y));
@@ -1472,7 +1660,7 @@ module fit_report() {
                  pp_pad[1] - (pod_park_pogo[2] - 0.1), "-", pp_pad[1] - 0.4, " works); bores ",
                  [for (v = coupon_pin_steps) pod_park_pogo[0] + pod_park_pogo_fit + v], " mm"));
     }
-    echo(str("  info  buzzer disc centre [Y, Z] ", [pz_cy, pz_cz], " on the left wall, ",
+    if (buzzer) echo(str("  info  buzzer disc centre [Y, Z] ", [pz_cy, pz_cz], " on the left wall, ",
              win_cx - win_size / 2 - win_frame - pz_x1, " mm from the radar housing"));
     if (st) echo(str("  info  1/4-20 stud stands ", stud_proud, " mm proud of the cap, top ", cap_top, " mm above the unit's bottom"));
     if (ms) {
@@ -1503,6 +1691,18 @@ if (part == "shell") {
     dock_base_print();
 } else if (part == "dock_stem") {
     dock_stem_print();
+} else if (part == "arm_slide") {
+    arm_slide_print();
+} else if (part == "arm_head") {
+    arm_head_print();
+} else if (part == "arm_pin") {
+    arm_pin_print();
+} else if (part == "in_place:arm_slide") {
+    arm_slide();
+} else if (part == "in_place:arm_head") {
+    arm_head();
+} else if (part == "ghost:phone") {
+    if (arm_open) phone_ghost();
 } else if (part == "pod_park_hood") {
     pod_park_hood_print();
 } else if (part == "fit_test_coupon") {
@@ -1551,6 +1751,7 @@ if (part == "shell") {
     dock_base();
     if (phone_mount) translate([0, 2 * explode, 0]) dock_stem();
     if (pod_park) translate([0, explode, 0]) pod_park_hood();
+    if (arm) { arm_slide(); arm_head(); if (arm_open) %phone_ghost(); }
     if (show_components) ghosts();
 }
 

@@ -51,6 +51,8 @@ class Part:
     support_fraction: float = 0.0  # extra material for supports, as a fraction of the part
     note: str = ""
     kit: bool = True  # False: printed once by the builder, not part of every kit's cost
+    density: float = DENSITY_G_CM3  # g/cm3; PETG unless the part says otherwise
+    usd_kg: float | None = None  # filament price for this part; None: the --filament price (PETG)
 
 
 PARTS = [
@@ -60,11 +62,12 @@ PARTS = [
     Part("ground_radar_led_pipe.stl", "ground", note="natural PETG"),
     Part("ground_radar_esp32_clamp_tab_x2.stl", "ground", qty=2),
     Part("ground_radar_dock_base.stl", "ground"),
-    Part("ground_radar_dock_stem.stl", "ground", note="1/4-20 stud head (the MagSafe head is an alternative)"),
-    Part("ground_radar_pod_park_hood.stl", "ground", note="pod park: the pod hangs and charges here"),
+    Part("ground_radar_arm_slide.stl", "ground", note="folding phone arm"),
+    Part("ground_radar_arm_head_magsafe.stl", "ground", note="MagSafe head"),
+    Part("ground_radar_arm_pin.stl", "ground", note="hinge pin"),
     Part("shaft_pod_base.stl", "pod"),
     Part("shaft_pod_lid.stl", "pod"),
-    Part("fit_test_coupon.stl", "test", kit=False, note="print first: every tight fit, once per printer"),
+    Part("shaft_pod_strap_TPU.stl", "pod", density=1.21, usd_kg=30.0, note="TPU 95A"),
 ]
 
 
@@ -105,7 +108,7 @@ def estimate(part: Part) -> Estimate:
     extruded = (skin + INFILL * (vol - skin)) * (1.0 + part.support_fraction)  # mm^3
     layers = height / LAYER_MM
     seconds = max(extruded / FLOW_MM3_S, layers * MIN_LAYER_S)
-    return Estimate(part, extruded * DENSITY_G_CM3 / 1000.0, seconds / 60.0, height)
+    return Estimate(part, extruded * part.density / 1000.0, seconds / 60.0, height)
 
 
 def opt(name: str, default: float) -> float:
@@ -131,6 +134,7 @@ def main() -> None:
     totals = {"ground": [0.0, 0.0], "pod": [0.0, 0.0]}
     missing = []
     extras = []
+    material = 0.0
     for p in PARTS:
         if not (STL_DIR / p.file).exists():
             missing.append(p.file)
@@ -140,6 +144,7 @@ def main() -> None:
             extras.append((p, e))
             continue
         g, m = e.grams * p.qty, e.minutes * p.qty
+        material += g / 1000.0 * (p.usd_kg if p.usd_kg is not None else filament_usd_kg)
         totals[p.unit][0] += g
         totals[p.unit][1] += m
         lines.append(f"{p.file:40s} {p.qty:3d} {g:7.1f} {m:8.0f}  {p.note}")
@@ -150,7 +155,6 @@ def main() -> None:
         grand_g += g
         grand_min += m
         lines.append(f"{unit:8s} {g:6.1f} g  {m / 60:5.2f} h")
-    material = grand_g / 1000.0 * filament_usd_kg
     own = (material + grand_min / 60.0 * own_usd_h) * FAILURE_ALLOWANCE
     farm = (material + grand_min / 60.0 * farm_usd_h) * FAILURE_ALLOWANCE
     lines += [
