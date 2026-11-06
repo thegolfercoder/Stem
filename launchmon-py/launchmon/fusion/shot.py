@@ -13,7 +13,10 @@ strike on its own clock, and that becomes its zero:
   two is the residual of that mapping, and is reported.
 * **Phone camera** - the strike in the video's sound, corrected for sound
   travel when the distance is known; failing that, swingml's own impact
-  event, which is coarser.
+  event, which is coarser. The phone films from the ground unit's dock stem,
+  so its distance to the ball is the radar's (`camera_on_the_unit`); a phone
+  anywhere else needs its own distance, and an unknown one leaves the travel
+  in and says so.
 
 If the radar refused, the IMU's shock defines zero; if both did, the camera's.
 Which sensor defined it, and how every other sensor was placed, travels with
@@ -62,9 +65,16 @@ Spin, face angle, club path, attack angle and swing plane are not outputs.
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field, SerializerFunctionWrapHandler, model_serializer
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    model_serializer,
+    model_validator,
+)
 
 from launchmon.config import ClubConfig, RadarGeometryConfig, cosine_correction_factor
 from launchmon.dsp.pipeline import RadarResult
@@ -83,9 +93,19 @@ class FusionConfig(BaseModel):
     imu: ImuSwingConfig = ImuSwingConfig()
     camera_to_ball_m: float | None = Field(
         default=None,
+        ge=0.0,
+        allow_inf_nan=False,
         description=(
-            "Distance from the phone to the ball, measured at setup. Removes sound "
-            "travel from the audio impact. None leaves it in, and says so."
+            "Distance from the phone to the ball. Removes sound travel from the audio "
+            "impact. None leaves it in, and says so."
+        ),
+    )
+    camera_to_ball_basis: str | None = Field(
+        default=None,
+        description=(
+            "What the distance rests on when it was not given for the session, e.g. "
+            "the ground unit's configured geometry (`camera_on_the_unit`). Stated "
+            "beside the correction wherever it is applied."
         ),
     )
     camera_tolerance_frames: float = Field(
@@ -99,6 +119,40 @@ class FusionConfig(BaseModel):
     plausible_backswing_s: tuple[float, float] = (0.30, 2.50)
     plausible_downswing_s: tuple[float, float] = (0.10, 1.00)
     plausible_tempo: tuple[float, float] = (1.2, 6.0)
+
+    @model_validator(mode="after")
+    def _a_basis_needs_a_distance(self) -> Self:
+        if self.camera_to_ball_basis is not None and self.camera_to_ball_m is None:
+            raise ValueError("camera_to_ball_basis describes a distance, and none was given")
+        return self
+
+
+def camera_on_the_unit(geometry: RadarGeometryConfig) -> tuple[float, str]:
+    """The phone's distance to the ball when it films from the ground unit, and its basis.
+
+    The phone mounts on the unit's dock stem (MagSafe or a clamp), so it sits
+    where the radar does: `range_from_tee_m` behind the ball on the target line.
+    That is configured geometry, recorded for the session, not a measurement of
+    the phone's own distance, and the basis says so wherever it is used.
+
+    The few centimetres between the radar's window and the phone are not added.
+    What hears the strike is the phone's microphone, not its lens, and where the
+    microphone sits differs between phones and between the stem's holders; each
+    centimetre is 0.03 ms of sound travel, well inside one 240 fps frame (4.2 ms)
+    and inside the strike onset's own smoothing (0.5 ms). The height of the phone
+    above the ball adds less: 0.15 m of rise over 1.4 m lengthens the path by
+    under a centimetre. Modelling either would put a number nobody measured
+    into the result for a change smaller than the audio can resolve.
+    """
+    d = geometry.range_from_tee_m
+    basis = (
+        f"assumed: the phone is on the ground unit, so its distance is the radar's "
+        f"{d:.2f} m behind the ball as recorded for the session (radar_geometry."
+        "range_from_tee_m), configured geometry, not a measurement of the phone's "
+        "distance; the few cm from the radar to the phone's microphone are not "
+        "modelled (0.03 ms per cm)"
+    )
+    return d, basis
 
 
 class SensorAlignment(BaseModel):
@@ -292,6 +346,8 @@ def fuse_shot(
             if config.camera_to_ball_m is not None:
                 cam_impact -= config.camera_to_ball_m / SPEED_OF_SOUND_MPS
                 cam_notes.append(f"sound travel over {config.camera_to_ball_m:.1f} m removed")
+                if config.camera_to_ball_basis is not None:
+                    cam_notes.append(config.camera_to_ball_basis)
             else:
                 cam_notes.append(
                     "sound travel not removed (camera distance not recorded): "
