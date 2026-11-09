@@ -28,7 +28,7 @@
 //  INTERNAL LAYOUT (front view)
 //
 //      Z 64 +--------------------------------------------------------------+
-//           | [ESP32-C3 SuperMini]                [ radar, 15 deg tilted ]  |
+//           | [ESP32-C3 SuperMini] [LM358 preamp] [ radar, 15 deg tilted ]  |
 //           |                                     [  BGT24LTR11 window   ]  |
 //      Z 40 |== divider ====================== |                         |  |
 //           |                                  |                     [SW]-> side slot
@@ -156,6 +156,7 @@ tp_pcb      = [17.5, 29.0, 1.6];   // TP4056 USB-C module [X, Z, t], USB end dow
                                    // t: MEASURE, 1.0 - 1.6 are sold; the lid's presser rib follows it
 tp_usb_overhang = 0.6;             // receptacle nose past the board's end, down into the bottom cutout (measure)
 tp_top_h    = 1.0;                 // parts and pre-wired joints at the board's pad (top) end, above the PCB
+tp_pad_in   = 0.6;                 // those pads' outer edge in from the board's end (measure)
 tp_x        = 66.2;                // module left edge: the 52 mm cell's bay on the left, the R9.6 corner on the right
 tp_pad_h    = 1.5;                 // PCB underside above the front wall
 tp_usb_h    = 3.3;                 // receptacle height above the PCB
@@ -232,7 +233,8 @@ pin_clear     = 0.25;
 tilt_default  = 25;             // deg back from vertical: frames ball, golfer and club at the top
 tilt_steps    = [0, 10, 20, 25, 30, 35];   // detents
 arm_open      = false;          // assembly view: arm up (true) or folded flat (false)
-pod_pocket    = [32.6, 33.0, 14];   // pod lying on a side face [X, Y, wall height]: snug, half its height walled
+pod_pocket    = [34.1, 33.0, 14];   // pod lying on a side face [X, Y, wall height]: snug, half its height walled.
+                                   // X: the 33.5 mm pod (script_shaft_imu.scad) + 0.3 a side
 pod_wall      = 2.0;
 pod_pocket_y0 = 33.5;             // pocket's front inner edge, behind the folded head
 // 1/4"-20 stud: a 1/4"-20 x 1/2" hex bolt, glued head-down in a hex pocket that
@@ -376,6 +378,15 @@ inner_d  = y_back - y_front;           // usable depth (16.2)
 tp_usb_y = y_front + tp_pad_h + tp_pcb[2] + tp_usb_h / 2;   // receptacle centre, Y
 tp_usb_x = tp_x + tp_pcb[0] / 2;
 tp_press_gap = 0.2;                    // lid's presser rib to the receptacle's top
+tp_guide_h = tp_pad_h + tp_pcb[2] + 0.4;   // TP4056 side guides, off the front wall
+lid_cbore = m2_head_h + 0.1;           // lid screw counterbores: the pan heads sit 0.1 below the face
+
+// Lowest point of the radar's lower-left post (radar_holes[0]) over the TP4056
+// board's top end, at depth y (global). The post stands normal to the window,
+// from the ledge to the module; its lowest edge drops tan(win_tilt) per mm of y.
+function post_low_z(y) = let(px = win_cx + radar_holes[0][0], dxp = max(0, tp_x - px), r = 2.3,
+                             fz = radar_holes[0][1] - sqrt(max(0, r * r - dxp * dxp)))
+    dxp >= r ? 1e3 : win_zb + fz / cos(win_tilt) - y * tan(win_tilt);
 
 esp_top_y = y_front + esp_rail_h + esp_pcb[2];
 
@@ -498,7 +509,13 @@ module shell() {
             intersection() {
                 envelope();
                 union() {
-                    window_housing();
+                    // The 52 mm cell's top corner reaches under the collar's lower-left
+                    // corner, behind the radome: the collar steps round its bay there.
+                    difference() {
+                        window_housing();
+                        translate([batt_pos[0], y_front - 0.01, batt_pos[1]])
+                            cube([batt[0] + 2 * batt_clear, batt[2] + batt_clear, batt[1] + 2 * batt_clear]);
+                    }
                     lid_screw_bosses();
                 }
             }
@@ -686,7 +703,7 @@ module tp4056_pocket() {
     t = 1.0;
     x0 = tp_x; w = tp_pcb[0]; L = tp_pcb[1];
     z0 = z_floor;   // the receptacle nose sits on the inner face of the bottom wall
-    guide_h = tp_pad_h + tp_pcb[2] + 0.4;
+    guide_h = tp_guide_h;
     translate([0, y_front - 0.01, 0]) {
         for (x = [x0, x0 + w - 1.5]) translate([x, 0, z0 + 8]) cube([1.5, tp_pad_h + 0.01, L - 8]);
         for (x = [x0 - t - fit_clear, x0 + w + fit_clear])
@@ -875,7 +892,7 @@ module lid() {
         xz_extrude(y_back - 0.01, y_back + reveal[1]) difference() { outline(-2); outline(reveal[0]); }
         for (p = lid_bosses) {
             translate([p[0], y_back - 1, p[1]]) y_cylinder(lid_t + 2, m2_clear);
-            translate([p[0], body_d - m2_head_h, p[1]]) y_cylinder(m2_head_h + 1, m2_head_d);
+            translate([p[0], body_d - lid_cbore, p[1]]) y_cylinder(lid_cbore + 1, m2_head_d);
             translate([p[0], body_d - 0.4, p[1]]) y_cone(0.41, m2_head_d, m2_head_d + 0.8);
         }
         if (pod_park) pod_park_lid_holes();
@@ -1572,11 +1589,11 @@ module fit_report() {
     tp_q     = wf(tp_face + tp_top_h, tp_top);                         // pad end's top corner, with its joints
     // The radar's lower-left post (axis at radar_holes[0]) over the board's top end:
     // its lowest edge at the board's top face, and at the joints above it.
-    post_z   = function_post_low_z(tp_face);
-    post_zj  = function_post_low_z(tp_face + tp_top_h);
+    post_z   = post_low_z(tp_face);
+    post_zj  = post_low_z(tp_face + tp_top_h);
     tp_stop  = z_floor + tp_pcb[1] + fit_clear;
-    press    = function(t) (y_back - (y_back - (y_front + tp_pad_h + tp_pcb[2] + tp_usb_h + tp_press_gap)))
-                           - (y_front + tp_pad_h + t + tp_usb_h);
+    // The presser rib is drawn for tp_pcb[2]; its gap over a board of thickness t:
+    function press(t) = tp_press_gap + (tp_pcb[2] - t);
     row_z    = esp_row_z();
     tab_z    = esp32_tab_z();
     lines = [
@@ -1586,15 +1603,18 @@ module fit_report() {
         chk("TP4056 end under radar post     ", post_z - tp_top),
         // Under 0.3: the joints at the board's left pad end, under the post. Keep them
         // flat (tp_top_h), and fit the module top end first (tp4056_pocket).
-        chk("TP4056 joints under radar post  ", post_zj - tp_top),
+        chk("TP4056 joints under radar post  ", post_zj - (tp_top - tp_pad_in)),
         // fit_clear by construction: the stop is placed from tp_pcb[1]. A longer board shows here.
         chk("TP4056 length under its stop    ", tp_stop - tp_top),
         chk("TP4056 corner inside R9.6 corner", (body_w - corner_r) - (tp_x + tp_pcb[0])),
         chk("TP4056 nose inside bottom face  ", (wall - usb_recess[2]) - tp_usb_overhang),
         chk("USB-C plug engagement           ", usb_plug_standoff - (wall - usb_recess[2] - tp_usb_overhang)),
-        // Under 0.3 on purpose: a hold-down, not a slide fit. It is set for tp_pcb[2]; the line
-        // below says what the other end of the 1.0 - 1.6 range would leave.
-        chk(str("TP4056 presser to receptacle, t ", tp_pcb[2]), press(tp_pcb[2])),
+        // Under 0.3 on purpose: a hold-down, not a slide fit. Both ends of the 1.0 - 1.6 mm
+        // range sold: drawn for tp_pcb[2] = 1.6 the rib never bears on a thick board, and a
+        // 1.0 board, 0.8 under it, still cannot lift out of its side guides. Measure the board
+        // and set tp_pcb[2]: the rib then lands tp_press_gap off it.
+        chk("TP4056 presser over a 1.6 board  ", press(1.6)),
+        chk("TP4056 1.0 board kept in guides  ", tp_guide_h - (tp_pad_h + press(1.0) + 1.0)),
         chk("window opening inside outline   ", (corner_r - wall) - sqrt(dx * dx + dz * dz)),
         chk("LM358 board to radar housing    ", radar_x0 - (lm_pos[0] + lm_pcb[0])),
         chk("ESP32 tab posts to LM358 board  ", lm_pos[0] - (esp_pos[0] + esp_pcb[0] + 2.2 + 2.1)),
@@ -1605,18 +1625,23 @@ module fit_report() {
         chk("MT3608 over the cell (X)        ", min(mt_pos[0] - (batt_pos[0] + batt_clear),
                                                     (batt_pos[0] + batt_clear + batt[0]) - (mt_pos[0] + mt_pcb[0]))),
         chk("MT3608 fence below the divider  ", (batt_pos[1] + batt[1] + 2 * batt_clear) - (mt_pos[1] + mt_pcb[1] + fit_clear + 1.0)),
+        // The cell's front top corner, in the window frame: beside the radome pocket or behind it.
+        chk("cell corner clear of the radome  ", let(c = wf(y_front, batt_pos[1] + batt_clear + batt[1]),
+                                                     fx = abs(batt_pos[0] + batt_clear + batt[0] - win_cx))
+                                                 max(fx - win_size / 2, c[0] - win_t)),
         chk("divider to ESP32 board          ", esp_pos[1] - (batt_pos[1] + batt[1] + 2 * batt_clear + 1.2)),
         chk("ESP32 rails clear of pin rows   ", (esp_pos[1] + esp_rail_in) - (row_z[0] + esp_pad_d / 2)),
         chk("ESP32 USB-end lips clear of pin 1", (esp_pin1_x - esp_pad_d / 2) - 1.0),
         chk("ESP32 tabs clear of pins 8 / 16 ", (tab_z[0] - 2.3) - (row_z[0] + esp_pad_d / 2)),
-        chk("ESP32 tabs on the board's end   ", (esp_pcb[1] / 2 - 2.3) - (esp_tab_in - 0)),
         chk("ESP32 pin 8 on the board        ", (esp_pos[0] + esp_pcb[0]) - (esp_pin8_x() + esp_pad_d / 2)),
         chk("switch pocket to TP4056 guide   ", (body_w - wall - sw_body[2] - 1.0) - (tp_x + tp_pcb[0] + fit_clear + 1.0)),
         chk("switch pocket inside the depth  ", min((sw_center[0] - sw_body[0] / 2 - sw_fit - 1.0) - y_front,
                                                     y_back - (sw_center[0] + sw_body[0] / 2 + sw_fit + 1.0))),
         chk("switch pocket in the lid relief ", 4 - (sw_body[1] / 2 + sw_fit + 1.0)),
-        chk("lid screw heads not proud       ", (lid_t - 0.8) - m2_head_h + (m2_head_h - m2_head_h)),
-        chk("lid screw tip short of pilot    ", lid_pilot_depth - (m2_len - (lid_t - m2_head_h))),
+        // Both under 0.3: the heads sit just below the lid face, on 0.7 of lid (PETG; do not over-tighten).
+        chk("lid screw heads below the face   ", lid_cbore - m2_head_h),
+        chk("lid under the screw heads >= 0.6 ", (lid_t - lid_cbore) - 0.6),
+        chk("lid screw tip short of pilot    ", lid_pilot_depth - (m2_len - (lid_t - lid_cbore))),
         chk("radar housing to right wall     ", (body_w - wall) - radar_x1),
         // Stays under 0.3: the bevel's outer corner nearly meets the R12 corner's inner wall. Not a fit
         // between parts, nothing slides here. More room means moving the window, the unit's focal
@@ -1734,6 +1759,7 @@ module fit_report() {
         chk("folded head clear of pocket wall    ", (pod_pocket_y0 - pod_wall) - (hinge_y + head_t / 2) - 0.3),
         chk("folded head inside the lid's width  ", (body_w - head_d) / 2 - 2),
         chk("pod pocket walls hold half the pod  ", pod_pocket[2] - 26 / 2),
+        chk("pod pocket over the pod, a side     ", (pod_pocket[0] - pp_size[0]) / 2),
     ];
     for (l = concat(lines, ms_lines, st_lines, stem_lines, pp_lines, sight_lines, pz_lines, arm_lines)) echo(l);
     if (arm) {

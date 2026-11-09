@@ -211,6 +211,7 @@ Front view, as used: the window is upper right, the battery lower left.
    Run bench tests 2 and 3 (section 3) on this harness now, then disconnect the
    clip leads from the cell.
 1. **TP4056.** Lay it in its pocket at the lower right, components up, leads
+   Fit it top end first: push it up to its stop under the radar's lower-left post (0.35 mm clear), then swing the USB end down into the cutout. Set `tp_pcb[2]` to your board's measured thickness (1.0 or 1.6 mm) and re-export, so the lid's hold-down rib lands on it.
    out, and slide it down until the USB-C receptacle sits in the **bottom
    cutout**. Plug a cable in from outside to check alignment. Put a thin bead
    of neutral-cure silicone where the receptacle meets the inside of the wall

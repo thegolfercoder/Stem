@@ -1,10 +1,34 @@
   ok   depth behind radar module      : 0.628072 mm
-  ok   radar module above TP4056       : 1.3365 mm
+  ok   radar module clear of TP4056 end: 0.507372 mm
+  ok   TP4056 end under radar post     : 0.353677 mm
+  ok   TP4056 joints under radar post  : 0.685728 mm
+  ok   TP4056 length under its stop    : 0.25 mm
+  ok   TP4056 corner inside R9.6 corner: 0.3 mm
+  ok   TP4056 nose inside bottom face  : 0.6 mm
+  ok   USB-C plug engagement           : 0.4 mm
+  ok   TP4056 presser over a 1.6 board  : 0.2 mm
+  ok   TP4056 1.0 board kept in guides  : 0.2 mm
   ok   window opening inside outline   : 0.866625 mm
-  ok   ESP32 tab posts to radar housing: 23.88 mm
-  ok   battery bay to TP4056 guide     : 0.4 mm
-  ok   cell + MT3608 depth stack       : 1.4 mm
-  ok   divider to ESP32 board          : 2.4 mm
+  ok   LM358 board to radar housing    : 0.4 mm
+  ok   ESP32 tab posts to LM358 board  : 0.48 mm
+  ok   divider to LM358 board          : 1.4 mm
+  ok   battery bay to TP4056 guide     : 0.35 mm
+  ok   cell + MT3608 depth stack       : 0.3 mm
+  ok   MT3608 fence to the lower bosses: 5.15 mm
+  ok   MT3608 over the cell (X)        : 6.4 mm
+  ok   MT3608 fence below the divider  : 7.15 mm
+  ok   cell corner clear of the radome  : 0.5 mm
+  ok   divider to ESP32 board          : 1.9 mm
+  ok   ESP32 rails clear of pin rows   : 0.72 mm
+  ok   ESP32 USB-end lips clear of pin 1: 0.5 mm
+  ok   ESP32 tabs clear of pins 8 / 16 : 0.42 mm
+  ok   ESP32 pin 8 on the board        : 1.44 mm
+  ok   switch pocket to TP4056 guide   : 3.75 mm
+  ok   switch pocket inside the depth  : 2.6 mm
+  ok   switch pocket in the lid relief : 0.85 mm
+  ok   lid screw heads below the face   : 0.1 mm
+  ok   lid under the screw heads >= 0.6 : 0.1 mm
+  ok   lid screw tip short of pilot    : 1.2 mm
   ok   radar housing to right wall     : 3.6 mm
   ok   window bevel inside outline     : 0.0666252 mm
   ok   radar posts on their corner pads: 0.3 mm
@@ -27,20 +51,32 @@
   ok   folded head clear of pocket wall    : 0.3 mm
   ok   folded head inside the lid's width  : 16 mm
   ok   pod pocket walls hold half the pod  : 1 mm
+  ok   pod pocket over the pod, a side     : 0.3 mm
   info  open arm, 25 deg: lens at [Y, Z] [48, 65.4641, 185.206] mm; phone's centre 48.4202 mm behind the unit's front, base ends at 68.5 (the phone is over the base: it cannot tip it backwards)
   info  radar window centre [76.1, 46.148], boresight 15 deg up, skin 1 mm
-  info  USB-C receptacle centre X 73 Y 7.15
+  info  USB-C receptacle centre X 74.95 Y 7.15
   info  sight radius 19.6 mm: 0.3 mm of eye misalignment = 0.876908 deg of aim, a Doppler speed error (1 - cos) of 0.0117118 %; eyeballing 10 deg off costs 1.51922 %
   ok   stack height under the lid      : 0.74 mm
-  ok   IMU board inside the walls (X)  : 1.1 mm
+  ok   IMU board inside the walls (X)  : 2.4 mm
   ok   cell + charger along X          : 0.3 mm
   ok   SuperMini inside the walls (Y)  : 2.8 mm
+  ok   P5 along X, past the lid's fence : 1.93 mm
+  ok   P5 over the charger (X)          : 0.72 mm
+  ok   P5 under the lid lip             : 2.8 mm
+  ok   charger inside the walls (Y)     : 11.8 mm
+  ok   cell end to its stops (X)        : 0.1 mm
+  ok   lid pads inboard of the pin rows : 0.72 mm
+  ok   fence notch at pin 3 in the fence: 0.73 mm
+  ok   fence notch width, 30 AWG wire   : 0.6 mm
+  ok   fence notch height, 30 AWG wire  : 0.3 mm
+  ok   IMU fence notch clear of the ribs : 2.4 mm
+  ok   IMU fence notch inside the fence : 8.3 mm
   info  body height needed for this stack: 13.26 mm (body is 14)
-  info  antenna zone over the cell: 1.88 mm of 4 (0 is ideal; a 1-3 m link tolerates a little)
+  info  antenna zone over the cell: 3.88 mm of 4 (0 is ideal; a 1-3 m link tolerates a little)
   info  clamp mouth 11.782 mm for a 13 mm bore; each jaw deflects 0.608999 mm to snap on
   info  overall height incl. clamp: 32.4 mm
-  ok   strap band clear of the jaws (X)   : 1 mm
-  ok   strap band clear of the USB-C end  : 9.4 mm
+  ok   strap band clear of the jaws (X)   : 1.75 mm
+  ok   strap band clear of the USB-C end  : 10.15 mm
   ok   strap posts outside the side walls : 1.6 mm
   ok   strap slot above the lower edge rnd: 0.3 mm
   ok   strap tab below the pry notch      : 0.4 mm

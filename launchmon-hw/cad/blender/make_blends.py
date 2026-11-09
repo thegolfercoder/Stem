@@ -135,6 +135,8 @@ POD = {
              **PCB("Cell", [0.15, 0.35, 0.65]), explode=[0, 0, 12]),
         dict(part="ghost:charger", name="Micro charger", collection=COMPONENTS,
              **PCB("PCB teal", [0.05, 0.45, 0.45]), explode=[0, 0, 12]),
+        dict(part="ghost:p5", name="P5 Schottky (SOD-123)", collection=COMPONENTS,
+             **PCB("Diode", [0.03, 0.03, 0.03]), explode=[0, 0, 16]),
         dict(part="ghost:esp32", name="ESP32-C3 SuperMini", collection=COMPONENTS,
              **PCB("PCB black", [0.03, 0.03, 0.03]), explode=[0, 0, 22]),
         dict(part="ghost:strap", name="Reusable strap (TPU)", collection=COMPONENTS,

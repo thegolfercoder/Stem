@@ -6,7 +6,7 @@ made of **two physically separate units** that talk only over Bluetooth LE:
 | Unit | What it is | Measures |
 |---|---|---|
 | **Ground radar unit** | Infineon BGT24LTR11 24 GHz I/Q Doppler radar, LM358 pre-amp, ESP32-C3, 1500 mAh LiPo, TP4056 charger, MT3608 boost at 5 V, slide switch, status LED, in a 96 x 64 x 21 mm case shaped like a MagSafe battery pack. Stands behind the ball. | Radial ball and club speed (on-device preview), raw I/Q captures for launchmon-py |
-| **Shaft motion pod** | Adafruit LSM6DS3TR-C / LSM6DSOX IMU, ESP32-C3, 100-150 mAh LiPo, micro charger, in a 32 x 26 x 14 mm pod that clips onto a 13 mm shaft | Raw 6-axis motion at 1.66 kHz, streamed per swing |
+| **Shaft motion pod** | Adafruit LSM6DS3TR-C / LSM6DSOX IMU, ESP32-C3, 100-150 mAh LiPo, micro charger, in a 33.5 x 26 x 14 mm pod that clips onto a 13 mm shaft | Raw 6-axis motion at 1.66 kHz, streamed per swing |
 
 State: **designed, rendered and syntax-checked; not built.** Nothing here has
 been compiled for the target or run on hardware, and no number in this

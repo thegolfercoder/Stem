@@ -3,7 +3,7 @@
 //  OpenSCAD 2021.01 or newer.  All dimensions in millimetres.
 // =============================================================================
 //
-//  Body 32 x 26 x 14 mm with rounded edges, and a snap-on C-clamp underneath
+//  Body 33.5 x 26 x 14 mm with rounded edges, and a snap-on C-clamp underneath
 //  for a 13.0 mm golf shaft section.
 //
 //  COORDINATES - these are the pod's reference axes. The IMU is held
@@ -65,7 +65,9 @@ explode         = 0;            // [0:1:20]
 $fn             = 64;
 
 /* [Body] */
-pod         = [32, 26, 14];     // [X along shaft, Y across, Z height]
+pod         = [33.5, 26, 14];   // [X along shaft, Y across, Z height]. 33.5 (from 32): the least that takes a
+                                // 302020 cell up to 22 mm long with its protection board and the 7 mm charger
+                                // with 0.3 to spare (34 would leave 0.8)
 edge_r      = 3.0;              // rounded edges and corners
 wall        = 1.6;              // side walls
 floor_t     = 1.2;              // floor = IMU datum plane
@@ -76,21 +78,30 @@ fit_clear   = 0.15;
 snap_bump   = 0.35;             // lid snap bump height
 
 /* [IMU - Adafruit LSM6DS3TR-C (#4503) / LSM6DSOX (#4438)] */
-imu_pcb     = [25.4, 17.8, 1.6];
+imu_pcb     = [25.6, 17.8, 1.6];  // 25.6: the LSM6DSOX #4438 (the LSM6DS3TR-C #4503 is 25.3); the crush ribs take both
 imu_parts_h = 1.2;              // tallest part with STEMMA QT sockets removed
 imu_stemma_fitted = false;      // true = sockets kept (2.95 mm tall)
 imu_fence_h = 2.0;              // pocket wall height above the floor
 imu_fence_t = 1.0;
 imu_clear   = 0.15;             // per side, before crush ribs
+imu_pad_side = -1;              // the 0.1" pad row's long edge: -1 = the -Y side, +1 = +Y (check your board)
+imu_notch   = [7.0, 12.8];      // wire notch in that side of the fence [length along X, centre from the board's -X edge]
 
 /* [Power and MCU] */
-batt        = [20.0, 20.0, 3.0];  // [X, Y, thickness]; 302020 ~100 mAh. 402020 (~150 mAh) needs 1 mm more height
-chg         = [7.5, 12.0, 3.0];   // micro charger board (MCP73831/TP4054 class)
+batt        = [22.0, 20.0, 3.0];  // [X, Y, thickness]; 302020 ~100 mAh, overall with its protection board:
+                                  // buy one 22 mm long at most. 402020 (~150 mAh) needs 1 mm more height
+chg         = [7.0, 10.0, 3.0];   // charger: a small 2-layer board, about 7 x 10 mm, MCP73831 (SOT-23-5) + 2 x 4.7 uF
+                                  // 0603 + 10k R_PROG 0603. No board this small is sold: it is a custom PCB
+p5          = [3.7, 1.6, 1.2];    // P5 Schottky, SOD-123 (MBR0520 / 1N5819HW): anode on the charger's BAT pad,
+                                  // lying above the charger under heat-shrink [X, Y, Z]
 foam_t      = 0.5;
 esp_pcb     = [22.52, 18.0, 1.0];
 esp_usb     = [8.94, 3.26];       // USB-C receptacle [width, height]
 esp_usb_overhang = 0.5;           // receptacle nose past the PCB edge
 esp_antenna = 4.0;                // ceramic antenna zone at the far end of the board
+esp_pin1_x  = 2.4;                // first pin centre from the USB edge (measure); 8 per row at 2.54
+esp_row_pitch = 15.24;            // pin row to pin row, centred on the board's width
+esp_pad_d   = 1.8;                // pad plus solder fillet
 
 /* [Clamp] */
 shaft_d     = 13.0;               // printed bore = nominal shaft diameter
@@ -364,6 +375,10 @@ module imu_pocket() {
             translate([x0, y0, -1]) cube([w, d, imu_fence_h + 2]);
             // Finger gaps at the short ends for lifting the board out.
             for (x = [x0 - t - 1, x0 + w - 1]) translate([x, y0 + d / 2 - 3, -1]) cube([t + 2, 6, imu_fence_h + 2]);
+            // Wire notch on the pad-row side: the five wires leave the pads sideways and
+            // run up the gap between the fence and the wall, outside the cell's footprint.
+            translate([imu_x0 + imu_notch[1] - imu_notch[0] / 2, imu_pad_side < 0 ? y0 - t - 1 : y0 + d - 1, -1])
+                cube([imu_notch[0], t + 2, imu_fence_h + 2]);
         }
         for (x = [x0 + w * 0.25, x0 + w * 0.75]) {
             translate([x, y0, 0]) cylinder(h = imu_fence_h, r = c + 0.1, $fn = 12);
@@ -518,20 +533,29 @@ module esp32_retainer() {
     z_pcb_top = z_esp + esp_pcb[2];
     fence_bottom = z_esp + 0.2;
     translate([0, 0, fence_bottom]) {
-        for (y = [y0 - c - t, y0 + W + c])
+        for (y = [y0 - c - t, y0 + W + c]) difference() {
             translate([x0 + 6, y, 0]) cube([L - 6, t, base_h - fence_bottom + 0.01]);
+            // Wire notches at pins 3 and 5 (3V3, GPIO3; GPIO7 opposite): the wires leave
+            // sideways over the board's edge and down the gap beside the fence.
+            for (k = esp_notch_pins) translate([esp_pin_x(k) - esp_notch[0] / 2, y - 1, -1])
+                cube([esp_notch[0], t + 2, z_pcb_top - fence_bottom + esp_notch[1] + 1]);
+        }
         translate([x0 + L + c, y0 + 3, 0]) cube([t, W - 6, base_h - fence_bottom + 0.01]);
     }
-    for (p = [[x0 + 9.5, y0 + 0.2], [x0 + 9.5, y0 + W - 2.2], [x0 + L - 2.2, y0 + 0.2], [x0 + L - 2.2, y0 + W - 2.2]])
-        translate([p[0], p[1], z_pcb_top]) cube([2, 2, base_h - z_pcb_top + 0.01]);
+    // Pressure pads inboard of the pin rows, so no wire on a pin is crushed.
+    for (p = esp_lid_pads()) translate([p[0], p[1], z_pcb_top]) cube([2, 2, base_h - z_pcb_top + 0.01]);
 }
+esp_notch_pins = [3, 5];              // pins (from the USB end) the side-fence notches sit at
+esp_notch      = [1.5, 1.2];          // notch [width along X, height above the board's top face]
+function esp_pin_x(k) = esp_x0 + esp_pin1_x + (k - 1) * 2.54;
+function esp_lid_pads() = [for (x = [esp_x0 + 9.5, esp_x0 + esp_pcb[0] - 2.2], y = [esp_y0 + 3, esp_y0 + esp_pcb[1] - 5]) [x, y]];
 
 // ----------------------------------------------------------------------------
 //  Ghost components
 // ----------------------------------------------------------------------------
 // Named ghosts, so each can be exported alone in place (`part = "ghost:imu"`).
 // The Blender scene in cad/blender/ is built that way.
-ghost_names = ["imu", "imu_axes", "battery", "charger", "esp32", "shaft", "liner", "strap"];
+ghost_names = ["imu", "imu_axes", "battery", "charger", "p5", "esp32", "shaft", "liner", "strap"];
 
 module ghosts() { for (n = ghost_names) ghost(n); }
 
@@ -546,6 +570,8 @@ module ghost(name) {
     }
     if (name == "battery") color("SteelBlue", 0.5) translate([batt_x0, batt_y0, z_batt]) cube(batt);
     if (name == "charger") color("Teal", 0.6) translate([chg_x0, chg_y0, z_batt]) cube(chg);
+    // P5 above the charger, its anode on the BAT pad, under heat-shrink.
+    if (name == "p5") color("Black") translate([park_parts_x0(), pod[1] / 2 - p5[1] / 2, z_batt + chg[2] + 0.2]) cube(p5);
     if (name == "esp32") color("Black", 0.7) translate([esp_x0, esp_y0, z_esp]) {
         cube([esp_pcb[0], esp_pcb[1], esp_pcb[2]]);
         translate([-esp_usb_overhang, esp_pcb[1] / 2 - esp_usb[0] / 2, esp_pcb[2]]) cube([7.3, esp_usb[0], esp_usb[1]]);
@@ -599,6 +625,24 @@ module fit_report() {
     echo(chk("IMU board inside the walls (X)  ", in_x - imu_pcb[0] - 2 * (imu_clear + imu_fence_t)));
     echo(chk("cell + charger along X          ", in_x - (batt[0] + 0.4 + 0.6 + chg[0])));
     echo(chk("SuperMini inside the walls (Y)  ", in_y - esp_pcb[1] - 2 * (0.2 + 0.8)));
+    lip_lo = base_h - lip_h;
+    p5_x0 = park_parts_x0();
+    echo(chk("P5 along X, past the lid's fence ", (pod[0] - wall - fit_clear - lip_w) - (p5_x0 + p5[0])));
+    echo(chk("P5 over the charger (X)          ", min(p5_x0 - chg_x0, (chg_x0 + chg[0]) - (p5_x0 + p5[0]))));
+    echo(chk("P5 under the lid lip             ", lip_lo - (z_batt + chg[2] + 0.2 + p5[2])));
+    echo(chk("charger inside the walls (Y)     ", in_y - chg[1] - 2 * 0.5));
+    // Under 0.3 by design: the stops locate the cell's end, 0.1 off it.
+    echo(chk("cell end to its stops (X)        ", chg_x0 - 0.5 - (batt_x0 + batt[0])));
+    // The SuperMini's pin rows against the lid's pads and fence notches.
+    row_off = (esp_pcb[1] - esp_row_pitch) / 2;
+    pads = esp_lid_pads();
+    echo(chk("lid pads inboard of the pin rows ", (pads[0][1] - esp_y0) - (row_off + esp_pad_d / 2)));
+    echo(chk("fence notch at pin 3 in the fence", (esp_pin_x(esp_notch_pins[0]) - esp_notch[0] / 2) - (esp_x0 + 6)));
+    echo(chk("fence notch width, 30 AWG wire   ", esp_notch[0] - 0.6 - 0.3));
+    echo(chk("fence notch height, 30 AWG wire  ", esp_notch[1] - 0.6 - 0.3));
+    echo(chk("IMU fence notch clear of the ribs ", min(abs((imu_notch[1] - imu_notch[0] / 2) - (imu_pcb[0] * 0.25)),
+                                                      abs((imu_pcb[0] * 0.75) - (imu_notch[1] + imu_notch[0] / 2))) - 0.5));
+    echo(chk("IMU fence notch inside the fence ", min(imu_notch[1] - imu_notch[0] / 2, imu_pcb[0] - (imu_notch[1] + imu_notch[0] / 2)) - 1.0));
     echo(str("  info  body height needed for this stack: ", needed_h, " mm (body is ", pod[2], ")"));
     echo(str("  info  antenna zone over the cell: ", antenna_over_cell,
              " mm of ", esp_antenna, " (0 is ideal; a 1-3 m link tolerates a little)"));
