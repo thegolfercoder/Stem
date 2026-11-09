@@ -7,7 +7,10 @@
  * topic, so `npm test` is a real gate rather than a formality.
  */
 
-import { GENERATORS, checkAnswer, generate, parseNumber } from "../src/lib/questions";
+import { GENERATORS, checkAnswer, diagnose, generate, misconceptionInput, parseNumber } from "../src/lib/questions";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { schemeFor } from "../src/lib/marks";
 import { TOPICS, TOPIC_BY_SLUG } from "../src/content/topics";
 import { CAMBRIDGE_UNITS } from "../src/lib/content";
 import type { Answer } from "../src/lib/questions";
@@ -82,6 +85,33 @@ for (const gen of GENERATORS) {
     }
 
     if (!TOPIC_BY_SLUG.has(q.topic)) problems.push(`seed ${s}: unknown topic slug "${q.topic}"`);
+
+    // Misconceptions: each must be wrong, must diagnose as itself, and must
+    // point at something that exists on the topic page.
+    const topic = TOPIC_BY_SLUG.get(q.topic);
+    const anchors = new Set([
+      ...(topic?.sections.map((x) => x.id) ?? []),
+      "objectives", "formulas", "examples", "exam-questions", "mistakes", "tips", "practice",
+    ]);
+    for (const m of q.misconceptions) {
+      const input = misconceptionInput(m);
+      if (checkAnswer(q.answer, input)) problems.push(`seed ${s}: misconception ${m.id} is marked correct`);
+      const d = diagnose(q, input);
+      if (!d) problems.push(`seed ${s}: misconception ${m.id} is not diagnosed`);
+      else if (d.id !== m.id && misconceptionInput(d) !== input) problems.push(`seed ${s}: ${m.id} diagnosed as ${d.id}`);
+      if (m.see && !anchors.has(m.see)) problems.push(`seed ${s}: ${m.id} points at missing anchor #${m.see}`);
+      if (((m.diagnosis.match(/(?<!\\)\$/g) ?? []).length) % 2) problems.push(`seed ${s}: unbalanced $ in ${m.id}`);
+    }
+    if (diagnose(q, canonicalInput(q.answer)) !== null) problems.push(`seed ${s}: a correct answer was diagnosed`);
+
+    // The mark scheme must add up to the tariff.
+    const schemeTotal = q.markScheme.reduce((t, item) => t + item.marks, 0);
+    if (schemeTotal !== q.marks) problems.push(`seed ${s}: mark scheme totals ${schemeTotal}, tariff is ${q.marks}`);
+    q.markScheme.forEach((item, i) => {
+      if (item.dependsOn !== undefined && (item.dependsOn < 0 || item.dependsOn >= i)) {
+        problems.push(`seed ${s}: mark ${i} depends on a later or missing mark`);
+      }
+    });
   }
 
   const unique = [...new Set(problems)];
@@ -93,6 +123,11 @@ for (const gen of GENERATORS) {
   checks += SEEDS;
 }
 console.log(`  ${GENERATORS.length} generators × ${SEEDS} seeds`);
+const withMisconceptions = GENERATORS.filter((g) =>
+  Array.from({ length: 20 }, (_, i) => generate(g, i * 101 + 7)).some((q) => q.misconceptions.length > 0),
+).length;
+check(withMisconceptions >= Math.ceil(GENERATORS.length * 0.6), `only ${withMisconceptions}/${GENERATORS.length} generators diagnose any misconception`);
+console.log(`  ${withMisconceptions} generators diagnose misconceptions`);
 
 console.log("Determinism");
 for (const gen of GENERATORS.slice(0, 12)) {
@@ -187,6 +222,32 @@ for (const topic of TOPICS) {
     const d = (s.match(/(?<!\\)\$/g) ?? []).length;
     check(d % 2 === 0, `${topic.slug}: unbalanced $ in "${s.slice(0, 60)}…"`);
   }
+}
+
+console.log("Exam question mark schemes");
+for (const topic of TOPICS) {
+  for (const q of topic.examQuestions) {
+    const scheme = schemeFor(q);
+    const sum = scheme.reduce((t, m) => t + m.marks, 0);
+    check(sum === q.marks, `${q.id}: mark scheme totals ${sum}, tariff is ${q.marks}`);
+    check(scheme.every((m) => m.marks > 0 && m.criterion.trim().length > 0), `${q.id}: empty or zero-mark scheme line`);
+  }
+}
+
+console.log("LaTeX escapes in source");
+// In a TypeScript string "\;" is just ";", so a thin space written with one
+// backslash silently vanishes from the rendered maths. It must be "\;".
+function walk(dir: string): string[] {
+  return readdirSync(dir).flatMap((f) => {
+    const p = join(dir, f);
+    return statSync(p).isDirectory() ? walk(p) : p.endsWith(".ts") || p.endsWith(".tsx") ? [p] : [];
+  });
+}
+for (const file of [...walk("src/content"), ...walk("src/lib/questions/generators")]) {
+  readFileSync(file, "utf8").split("\n").forEach((line, i) => {
+    if (/(?<!\\)\\;/.test(line)) check(false, `${file}:${i + 1}: single-backslash \\; (renders as a bare semicolon)`);
+    else checks += 1;
+  });
 }
 
 console.log("Syllabus coverage");

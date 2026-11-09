@@ -66,6 +66,7 @@ export function PracticeClient({ topics }: { topics: TopicOption[] }) {
       ms: result.ms,
       at: Date.now(),
       marks: q.marks,
+      ...(result.misconception ? { misconception: result.misconception } : {}),
     });
   }
 

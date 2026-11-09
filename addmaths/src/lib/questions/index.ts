@@ -80,5 +80,5 @@ export function practisableTopics(): string[] {
 
 export { generate, makeRng };
 export type { Generator, Question };
-export { checkAnswer, parseNumber } from "./engine";
-export type { Answer } from "./engine";
+export { checkAnswer, parseNumber, diagnose, misconceptionInput, schemeFromSolution } from "./engine";
+export type { Answer, Misconception } from "./engine";

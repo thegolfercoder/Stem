@@ -388,6 +388,28 @@
     return b;
   }
 
+  function diagnosisHtml(q, given) {
+    var m = given && E.diagnose ? E.diagnose(q, given) : null;
+    if (!m) return { html: "", m: null };
+    var link = m.see ? "<p style='margin-top:.375rem;font-size:.875rem'><a class='sf-link' href='#/topics/" + q.topic + "/#" + m.see + "'>Revise this</a></p>" : "";
+    return {
+      m: m,
+      html: "<div class='sf-diagnosis' data-testid='diagnosis' style='margin-top:.75rem;border-radius:.75rem;border:1px solid color-mix(in srgb,var(--medium) 50%,transparent);background:color-mix(in srgb,var(--medium) 10%,transparent);padding:.75rem 1rem;font-size:.875rem'>" +
+        "<p style='font-weight:600'>Likely slip: " + esc(m.label) + "</p><p style='margin-top:.25rem;line-height:1.6'>" + tex(m.diagnosis) + "</p>" + link + "</div>",
+    };
+  }
+
+  function markSchemeHtml(q) {
+    var items = q.markScheme || [];
+    if (!items.length) return "";
+    return "<div style='margin-top:1rem;border-radius:.75rem;border:1px solid var(--border);padding:1rem'>" +
+      "<p style='font-size:.875rem;font-weight:600'>How the marks are awarded</p><ol style='margin-top:.5rem;display:flex;flex-direction:column;gap:.375rem;font-size:.875rem'>" +
+      items.map(function (it) {
+        return "<li style='display:flex;gap:.75rem'><span style='width:2.5rem;flex-shrink:0;font-family:ui-monospace,monospace;font-weight:600'>" +
+          (it.part ? esc(it.part) + " " : "") + it.type + it.marks + "</span><span style='line-height:1.6'>" + tex(it.criterion) + "</span></li>";
+      }).join("") + "</ol><p class='muted' style='margin-top:.5rem;font-size:.75rem'>Total " + q.marks + " marks. M = method, A = accuracy, B = independent.</p></div>";
+  }
+
   function questionCard(q, index, total, onAnswered) {
     var topic = E.topics.filter(function (t) {
       return t.slug === q.topic;
@@ -435,19 +457,23 @@
         "<p style='font-weight:600;font-size:.875rem'>" + (correct ? "✓ Correct" : "✗ Not quite") + "</p>" +
         "<p style='margin-top:.25rem;font-size:.875rem'>The answer is " + tex(q.answer.display) +
         (correct ? "" : ' <span class="muted">— you gave ' + esc(input.value) + ".</span>") + "</p></div>";
+      var dg = correct ? { html: "", m: null } : diagnosisHtml(q, input.value);
+      feedback.innerHTML += dg.html;
       renderSolution(!correct);
       if (onAnswered) onAnswered(correct, Date.now() - started);
-      recordAttempt({
+      var att = {
         qid: q.id, topic: q.topic, generator: q.generator, difficulty: q.difficulty,
         correct: correct, ms: Date.now() - started, at: Date.now(), marks: q.marks,
-      });
+      };
+      if (dg.m) att.misconception = { id: dg.m.id, label: dg.m.label };
+      recordAttempt(att);
     });
 
     function renderSolution(open) {
       solution.innerHTML =
         '<button type="button" class="sf-link" style="margin-top:1rem">' +
         (open ? "Hide the worked solution" : "Show the worked solution") + "</button>" +
-        (open ? '<div class="sf-steps">' + steps(q.solution) + "</div>" : "");
+        (open ? '<div class="sf-steps">' + steps(q.solution) + markSchemeHtml(q) + "</div>" : "");
       solution.querySelector("button").addEventListener("click", function () {
         renderSolution(!open);
       });
@@ -752,8 +778,11 @@
           b.total += q.marks;
           if (ok) b.score += q.marks;
           perTopic[q.topic] = b;
-          recordAttempt({ qid: q.id, topic: q.topic, generator: q.generator, difficulty: q.difficulty,
-            correct: ok, ms: spent[q.id] || 0, at: Date.now(), marks: q.marks });
+          var att = { qid: q.id, topic: q.topic, generator: q.generator, difficulty: q.difficulty,
+            correct: ok, ms: spent[q.id] || 0, at: Date.now(), marks: q.marks };
+          var slip = ok ? null : diagnosisHtml(q, given).m;
+          if (slip) att.misconception = { id: slip.id, label: slip.label };
+          recordAttempt(att);
         });
         var pct = total ? Math.round((score / total) * 100) : 0;
 
@@ -806,7 +835,8 @@
             "<p style='margin-top:.75rem;font-size:.875rem'><span class='muted'>Your answer: </span>" +
             (given.trim() ? esc(given) : "<em class='muted'>left blank</em>") +
             " <span class='muted'>· Correct: </span>" + tex(q.answer.display) + "</p>" +
-            "<div class='sf-steps'>" + steps(q.solution) + "</div></div>";
+            (ok ? "" : diagnosisHtml(q, given).html) +
+            "<div class='sf-steps'>" + steps(q.solution) + markSchemeHtml(q) + "</div></div>";
           review.appendChild(d);
         });
 
@@ -1279,6 +1309,29 @@
             "<a href='#/practice/' class='sf-btn' style='text-decoration:none'>Drill it</a></li>";
         }).join("") + "</ol>";
     }
+
+    var counts = {};
+    store.attempts.forEach(function (a) {
+      if (!a.misconception) return;
+      var c = counts[a.misconception.id] || { label: a.misconception.label, topic: a.topic, n: 0 };
+      c.n += 1;
+      counts[a.misconception.id] = c;
+    });
+    var habits = Object.keys(counts).map(function (k) { return counts[k]; })
+      .filter(function (c) { return c.n >= 2; })
+      .sort(function (a, b) { return b.n - a.n; });
+    var hs = el("section");
+    hs.style.marginTop = "2rem";
+    hs.innerHTML = "<h2 style='font-size:1.125rem;font-weight:700'>Recurring misconceptions</h2>" +
+      (habits.length
+        ? "<ul style='margin-top:1rem;display:flex;flex-direction:column;gap:.75rem'>" + habits.slice(0, 8).map(function (h) {
+            return "<li class='card' style='display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;padding:1rem'>" +
+              "<span style='font-size:.75rem;font-weight:700;color:var(--medium)'>×" + h.n + "</span>" +
+              "<div style='min-width:0;flex:1'><p style='font-weight:500'>" + esc(h.label) + "</p><p class='muted' style='font-size:.875rem'>" + esc(name(h.topic)) + "</p></div>" +
+              "<a href='#/topics/" + h.topic + "/#mistakes' class='sf-chip' style='text-decoration:none'>Review the mistake</a></li>";
+          }).join("") + "</ul>"
+        : "<p class='muted' style='margin-top:.5rem;line-height:1.6'>When a wrong answer matches a known slip, it is named here once it happens twice. Nothing has repeated yet.</p>");
+    next.parentNode.insertBefore(hs, next.nextSibling);
 
     $("#sf-clear", host).addEventListener("click", function () {
       if (window.confirm("Delete all your progress? This cannot be undone.")) {

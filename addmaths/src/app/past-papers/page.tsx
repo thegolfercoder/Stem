@@ -3,6 +3,8 @@ import Link from "next/link";
 import { allExamQuestions } from "@/lib/content";
 import { TOPICS } from "@/content/topics";
 import { Steps } from "@/components/Blocks";
+import { MarkScheme } from "@/components/MarkScheme";
+import { schemeFor } from "@/lib/marks";
 import { T } from "@/components/Math";
 import { Plot } from "@/components/Plot";
 import { Callout, Chip, DifficultyBadge, PageHeader } from "@/components/ui";
@@ -76,6 +78,7 @@ export default function PastPapersPage() {
                       {q.figure && <Plot spec={q.figure} />}
                       <div className="mt-5">
                         <Steps steps={q.steps} />
+                        <MarkScheme items={schemeFor(q)} total={q.marks} />
                       </div>
                       <div className="mt-5 rounded-xl border border-[color:var(--accent)]/40 bg-[color:var(--accent-soft)] p-4">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.09em]">Answer</p>

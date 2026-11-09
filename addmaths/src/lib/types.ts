@@ -108,10 +108,34 @@ export interface WorkedExample {
   remark?: string;
 }
 
+/**
+ * One line of a mark scheme, in Cambridge's own currency.
+ *
+ * M marks are for a correct method and survive arithmetic slips. A marks are
+ * for accuracy and are normally only available once the method mark they
+ * depend on has been earned. B marks are independent: awarded for a specific
+ * correct statement whatever surrounds it.
+ */
+export type MarkType = "M" | "A" | "B";
+
+export interface MarkItem {
+  type: MarkType;
+  /** Usually 1; an M2 or B2 is worth 2. */
+  marks: number;
+  /** What earns the mark, in examiner language. */
+  criterion: string;
+  /** Index into the scheme of the method mark this accuracy mark depends on. */
+  dependsOn?: number;
+  /** The question part, e.g. "(a)". */
+  part?: string;
+}
+
 export interface ExamQuestion extends WorkedExample {
   marks: number;
   /** Which paper the style belongs to: 1 is non-calculator, 2 is calculator. */
   paper?: 1 | 2;
+  /** How the marks are awarded. Its marks must total the question's. */
+  markScheme?: MarkItem[];
 }
 
 export interface Mistake {

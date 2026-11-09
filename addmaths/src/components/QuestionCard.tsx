@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Question } from "@/lib/questions";
-import { checkAnswer } from "@/lib/questions";
+import { checkAnswer, diagnose } from "@/lib/questions";
+import type { Misconception } from "@/lib/questions";
+import { MarkScheme } from "./MarkScheme";
+import Link from "next/link";
 import { Steps } from "./Blocks";
 import { T } from "./Math";
 import { DifficultyBadge, Chip } from "./ui";
@@ -12,6 +15,7 @@ export interface AttemptResult {
   correct: boolean;
   ms: number;
   given: string;
+  misconception?: { id: string; label: string };
 }
 
 /**
@@ -60,7 +64,13 @@ export function QuestionCard({
     const correct = checkAnswer(question.answer, value);
     setState(correct ? "right" : "wrong");
     if (!correct) setShowSolution(true);
-    onAnswered?.({ correct, ms: Date.now() - started.current, given: value });
+    const m = correct ? null : diagnose(question, value);
+    onAnswered?.({
+      correct,
+      ms: Date.now() - started.current,
+      given: value,
+      ...(m ? { misconception: { id: m.id, label: m.label } } : {}),
+    });
   }
 
   const shown = revealed
@@ -70,6 +80,7 @@ export function QuestionCard({
       : { correct: state === "right", given: value };
 
   const isMcq = question.answer.kind === "mcq";
+  const diagnosis: Misconception | null = shown && !shown.correct ? diagnose(question, shown.given) : null;
 
   return (
     <article className="card overflow-hidden">
@@ -148,6 +159,27 @@ export function QuestionCard({
               </p>
             </div>
           )}
+          {diagnosis && (
+            <div
+              className="mt-3 rounded-xl border border-[color:var(--medium)]/50 bg-[color:var(--medium)]/10 px-4 py-3"
+              data-testid="diagnosis"
+            >
+              <p className="text-sm font-semibold">Likely slip: {diagnosis.label}</p>
+              <p className="mt-1 text-sm leading-relaxed">
+                <T>{diagnosis.diagnosis}</T>
+              </p>
+              {diagnosis.see && topic && (
+                <p className="mt-1.5 text-sm">
+                  <Link
+                    href={`/topics/${topic.slug}#${diagnosis.see}`}
+                    className="font-medium text-[color:var(--accent)] underline underline-offset-4"
+                  >
+                    Revise this in {topic.short}
+                  </Link>
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {(shown || showSolution) && (
@@ -163,6 +195,7 @@ export function QuestionCard({
             {showSolution && (
               <div className="mt-4 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-soft)] p-4">
                 <Steps steps={question.solution} />
+                <MarkScheme items={question.markScheme} total={question.marks} />
               </div>
             )}
           </div>

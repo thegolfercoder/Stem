@@ -86,6 +86,15 @@ export const functionGenerators: Generator[] = [
       return {
         prompt: `Given $f(x) = ${quadratic(0, a, b)}$ and $g(x) = ${quadratic(c, 0, d)}$, find $${order}(${x0})$.`,
         answer: { kind: "numeric", value, tolerance: 1e-6, display: `$${value}$` },
+        misconceptions: [
+          {
+            id: "fn-composite-order",
+            label: "Applied the two functions in the wrong order",
+            diagnosis: `That is $${order === "fg" ? "gf" : "fg"}(${x0})$. In $${order}(x)$ the function written next to $x$ acts first.`,
+            value: order === "fg" ? g(f(x0)) : f(g(x0)),
+            see: "composite",
+          },
+        ],
         solution: [
           {
             t: `$${order}(x)$ means apply $${order[1]}$ first, then $${order[0]}$. Start with the inner function.`,
@@ -155,6 +164,15 @@ export const functionGenerators: Generator[] = [
       return {
         prompt: `The function $f$ is defined by $f(x) = (x ${signed(-h)})^2 ${signed(k)}$ for $x \\ge ${h}$. Find $f^{-1}(${input})$.`,
         answer: { kind: "numeric", value, tolerance: 1e-6, display: `$${value}$` },
+        misconceptions: [
+          {
+            id: "fn-inverse-wrong-root",
+            label: "Took the negative square root",
+            diagnosis: `You took the negative root. The domain is $x \\ge ${h}$, so $x ${signed(-h)} \\ge 0$ and only the positive root is valid.`,
+            value: h - t,
+            see: "inverse",
+          },
+        ],
         solution: [
           { t: "The domain starts at the vertex, so $f$ is one–one and an inverse exists. Set $f(x)$ equal to the required value.", m: `(x ${signed(-h)})^2 ${signed(k)} = ${input}` },
           { t: "Isolate the square.", m: `(x ${signed(-h)})^2 = ${input - k}` },
@@ -188,6 +206,15 @@ export const functionGenerators: Generator[] = [
       return {
         prompt: `The function $f$ is defined by $f(x) = ${quadratic(a, b, c)}$ for $${lo} \\le x \\le ${hi}$. Find the greatest value of $f$ on this domain.`,
         answer: { kind: "numeric", value: greatest, tolerance: 1e-6, display: `$${greatest}$` },
+        misconceptions: [
+          {
+            id: "fn-range-vertex-outside",
+            label: "Used the vertex although it lies outside the domain",
+            diagnosis: `$${k}$ is the value at the vertex, $x = ${h}$ — but that is outside $${lo} \\le x \\le ${hi}$, so it is never reached. Here the extremes are at the endpoints.`,
+            value: k,
+            see: "domain-and-range",
+          },
+        ],
         solution: [
           { t: "Complete the square to find the vertex.", m: `f(x) = ${coef(a, `(x ${signed(-h)})^2`)} ${signed(k)}` },
           { t: `The vertex is at $x = ${h}$, which lies outside the interval $[${lo}, ${hi}]$, so $f$ is ${a > 0 ? "increasing" : "decreasing"} across the whole domain.` },

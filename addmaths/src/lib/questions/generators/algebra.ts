@@ -19,6 +19,15 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Write $${quadratic(a, b, c)}$ in the form $a(x+p)^2 + q$ and state the minimum value of the expression.`,
         answer: { kind: "numeric", value: q, tolerance: 1e-9, display: `$${q}$` },
+        misconceptions: [
+          {
+            id: "qf-cs-outside-factor",
+            label: "Did not multiply the correction term by the outside factor",
+            diagnosis: `The $-${p * p}$ sits inside the bracket, so it is multiplied by the $${a}$ outside: it becomes $-${a * p * p}$, not $-${p * p}$.`,
+            value: c - p * p,
+            see: "completing-the-square",
+          },
+        ],
         solution: [
           { t: `Take the factor $${a}$ out of the first two terms only.`, m: `${a}\\left(x^2 ${signed(b / a, "x")}\\right) ${signed(c)}` },
           { t: "Halve the coefficient of $x$ inside the bracket and square it.", m: `x^2 ${signed(b / a, "x")} = (x ${signed(p)})^2 - ${p * p}` },
@@ -47,6 +56,15 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Solve $${quadratic(a, b, c)} = 0$. Give both roots, separated by a comma.`,
         answer: { kind: "set", values: [p, q], tolerance: 1e-6, display: `$x = ${Math.min(p, q)}$ or $x = ${Math.max(p, q)}$` },
+        misconceptions: [
+          {
+            id: "qf-roots-sign",
+            label: "Read the roots off the factors with the wrong signs",
+            diagnosis: `$(x ${signed(-p)}) = 0$ gives $x = ${p}$, not $${-p}$. Set each bracket equal to zero rather than copying the number inside it.`,
+            value: [-p, -q],
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Look for two numbers that multiply to give the product of the outer coefficients and add to the middle one — or factorise directly.", m: `${quadratic(a, b, c)} = ${a === 1 ? "" : a}(x ${signed(-p)})(x ${signed(-q)})` },
           { t: "Set each factor equal to zero.", m: `x ${signed(-p)} = 0 \\quad \\text{or} \\quad x ${signed(-q)} = 0` },
@@ -70,6 +88,22 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `The equation $${quadratic(a, b, 0)} + k = 0$ has two equal roots. Find the value of $k$.`,
         answer: { kind: "numeric", value: k, tolerance: 1e-6, display: `$k = ${frac(b * b, 4 * a)}$` },
+        misconceptions: [
+          {
+            id: "qf-disc-sign",
+            label: "Sign slip rearranging b² − 4ac = 0",
+            diagnosis: `From $${b * b} - ${4 * a}k = 0$, moving the $k$ term across makes it positive: $${4 * a}k = ${b * b}$.`,
+            value: -(b * b) / (4 * a),
+            see: "mistakes",
+          },
+          {
+            id: "qf-disc-dropped-4",
+            label: "Dropped the 4 from b² − 4ac",
+            diagnosis: `The discriminant is $b^2 - 4ac$. With the 4 in place, $k = \\frac{${b * b}}{${4 * a}}$.`,
+            value: (b * b) / a,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Two equal roots means the discriminant is zero.", m: `b^2 - 4ac = 0` },
           { t: `Here $a = ${a}$, $b = ${b}$ and $c = k$.`, m: `(${b})^2 - 4(${a})k = 0` },
@@ -103,6 +137,24 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Solve the inequality $${quadratic(1, b, c)} ${lessThan ? "<" : ">"} 0$.\n\nChoose the correct solution set by typing its number:\n1. ${options[0]}\n2. ${options[1]}\n3. ${options[2]}\n4. ${options[3]}`,
         answer: { kind: "mcq", options, correct: correct + 1, display: options[correct]! },
+        misconceptions: [
+          {
+            id: "qf-ineq-region",
+            label: "Chose the wrong region of the parabola",
+            diagnosis: lessThan
+              ? "An upward parabola is **below** the axis between its roots, so “< 0” is the single interval between them."
+              : "An upward parabola is **above** the axis outside its roots, so “> 0” is the two outer pieces, joined by “or”.",
+            value: lessThan ? 2 : 1,
+            see: "quadratic-inequalities",
+          },
+          {
+            id: "qf-ineq-empty",
+            label: "Wrote an impossible double inequality",
+            diagnosis: `$${q} < x < ${p}$ describes no numbers at all: nothing is both above ${q} and below ${p}.`,
+            value: 4,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Factorise to find the critical values.", m: `(x ${signed(-p)})(x ${signed(-q)}) ${lessThan ? "<" : ">"} 0` },
           { t: "The roots are:", m: `x = ${p}, \\quad x = ${q}` },
@@ -135,6 +187,15 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `The line $y = ${quadratic(0, m, 0)} + k$ is a tangent to the curve $y = ${quadratic(1, b, c)}$. Find the value of $k$.`,
         answer: { kind: "numeric", value: k, tolerance: 1e-6, display: `$k = ${frac(4 * c - (b - m) * (b - m), 4)}$` },
+        misconceptions: [
+          {
+            id: "qf-tangent-uncollected",
+            label: "Used the discriminant before collecting terms",
+            diagnosis: `You used $b = ${b}$ from the curve alone. Once the $${quadratic(0, m, 0)}$ term is moved across, the coefficient of $x$ is $${b - m}$, and that is the $b$ in $b^2 - 4ac$.`,
+            value: c - (b * b) / 4,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Set the two expressions for $y$ equal.", m: `${quadratic(1, b, c)} = ${quadratic(0, m, 0)} + k` },
           { t: "Collect everything on one side.", m: `x^2 ${signed(b - m, "x")} ${signed(c)} - k = 0` },
@@ -163,6 +224,15 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Find the remainder when $P(x) = ${quadratic(0, 0, 0) === "0" ? "" : ""}${a}x^3 ${signed(b, "x^2")} ${signed(c, "x")} ${signed(d)}$ is divided by $(x ${signed(-k)})$.`,
         answer: { kind: "numeric", value, tolerance: 1e-9, display: `$${value}$` },
+        misconceptions: [
+          {
+            id: "poly-rem-sign",
+            label: "Substituted the wrong sign into the remainder theorem",
+            diagnosis: `You evaluated $P(${-k})$. The divisor $(x ${signed(-k)})$ is zero at $x = ${k}$, so the remainder is $P(${k})$.`,
+            value: a * (-k) ** 3 + b * k * k - c * k + d,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: `The divisor is zero when $x = ${k}$, so the remainder is $P(${k})$.`, m: `P(${k}) = ${a}(${k})^3 ${signed(b)}(${k})^2 ${signed(c)}(${k}) ${signed(d)}` },
           { t: "Evaluate each term.", m: `= ${a * k ** 3} ${signed(b * k * k)} ${signed(c * k)} ${signed(d)}` },
@@ -194,6 +264,17 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Is $(x ${signed(-k)})$ a factor of $P(x) = ${quadratic(0, 0, 0) === "0" ? "" : ""}${p3}x^3 ${signed(p2, "x^2")} ${signed(p1, "x")} ${signed(p0)}$?\n\nType 1 for yes, 2 for no.`,
         answer: { kind: "mcq", options, correct: isFactor ? 1 : 2, display: options[isFactor ? 0 : 1]! },
+        misconceptions: isFactor
+          ? []
+          : [
+              {
+                id: "poly-factor-nonzero",
+                label: "Called it a factor although the remainder is not zero",
+                diagnosis: `$P(${k}) = ${value}$, not $0$. Only a remainder of exactly zero makes $(x ${signed(-k)})$ a factor.`,
+                value: 1,
+                see: "mistakes",
+              },
+            ],
         solution: [
           { t: `By the factor theorem, evaluate $P(${k})$.`, m: `P(${k}) = ${value}` },
           {
@@ -222,6 +303,15 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `$(x ${signed(-k)})$ is a factor of $P(x) = x^3 + ax^2 ${signed(b, "x")} ${signed(d)}$. Find $a$.`,
         answer: { kind: "numeric", value: a, tolerance: tol3sf(a || 1), display: `$a = ${frac(-(k ** 3 + b * k + d), k * k)}$` },
+        misconceptions: [
+          {
+            id: "poly-coef-sign",
+            label: "Substituted the wrong sign into the factor theorem",
+            diagnosis: `You set $P(${-k}) = 0$. For the factor $(x ${signed(-k)})$ the root is $x = ${k}$, so it is $P(${k})$ that must vanish.`,
+            value: (k ** 3 + b * k - d) / (k * k),
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: `By the factor theorem $P(${k}) = 0$.`, m: `(${k})^3 + a(${k})^2 ${signed(b)}(${k}) ${signed(d)} = 0` },
           { t: "Evaluate the known terms.", m: `${k ** 3} + ${k * k}a ${signed(b * k)} ${signed(d)} = 0` },
@@ -248,6 +338,15 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Solve $x^3 ${signed(b, "x^2")} ${signed(c, "x")} ${signed(d)} = 0$. List the distinct roots, separated by commas.`,
         answer: { kind: "set", values: unique, tolerance: 1e-6, display: `$x = ${unique.join(",\\ ")}$` },
+        misconceptions: [
+          {
+            id: "poly-roots-sign",
+            label: "Read the roots off the factors with the wrong signs",
+            diagnosis: "A factor $(x - r)$ gives the root $x = r$: the sign flips. Your values are the negatives of the roots.",
+            value: unique.map((r) => -r),
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Try small values until one gives zero. Testing works because any integer root divides the constant term." , m: `x = ${p} \\text{ gives } 0` },
           { t: `So $(x ${signed(-p)})$ is a factor. Divide, or compare coefficients, to obtain the quadratic factor.`, m: `x^3 ${signed(b, "x^2")} ${signed(c, "x")} ${signed(d)} = (x ${signed(-p)})\\left(x^2 ${signed(-(q + s), "x")} ${signed(q * s)}\\right)` },
@@ -274,6 +373,15 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Solve $\\left|${quadratic(0, a, b)}\\right| = ${c}$. Give both solutions, separated by a comma.`,
         answer: { kind: "set", values: [x1, x2], tolerance: 1e-6, display: `$x = ${frac(c - b, a)}$ or $x = ${frac(-c - b, a)}$` },
+        misconceptions: [
+          {
+            id: "mod-one-branch",
+            label: "Solved only the positive branch",
+            diagnosis: `$\\left|${quadratic(0, a, b)}\\right| = ${c}$ also allows $${quadratic(0, a, b)} = ${-c}$, which gives a second solution.`,
+            value: [x1],
+            see: "modulus-equations",
+          },
+        ],
         solution: [
           { t: `The right-hand side is positive, so there are two branches.`, m: `${quadratic(0, a, b)} = ${c} \\quad \\text{or} \\quad ${quadratic(0, a, b)} = ${-c}` },
           { t: "Solve the first.", m: `x = ${frac(c - b, a)}` },
@@ -303,6 +411,17 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Solve $\\left|${quadratic(0, a, b)}\\right| ${less ? "<" : ">"} ${c}$.\n\nType 1 for ${options[0]}, or 2 for ${options[1]}.`,
         answer: { kind: "mcq", options, correct: less ? 1 : 2, display: options[less ? 0 : 1]! },
+        misconceptions: [
+          {
+            id: "mod-ineq-shape",
+            label: "Swapped the inside and outside cases",
+            diagnosis: less
+              ? "“$|A| < k$” keeps $A$ close to zero: one interval **between** $-k$ and $k$."
+              : "“$|A| > k$” pushes $A$ away from zero: two **outward** pieces, $A > k$ or $A < -k$.",
+            value: less ? 2 : 1,
+            see: "modulus-inequalities",
+          },
+        ],
         solution: [
           {
             t: less
@@ -335,6 +454,15 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Solve $x ${signed(b, "\\sqrt{x}")} ${signed(c)} = 0$. Give all solutions for $x$, separated by commas.`,
         answer: { kind: "set", values: roots, tolerance: 1e-6, display: `$x = ${roots.join(",\\ ")}$` },
+        misconceptions: [
+          {
+            id: "sub-not-converted",
+            label: "Forgot to convert back from the substitution",
+            diagnosis: "Those are the values of $u = \\sqrt{x}$. The question asks for $x$, so square them.",
+            value: [...new Set([u1, u2])],
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Let $u = \\sqrt{x}$, so that $x = u^2$. Note $u \\ge 0$.", m: `u^2 ${signed(b, "u")} ${signed(c)} = 0` },
           { t: "Factorise.", m: `(u - ${u1})(u - ${u2}) = 0` },
@@ -389,6 +517,15 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Solve simultaneously $y = ${quadratic(1, b, c)}$ and $y = ${quadratic(0, m, k)}$. Give the two $x$-values, separated by a comma.`,
         answer: { kind: "set", values: roots, tolerance: 1e-6, display: `$x = ${roots.join(",\\ ")}$` },
+        misconceptions: [
+          {
+            id: "sim-roots-sign",
+            label: "Read the roots off the factors with the wrong signs",
+            diagnosis: "A factor $(x - r)$ gives $x = r$: the sign flips when you set the bracket to zero.",
+            value: roots.map((r) => -r),
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Both expressions equal $y$, so set them equal.", m: `${quadratic(1, b, c)} = ${quadratic(0, m, k)}` },
           { t: "Collect everything on one side.", m: `x^2 ${signed(b - m, "x")} ${signed(c - k)} = 0` },
@@ -485,6 +622,17 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Evaluate $${base}^{${negative ? "-" : ""}${num}/${k}}$ without a calculator.`,
         answer: { kind: "numeric", value: exact, tolerance: 1e-6, display: `$${negative ? frac(1, b ** num) : String(b ** num)}$` },
+        misconceptions: negative
+          ? [
+              {
+                id: "ind-negative-sign",
+                label: "Treated a negative index as a negative number",
+                diagnosis: `A negative index means a reciprocal, not a minus sign: the answer is $\\frac{1}{${b ** num}}$, which is positive.`,
+                value: -(b ** num),
+                see: "mistakes",
+              },
+            ]
+          : [],
         solution: [
           negative
             ? { t: "A negative index means take the reciprocal first.", m: `${base}^{-${num}/${k}} = \\frac{1}{${base}^{${num}/${k}}}` }
@@ -520,7 +668,7 @@ export const algebraGenerators: Generator[] = [
           { t: `Write both sides as powers of ${base}.`, m: `\\left(${base}^{${pp}}\\right)^{x ${signed(c1)}} = \\left(${base}^{${q}}\\right)^{x ${signed(c2)}}` },
           { t: "Multiply the indices.", m: `${base}^{${pp}x ${signed(pp * c1)}} = ${base}^{${q}x ${signed(q * c2)}}` },
           { t: "Equal bases means equal indices.", m: `${pp}x ${signed(pp * c1)} = ${q}x ${signed(q * c2)}` },
-          { t: "Collect and solve.", m: `${pp - q}x = ${q * c2 - pp * c1} \;\\Rightarrow\; x = ${frac(q * c2 - pp * c1, pp - q)}` },
+          { t: "Collect and solve.", m: `${pp - q}x = ${q * c2 - pp * c1} \\;\\Rightarrow\\; x = ${frac(q * c2 - pp * c1, pp - q)}` },
         ],
       };
     },
@@ -563,6 +711,15 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Write $\\dfrac{${num}}{${a} - \\sqrt{${b}}}$ in the form $p + q\\sqrt{${b}}$. Enter the value of $p$ (to 3 significant figures if not exact).`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$p = ${frac(num * a, denom)}$` },
+        misconceptions: [
+          {
+            id: "surd-conjugate-sign",
+            label: "Multiplied out the conjugates with the wrong sign",
+            diagnosis: `$(${a} - \\sqrt{${b}})(${a} + \\sqrt{${b}}) = ${a * a} - ${b} = ${denom}$. The product of conjugates is a **difference** of squares.`,
+            value: (num * a) / (a * a + b),
+            see: "surds",
+          },
+        ],
         solution: [
           { t: `Multiply top and bottom by the conjugate $${a} + \\sqrt{${b}}$.`, m: `\\frac{${num}\\left(${a}+\\sqrt{${b}}\\right)}{\\left(${a}-\\sqrt{${b}}\\right)\\left(${a}+\\sqrt{${b}}\\right)}` },
           { t: "The denominator is a difference of two squares, so the surd disappears.", m: `${a}^2 - ${b} = ${denom}` },
@@ -610,6 +767,15 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Write $${k}\\lg ${a} - \\lg ${b}$ as a single logarithm $\\lg N$. Enter the value of $N$.`,
         answer: { kind: "numeric", value, tolerance: 1e-6, display: `$N = ${frac(a ** k, b)}$` },
+        misconceptions: [
+          {
+            id: "log-power-law",
+            label: "Read k·lg a as lg(ka)",
+            diagnosis: `The power law turns $${k}\\lg ${a}$ into $\\lg ${a}^{${k}}$: the ${k} becomes an index, not a multiplier.`,
+            value: (k * a) / b,
+            see: "laws",
+          },
+        ],
         solution: [
           { t: "Apply the power law to the first term.", m: `${k}\\lg ${a} = \\lg ${a}^{${k}} = \\lg ${a ** k}` },
           { t: "Now use the quotient law.", m: `\\lg ${a ** k} - \\lg ${b} = \\lg\\frac{${a ** k}}{${b}}` },
@@ -634,6 +800,15 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Solve $\\log_{${base}}\\left(x + ${shift}\\right) = ${k}$.`,
         answer: { kind: "numeric", value, tolerance: 1e-6, display: `$x = ${value}$` },
+        misconceptions: [
+          {
+            id: "log-definition",
+            label: "Multiplied by the base instead of raising it to a power",
+            diagnosis: `$\\log_{${base}} A = ${k}$ means $A = ${base}^{${k}} = ${base ** k}$, not $${base} \\times ${k}$.`,
+            value: base * k - shift,
+            see: "definition",
+          },
+        ],
         solution: [
           { t: "Undo the logarithm using its definition.", m: `x + ${shift} = ${base}^{${k}}` },
           { t: "Evaluate the power.", m: `x + ${shift} = ${base ** k}` },
@@ -657,6 +832,15 @@ export const algebraGenerators: Generator[] = [
       return {
         prompt: `Solve $${a}^{x} = ${b}$, giving your answer to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$x = ${value.toFixed(3)}$` },
+        misconceptions: [
+          {
+            id: "log-quotient",
+            label: "Treated a quotient of logs as the log of a quotient",
+            diagnosis: `$\\frac{\\lg ${b}}{\\lg ${a}}$ is not $\\lg\\frac{${b}}{${a}}$. Divide the two logarithms as numbers.`,
+            value: Math.log10(b / a),
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Take logarithms of both sides.", m: `\\lg\\left(${a}^x\\right) = \\lg ${b}` },
           { t: "Bring the index down with the power law.", m: `x\\lg ${a} = \\lg ${b}` },
@@ -683,7 +867,7 @@ export const algebraGenerators: Generator[] = [
         prompt: `A population is modelled by $N = ${A}e^{${k}t}$, where $t$ is in years. Find the value of $t$ when $N = ${target}$, to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$t = ${value.toFixed(3)}$` },
         solution: [
-          { t: "Substitute and isolate the exponential.", m: `${target} = ${A}e^{${k}t} \;\\Rightarrow\; e^{${k}t} = ${(target / A).toFixed(4)}` },
+          { t: "Substitute and isolate the exponential.", m: `${target} = ${A}e^{${k}t} \\;\\Rightarrow\\; e^{${k}t} = ${(target / A).toFixed(4)}` },
           { t: "Take natural logarithms of both sides.", m: `${k}t = \\ln ${(target / A).toFixed(4)}` },
           { t: "Divide.", m: `t = \\frac{\\ln ${(target / A).toFixed(4)}}{${k}}` },
           { t: "Evaluate.", m: `t = ${value.toFixed(3)}` },

@@ -1,4 +1,4 @@
-import type { Difficulty, Step } from "@/lib/types";
+import type { Difficulty, MarkItem, Step } from "@/lib/types";
 
 /**
  * The practice engine.
@@ -61,6 +61,27 @@ export type Answer =
   | { kind: "exact"; accept: string[]; display: string }
   | { kind: "mcq"; options: string[]; correct: number; display: string };
 
+/**
+ * A named wrong turn: the specific answer a specific, common error produces.
+ *
+ * When a student's answer matches one of these rather than the correct answer,
+ * the site can say what went wrong instead of just that something did. Every
+ * misconception must be a real error type — one the topic's own mistakes list
+ * names — never a value invented to fill the slot.
+ */
+export interface Misconception {
+  /** Stable id, shared by every instance of this error across seeds. */
+  id: string;
+  /** Generic name for the error, with no numbers: "Forgot the outside factor". */
+  label: string;
+  /** This instance's explanation, numbers included. May contain $…$ maths. */
+  diagnosis: string;
+  /** The answer the error produces, in the same shape as the correct answer. */
+  value: number | number[];
+  /** Anchor on the topic page to send the student to, e.g. "mistakes". */
+  see?: string;
+}
+
 export interface QuestionSpec {
   prompt: string;
   answer: Answer;
@@ -69,6 +90,10 @@ export interface QuestionSpec {
   marks?: number;
   /** Shown under the input, e.g. "Give your answer to 3 significant figures." */
   hint?: string;
+  /** Wrong answers this question can diagnose. */
+  misconceptions?: Misconception[];
+  /** A specific mark scheme; otherwise one is derived from the solution. */
+  markScheme?: MarkItem[];
 }
 
 export interface Generator {
@@ -96,23 +121,114 @@ export interface Question {
   answer: Answer;
   solution: Step[];
   hint?: string;
+  misconceptions: Misconception[];
+  markScheme: MarkItem[];
 }
 
 export function generate(gen: Generator, seed: number): Question {
   const spec = gen.build(makeRng(seed));
+  const marks = spec.marks ?? gen.marks;
   return {
     id: `${gen.id}:${seed}`,
     generator: gen.id,
     topic: gen.topic,
     title: gen.title,
     difficulty: gen.difficulty,
-    marks: spec.marks ?? gen.marks,
+    marks,
     paper: gen.paper,
     prompt: spec.prompt,
     answer: spec.answer,
     solution: spec.solution,
     ...(spec.hint ? { hint: spec.hint } : {}),
+    misconceptions: pruneMisconceptions(spec.answer, spec.misconceptions ?? []),
+    markScheme: spec.markScheme ?? schemeFromSolution(marks, spec.solution, spec.answer),
   };
+}
+
+/**
+ * Derives a mark scheme from a worked solution when a generator gives none.
+ *
+ * The final mark is an accuracy mark for the answer, dependent on the method
+ * mark before it; the rest are method marks attached to the solution's steps
+ * in order. When there are more marks than steps, the last method step carries
+ * the remainder as an M2 or M3. This mirrors how most short Cambridge questions
+ * are actually split, and is honest about being a derivation rather than a
+ * bespoke scheme.
+ */
+export function schemeFromSolution(marks: number, solution: Step[], answer: Answer): MarkItem[] {
+  if (marks <= 1) {
+    return [{ type: "B", marks: 1, criterion: `Correct answer: ${answer.display}` }];
+  }
+  const methodMarks = marks - 1;
+  const methodSteps = solution.slice(0, Math.max(1, solution.length - 1));
+  const items: MarkItem[] = [];
+  const n = Math.min(methodMarks, methodSteps.length);
+  for (let i = 0; i < n; i += 1) {
+    const remainder = i === n - 1 ? methodMarks - (n - 1) : 1;
+    items.push({ type: "M", marks: remainder, criterion: stripTrailing(methodSteps[i]!.t) });
+  }
+  items.push({
+    type: "A",
+    marks: 1,
+    criterion: `Correct answer: ${answer.display}`,
+    dependsOn: items.length - 1,
+  });
+  return items;
+}
+
+function stripTrailing(text: string): string {
+  return text.replace(/[.:]\s*$/, "");
+}
+
+/**
+ * Drops any misconception that, for this particular question, gives the right
+ * answer or the same answer as an earlier one. "Forgot the outside factor" is
+ * no error at all when that factor is 1, and a correct answer must never be
+ * diagnosed as a mistake.
+ */
+function pruneMisconceptions(answer: Answer, list: Misconception[]): Misconception[] {
+  const kept: Misconception[] = [];
+  for (const m of list) {
+    const input = misconceptionInput(m);
+    const values = Array.isArray(m.value) ? m.value : [m.value];
+    if (values.some((v) => !Number.isFinite(v))) continue;
+    if (checkAnswer(answer, input)) continue;
+    if (kept.some((k) => checkAnswer(asAnswer(answer, k.value), input))) continue;
+    kept.push(m);
+  }
+  return kept;
+}
+
+/**
+ * Diagnoses a wrong answer. Returns the misconception whose value the input
+ * matches — compared exactly as the real answer would be — or null when the
+ * input is correct, unparseable, or a wrong answer of no recognised kind.
+ */
+export function diagnose(question: Pick<Question, "answer" | "misconceptions">, raw: string): Misconception | null {
+  if (!raw.trim() || checkAnswer(question.answer, raw)) return null;
+  for (const m of question.misconceptions) {
+    if (checkAnswer(asAnswer(question.answer, m.value), raw)) return m;
+  }
+  return null;
+}
+
+/** The misconception's value, wrapped as an answer of the same kind. */
+export function asAnswer(real: Answer, value: number | number[]): Answer {
+  switch (real.kind) {
+    case "numeric":
+      return { kind: "numeric", value: Array.isArray(value) ? value[0]! : value, tolerance: real.tolerance, display: "" };
+    case "set":
+      return { kind: "set", values: Array.isArray(value) ? value : [value], tolerance: real.tolerance, display: "" };
+    case "mcq":
+      return { kind: "mcq", options: real.options, correct: Array.isArray(value) ? value[0]! : value, display: "" };
+    case "exact":
+      return { kind: "exact", accept: [String(value)], display: "" };
+  }
+}
+
+/** The string a student would type to give this misconception's answer. */
+export function misconceptionInput(m: Misconception): string {
+  return Array.isArray(m.value) ? m.value.join(", ") : String(m.value);
 }
 
 /* ------------------------------------------------------------------ marking */

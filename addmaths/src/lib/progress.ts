@@ -26,6 +26,8 @@ export interface Attempt {
   /** Epoch milliseconds. */
   at: number;
   marks: number;
+  /** The named error the wrong answer matched, when one did. */
+  misconception?: { id: string; label: string };
 }
 
 export interface ExamResult {
@@ -222,4 +224,28 @@ export function activitySeries(attempts: Attempt[], days = 30): { day: string; n
     });
   }
   return out;
+}
+
+export interface MisconceptionStat {
+  id: string;
+  label: string;
+  topic: string;
+  count: number;
+  lastAt: number;
+}
+
+/**
+ * Named errors that keep coming back. One slip is noise; the same slip twice
+ * is a habit worth breaking, so two occurrences is the floor.
+ */
+export function recurringMisconceptions(attempts: Attempt[], min = 2): MisconceptionStat[] {
+  const map = new Map<string, MisconceptionStat>();
+  for (const a of attempts) {
+    if (!a.misconception) continue;
+    const cur = map.get(a.misconception.id) ?? { ...a.misconception, topic: a.topic, count: 0, lastAt: 0 };
+    cur.count += 1;
+    cur.lastAt = Math.max(cur.lastAt, a.at);
+    map.set(a.misconception.id, cur);
+  }
+  return [...map.values()].filter((m) => m.count >= min).sort((a, b) => b.count - a.count || b.lastAt - a.lastAt);
 }

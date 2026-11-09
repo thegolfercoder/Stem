@@ -23,6 +23,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `Find the gradient of the line through $(${x1}, ${y1})$ and $(${x2}, ${y2})$.`,
         answer: { kind: "numeric", value: m, tolerance: 1e-9, display: `$m = ${m}$` },
+        misconceptions: [
+          {
+            id: "line-run-over-rise",
+            label: "Divided the change in x by the change in y",
+            diagnosis: `Gradient is rise over run: $\\frac{${y2 - y1}}{${dx}}$, not the other way up.`,
+            value: 1 / m,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Gradient is the change in $y$ over the change in $x$.", m: `m = \\frac{${y2} - (${y1})}{${x2} - (${x1})}` },
           { t: "Evaluate both differences.", m: `= \\frac{${y2 - y1}}{${dx}}` },
@@ -47,6 +56,22 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `A line has gradient $${frac(p, q)}$. Find the gradient of any line perpendicular to it.`,
         answer: { kind: "numeric", value: perp, tolerance: 1e-6, display: `$${frac(-q, p)}$` },
+        misconceptions: [
+          {
+            id: "line-perp-sign-only",
+            label: "Changed the sign but did not take the reciprocal",
+            diagnosis: "Perpendicular gradients multiply to $-1$. Flip the fraction as well as changing the sign.",
+            value: -m,
+            see: "mistakes",
+          },
+          {
+            id: "line-perp-reciprocal-only",
+            label: "Took the reciprocal but kept the sign",
+            diagnosis: "Flipping the fraction is half the job: the product is then $1$, not $-1$. Change the sign too.",
+            value: q / p,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Perpendicular gradients multiply to $-1$.", m: `m_1 m_2 = -1` },
           { t: "So take the negative reciprocal: flip the fraction and change the sign.", m: `m_2 = -\\frac{1}{${frac(p, q)}} = ${frac(-q, p)}` },
@@ -102,6 +127,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `Find the $y$-intercept of the perpendicular bisector of $A(${A[0]}, ${A[1]})$ and $B(${B[0]}, ${B[1]})$, to 3 significant figures.`,
         answer: { kind: "numeric", value: intercept, tolerance: tol3sf(intercept || 1), display: `$c = ${intercept.toFixed(3)}$` },
+        misconceptions: [
+          {
+            id: "line-bisector-not-perp",
+            label: "Used the gradient of AB instead of the perpendicular gradient",
+            diagnosis: `The bisector is perpendicular to $AB$, so its gradient is $${frac(-dx, dy)}$, not $${frac(dy, dx)}$.`,
+            value: my - mAB * mx,
+            see: "perpendicular-bisector",
+          },
+        ],
         solution: [
           { t: "Find the midpoint — the bisector passes through it.", m: `M = \\left(${mx}, ${my}\\right)` },
           { t: "Find the gradient of $AB$.", m: `m_{AB} = \\frac{${dy}}{${dx}} = ${frac(dy, dx)}` },
@@ -126,6 +160,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `Variables $x$ and $y$ satisfy $y = Ax^{n}$. Plotting $\\lg y$ against $\\lg x$ gives a straight line of gradient $${n}$ passing through $(0, ${lgA})$. Find $A$, to 3 significant figures.`,
         answer: { kind: "numeric", value: A, tolerance: tol3sf(A), display: `$A = ${A.toFixed(3)}$` },
+        misconceptions: [
+          {
+            id: "line-intercept-is-lgA",
+            label: "Took the intercept as A instead of lg A",
+            diagnosis: `The intercept is $\\lg A = ${lgA}$, so $A = 10^{${lgA}}$.`,
+            value: lgA,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Take logarithms of the relationship.", m: `\\lg y = n\\lg x + \\lg A` },
           { t: "Compare with $Y = mX + c$: the gradient is $n$ and the intercept is $\\lg A$.", m: `n = ${n}, \\qquad \\lg A = ${lgA}` },
@@ -155,6 +198,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `Find the radius of the circle $x^2 + y^2 ${signed(g, "x")} ${signed(f, "y")} ${signed(c)} = 0$.`,
         answer: { kind: "numeric", value: rad, tolerance: 1e-6, display: `$r = ${rad}$` },
+        misconceptions: [
+          {
+            id: "cir-r-squared",
+            label: "Gave r² as the radius",
+            diagnosis: `The right-hand side is $r^2 = ${rad * rad}$, so $r = \\sqrt{${rad * rad}}$.`,
+            value: rad * rad,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Complete the square in $x$.", m: `x^2 ${signed(g, "x")} = (x ${signed(-a)})^2 - ${a * a}` },
           { t: "Complete the square in $y$.", m: `y^2 ${signed(f, "y")} = (y ${signed(-b)})^2 - ${b * b}` },
@@ -214,6 +266,22 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `The point $P(${px}, ${py})$ lies on the circle with centre $(${cx}, ${cy})$ and radius ${rad}. Find the gradient of the tangent to the circle at $P$.`,
         answer: { kind: "numeric", value: mTangent, tolerance: 1e-6, display: `$${frac(-dx, dy)}$` },
+        misconceptions: [
+          {
+            id: "cir-tangent-is-radius",
+            label: "Used the radius gradient as the tangent gradient",
+            diagnosis: `$${frac(dy, dx)}$ is the gradient of the radius. The tangent is perpendicular to it: take the negative reciprocal.`,
+            value: mRadius,
+            see: "tangents",
+          },
+          {
+            id: "line-perp-sign-only",
+            label: "Changed the sign but did not take the reciprocal",
+            diagnosis: "Perpendicular gradients multiply to $-1$. Flip the fraction as well as changing the sign.",
+            value: -mRadius,
+            see: "tangents",
+          },
+        ],
         solution: [
           { t: "Find the gradient of the radius from the centre to $P$.", m: `m_{CP} = \\frac{${py} - (${cy})}{${px} - (${cx})} = ${frac(dy, dx)}` },
           { t: "A tangent is perpendicular to the radius at the point of contact.", m: `m_t = -\\frac{1}{${frac(dy, dx)}}` },
@@ -301,6 +369,17 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `A sector of a circle has radius ${rad} cm and angle ${theta} radians. Find its ${wantArea ? "area, in cm²" : "arc length, in cm"}, to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${value.toFixed(3)}$` },
+        misconceptions: wantArea
+          ? [
+              {
+                id: "rad-sector-half",
+                label: "Left out the ½ in the sector area",
+                diagnosis: "Sector area is $\\tfrac12 r^2\\theta$: the sector is $\\frac{\\theta}{2\\pi}$ of the whole circle's $\\pi r^2$.",
+                value: rad * rad * theta,
+                see: "arc-and-sector",
+              },
+            ]
+          : [],
         solution: [
           { t: wantArea ? "Use the sector-area formula — not on the formula sheet." : "Use the arc-length formula — not on the formula sheet.", m: wantArea ? "A = \\tfrac12 r^2\\theta" : "s = r\\theta" },
           { t: "Substitute.", m: wantArea ? `A = \\tfrac12(${rad})^2(${theta})` : `s = ${rad} \\times ${theta}` },
@@ -324,6 +403,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `A chord subtends an angle of ${theta} radians at the centre of a circle of radius ${rad} cm. Find the area of the minor segment, in cm², to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${value.toFixed(3)}$` },
+        misconceptions: [
+          {
+            id: "rad-degree-mode",
+            label: "Calculator in degree mode",
+            diagnosis: `You evaluated $\\sin ${theta}$ in degrees. The angle is ${theta} **radians**, and $\\sin ${theta} = ${Math.sin(theta).toFixed(4)}$.`,
+            value: 0.5 * rad * rad * (theta - Math.sin((theta * PI) / 180)),
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "A segment is the sector minus the triangle.", m: "A = \\tfrac12 r^2\\theta - \\tfrac12 r^2\\sin\\theta = \\tfrac12 r^2\\left(\\theta - \\sin\\theta\\right)" },
           { t: "Substitute, with the calculator in radian mode.", m: `= \\tfrac12(${rad})^2\\left(${theta} - \\sin ${theta}\\right)` },
@@ -348,6 +436,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `Find the perimeter, in cm, of a sector of radius ${rad} cm and angle ${theta} radians, to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${value.toFixed(3)}$` },
+        misconceptions: [
+          {
+            id: "rad-perimeter-arc-only",
+            label: "Gave only the arc for the perimeter",
+            diagnosis: `The boundary of a sector is the arc **and** the two radii: add $2 \\times ${rad}$.`,
+            value: rad * theta,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "The boundary is the arc plus the two straight radii.", m: "P = r\\theta + 2r" },
           { t: "Compute the arc.", m: `r\\theta = ${rad} \\times ${theta} = ${(rad * theta).toFixed(3)}` },
@@ -376,6 +473,17 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `For $y = ${a}${fn} ${b}x ${signed(c)}$, find the period in radians, to 3 significant figures.`,
         answer: { kind: "numeric", value: period, tolerance: tol3sf(period), display: `$${period.toFixed(4)}$` },
+        misconceptions: isTan
+          ? [
+              {
+                id: "trig-tan-period",
+                label: "Used 2π/b as the period of a tangent",
+                diagnosis: `Tangent repeats every $\\pi$, not $2\\pi$, so $\\tan ${b}x$ has period $\\frac{\\pi}{${b}}$.`,
+                value: (2 * PI) / b,
+                see: "mistakes",
+              },
+            ]
+          : [],
         solution: [
           {
             t: isTan
@@ -419,6 +527,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `Find the exact value of $\\${useSin ? "sin" : "cos"} ${pick.tex}$, as a decimal to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${value.toFixed(4)}$` },
+        misconceptions: [
+          {
+            id: "trig-cast-sign",
+            label: "Got the sign wrong for the quadrant",
+            diagnosis: `The size is right but the sign is not. In quadrant ${quadrant}, $\\${useSin ? "sin" : "cos"}$ is ${value >= 0 ? "positive" : "negative"} — check CAST.`,
+            value: -value,
+            see: "cast",
+          },
+        ],
         solution: [
           { t: `$${pick.tex}$ lies in quadrant ${quadrant}.` },
           {
@@ -447,6 +564,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `Find the ${wantMax ? "greatest" : "least"} value of $y = ${a}\\sin ${b}x ${signed(c)}$.`,
         answer: { kind: "numeric", value, tolerance: 1e-9, display: `$${value}$` },
+        misconceptions: [
+          {
+            id: "trig-range-no-shift",
+            label: "Forgot the vertical shift",
+            diagnosis: `$\\pm${a}$ bounds $${a}\\sin ${b}x$ alone. The $${c}$ moves the whole graph, so add it on.`,
+            value: wantMax ? a : -a,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "The sine of anything lies between $-1$ and $1$.", m: `-1 \\le \\sin ${b}x \\le 1` },
           { t: `Multiply through by the amplitude $${a}$.`, m: `${-a} \\le ${a}\\sin ${b}x \\le ${a}` },
@@ -549,6 +675,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `Given that $\\tan\\theta = ${frac(sinSign * opp, cosSign * adj)}$ and $${ranges[quadrant]}$, find the exact value of $\\${wantSin ? "sin" : "cos"}\\theta$ as a decimal to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${frac(wantSin ? sinSign * opp : cosSign * adj, hyp)} = ${value.toFixed(4)}$` },
+        misconceptions: [
+          {
+            id: "id-quadrant-sign",
+            label: "Ignored the quadrant when taking the square root",
+            diagnosis: `The square root gives $\\pm$, and the quadrant decides which. In quadrant ${quadrant}, $\\${wantSin ? "sin" : "cos"}\\theta$ is ${value >= 0 ? "positive" : "negative"}.`,
+            value: -value,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Use the identity that links tangent to the function you want.", m: `\\sec^2\\theta = 1 + \\tan^2\\theta = 1 + \\frac{${opp * opp}}{${adj * adj}} = \\frac{${hyp * hyp}}{${adj * adj}}` },
           { t: "Take the square root, keeping both signs for now.", m: `\\sec\\theta = \\pm\\frac{${hyp}}{${adj}}` },
@@ -576,6 +711,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `The equation $${p}\\sin^2\\theta = ${q}\\cos\\theta$ can be written as a quadratic in $\\cos\\theta$. Find the value of $\\cos\\theta$ that lies in $[-1, 1]$, to 3 significant figures.`,
         answer: { kind: "numeric", value: c, tolerance: tol3sf(c), display: `$\\cos\\theta = ${c.toFixed(4)}$` },
+        misconceptions: [
+          {
+            id: "id-impossible-root",
+            label: "Kept a root outside [−1, 1]",
+            diagnosis: `$${((-q - Math.sqrt(disc)) / (2 * p)).toFixed(4)}$ is less than $-1$, and $\\cos\\theta$ never is. Reject it.`,
+            value: (-q - Math.sqrt(disc)) / (2 * p),
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Replace $\\sin^2\\theta$ using the Pythagorean identity so only cosine appears.", m: `${p}\\left(1 - \\cos^2\\theta\\right) = ${q}\\cos\\theta` },
           { t: "Expand and collect.", m: `${p}\\cos^2\\theta + ${q}\\cos\\theta - ${p} = 0` },
@@ -604,6 +748,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `Solve $\\${useSin ? "sin" : "cos"}\\theta = ${k}$ for $0^\\circ \\le \\theta \\le 360^\\circ$. Give both solutions in degrees to 1 decimal place, separated by a comma.`,
         answer: { kind: "set", values: sols, tolerance: 0.15, display: `$\\theta = ${sols.map((s) => s.toFixed(1)).join("^\\circ,\\ ")}^\\circ$` },
+        misconceptions: [
+          {
+            id: "teq-calculator-only",
+            label: "Gave only the calculator's value",
+            diagnosis: `$${principal.toFixed(1)}^\\circ$ is only the principal value. ${useSin ? "Sine" : "Cosine"} takes each value twice per revolution: the partner is ${useSin ? "$180^\\circ - \\alpha$" : "$360^\\circ - \\alpha$"}.`,
+            value: [principal],
+            see: "the-problem",
+          },
+        ],
         solution: [
           { t: "Take the inverse function for the principal value.", m: `\\alpha = \\${useSin ? "arcsin" : "arccos"}(${k}) = ${principal.toFixed(2)}^\\circ` },
           {
@@ -633,6 +786,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `How many solutions does $\\sin ${n}\\theta = ${k}$ have for $0^\\circ \\le \\theta \\le 360^\\circ$?`,
         answer: { kind: "numeric", value: count, tolerance: 1e-9, display: `$${count}$` },
+        misconceptions: [
+          {
+            id: "teq-interval-not-transformed",
+            label: "Did not transform the interval",
+            diagnosis: `As $\\theta$ runs over $360^\\circ$, the angle $${n}\\theta$ runs over $${360 * n}^\\circ$: ${n} revolutions, with two solutions in each.`,
+            value: 2,
+            see: "method",
+          },
+        ],
         solution: [
           { t: `Transform the interval first: multiplying $\\theta$ by ${n} multiplies the endpoints by ${n}.`, m: `0^\\circ \\le ${n}\\theta \\le ${360 * n}^\\circ` },
           { t: `That is ${n} complete revolutions.` },
@@ -661,6 +823,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `Solve $${a}\\sin^2\\theta ${signed(a * q - p, "\\sin\\theta")} ${signed(-p * q)} = 0$ for $0^\\circ \\le \\theta \\le 360^\\circ$. Give the solutions in degrees to 1 decimal place, separated by a comma.`,
         answer: { kind: "set", values: sols, tolerance: 0.15, display: `$\\theta = ${sols.map((s) => s.toFixed(1)).join("^\\circ,\\ ")}^\\circ$` },
+        misconceptions: [
+          {
+            id: "teq-calculator-only",
+            label: "Gave only the calculator's value",
+            diagnosis: `Sine is positive in the first **and** second quadrants, so $${(180 - first).toFixed(1)}^\\circ$ is a solution too.`,
+            value: [first],
+            see: "the-problem",
+          },
+        ],
         solution: [
           { t: "Treat $\\sin\\theta$ as the variable and factorise.", m: `\\left(${a}\\sin\\theta - ${p}\\right)\\left(\\sin\\theta + ${q}\\right) = 0` },
           { t: `The second factor gives $\\sin\\theta = ${-q}$, which is impossible since $|\\sin\\theta| \\le 1$. Reject it.` },
@@ -688,6 +859,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `Solve $\\tan\\theta = ${k}$ for $0^\\circ \\le \\theta \\le 360^\\circ$. Give both solutions in degrees to 1 decimal place, separated by a comma.`,
         answer: { kind: "set", values: sols, tolerance: 0.15, display: `$\\theta = ${sols.map((s) => s.toFixed(1)).join("^\\circ,\\ ")}^\\circ$` },
+        misconceptions: [
+          {
+            id: "teq-calculator-only",
+            label: "Gave only the calculator's value",
+            diagnosis: "Tangent repeats every $180^\\circ$: add $180^\\circ$ to the principal value until every solution in range is found.",
+            value: [principal],
+            see: "the-problem",
+          },
+        ],
         solution: [
           { t: "Take the inverse tangent for the principal value.", m: `\\alpha = \\arctan(${k}) = ${principal.toFixed(2)}^\\circ` },
           { t: principal < 0 ? "It is negative, so add $180^\\circ$ to reach the first solution inside the interval." : "It already lies inside the interval.", m: `\\theta_1 = ${first.toFixed(2)}^\\circ` },
@@ -718,6 +898,17 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `Evaluate $^{${n}}${isC ? "C" : "P"}_{${k}}$.`,
         answer: { kind: "numeric", value, tolerance: 1e-6, display: `$${value}$` },
+        misconceptions: [
+          {
+            id: "pc-perm-vs-comb",
+            label: isC ? "Used a permutation where order does not matter" : "Used a combination where order matters",
+            diagnosis: isC
+              ? `That is $^{${n}}P_{${k}}$, which counts each selection $${k}!$ times — once per ordering.`
+              : `That is $^{${n}}C_{${k}}$, which ignores order. Arrangements count each ordering separately.`,
+            value: isC ? perm : perm / fact,
+            see: "the-question",
+          },
+        ],
         solution: [
           { t: isC ? "Use the combination formula." : "Use the permutation formula.", m: isC ? `^{${n}}C_{${k}} = \\frac{${n}!}{${k}!\\,(${n}-${k})!}` : `^{${n}}P_{${k}} = \\frac{${n}!}{(${n}-${k})!}` },
           { t: "Cancel the factorials — only the top $" + k + "$ factors survive.", m: `= \\frac{${Array.from({ length: k }, (_, i) => n - i).join(" \\times ")}}{${isC ? Array.from({ length: k }, (_, i) => i + 1).join(" \\times ") : "1"}}` },
@@ -744,6 +935,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `In how many ways can ${n} different books be arranged in a row if ${blockSize} particular books must be kept together?`,
         answer: { kind: "numeric", value, tolerance: 1e-6, display: `$${value}$` },
+        misconceptions: [
+          {
+            id: "pc-block-internal",
+            label: "Forgot the arrangements inside the block",
+            diagnosis: `The ${blockSize} books in the block can still be ordered $${blockSize}! = ${inner}$ ways among themselves. Multiply by that.`,
+            value: outer,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: `Treat the ${blockSize} books that must stay together as a single block.`, m: `${n} - ${blockSize} + 1 = ${n - blockSize + 1} \\text{ objects to arrange}` },
           { t: "Arrange those objects.", m: `${n - blockSize + 1}! = ${outer}` },
@@ -776,6 +976,15 @@ export const geometryGenerators: Generator[] = [
       return {
         prompt: `A committee of ${size} is chosen from ${women} women and ${men} men. How many committees contain exactly ${menWanted} man${menWanted === 1 ? "" : "men"}?`,
         answer: { kind: "numeric", value, tolerance: 1e-6, display: `$${value}$` },
+        misconceptions: [
+          {
+            id: "pc-add-not-multiply",
+            label: "Added the choices instead of multiplying",
+            diagnosis: "Choosing the men **and** choosing the women happen together, so the two counts multiply.",
+            value: nCr(men, menWanted) + nCr(women, womenWanted),
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Order does not matter in a committee, so use combinations." },
           { t: `Choose the ${menWanted} man${menWanted === 1 ? "" : "men"} from ${men}.`, m: `^{${men}}C_{${menWanted}} = ${nCr(men, menWanted)}` },

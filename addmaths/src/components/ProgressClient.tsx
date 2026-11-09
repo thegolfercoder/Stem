@@ -6,6 +6,7 @@ import {
   activitySeries,
   clearProgress,
   difficultyStats,
+  recurringMisconceptions,
   streakDays,
   topicStats,
   useProgress,
@@ -24,6 +25,7 @@ export function ProgressClient({
 
   const stats = useMemo(() => topicStats(store.attempts), [store.attempts]);
   const weak = useMemo(() => weakAreas(store.attempts), [store.attempts]);
+  const habits = useMemo(() => recurringMisconceptions(store.attempts), [store.attempts]);
   const byLevel = useMemo(() => difficultyStats(store.attempts), [store.attempts]);
   const activity = useMemo(() => activitySeries(store.attempts, 30), [store.attempts]);
 
@@ -204,6 +206,38 @@ export function ProgressClient({
             </Link>
             .
           </p>
+        )}
+      </section>
+
+      <section className="mt-8" aria-labelledby="habits">
+        <h2 id="habits" className="text-lg font-bold">
+          Recurring misconceptions
+        </h2>
+        {habits.length === 0 ? (
+          <p className="muted mt-2 leading-relaxed">
+            When a wrong answer matches a known slip, such as a sign error or the wrong order of
+            functions, it is named here once it happens twice. Nothing has repeated yet.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {habits.slice(0, 8).map((m) => (
+              <li key={m.id} className="card flex flex-wrap items-center gap-3 p-4">
+                <span className="flex h-7 min-w-7 items-center justify-center rounded-lg bg-[color:var(--medium)]/15 px-1.5 text-xs font-bold tabular-nums text-[color:var(--medium)]">
+                  ×{m.count}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{m.label}</p>
+                  <p className="muted text-sm">{topicNames[m.topic] ?? m.topic}</p>
+                </div>
+                <Link
+                  href={`/topics/${m.topic}/#mistakes`}
+                  className="rounded-lg border border-[color:var(--border)] px-3 py-1.5 text-sm"
+                >
+                  Review the mistake
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

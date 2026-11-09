@@ -27,6 +27,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Find the coefficient of $x^{${term}}$ in the expansion of $\\left(${a} ${signed(b, "x")}\\right)^{${n}}$.`,
         answer: { kind: "numeric", value, tolerance: 1e-6, display: `$${value}$` },
+        misconceptions: [
+          {
+            id: "bin-coefficient-not-raised",
+            label: "Did not raise the coefficient inside the bracket to the power",
+            diagnosis: `$(${b}x)^{${term}} = ${b ** term}x^{${term}}$: the ${b} is raised to the power as well as the $x$.`,
+            value: nCr(n, term) * a ** (n - term) * b,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Write the general term.", m: `T_{r+1} = \\binom{${n}}{r}(${a})^{${n}-r}\\left(${b}x\\right)^{r}` },
           { t: `The power of $x$ is $r$, so set $r = ${term}$.`, m: `\\binom{${n}}{${term}}(${a})^{${n - term}}(${b})^{${term}}` },
@@ -58,6 +67,17 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Find the term independent of $x$ in the expansion of $\\left(${left} + ${right}\\right)^{${n}}$.`,
         answer: { kind: "numeric", value, tolerance: 1e-6, display: `$${value}$` },
+        misconceptions: b < 0
+          ? [
+              {
+                id: "bin-sign",
+                label: "Got the sign of the term wrong",
+                diagnosis: `$(${b})^{${rIdx}}$ is ${rIdx % 2 ? "negative, because the power is odd" : "positive, because the power is even"}.`,
+                value: -value,
+                see: "mistakes",
+              },
+            ]
+          : [],
         solution: [
           { t: "Write the general term.", m: `T_{r+1} = \\binom{${n}}{r}\\left(${left}\\right)^{${n}-r}\\left(${right}\\right)^{r}` },
           { t: "Collect the powers of $x$ into one index.", m: `x^{${p}(${n}-r)}\\,x^{-${q}r} = x^{${p * n} - ${p + q}r}` },
@@ -82,6 +102,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Find the coefficient of $x^2$ in the expansion of $\\left(1 ${signed(b, "x")}\\right)^{${n}}$.`,
         answer: { kind: "numeric", value, tolerance: 1e-6, display: `$${value}$` },
+        misconceptions: [
+          {
+            id: "bin-coefficient-not-raised",
+            label: "Did not raise the coefficient inside the bracket to the power",
+            diagnosis: `$(${b}x)^2 = ${b * b}x^2$: square the ${b} as well as the $x$.`,
+            value: nCr(n, 2) * b,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Write the first three terms of the expansion.", m: `1 + \\binom{${n}}{1}(${b}x) + \\binom{${n}}{2}(${b}x)^2 + \\cdots` },
           { t: "Focus on the $x^2$ term, bracketing the whole of $" + b + "x$ before squaring.", m: `\\binom{${n}}{2}(${b})^2 = ${nCr(n, 2)} \\times ${b * b}` },
@@ -106,6 +135,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `An arithmetic progression has first term ${a} and common difference ${d}. Find the ${n}th term.`,
         answer: { kind: "numeric", value, tolerance: 1e-9, display: `$${value}$` },
+        misconceptions: [
+          {
+            id: "prog-n-not-n-minus-1",
+            label: "Used n instead of n − 1",
+            diagnosis: `The first term has had no difference added, so the ${n}th term has had ${n - 1} of them: $a + ${n - 1}d$.`,
+            value: a + n * d,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Use the $n$th-term formula. Note the $n-1$: the first term has had no difference added.", m: `u_n = a + (n-1)d` },
           { t: "Substitute.", m: `u_{${n}} = ${a} + ${n - 1}(${d})` },
@@ -153,6 +191,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `A geometric progression has first term ${a} and common ratio ${ratio}. Find the ${n}th term, to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${value.toPrecision(4)}$` },
+        misconceptions: [
+          {
+            id: "prog-n-not-n-minus-1",
+            label: "Used n instead of n − 1",
+            diagnosis: `The first term has not been multiplied at all, so the ${n}th has been multiplied ${n - 1} times: $ar^{${n - 1}}$.`,
+            value: a * ratio ** n,
+            see: "which-is-which",
+          },
+        ],
         solution: [
           { t: "Use the $n$th-term formula.", m: `u_n = ar^{n-1}` },
           { t: "Substitute.", m: `u_{${n}} = ${a} \\times (${ratio})^{${n - 1}}` },
@@ -290,6 +337,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Find the $\\mathbf{i}$ component of the unit vector in the direction of $${sx * p}\\mathbf{i} + ${q}\\mathbf{j}$, to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${frac(sx * p, mag)} = ${value.toFixed(4)}$` },
+        misconceptions: [
+          {
+            id: "vec-not-divided",
+            label: "Forgot to divide by the magnitude",
+            diagnosis: `A unit vector has length 1: divide each component by $|\\mathbf a| = ${mag}$.`,
+            value: sx * p,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Find the magnitude first.", m: `\\sqrt{${p * p} + ${q * q}} = ${mag}` },
           { t: "Divide the vector by its magnitude.", m: `\\hat{\\mathbf a} = \\frac{1}{${mag}}\\begin{pmatrix}${sx * p}\\\\${q}\\end{pmatrix}` },
@@ -376,6 +432,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Given $y = \\left(${quadratic(0, a, b)}\\right)^{${n}}$, find $\\dfrac{\\mathrm{d}y}{\\mathrm{d}x}$ when $x = ${x0}$.`,
         answer: { kind: "numeric", value, tolerance: 1e-6, display: `$${value}$` },
+        misconceptions: [
+          {
+            id: "diff-chain-missing",
+            label: "Forgot to multiply by the derivative of the inside",
+            diagnosis: `The chain rule needs the derivative of the bracket too: multiply by $${a}$.`,
+            value: n * inside ** (n - 1),
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Differentiate the outside function, keeping the inside unchanged.", m: `${n}\\left(${quadratic(0, a, b)}\\right)^{${n - 1}}` },
           { t: "Multiply by the derivative of the inside.", m: `\\times\\ ${a}` },
@@ -403,6 +468,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Given $y = \\left(${quadratic(0, a, b)}\\right)\\left(${quadratic(0, c, d)}\\right)$, find $\\dfrac{\\mathrm{d}y}{\\mathrm{d}x}$ when $x = ${x0}$.`,
         answer: { kind: "numeric", value, tolerance: 1e-6, display: `$${value}$` },
+        misconceptions: [
+          {
+            id: "diff-product-uv",
+            label: "Multiplied the two derivatives together",
+            diagnosis: "The derivative of a product is not the product of the derivatives: $(uv)' = uv' + vu'$.",
+            value: a * c,
+            see: "product-quotient",
+          },
+        ],
         solution: [
           { t: "Set out the parts before substituting anything.", m: `u = ${quadratic(0, a, b)}, \\quad v = ${quadratic(0, c, d)}` },
           { t: "Differentiate each.", m: `u' = ${a}, \\qquad v' = ${c}` },
@@ -431,6 +505,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Given $y = \\dfrac{${quadratic(0, a, b)}}{${quadratic(0, c, d)}}$, find $\\dfrac{\\mathrm{d}y}{\\mathrm{d}x}$ when $x = ${x0}$, to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value || 1), display: `$${value.toFixed(4)}$` },
+        misconceptions: [
+          {
+            id: "diff-quotient-reversed",
+            label: "Reversed the numerator of the quotient rule",
+            diagnosis: "The numerator is $vu' - uv'$ — bottom times derivative of top **first**. Reversing it flips the sign.",
+            value: -value,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Set out the parts.", m: `u = ${quadratic(0, a, b)}, \\quad v = ${quadratic(0, c, d)}, \\quad u' = ${a}, \\quad v' = ${c}` },
           { t: "Apply the quotient rule — bottom times derivative of top **first**.", m: `\\frac{\\mathrm dy}{\\mathrm dx} = \\frac{${a}\\left(${quadratic(0, c, d)}\\right) - ${c}\\left(${quadratic(0, a, b)}\\right)}{\\left(${quadratic(0, c, d)}\\right)^2}` },
@@ -476,6 +559,38 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Given $y = ${expr}$, find $\\dfrac{\\mathrm{d}y}{\\mathrm{d}x}$ when $x = ${x0}$ (radians), to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${value.toPrecision(4)}$` },
+        misconceptions:
+          kind === "cos"
+            ? [
+                {
+                  id: "diff-cos-sign",
+                  label: "Lost the minus sign differentiating cos",
+                  diagnosis: "$\\frac{\\mathrm d}{\\mathrm dx}\\cos x = -\\sin x$: the minus is part of the result.",
+                  value: -value,
+                  see: "mistakes",
+                },
+              ]
+            : kind === "sin"
+              ? [
+                  {
+                    id: "diff-chain-missing",
+                    label: "Forgot to multiply by the derivative of the inside",
+                    diagnosis: `$\\frac{\\mathrm d}{\\mathrm dx}\\sin ${k}x = ${k}\\cos ${k}x$: the chain rule brings down the ${k}.`,
+                    value: a * Math.cos(k * x0),
+                    see: "mistakes",
+                  },
+                ]
+              : kind === "exp"
+                ? [
+                    {
+                      id: "diff-chain-missing",
+                      label: "Forgot to multiply by the derivative of the inside",
+                      diagnosis: `$\\frac{\\mathrm d}{\\mathrm dx}e^{${k}x} = ${k}e^{${k}x}$: multiply by the ${k}.`,
+                      value: a * Math.exp(k * x0),
+                      see: "mistakes",
+                    },
+                  ]
+                : [],
         solution: [
           {
             t:
@@ -513,6 +628,24 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Find the gradient of the ${wantNormal ? "normal" : "tangent"} to the curve $y = ${quadratic(a, b, c)}$ at the point where $x = ${safe}$${wantNormal ? ", to 3 significant figures" : ""}.`,
         answer: { kind: "numeric", value: valueSafe, tolerance: wantNormal ? tol3sf(valueSafe) : 1e-9, display: `$${wantNormal ? valueSafe.toFixed(4) : valueSafe}$` },
+        misconceptions: wantNormal
+          ? [
+              {
+                id: "app-normal-is-tangent",
+                label: "Gave the tangent's gradient for the normal",
+                diagnosis: `$${gradSafe}$ is the tangent's gradient. The normal is perpendicular to it, with gradient $-\\frac{1}{${gradSafe}}$.`,
+                value: gradSafe,
+                see: "tangents-normals",
+              },
+              {
+                id: "line-perp-sign-only",
+                label: "Changed the sign but did not take the reciprocal",
+                diagnosis: "Perpendicular gradients multiply to $-1$. Flip the fraction as well as changing the sign.",
+                value: -gradSafe,
+                see: "tangents-normals",
+              },
+            ]
+          : [],
         solution: [
           { t: "Differentiate the curve.", m: `\\frac{\\mathrm dy}{\\mathrm dx} = ${2 * a}x ${signed(b)}` },
           { t: `Substitute $x = ${safe}$ to get the numerical gradient of the tangent.`, m: `m = ${2 * a}(${safe}) ${signed(b)} = ${gradSafe}` },
@@ -542,6 +675,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Find the $x$-coordinates of the stationary points of $y = x^3 ${signed(b / 2, "x^2")} ${signed(c, "x")}$. Give both, separated by a comma.`,
         answer: { kind: "set", values: roots, tolerance: 1e-6, display: `$x = ${roots.join(",\\ ")}$` },
+        misconceptions: [
+          {
+            id: "app-roots-sign",
+            label: "Read the roots off the factors with the wrong signs",
+            diagnosis: "A factor $(x - r)$ gives $x = r$: the sign flips when you set the bracket to zero.",
+            value: roots.map((r) => -r),
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Differentiate.", m: `\\frac{\\mathrm dy}{\\mathrm dx} = 3x^2 ${signed(b, "x")} ${signed(c)}` },
           { t: "Stationary points have zero gradient.", m: `3x^2 ${signed(b, "x")} ${signed(c)} = 0` },
@@ -568,6 +710,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `The curve $y = ${quadratic(a, b, 0)}$ has a stationary point at $x = ${frac(-b, 2 * a)}$. Use the second derivative to determine its nature.\n\nType 1 for a maximum, 2 for a minimum.`,
         answer: { kind: "mcq", options, correct, display: options[correct - 1]! },
+        misconceptions: [
+          {
+            id: "app-second-derivative-reversed",
+            label: "Reversed the second-derivative rule",
+            diagnosis: "A **negative** second derivative means the gradient is falling — the curve bends down — so the point is a maximum. Positive means a minimum.",
+            value: correct === 1 ? 2 : 1,
+            see: "stationary",
+          },
+        ],
         solution: [
           { t: "Differentiate once.", m: `\\frac{\\mathrm dy}{\\mathrm dx} = ${2 * a}x ${signed(b)}` },
           { t: "Differentiate again.", m: `\\frac{\\mathrm d^2y}{\\mathrm dx^2} = ${second}` },
@@ -619,6 +770,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `The ${varName} of ${shape === "cube-volume" ? "a cube" : shape === "circle-area" ? "a circle" : "a sphere"} increases at ${rate} cm s⁻¹. Find the rate of increase of the ${label} at the instant when the ${varName} is ${rad} cm. Give your answer to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${value.toPrecision(4)}$` },
+        misconceptions: [
+          {
+            id: "app-rates-chain-incomplete",
+            label: "Forgot to multiply by the given rate",
+            diagnosis: `That is the rate with respect to the length, not time. Multiply by the given rate, $${rate}$ cm s⁻¹.`,
+            value: value / rate,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Write down what you are given and what you want.", m: `\\frac{\\mathrm d${shape === "cube-volume" ? "x" : "r"}}{\\mathrm dt} = ${rate}` },
           { t: "State the connecting equation.", m: formula },
@@ -645,6 +805,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Given $y = ${a}x^{${n}}$, use calculus to find the approximate change in $y$ when $x$ increases from ${x0} to ${x0 + dx}. Give your answer to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${value.toPrecision(4)}$` },
+        misconceptions: [
+          {
+            id: "app-increment-no-dx",
+            label: "Forgot to multiply by δx",
+            diagnosis: `$\\frac{\\mathrm dy}{\\mathrm dx}$ is a rate, not a change: $\\delta y \\approx \\frac{\\mathrm dy}{\\mathrm dx}\\,\\delta x$, so multiply by $${dx}$.`,
+            value: a * n * x0 ** (n - 1),
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Differentiate.", m: `\\frac{\\mathrm dy}{\\mathrm dx} = ${a * n}x^{${n - 1}}` },
           { t: `Evaluate at $x = ${x0}$.`, m: `= ${a * n} \\times ${x0 ** (n - 1)} = ${a * n * x0 ** (n - 1)}` },
@@ -702,6 +871,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Evaluate $\\displaystyle\\int_{${lo}}^{${hi}}\\left(${quadratic(0, a, b)}\\right)^{${n}}\\,\\mathrm{d}x$, to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value || 1), display: `$${value.toPrecision(4)}$` },
+        misconceptions: [
+          {
+            id: "int-multiply-not-divide",
+            label: "Multiplied by the inside coefficient instead of dividing",
+            diagnosis: `Integration reverses the chain rule, so divide by $${a}$, the coefficient of $x$ inside — don't multiply.`,
+            value: value * a * a,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Add one to the index and divide by the new index.", m: `\\frac{\\left(${quadratic(0, a, b)}\\right)^{${n + 1}}}{${n + 1}}` },
           { t: "Then divide by the coefficient of $x$ inside — this reverses the chain rule.", m: `\\left[\\frac{\\left(${quadratic(0, a, b)}\\right)^{${n + 1}}}{${a * (n + 1)}}\\right]_{${lo}}^{${hi}}` },
@@ -730,6 +908,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Evaluate $\\displaystyle\\int_{${lo}}^{${hi}} \\frac{${k}}{${quadratic(0, a, b)}}\\,\\mathrm{d}x$, to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${value.toPrecision(4)}$` },
+        misconceptions: [
+          {
+            id: "int-forgot-divide",
+            label: "Forgot to divide by the inside coefficient",
+            diagnosis: `$\\int \\frac{1}{${quadratic(0, a, b)}}\\,\\mathrm dx = \\frac{1}{${a}}\\ln\\left|${quadratic(0, a, b)}\\right|$: divide by the ${a}.`,
+            value: value * a,
+            see: "linear-inside",
+          },
+        ],
         solution: [
           { t: "The integral of $\\frac{1}{ax+b}$ is $\\frac1a\\ln|ax+b|$.", m: `\\left[\\frac{${k}}{${a}}\\ln\\left|${quadratic(0, a, b)}\\right|\\right]_{${lo}}^{${hi}}` },
           { t: "Substitute the upper limit.", m: `= ${frac(k, a)}\\ln ${a * hi + b}` },
@@ -797,6 +984,26 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Evaluate $\\displaystyle\\int_{0}^{${hi}} ${expr}\\,\\mathrm{d}x$ (radians), to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${value.toPrecision(4)}$` },
+        misconceptions:
+          kind === "sin"
+            ? [
+                {
+                  id: "int-sin-sign",
+                  label: "Integrated sin as +cos",
+                  diagnosis: "$\\int\\sin x\\,\\mathrm dx = -\\cos x$: the sign flips.",
+                  value: -value,
+                  see: "mistakes",
+                },
+              ]
+            : [
+                {
+                  id: "int-multiply-not-divide",
+                  label: "Multiplied by the inside coefficient instead of dividing",
+                  diagnosis: `Divide by the ${k}, don't multiply: integrating reverses the chain rule.`,
+                  value: kind === "cos" ? a * k * Math.sin(k * hi) : a * k * (Math.exp(k * hi) - 1),
+                  see: "mistakes",
+                },
+              ],
         solution: [
           { t: "Integrate the standard function, then divide by the coefficient of $x$ inside.", m: `\\left[${anti}\\right]_{0}^{${hi}}` },
           { t: `Substitute the upper limit $x = ${hi}$, in radians.` },
@@ -856,6 +1063,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Find the area enclosed between the line $y = ${quadratic(0, m, k)}$ and the curve $y = ${quadratic(1, b, c)}$. Give your answer to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${value.toPrecision(4)}$` },
+        misconceptions: [
+          {
+            id: "area-bottom-minus-top",
+            label: "Subtracted the top curve from the bottom one",
+            diagnosis: "Area between curves is **top minus bottom**. A negative answer means they were the wrong way round.",
+            value: -value,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Find the intersections — these are the limits.", m: `${quadratic(1, b, c)} = ${quadratic(0, m, k)}` },
           { t: "Collect and factorise.", m: `(x ${signed(-lo)})(x ${signed(-hi)}) = 0 \\;\\Rightarrow\\; x = ${lo}, ${hi}` },
@@ -883,6 +1099,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `Find the total area enclosed between the curve $y = x^3 - ${p * p}x$ and the $x$-axis. Give your answer to 3 significant figures.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${value.toPrecision(4)}$` },
+        misconceptions: [
+          {
+            id: "area-cancelled",
+            label: "Integrated straight through a root",
+            diagnosis: `Integrating from $${-p}$ to $${p}$ in one go lets the part below the axis cancel the part above. Split at $x = 0$ and add the sizes.`,
+            value: 0,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "Find where the curve meets the axis.", m: `x\\left(x^2 - ${p * p}\\right) = 0 \\;\\Rightarrow\\; x = ${-p}, 0, ${p}` },
           { t: "The curve is above the axis on one side and below on the other, so the two pieces must be handled separately." },
@@ -997,6 +1222,15 @@ export const calculusGenerators: Generator[] = [
       return {
         prompt: `A particle starts at the origin with velocity $v = ${k * turn} - ${k}t$ m s⁻¹. Find the total distance travelled, in metres, in the first ${T} seconds.`,
         answer: { kind: "numeric", value, tolerance: tol3sf(value), display: `$${value.toPrecision(4)}$` },
+        misconceptions: [
+          {
+            id: "kin-distance-is-displacement",
+            label: "Gave displacement instead of distance",
+            diagnosis: `The particle turns round at $t = ${turn}$. Integrating straight through gives the net displacement; distance adds each leg as a positive amount.`,
+            value: displacement,
+            see: "mistakes",
+          },
+        ],
         solution: [
           { t: "First find where the velocity changes sign — the particle turns round there.", m: `${k * turn} - ${k}t = 0 \\;\\Rightarrow\\; t = ${turn}` },
           { t: "Integrate the velocity for displacement, with $s = 0$ at $t=0$.", m: `s = ${k * turn}t - ${frac(k, 2)}t^2` },

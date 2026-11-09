@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { buildSet, checkAnswer, type Question } from "@/lib/questions";
+import { buildSet, checkAnswer, diagnose, type Question } from "@/lib/questions";
+import { MarkScheme } from "./MarkScheme";
 import { recordAttempt, recordExam } from "@/lib/progress";
 import { Steps } from "./Blocks";
 import { T } from "./Math";
@@ -105,6 +106,7 @@ export function ExamClient({
     savedRef.current = true;
     for (const q of questions) {
       const given = answers[q.id] ?? "";
+      const slip = diagnose(q, given);
       recordAttempt({
         qid: q.id,
         topic: q.topic,
@@ -114,6 +116,7 @@ export function ExamClient({
         ms: spent[q.id] ?? 0,
         at: Date.now(),
         marks: q.marks,
+        ...(slip ? { misconception: { id: slip.id, label: slip.label } } : {}),
       });
     }
     recordExam({
@@ -391,6 +394,7 @@ export function ExamClient({
             {questions.map((item, i) => {
               const given = answers[item.id] ?? "";
               const correct = given.trim() !== "" && checkAnswer(item.answer, given);
+              const slip = correct ? null : diagnose(item, given);
               return (
                 <details key={item.id} className="card overflow-hidden" open={!correct}>
                   <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 p-4">
@@ -415,8 +419,17 @@ export function ExamClient({
                       <span className="muted"> · Correct: </span>
                       <T>{item.answer.display}</T>
                     </p>
+                    {slip && (
+                      <div className="mt-3 rounded-xl border border-[color:var(--medium)]/50 bg-[color:var(--medium)]/10 px-4 py-3 text-sm" data-testid="diagnosis">
+                        <p className="font-semibold">Likely slip: {slip.label}</p>
+                        <p className="mt-1 leading-relaxed">
+                          <T>{slip.diagnosis}</T>
+                        </p>
+                      </div>
+                    )}
                     <div className="mt-4">
                       <Steps steps={item.solution} />
+                      <MarkScheme items={item.markScheme} total={item.marks} />
                     </div>
                   </div>
                 </details>

@@ -4,7 +4,7 @@
  * pre-rendered HTML, so this is the only application code that ships.
  */
 
-import { buildSet, checkAnswer, generatorsFor, questionFromId, GENERATORS } from "@/lib/questions";
+import { buildSet, checkAnswer, diagnose, generatorsFor, questionFromId, GENERATORS } from "@/lib/questions";
 
 // Topic metadata is injected as JSON by the build script rather than imported,
 // so the whole content tree stays out of this bundle.
@@ -18,6 +18,7 @@ declare global {
 window.AddMaths = {
   buildSet,
   checkAnswer,
+  diagnose,
   generatorsFor,
   questionFromId,
   generators: GENERATORS.map((g) => ({
