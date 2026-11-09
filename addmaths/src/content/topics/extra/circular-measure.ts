@@ -1,0 +1,220 @@
+import type { TopicExtra } from "@/lib/types";
+
+export const circularMeasureExtra: TopicExtra = {
+  sections: [
+    {
+      id: "chords-and-segments",
+      heading: "Chords and segments",
+      body: [
+        { k: "p", t: "A chord cuts a sector into a triangle and a segment. The triangle is isosceles, with two sides equal to $r$ and the angle $\\theta$ between them." },
+        { k: "math", t: "\\text{chord} = 2r\\sin\\tfrac{\\theta}{2},\\qquad \\text{triangle} = \\tfrac12 r^2 \\sin\\theta" },
+        { k: "math", t: "\\text{segment} = \\text{sector} - \\text{triangle} = \\tfrac12 r^2(\\theta - \\sin\\theta)" },
+        { k: "note", tone: "warn", title: "Radians throughout", t: "Every $\\theta$ in these formulas is in radians, including the one inside $\\sin\\theta$. Set the calculator to radians before starting." },
+      ],
+    },
+    {
+      id: "finding-the-angle",
+      heading: "Finding the radius and angle from given facts",
+      body: [
+        { k: "p", t: "Questions often give two facts, such as a sector's perimeter and its area, and ask for $r$ and $\\theta$. Each fact is one equation, so this is a pair of simultaneous equations." },
+        { k: "math", t: "2r + r\\theta = 20,\\qquad \\tfrac12 r^2\\theta = 24" },
+        { k: "p", t: "From the first, $r\\theta = 20 - 2r$. Substitute into the second as $\\tfrac12 r(r\\theta) = 24$ to get a quadratic in $r$ alone." },
+        { k: "note", tone: "key", title: "Check every solution", t: "An angle must satisfy $0 < \\theta < 2\\pi$. A solution outside that range is not a sector at all." },
+      ],
+    },
+    {
+      id: "tangents-and-sectors",
+      heading: "Sectors with tangents",
+      body: [
+        { k: "p", t: "When tangents are drawn from a point $T$ to a circle, each tangent meets its radius at a right angle. The right-angled triangle $OAT$ links the radius, the tangent length and the angle at the centre." },
+        { k: "math", t: "AT = r\\tan\\angle AOT" },
+        { k: "p", t: "The region between two tangents and the minor arc is the kite $OATB$ minus the sector $OAB$." },
+      ],
+    },
+  ],
+  examples: [
+    {
+      id: "rad-x1",
+      title: "Arc and area",
+      difficulty: "easy",
+      prompt: "A sector has radius 6 cm and angle 1.2 radians. Find its arc length and area.",
+      steps: [
+        { t: "Arc length.", m: "s = r\\theta = 6 \\times 1.2 = 7.2" },
+        { t: "Area.", m: "A = \\tfrac12 r^2\\theta = \\tfrac12 \\times 36 \\times 1.2 = 21.6" },
+      ],
+      answer: "Arc $7.2$ cm; area $21.6$ cm²",
+    },
+    {
+      id: "rad-x2",
+      title: "Converting between units",
+      difficulty: "easy",
+      prompt: "(a) Convert $135^\\circ$ to radians, as a multiple of $\\pi$. (b) Convert 2.5 radians to degrees, to 1 decimal place.",
+      steps: [
+        { t: "(a) Multiply by $\\tfrac{\\pi}{180}$.", m: "135 \\times \\frac{\\pi}{180} = \\frac{3\\pi}{4}" },
+        { t: "(b) Multiply by $\\tfrac{180}{\\pi}$.", m: "2.5 \\times \\frac{180}{\\pi} \\approx 143.2^\\circ" },
+      ],
+      answer: "(a) $\\dfrac{3\\pi}{4}$  (b) $143.2^\\circ$",
+    },
+    {
+      id: "rad-x3",
+      title: "Two facts, two unknowns",
+      difficulty: "medium",
+      prompt: "A sector has perimeter 20 cm and area 24 cm². Find the possible values of its radius $r$ and angle $\\theta$.",
+      steps: [
+        { t: "Write both facts as equations.", m: "2r + r\\theta = 20,\\qquad \\tfrac12 r^2\\theta = 24" },
+        { t: "Substitute $r\\theta = 20 - 2r$ into $\\tfrac12 r(r\\theta) = 24$.", m: "\\tfrac12 r(20 - 2r) = 24 \\;\\Rightarrow\\; r^2 - 10r + 24 = 0" },
+        { t: "Factorise.", m: "(r - 4)(r - 6) = 0" },
+        { t: "Find $\\theta = \\dfrac{20 - 2r}{r}$ for each. Both angles are between 0 and $2\\pi$, so both are valid.", m: "r = 4 \\Rightarrow \\theta = 3,\\qquad r = 6 \\Rightarrow \\theta = \\tfrac43" },
+      ],
+      answer: "$r = 4$, $\\theta = 3$ or $r = 6$, $\\theta = \\tfrac43$",
+    },
+    {
+      id: "rad-x4",
+      title: "Chord and segment",
+      difficulty: "medium",
+      prompt: "A sector has radius 10 cm and angle 1.4 radians. Find the length of the chord and the area of the minor segment.",
+      steps: [
+        { t: "Chord.", m: "2 \\times 10 \\sin 0.7 \\approx 12.9" },
+        { t: "Segment.", m: "\\tfrac12 \\times 100 \\times (1.4 - \\sin 1.4) \\approx 20.7" },
+      ],
+      answer: "Chord $\\approx 12.9$ cm; segment $\\approx 20.7$ cm²",
+    },
+    {
+      id: "rad-x5",
+      title: "Between two tangents",
+      difficulty: "hard",
+      prompt: "Tangents from $T$ touch a circle, centre $O$ and radius 5 cm, at $A$ and $B$. Angle $AOB$ is 2.2 radians. Find the area and the perimeter of the region bounded by $TA$, $TB$ and the minor arc $AB$.",
+      steps: [
+        { t: "By symmetry angle $AOT = 1.1$. Triangle $OAT$ is right-angled at $A$.", m: "AT = 5\\tan 1.1 \\approx 9.824" },
+        { t: "The kite $OATB$ is two such triangles.", m: "2 \\times \\tfrac12 \\times 5 \\times 9.824 \\approx 49.12" },
+        { t: "Subtract the sector.", m: "\\tfrac12 \\times 25 \\times 2.2 = 27.5 \\;\\Rightarrow\\; \\text{area} \\approx 21.6" },
+        { t: "The perimeter is both tangents plus the arc.", m: "2(9.824) + 5(2.2) \\approx 30.6" },
+      ],
+      answer: "Area $\\approx 21.6$ cm²; perimeter $\\approx 30.6$ cm",
+    },
+    {
+      id: "rad-x6",
+      title: "A segment a quarter of the circle",
+      difficulty: "olympiad",
+      prompt: "A chord cuts off a segment whose area is one quarter of the area of the circle. Show that the angle $\\theta$ the chord subtends at the centre satisfies $\\theta - \\sin\\theta = \\tfrac{\\pi}{2}$, and find $\\theta$ to 3 significant figures.",
+      steps: [
+        { t: "Set the segment equal to a quarter of $\\pi r^2$.", m: "\\tfrac12 r^2(\\theta - \\sin\\theta) = \\tfrac14\\pi r^2" },
+        { t: "Divide by $\\tfrac12 r^2$.", m: "\\theta - \\sin\\theta = \\frac{\\pi}{2}" },
+        { t: "This cannot be solved algebraically. Let $g(\\theta) = \\theta - \\sin\\theta - \\tfrac{\\pi}{2}$ and look for a sign change.", m: "g(2.3) \\approx -0.0164,\\qquad g(2.32) \\approx 0.0189" },
+        { t: "Narrow down until the 3 s.f. value is certain.", m: "g(2.305) \\approx -0.0075,\\qquad g(2.315) \\approx 0.0101" },
+      ],
+      answer: "$\\theta \\approx 2.31$",
+      remark: "A sign change of a continuous function on an interval guarantees a root inside it. Narrowing the interval is a method that always works.",
+    },
+  ],
+  examQuestions: [
+    {
+      id: "rad-x7",
+      title: "Arc, chord and segment",
+      difficulty: "medium",
+      marks: 6,
+      paper: 2,
+      prompt: "The sector $OAB$ has radius 8 cm and angle 0.9 radians.\n(a) Find the length of the arc $AB$. [1]\n(b) Find the length of the chord $AB$. [2]\n(c) Find the perimeter of the minor segment. [1]\n(d) Find the area of the minor segment. [2]",
+      steps: [
+        { t: "(a) Arc.", m: "8 \\times 0.9 = 7.2" },
+        { t: "(b) Chord.", m: "2 \\times 8 \\sin 0.45 \\approx 6.96" },
+        { t: "(c) Arc plus chord.", m: "7.2 + 6.96 \\approx 14.2" },
+        { t: "(d) Sector minus triangle.", m: "\\tfrac12 \\times 64 \\times (0.9 - \\sin 0.9) \\approx 3.73" },
+      ],
+      answer: "(a) $7.2$ cm  (b) $6.96$ cm  (c) $14.2$ cm  (d) $3.73$ cm²",
+      markScheme: [
+        { part: "(a)", type: "B", marks: 1, criterion: "$7.2$" },
+        { part: "(b)", type: "M", marks: 1, criterion: "Correct method for the chord, e.g. $2r\\sin\\tfrac{\\theta}{2}$ or the cosine rule" },
+        { part: "(b)", type: "A", marks: 1, criterion: "$6.96$", dependsOn: 1 },
+        { part: "(c)", type: "B", marks: 1, criterion: "$14.2$, follow through their chord" },
+        { part: "(d)", type: "M", marks: 1, criterion: "Sector area minus triangle area, in radians" },
+        { part: "(d)", type: "A", marks: 1, criterion: "$3.73$", dependsOn: 4 },
+      ],
+    },
+    {
+      id: "rad-x8",
+      title: "Exact segment",
+      difficulty: "medium",
+      marks: 5,
+      paper: 1,
+      prompt: "A sector of a circle has radius 6 cm and angle $\\tfrac{\\pi}{3}$ radians. Find, in exact form,\n(a) the area of the minor segment, [3]\n(b) the perimeter of the minor segment. [2]",
+      steps: [
+        { t: "(a) Sector area.", m: "\\tfrac12 \\times 36 \\times \\tfrac{\\pi}{3} = 6\\pi" },
+        { t: "The triangle is equilateral with side 6.", m: "\\tfrac12 \\times 36 \\times \\sin\\tfrac{\\pi}{3} = 9\\sqrt3" },
+        { t: "Subtract.", m: "6\\pi - 9\\sqrt3" },
+        { t: "(b) The arc is $6 \\times \\tfrac{\\pi}{3} = 2\\pi$ and the chord is 6, because the triangle is equilateral.", m: "2\\pi + 6" },
+      ],
+      answer: "(a) $6\\pi - 9\\sqrt{3}$ cm²  (b) $2\\pi + 6$ cm",
+      markScheme: [
+        { part: "(a)", type: "B", marks: 1, criterion: "Sector area $6\\pi$" },
+        { part: "(a)", type: "B", marks: 1, criterion: "Triangle area $9\\sqrt3$" },
+        { part: "(a)", type: "B", marks: 1, criterion: "$6\\pi - 9\\sqrt3$" },
+        { part: "(b)", type: "M", marks: 1, criterion: "Arc length plus chord length" },
+        { part: "(b)", type: "A", marks: 1, criterion: "$2\\pi + 6$", dependsOn: 3 },
+      ],
+    },
+    {
+      id: "rad-x9",
+      title: "The overlap of two circles",
+      difficulty: "hard",
+      marks: 5,
+      paper: 2,
+      prompt: "Two circles each have radius 5 cm, and their centres are 8 cm apart. Find the area of the region inside both circles. [5]",
+      steps: [
+        { t: "The common chord is perpendicular to the line of centres and bisects it. Let $\\alpha$ be half the angle the chord subtends at either centre.", m: "\\cos\\alpha = \\frac45 \\;\\Rightarrow\\; 2\\alpha \\approx 1.287" },
+        { t: "Each circle contributes one segment of angle $2\\alpha$. Here $\\sin 2\\alpha = 2 \\times \\tfrac35 \\times \\tfrac45 = 0.96$.", m: "\\tfrac12 \\times 25 \\times (1.287 - 0.96) \\approx 4.09" },
+        { t: "The overlap is two such segments.", m: "2 \\times 4.0875 \\approx 8.18" },
+      ],
+      answer: "$8.18$ cm²",
+      markScheme: [
+        { type: "M", marks: 1, criterion: "Uses the right-angled triangle with hypotenuse 5 and side 4" },
+        { type: "A", marks: 1, criterion: "Angle $1.287$ radians at each centre", dependsOn: 0 },
+        { type: "M", marks: 1, criterion: "Segment area as sector minus triangle" },
+        { type: "A", marks: 1, criterion: "Segment $4.09$", dependsOn: 2 },
+        { type: "A", marks: 1, criterion: "Total $8.18$", dependsOn: 2 },
+      ],
+    },
+  ],
+  mistakes: [
+    {
+      wrong: "Sector area $= r^2\\theta$.",
+      why: "The sector is $\\tfrac{\\theta}{2\\pi}$ of the whole circle's area $\\pi r^2$, which gives $\\tfrac12 r^2\\theta$.",
+      fix: "Sector area $= \\tfrac12 r^2\\theta$. The arc length $r\\theta$ has no half.",
+    },
+    {
+      wrong: "Chord length $= r\\theta$.",
+      why: "$r\\theta$ is the curved arc. The chord is the straight line, which is shorter.",
+      fix: "Chord $= 2r\\sin\\tfrac{\\theta}{2}$, or use the cosine rule.",
+    },
+    {
+      wrong: "Accepting $\\theta = 7$ from a pair of sector equations.",
+      why: "A sector's angle lies between 0 and $2\\pi \\approx 6.28$.",
+      fix: "Check every solution for $\\theta$ against $0 < \\theta < 2\\pi$ and reject any outside it.",
+    },
+  ],
+  tips: [
+    "Set your calculator to radians at the start of any circular measure question, and check the display before each $\\sin$.",
+    "Segment $=$ sector $-$ triangle. Write the words first, then the numbers.",
+    "Keep full calculator accuracy until the final answer. Rounding $\\tan 1.1$ early can move the third significant figure.",
+  ],
+  summary: {
+    bigIdea: "A radian is the angle that cuts off an arc equal to the radius. Measured in radians, arc length and sector area need no conversion factor: $s = r\\theta$ and $A = \\tfrac12 r^2\\theta$.",
+    mustKnow: [
+      "$\\pi \\text{ rad} = 180^\\circ$",
+      "Arc length $s = r\\theta$",
+      "Sector area $A = \\tfrac12 r^2\\theta$",
+      "Chord $= 2r\\sin\\tfrac{\\theta}{2}$; triangle $= \\tfrac12 r^2\\sin\\theta$",
+      "Segment $= \\tfrac12 r^2(\\theta - \\sin\\theta)$",
+    ],
+    methods: [
+      { name: "Shaded region", steps: ["Name the region as shapes added and subtracted.", "Find each shape's area in radians.", "Combine, keeping full accuracy."] },
+      { name: "Unknown $r$ and $\\theta$", steps: ["Write one equation per given fact.", "Eliminate $r\\theta$ or $\\theta$.", "Solve, then reject any $\\theta$ outside $(0, 2\\pi)$."] },
+    ],
+    traps: [
+      "Calculator in degree mode.",
+      "Forgetting the $\\tfrac12$ in the sector area.",
+      "A perimeter that includes only the arc.",
+      "Rounding at intermediate steps.",
+    ],
+  },
+};

@@ -7,6 +7,8 @@ import { equationsInequalitiesGraphsExtra } from "./equations-inequalities-graph
 import { simultaneousEquationsExtra } from "./simultaneous-equations";
 import { logarithmsExponentialsExtra } from "./logarithms-exponentials";
 import { straightLineGraphsExtra } from "./straight-line-graphs";
+import { circlesExtra } from "./circles";
+import { circularMeasureExtra } from "./circular-measure";
 
 /**
  * Additions to each topic, keyed by slug. Each file adds lesson sections,
@@ -22,4 +24,6 @@ export const EXTRAS: Record<string, TopicExtra> = {
   "simultaneous-equations": simultaneousEquationsExtra,
   "logarithms-exponentials": logarithmsExponentialsExtra,
   "straight-line-graphs": straightLineGraphsExtra,
+  circles: circlesExtra,
+  "circular-measure": circularMeasureExtra,
 };

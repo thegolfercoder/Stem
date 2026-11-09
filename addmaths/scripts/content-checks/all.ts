@@ -7,3 +7,5 @@ import "./equations-inequalities-graphs";
 import "./simultaneous-equations";
 import "./logarithms-exponentials";
 import "./straight-line-graphs";
+import "./circles";
+import "./circular-measure";
