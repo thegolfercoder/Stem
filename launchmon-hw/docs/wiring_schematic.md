@@ -8,8 +8,8 @@ port.
    GROUND RADAR UNIT                                       SHAFT MOTION POD
    (on the ground, behind the ball)                        (clipped to the shaft)
   +---------------------------------+                    +---------------------------+
-  | BGT24LTR11 module (IF amps on   |  <~~~ BLE 5.0 ~~~> | LSM6DS3TR-C -> ESP32-C3    |
-  | board) -> ESP32-C3 ADC          |   pod = peripheral | 100-150 mAh LiPo,          |
+  | BGT24LTR11 -> LM358 pre-amp ->  |  <~~~ BLE 5.0 ~~~> | LSM6DS3TR-C -> ESP32-C3    |
+  | ESP32-C3 ADC                    |   pod = peripheral | 100-150 mAh LiPo,          |
   | 1500 mAh LiPo, TP4056, switch,  |   ground = central | micro charger              |
   | MT3608 at 5 V, status LED       |                    |                           |
   | BLE central (pod) + peripheral  |                    | USB-C (SuperMini):        |
@@ -59,12 +59,12 @@ without it.
 | slide switch, common | MT3608 **VIN+** | The switch cuts everything after the TP4056 |
 | TP4056 **OUT-** | **GND rail**, MT3608 **VIN-** and **VOUT-** | One ground for everything |
 | MT3608 **VOUT+** (5.0 V) | **5 V rail**: SuperMini **5V** pin, and the radar module's 5 V pin (1.3) | |
-| SuperMini **3V3** pin | a bare 3.3 V radar board only (1.3) | The SuperMini's regulator makes 3.3 V from its 5V pin |
+| SuperMini **3V3** pin | Pre-amp V+ (LM358 pin 8), bias divider (1.4), radar **VCC** if the module is 3.3 V only (1.3) | The SuperMini's regulator makes 3.3 V from its 5V pin and supplies the whole analogue side |
 
 How it behaves:
 
 - **On.** The cell runs the MT3608, which makes 5 V for the SuperMini and the
-  radar module.
+  radar module. The SuperMini's regulator feeds the pre-amp 3.3 V.
 - **Off.** Nothing after the switch has power. The only drain is the TP4056
   module's and the cell's own protection, a few microamps.
 - **Charging.** USB-C into the TP4056 charges the cell at 1 A, switch on or
@@ -79,7 +79,8 @@ above. A new MT3608 often comes set well above 5 V.
 **Flashing.** Switch the unit on. The SuperMini's USB 5 V and the MT3608's 5 V
 meet at the SuperMini's 5V pin, and the MT3608's output diode blocks reverse
 current into it. Switched off, the laptop's USB powers the SuperMini and the
-radar through the 5V pin; the cell is not involved.
+radar (and, through its 3V3 pin, the pre-amp) through the 5V pin; the cell is
+not involved.
 
 **No battery reading.** No part on the list measures the cell, so the firmware
 reports none (0, "not read"). The TP4056 module's DW01A cuts the cell off when
@@ -90,44 +91,36 @@ module's LED shows red while charging and blue or green when done.
 
 | SuperMini pin | Direction | Connects to | Notes |
 |---|---|---|---|
-| **GPIO0** (ADC1_CH0) | in | Radar module **IFI** (I channel, amplified on the module) | Sampled at 40 kS/s |
-| **GPIO1** (ADC1_CH1) | in | Radar module **IFQ** (Q channel, amplified on the module) | Sampled 12.5 µs after I; the firmware corrects the skew |
-| **GPIO10** | out | **330 Ω** → 5 mm LED anode; cathode → GND | Status LED in the top face. The resistor sets the LED's current (1.4) |
+| **GPIO0** (ADC1_CH0) | in | Pre-amp channel I output (radar **IFI** through the LM358, 1.4) | Sampled at 40 kS/s |
+| **GPIO1** (ADC1_CH1) | in | Pre-amp channel Q output (radar **IFQ** through the LM358) | Sampled 12.5 µs after I; the firmware corrects the skew |
+| **GPIO10** | out | **330 Ω** → 5 mm LED anode; cathode → GND | Status LED in the top face. The resistor sets the LED's current (1.5) |
 | **GPIO5** | out | Radar module enable, **if it has one** | Off by default (`PIN_RADAR_EN = -1`) |
 | **GPIO9** | in | On-board BOOT button | Short press toggles raw USB streaming |
 | **GPIO20 / GPIO21** | UART0 RX / TX | Auxiliary serial (`Serial1`, 115200 8N1) | Spare: debug, or a radar board with a digital interface |
 | **5V / GND** | power | as 1.1 | |
-| **3V3** | power out | a bare 3.3 V radar board only (1.3) | |
+| **3V3** | power out | Pre-amp V+ and bias divider (1.4); a bare 3.3 V radar board (1.3) | |
 | GPIO2, GPIO8 | - | **leave unconnected** | Strapping pins. GPIO8 also drives the on-board LED |
 | GPIO3, GPIO4, GPIO6, GPIO7 | - | unused | |
 | GPIO18 / GPIO19 | - | (USB D- / D+) | Used by USB-C; do not connect |
 
 Only ADC1 is used. On the C3, ADC2 is unreliable and is not used for anything.
-Run the two IF leads short (about 3 cm), twisted with a ground wire, and away
-from the MT3608 and its leads.
+Run the radar → pre-amp → ESP32 leads short (about 3 cm), twisted with a
+ground wire, and away from the MT3608 and its leads.
 
-### 1.3 Radar module: built-in IF amplifiers, and its supply
+### 1.3 Radar module supply: check before connecting
 
-**The module must have its own IF (baseband) amplifiers on both channels.**
-There is no pre-amp on this unit: the module's IFI and IFQ outputs go
-straight to GPIO0 and GPIO1. A bare BGT24LTR11 puts out IF signals of
-millivolts, far too small for the ESP32's 12-bit ADC to resolve a ball at
-range; an amplified module brings them up to hundreds of millivolts. Confirm
-these before buying or wiring a module:
+The radar module is a plain BGT24LTR11 board: its IFI and IFQ outputs go to
+the LM358 pre-amp (1.4), not straight to the ESP32. A bare BGT24LTR11 puts out
+IF signals of microvolts to millivolts, too small for the ESP32's 12-bit ADC;
+the pre-amp brings them up and band-limits them. (The hardware review,
+[hardware_review.md](hardware_review.md) Part 1, found no BGT24LTR11 board that
+fits this unit and covers the ball's Doppler band without an amplifier stage,
+so the pre-amp stays: owner's decision, 2026-11-09.)
 
-| Check | Needed | Why |
-|---|---|---|
-| IF amplification | On the board, both I and Q | Nothing else on this unit amplifies |
-| IF output swing | Inside **0-3.3 V** at all times, and preferably inside **0-2.5 V** | The C3's pins must not see more than 3.3 V. Above about 2.5 V the ADC (12 dB attenuation) clips. An amplifier run from 3.3 V cannot exceed the pin's rating; **one run from 5 V can**: measure its output swing before connecting it |
-| IF output bias | Any steady level inside the range, ideally near mid-range | The firmware removes each channel's DC level |
-| IF bandwidth | Covers about 200 Hz-15 kHz | The firmware analyses 200 Hz-15 kHz (`BAND_LOW_HZ`, `BAND_HIGH_HZ`, matching launchmon-py's `hardware.yaml`). A ball at 70 m/s is about 11 kHz. A narrower amplifier cuts fast balls off |
-| Anti-alias filtering | Some roll-off above 20 kHz | Each channel is sampled at 40 kS/s: anything the module passes above 20 kHz folds back into the band. Most amplified modules low-pass their IF; check the schematic |
-
-**Supply.** The **BGT24LTR11 chip is a 3.3 V part**. Boards built around it
-come two ways:
+The **BGT24LTR11 chip is a 3.3 V part**. Boards built around it come two ways:
 
 - **With an on-board 3.3 V regulator** and a 5 V or VIN pin: feed it from the
-  **5 V rail**. This is the parts list's "5 V to radar".
+  **5 V rail**. This is what the brief's "5 V to radar" means.
 - **Bare 3.3 V board**: feed it from the **SuperMini 3V3 pin**. **Never** from
   5 V: that destroys the chip.
 
@@ -138,7 +131,55 @@ inside the 24.00-24.25 GHz ISM band. Follow the module vendor's guidance for
 VTUNE. The firmware assumes 24.125 GHz, and a carrier offset scales every
 speed by the same ratio: 120 MHz off is 0.5%.
 
-### 1.4 Status LED
+### 1.4 Pre-amp: one stage per channel, 3.3 V single supply
+
+Fitted (owner's decision, 2026-11-09; 1.3 says why). It is drawn for channel
+I; channel Q is identical, on the LM358's second op-amp. **MCP6002** is a
+drop-in rail-to-rail alternative with more headroom at 3.3 V (BOM G3).
+
+```
+                         C_f 56p
+                     +----||-----+
+                     |           |
+                     +--/\/\/\---+          R_f 200k
+                     |   200k    |
+   radar IFI         |           |
+   ---||-----/\/\/\--+---|-\     |
+      82n     10k        |  >----+----/\/\/\----+------> GPIO0 (ADC1_CH0)
+     C_in    R_in    +---|+/  LM358A    1k      |
+                     |                         === 4.7n
+          V_bias ----+                          |
+          0.9 V                                GND
+
+   V_bias:  3V3 ---/\/\/\---+---/\/\/\--- GND        LM358 pin 8 -> 3V3, pin 4 -> GND
+                    27k     |     10k                100 nF from pin 8 to GND, close to the chip
+                            +--- 10 uF --- GND
+                            +--> to both op-amps' (+) inputs
+```
+
+| Quantity | Value | From |
+|---|---|---|
+| Gain | -20 (26 dB) | R_f / R_in |
+| High-pass corner | 194 Hz | 1 / (2π · 10k · 82n). Matches `passband_low_hz: 200` in launchmon-py's `hardware.yaml` |
+| Low-pass corner | 14.2 kHz | 1 / (2π · 200k · 56p). Matches `passband_high_hz: 15000` |
+| Output RC pole | 34 kHz | 1k / 4.7 nF. A second, gentle anti-alias pole before the ADC |
+| Output range | 0.9 V ± 0.9 V | The LM358's output reaches about V+ − 1.5 V. At 3.3 V supply that is 1.8 V, inside the ADC's ~2.5 V range at 12 dB attenuation |
+
+Notes:
+
+- **Why 3.3 V and not 5 V:** an LM358 on 5 V can swing to about 3.5 V, above
+  the C3's absolute maximum input. At 3.3 V it cannot exceed the ADC pin's
+  rating, whatever the radar does.
+- **Gain:** if the signal is too small, a second identical stage (on a second
+  LM358, or use an LM324) gives x400. If strong returns clip, lower R_f.
+  launchmon-py's SNR sweep found the pipeline needs about +6 dB of in-band ball
+  SNR with a 1024-point window. That is the target, not a promise.
+- **Anti-aliasing is modest.** The ADC samples each channel at 40 kS/s
+  (Nyquist 20 kHz), and two gentle poles do not stop everything above 25 kHz
+  folding back into the band. Keep IF leads short and twisted with ground.
+  That is why the pre-amp sits between the radar and the ESP32.
+
+### 1.5 Status LED
 
 The 5 mm LED needs its series resistor: a GPIO driving an LED directly would
 push as much current as the pin can source, over the LED's rating and the
@@ -151,10 +192,10 @@ pin's. With 330 Ω from a 3.3 V pin:
 
 The patterns are in the firmware README ("Ground unit status LED").
 
-### 1.5 Mechanical placement of wires
+### 1.6 Mechanical placement of wires
 
-- Radar → ESP32 runs along the top of the case, so the IF leads are about 3 cm
-  long.
+- Radar → pre-amp → ESP32 runs left-to-right along the top of the case in that
+  order, so the analogue leads are about 3 cm long.
 - Cell leads leave the battery bay through the gap in its right-hand fence,
   toward the TP4056.
 - The MT3608 sits on the lid, so its four wires need enough slack (about 8 cm)
@@ -173,8 +214,8 @@ SuperMini's own, flashes and charges the pod.
 
 ```
    USB-C (SuperMini) ---> SuperMini 5V pin --+--------------------> charger VIN
-   (VBUS, no diode on                        |                      (MCP73831 / TP4054,
-    the SuperMini)                           |                       R_PROG 10k = 100 mA)
+   (VBUS; through a diode                    |                      (MCP73831 / TP4054,
+    on some revisions)                       |                       R_PROG 10k = 100 mA)
                                              |                       charger BAT ---+
                                              |                                      |
                                              +----|<|---- Schottky P5 ---------------+---- LiPo +
@@ -185,14 +226,15 @@ SuperMini's own, flashes and charges the pod.
 
 | From | To | Notes |
 |---|---|---|
-| SuperMini **5V** pin | charger **VIN** (VDD), and P5's **cathode** | The 5V pin is the USB-C VBUS |
+| SuperMini **5V** pin | charger **VIN** (VDD), and P5's **cathode** | The 5V pin is the USB-C VBUS, directly or through a diode depending on the board revision (below) |
 | charger **BAT** | LiPo + and P5's **anode** | |
 | LiPo - | charger GND, SuperMini GND | |
 | SuperMini **3V3** | IMU **VIN** (2.2) | |
 
 How it behaves:
 
-- **USB plugged in.** The 5V pin sits at about 5 V and powers the SuperMini.
+- **USB plugged in.** The 5V pin sits at about 5 V (about 4.7 V on a board
+  with a VBUS diode, below) and powers the SuperMini.
   The charger charges the cell at 100 mA. P5 is reverse-biased (5 V on its
   cathode, at most 4.2 V on its anode), so USB reaches the cell only through
   the charger.
@@ -202,8 +244,18 @@ How it behaves:
   leakage.
 
 **P5 is required to wire the original charging path safely: the SuperMini's
-5V pin is its USB-C VBUS with no diode, so without P5 every USB cable would put
+5V pin is fed from its USB-C VBUS, so without P5 every USB cable would put
 5 V straight onto the cell, bypassing the charger.**
+
+**The SuperMini's VBUS-to-5V path varies by revision.** On many boards the 5V
+pin is VBUS directly; others put a diode (PD1) between them. Check yours before
+wiring: with only a USB cable plugged in (nothing else on the board), measure
+the 5V pin to GND. **About 5.0 V** means no diode; **about 4.7 V** means a
+diode. P5 is needed either way: with the diode, about 4.7 V would still reach
+the cell without P5, and the charger's input and output would still be tied
+together. The reading also tells you what the USB-C port does on battery
+("What P5 does not do", below): with no diode its VBUS contact sits at the
+cell voltage less P5's drop; with one, the board's own diode blocks that path.
 
 Why no listed part can do P5's job:
 
@@ -221,8 +273,8 @@ Why no listed part can do P5's job:
   USB-C is still the flashing port, and plugging it in would still put 5 V on
   the cell. It would also need a second port in the pod's case.
 
-What P5 does not do: it does not keep the cell off the USB-C connector. On
-battery, the VBUS contact of the pod's USB-C sits at the cell voltage less
+What P5 does not do: it does not keep the cell off the USB-C connector. On a
+board with no VBUS diode (5.0 V above), on battery, the VBUS contact of the pod's USB-C sits at the cell voltage less
 about 0.3 V. Plugged into a powered charger or computer, that port's 5 V is
 higher and nothing flows. **Plug the pod only into something powered.**
 Plugged into a switched-off device, the cell can drain into it through P5.

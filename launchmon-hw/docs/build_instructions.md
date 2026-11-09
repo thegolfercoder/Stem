@@ -12,16 +12,21 @@ Every part size in the CAD is a parameter at the top of its script, and every
 clearance that depends on one is printed as a **fit report** when the script
 renders (`cad/stl/fit_report.txt` holds the one for the shipped STLs). Measure
 these with calipers, change the parameter, and re-export with
-`cad/export_stl.sh`:
+`cad/export_stl.sh`. The hardware review ([hardware_review.md](hardware_review.md),
+Part 2) compared each size with datasheets and listings; where sellers disagree
+it gives the range, and the figures below are the ones to check first.
 
 | Measure | Parameter | Script |
 |---|---|---|
 | Radar module PCB and its hole positions | `radar_pcb`, `radar_holes` | ground |
-| LiPo cell (1500 mAh) | `batt` | ground |
-| MT3608 tallest part above its PCB | `mt_parts_h` | ground |
-| TP4056 module length and width | `tp_pcb` | ground |
+| LiPo cell (1500 mAh): listings run up to 52 x 34.5 x 8.3 mm | `batt` | ground |
+| MT3608 overall height (at most 8 mm: BOM G6) and its length, 36-37.2 mm | `mt_parts_h`, `mt_pcb` | ground |
+| TP4056 overall length with the receptacle (about 29 mm), width (about 17.3 mm) and board thickness | `tp_pcb` | ground |
+| Slide switch body and lever length (BOM G7) | `sw_body` | ground |
+| ESP32-C3 SuperMini board thickness | `esp_pcb` | ground, pod |
 | Shaft diameter where the pod will sit | `shaft_d` | pod |
-| Micro LiPo | `batt` | pod |
+| Micro LiPo, overall length including its protection PCB (up to about 22 mm) | `batt` | pod |
+| Pod charger board (about 7 x 10 mm, BOM P4) | `chg` | pod |
 | MagSafe magnet ring for the arm's head | `ring_od`, `ring_id`, `ring_depth`, `orient_slot` | ground |
 
 A line marked `FAIL` in the fit report is a collision: fix it before printing.
@@ -131,7 +136,9 @@ you change the bore. Print a spare.
 
 ## 3. Bench test before anything goes in a box
 
-Wire each unit on the bench first, with the parts loose.
+Wire each unit on the bench first, with the parts loose: the ground unit's
+harness is built in section 4, step 0, and tests 1-3 are run during it; the
+pod's is built in section 5, steps 1-4, and test 4 ends it.
 
 1. **Ground power.** Cell → TP4056 (B+/B-) → OUT+ → slide switch → MT3608
    VIN+, with MT3608 VIN- and VOUT- on TP4056 OUT- (wiring doc 1.1) and nothing
@@ -139,21 +146,22 @@ Wire each unit on the bench first, with the parts loose.
    multimeter. Switch off: VOUT+ should fall to 0 V. Then charge through the
    TP4056's USB-C with the switch off and confirm its LED goes red, then blue
    or green.
-2. **Radar module, before it touches the ESP32.** Check its supply (wiring doc
-   1.3) **before** powering it. Power it alone and measure IFI and IFQ to ground
-   with a multimeter: each should sit at a steady level between about 0.2 V
-   and 2.3 V, and never above 3.3 V. Wave a hand in front of it: on an
-   oscilloscope, or a multimeter on AC, both outputs should move. A module
-   whose outputs barely move has no IF amplifiers and will not work here
-   (wiring doc 1.3).
-3. **Ground signal.** Connect the radar's IFI to GPIO0 and IFQ to GPIO1
-   directly, and the LED through its 330 Ω resistor to GPIO10. Flash
+2. **Radar module and pre-amp, before they touch the ESP32's ADC pins.**
+   Check the radar's supply (wiring doc 1.3) **before** powering it. Power the
+   SuperMini from the 5 V rail, and the radar and the LM358 board as in the
+   wiring doc, with the pre-amp's outputs not yet on GPIO0/GPIO1. Measure each
+   pre-amp output to ground: it should sit steady at about 0.9 V (the bias,
+   wiring doc 1.4) and never above 3.3 V. Wave a hand in front of the radar:
+   on an oscilloscope, or a multimeter on AC, both outputs should move.
+3. **Ground signal.** Connect the pre-amp's I output to GPIO0 and its Q output
+   to GPIO1, and the LED through its 330 Ω resistor to GPIO10. Flash
    `firmware/ground_unit`. The serial monitor should print a `boot` line with
    `"fw":"0.5"`, then `ready`, and the LED should blip every 2 s.
-4. **Pod power.** Wire the cell, P5 and the charger as in wiring doc 2.1 and
-   check before connecting the SuperMini: with no USB, the 5V pin reads the
-   cell voltage less about 0.3 V. With USB in, the cell's + reads at most
-   4.2 V, never 5 V; if it reads 5 V, P5 is in backwards or bypassed.
+4. **Pod power**, once the cell is on (section 5, step 4). First with no USB:
+   the SuperMini's 5V pin reads the cell voltage less about 0.3 V. If it reads
+   about 0 V, P5 is in backwards: fix it before plugging in USB. Then with USB
+   in: the cell's + reads at most 4.2 V. If it reads more (about 4.7-5 V), P5
+   is in backwards or bypassed: unplug at once.
 5. **Pod.** Flash `firmware/shaft_pod` over the SuperMini's USB-C. The serial
    monitor should print `fw 0.3` and name the IMU it found (`LSM6DS3TR-C` or
    `LSM6DSOX`). Remove the SuperMini's red power LED once it works.
@@ -164,39 +172,84 @@ Wire each unit on the bench first, with the parts loose.
 
 Front view, as used: the window is upper right, the battery lower left.
 
-1. **TP4056.** Lay it in its pocket at the lower right, components up, and slide
-   it down until the USB-C receptacle sits in the **bottom cutout**. Plug a
-   cable in from outside to check alignment. Put a thin bead of neutral-cure
-   silicone where the receptacle meets the inside of the wall (**not** in the
-   receptacle). Let it cure. The rib on the lid holds the module down once
-   the lid is on.
-2. **Radar module.** Antenna side **toward the window**. Screw it to the four
-   posts on the inside of the window with M2 x 6. The posts hold it parallel to
-   the window at 6.2 mm, half a free-space wavelength at 24.125 GHz, so
-   reflections from the window skin return in a known phase rather than an
-   arbitrary one. Do not shim it closer.
-3. **ESP32-C3 SuperMini.** USB end first: hook it under the two lips at the left
-   of its bay, lower the far end onto the rails, and fit the two printed clamp
-   tabs with M2 x 6. Its USB-C stays reachable with the lid off, for flashing.
-4. **Status light.** Push the printed light pipe into the top-face hole **from
+0. **Bench harness, before anything goes in the box.** Every joint below is
+   made on the bench, where the iron can reach it. In the box, several pads end
+   up under the radar module, the clamp tabs or the LED, and the TP4056 end is
+   sealed with silicone. Use 26-28 AWG silicone wire, heat-shrink every joint,
+   and leave enough length for each part to be laid in its place with the
+   others already wired. The cell is joined last, in step 9; for the bench
+   tests, feed the TP4056's B+/B- from the cell with clip leads (or a bench
+   supply at about 3.8 V). In this order:
+   1. **TP4056.** Solder 8-10 cm leads to its four pads, **B+, B-, OUT+ and
+      OUT-**, with heat-shrink and a dab of hot glue on each. Once it is seated
+      these pads sit just under the radar module's lower edge.
+   2. **Switch.** Solder both wires before it goes into its pocket: the common
+      leg and one end leg; clip the third leg off. At most 3 s per leg, 1.5 mm
+      heat-shrink on each. One wire goes to TP4056 OUT+.
+   3. **MT3608.** Wire its input (VIN+ from the switch, VIN- to TP4056 OUT-),
+      switch on and **set it to 5.0 V** (section 3, test 1) with nothing on its
+      output. Mark the trimmer with a dot of paint so it cannot drift. Then
+      solder its output leads, about 8 cm, so the lid can lie open beside the
+      shell.
+   4. **Radar module and LM358 board.** If the radar module has a pin header,
+      remove it (cut the pins, desolder them one at a time, wick the holes)
+      unless the CAD's `radar_back_clear` allows for it: the joint and wire
+      must stay inside that clearance. Solder its supply (5 V rail or 3V3, wiring
+      doc 1.3), GND, IFI and IFQ leads, with the IF pair twisted with GND. Wire
+      the pre-amp board as in wiring doc 1.4: its inputs from IFI and IFQ, its
+      3V3 and GND, and its I and Q outputs, short.
+   5. **SuperMini, on its top side.** Solder its leads (5V, GND, 3V3, GPIO0,
+      GPIO1, GPIO10) on the **top** side of the pads, wires bent inward along
+      the board, so nothing stands below it to rock it on its rails and no
+      wire lies under a clamp tab. At most two wires per pad: join extra
+      grounds (the radar's, the LED cathode) on the pre-amp board's ground or
+      as a splice under heat-shrink.
+   6. **LED.** The 330 Ω resistor inline on the anode lead, under heat-shrink,
+      the anode lead to GPIO10 and the cathode to GND. Solder it before gluing
+      it to the light pipe.
+
+   Run bench tests 2 and 3 (section 3) on this harness now, then disconnect the
+   clip leads from the cell.
+1. **TP4056.** Lay it in its pocket at the lower right, components up, leads
+   out, and slide it down until the USB-C receptacle sits in the **bottom
+   cutout**. Plug a cable in from outside to check alignment. Put a thin bead
+   of neutral-cure silicone where the receptacle meets the inside of the wall
+   (**not** in the receptacle). Let it cure. The rib on the lid holds the
+   module down once the lid is on.
+2. **Radar module.** Antenna side **toward the window**, its leads toward the
+   top of the case. Screw it to the four posts on the inside of the window with
+   M2 x 6. The posts hold it parallel to the window at 6.2 mm, half a
+   free-space wavelength at 24.125 GHz, so reflections from the window skin
+   return in a known phase rather than an arbitrary one. Do not shim it closer.
+3. **Pre-amp board.** Four M2 x 6 into the standoffs left of the radar.
+4. **ESP32-C3 SuperMini**, already wired. USB end first: hook it under the two
+   lips at the left of its bay, lower the far end onto the rails, and fit the
+   two printed clamp tabs with M2 x 6, keeping the wires clear of the tabs. Its
+   USB-C stays reachable with the lid off, for flashing.
+5. **Status light.** Push the printed light pipe into the top-face hole **from
    inside** until its flange seats; its end sits flush with the top face. Hold
    the 5 mm LED's dome against the flange and fix it with a drop of hot glue or
-   clear silicone. The light then shows as a small soft dot. Its 330 Ω
-   resistor goes inline in one LED lead, under heat-shrink.
-5. **Switch.** Press it into the pocket on the inside of the right wall, lever
-   through the slot. A drop of CA on the body.
-6. **Wire up** per the wiring doc. Keep the radar → ESP32 IF leads short
-   and twisted with ground. Add a dab of hot glue as strain relief at every joint
-   on a board pad.
-7. **Cell.** 1 mm foam tape on its back, Kapton over the face that will sit
-   behind the MT3608. Place it in the lower-left bay, leads out through the gap
-   in the right-hand fence.
+   clear silicone. The light then shows as a small soft dot. Glue it after the
+   SuperMini is in: the LED hangs over part of the SuperMini's pin row.
+6. **Switch**, already wired. Press it into the pocket on the inside of the
+   right wall, lever through the slot. A drop of CA on the body, only once the
+   joints are cool.
+7. **Dress the wires.** Keep the radar → pre-amp → ESP32 leads short and
+   twisted with ground, away from the MT3608's leads. Add a dab of hot glue as
+   strain relief at every joint on a board pad. No joint should need making
+   in the box except the cell's.
 8. **MT3608 on the lid.** Lay it PCB-down inside the fence on the lid's inner
-    face (components toward the cell), with a dab of hot glue. Leave about 8 cm
-    of wire so the lid can lie open beside the shell.
-9. **Close.** Fit the lid (the lip locates it) and drive the four M2 x 6
+    face (components toward the cell), with a dab of hot glue.
+9. **Cell, last.** 1 mm foam tape on its back, Kapton over the face that will
+    sit behind the MT3608. Place it in the lower-left bay, leads out through the
+    gap in the right-hand fence. Join it to the TP4056's B+ and B- leads **one
+    lead at a time**: cut the JST-PH plug off one wire only, tin it, solder it,
+    heat-shrink it, then the other, so the cut ends never touch (or use a mating
+    JST-PH pigtail on the TP4056 leads, BOM G4). 1-2 s at about 330 °C; keep the
+    iron off the cell's protection PCB.
+10. **Close.** Fit the lid (the lip locates it) and drive the four M2 x 6
     screws. Snug them up; do not over-tighten into plastic.
-10. **Radome, last.** With the radar module tested (4.5), run a thin bead of
+11. **Radome, last.** With the radar module tested (4.5), run a thin bead of
     clear silicone or epoxy round the ledge behind the window pocket and press
     the radome in from the front, ironed face out. It sits flush with the front
     face at its bottom edge and steps back into the pocket toward the top.
@@ -290,8 +343,7 @@ which pin. With the unit running and a serial monitor open, send `d` to print
 the trigger metric ten times a second. Move a hand **away** from the window,
 quickly. The `ratio` should jump strongly **positive**. If it goes negative,
 change `RECEDING_SIGN` to `-1` in `ground_unit.ino` and re-flash. If nothing
-moves, check the radar supply and that the module's IF outputs move (bench
-test 2).
+moves, check the radar supply and the pre-amp (bench test 2).
 
 ### 4.4 Raw captures
 
@@ -328,26 +380,52 @@ Each unit charges from its own USB-C port. Neither reads its battery, so
 
 ## 5. Shaft pod assembly
 
-1. **IMU.** Remove the two STEMMA QT sockets (hot air, or cut the plastic and
-   desolder the pins), unless you have raised the body height. Solder four 30 AWG
-   wires to VIN, GND, SCL, SDA and one to INT1, on the **top** side of the pads.
-   The underside must stay flat, because it is the datum.
-2. Press the breakout into the pocket on the floor, **silkscreen X arrow toward
-   the clubhead end** (the end away from the USB port), component side up. The
-   crush ribs centre it and stop it rotating. It must sit flat on the floor:
-   no wire, flux blob or solder spike underneath.
-3. **Kapton** over the IMU. **Cell** on top of it, leads toward the charger end.
+Wire everything on the bench first (steps 1-4), cell last, and run bench test
+4 before anything goes into the base. 30 AWG silicone wire throughout.
+
+1. **IMU sockets.** Remove the two STEMMA QT sockets, unless you have raised the
+   body height: cut their plastic housings away with flush cutters, then lift
+   each pin and the two mechanical lugs with the iron and clear the pads with
+   braid. No hot air: it is a risk to the IMU chip.
+2. **IMU wires.** Solder 30 AWG wires to VIN, GND, SCL, SDA and INT1, **lapped
+   on top of the pads**: lay each wire on its pad and solder it there, without
+   pushing it into the hole. The pads are plated through-holes and the
+   underside is the datum, so check it after each joint: flush-cut and file any
+   bump until it is flat. Keep each joint at most 1.0 mm high (calipers): the
+   cell sits on top.
+3. **SuperMini, pre-wired on its top side.** Solder to the **top** side of its
+   pads (wiring doc 2.1-2.2): the IMU's wires (VIN to 3V3, GND to GND, SDA to
+   GPIO6, SCL to GPIO7, INT1 to GPIO3), plus two short wires on 5V (for the
+   charger's VIN and for P5) and one more on GND (for the charger). Route them
+   flat across the board top toward the USB-end corners, clear of where the
+   lid's pads and fences bear on the board.
+4. **Charger, P5, then the cell.**
+   1. Solder the SuperMini's first 5V wire to the charger's VIN and its spare
+      GND wire to the charger's GND (wiring doc 2.1).
+   2. Solder **P5's anode onto the charger's BAT pad**, before the cell is
+      connected, and the SuperMini's second 5V wire to P5's cathode.
+      Heat-shrink over P5.
+   3. **The cell, last**, one lead at a time (if it has a plug, cut it off one
+      wire at a time, so the cut ends never touch): + to the charger's BAT pad
+      (beside P5's anode), - to the charger's GND, heat-shrink each before the
+      next. 1-2 s per joint; keep the iron off the cell's protection PCB.
+   4. **Bench test 4** (section 3): no USB first (the 5V pad reads the cell
+      less about 0.3 V), then USB in (the cell's + at most 4.2 V). Then bench
+      test 5.
+5. **Into the base.** Press the breakout into the pocket on the floor,
+   **silkscreen X arrow toward the clubhead end** (the end away from the USB
+   port), component side up. The crush ribs centre it and stop it rotating. It
+   must sit flat on the floor: no wire, flux blob or solder spike underneath.
+6. **Kapton** over the IMU. **Cell** on top of it, leads toward the charger end.
    **Charger** board beside the cell at the clubhead end. The two posts on the
-   side walls separate them.
-4. **Schottky P5** soldered inline between the cell's + lead and the
-   SuperMini's 5V pin, anode at the cell (wiring doc 2.1), and covered with
-   heat-shrink.
-5. **0.5 mm foam** on top of the cell, then the **SuperMini**, USB-C into the port
+   side walls separate them. **P5** lies above the charger, under the lid's
+   lip, in its heat-shrink.
+7. **0.5 mm foam** on top of the cell, then the **SuperMini**, USB-C into the port
    in the end wall.
-6. **Lid.** Snap it on. Its fences locate the SuperMini, and its pads press the
+8. **Lid.** Snap it on. Its fences locate the SuperMini, and its pads press the
    whole stack down onto the datum floor. That preload is what couples the IMU
-   rigidly to the shell.
-7. **Liner.** Stick one 8 x 42 mm strip of 0.8 mm silicone or neoprene into the
+   rigidly to the shell. No wire may lie under a pad or a fence.
+9. **Liner.** Stick one 8 x 42 mm strip of 0.8 mm silicone or neoprene into the
    recessed band of each jaw. Trim it flush with the jaw tips.
 
 ### 5.1 Mounting on the club

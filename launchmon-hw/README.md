@@ -5,7 +5,7 @@ made of **two physically separate units** that talk only over Bluetooth LE:
 
 | Unit | What it is | Measures |
 |---|---|---|
-| **Ground radar unit** | Infineon BGT24LTR11 24 GHz I/Q Doppler radar module with its own IF amplifiers, ESP32-C3, 1500 mAh LiPo, TP4056 charger, MT3608 boost at 5 V, slide switch, status LED, in a 96 x 64 x 21 mm case shaped like a MagSafe battery pack. Stands behind the ball. | Radial ball and club speed (on-device preview), raw I/Q captures for launchmon-py |
+| **Ground radar unit** | Infineon BGT24LTR11 24 GHz I/Q Doppler radar, LM358 pre-amp, ESP32-C3, 1500 mAh LiPo, TP4056 charger, MT3608 boost at 5 V, slide switch, status LED, in a 96 x 64 x 21 mm case shaped like a MagSafe battery pack. Stands behind the ball. | Radial ball and club speed (on-device preview), raw I/Q captures for launchmon-py |
 | **Shaft motion pod** | Adafruit LSM6DS3TR-C / LSM6DSOX IMU, ESP32-C3, 100-150 mAh LiPo, micro charger, in a 32 x 26 x 14 mm pod that clips onto a 13 mm shaft | Raw 6-axis motion at 1.66 kHz, streamed per swing |
 
 State: **designed, rendered and syntax-checked; not built.** Nothing here has
@@ -40,9 +40,11 @@ launchmon-hw/
     README.md                  toolchain, board settings, output format, verification status
   docs/
     bill_of_materials.md
-    wiring_schematic.md        pinouts, power paths, radar module requirements, BLE packet format
+    wiring_schematic.md        pinouts, power paths, pre-amp, BLE packet format
     build_instructions.md      printing, assembly, weatherproofing, axis rules
     design_language.md         what the units look like and why; print-cost budget
+    hardware_review.md         part sizes against datasheets and listings, solderability, fixes
+    improvement_backlog.md     the queue of improvements and their status
 ```
 
 ## Design
@@ -98,14 +100,19 @@ $5-10 budget (`cad/stl/cost_report.txt`).
   them (about 15 mm), and one parameter switches to that.
 - **One part on the pod beyond the parts list: the Schottky diode P5.** It is
   required to wire the original charging path (LiPo → charger → ESP32) safely:
-  the SuperMini's 5V pin is its USB-C VBUS with no diode, so without P5 every
-  USB cable would put 5 V straight onto the cell, bypassing the charger. No
-  listed part can do its job ([wiring doc 2.1](docs/wiring_schematic.md)).
+  the SuperMini's 5V pin is fed from its USB-C VBUS (directly on many boards,
+  through a diode on some), so without P5 every USB cable would put 5 V, or
+  about 4.7 V, straight onto the cell, bypassing the charger. No listed part
+  can do its job ([wiring doc 2.1](docs/wiring_schematic.md)).
 - **No battery readings.** The parts list has no battery-sense parts, so
   neither unit reports its cell (0, "not read", in the shot summary). Charge
   both after each session.
-- **The radar module must have its own IF amplifiers.** There is no pre-amp:
-  the module's I and Q outputs go straight to the ESP32's ADC pins.
+- **The LM358 pre-amp is fitted.** It was optional in the parts list. The
+  owner kept it (2026-11-09) because the hardware review found no BGT24LTR11
+  board that both fits this unit and covers the ball's Doppler band without
+  one ([docs/hardware_review.md](docs/hardware_review.md), Part 1). It is one
+  x20 stage per channel, 200 Hz to 14 kHz, run from 3.3 V
+  ([wiring doc 1.4](docs/wiring_schematic.md)).
 - **A retaining strap on the pod clamp.** Not asked for, but a snap clamp alone
   is not something to trust at clubhead speed. A printed TPU 95A strap hooks
   over a post on each side, under the shaft; it is reusable, and zip ties
@@ -139,6 +146,7 @@ Each of these is also explained where it happens, in the CAD and the docs.
 | Radar window: 1.0 mm radome, 15° tilt, module parallel behind it | Confirmed on a rendered cutaway |
 | Printed-part cost | Estimated from the STLs (`cost_report.py`): 84 g, 4.9 h, $3.84 a kit on your own printer, $9.53 at $1.50/h (within $10). Not yet sliced |
 | Firmware: C++ syntax, `-Wall -Wextra` | Clean, against stub headers: ground 0.5, pod 0.3 (see `firmware/README.md` for what that does not prove) |
+| Part sizes against datasheets and listings | Reviewed in [docs/hardware_review.md](docs/hardware_review.md); sellers disagree on several, so **measure before printing**: the 1500 mAh cell (up to 52 x 34.5 x 8.3 mm), TP4056 length and board thickness, MT3608 overall height (at most 8 mm), the slide switch and its lever, the radar module, the SuperMini's board thickness, and the pod's cell with its protection PCB (up to about 22 mm) and charger board (build instructions, section 0) |
 | I/Q skew-correction arithmetic | Checked on synthetic tones: about 62 dB image rejection |
 | Compiled for the ESP32-C3 | **No** |
 | Printed, assembled, run | **No** |

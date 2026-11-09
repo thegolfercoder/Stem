@@ -2,18 +2,18 @@
 //  Stem launch monitor - GROUND RADAR UNIT firmware
 //  Board : ESP32-C3 SuperMini   (Arduino-ESP32 core 3.x, "ESP32C3 Dev Module",
 //          USB CDC On Boot: Enabled)
-//  Radar : Infineon BGT24LTR11 24 GHz CW Doppler module with its own IF
-//          amplifiers: its I and Q IF outputs go straight to ADC1
+//  Radar : Infineon BGT24LTR11 24 GHz CW Doppler, I and Q IF outputs through
+//          an LM358 pre-amp into ADC1
 //  Radio : BLE central to the shaft pod and BLE peripheral to a phone, at the
 //          same time (NimBLE-Arduino 2.x)
 // =============================================================================
 //
 //  SIGNAL PATH
-//    BGT24LTR11 module IFI/IFQ (amplified on the module) -> GPIO0 / GPIO1 ->
-//    ADC1 in continuous DMA mode, 80 kS/s interleaved, i.e. 40 kS/s per
-//    channel. There is no pre-amp on this unit: the module must have built-in
-//    IF amplification (docs/wiring_schematic.md 1.3). Each channel's DC level
-//    is removed in software, so any bias inside the ADC's range works.
+//    BGT24LTR11 IFI/IFQ -> LM358 pre-amp (x20, AC-coupled 200 Hz - 14 kHz,
+//    biased at 0.9 V, run from 3.3 V: docs/wiring_schematic.md 1.4) ->
+//    GPIO0 / GPIO1 -> ADC1 in continuous DMA mode, 80 kS/s interleaved, i.e.
+//    40 kS/s per channel. Each channel's DC level is removed in software, so
+//    any bias inside the ADC's range works.
 //
 //  WHAT HAPPENS TO A SHOT
 //  1. A 0.7 s ring buffer of I/Q pairs is always filling. This is the same
@@ -52,8 +52,8 @@
 //  applied here.
 //
 //  PINS (SuperMini)                   see docs/wiring_schematic.md
-//      GPIO0  ADC1_CH0 <- radar module IFI (I channel)
-//      GPIO1  ADC1_CH1 <- radar module IFQ (Q channel)
+//      GPIO0  ADC1_CH0 <- I channel (pre-amp output, radar IFI)
+//      GPIO1  ADC1_CH1 <- Q channel (pre-amp output, radar IFQ)
 //      GPIO5           -> radar enable, if the module has one (optional, off by default)
 //      GPIO10          -> 5 mm status LED through 330 R
 //      GPIO9           <- BOOT button: short press toggles raw USB streaming
@@ -62,7 +62,8 @@
 //
 //  POWER
 //  LiPo -> TP4056 -> slide switch -> MT3608 (5 V) -> SuperMini 5V pin and the
-//  radar module. The switch cuts everything after the TP4056: off is off.
+//  radar module; the SuperMini's 3V3 feeds the pre-amp. The switch cuts
+//  everything after the TP4056: off is off.
 // =============================================================================
 
 #include <Arduino.h>
@@ -127,9 +128,10 @@ constexpr float    MPS_PER_HZ    = float(C_MPS / (2.0 * RADAR_TX_HZ));   // 6.21
 // trigger metric printed with 'd'. It should go strongly positive.
 constexpr int      RECEDING_SIGN = +1;
 
-// Analysis band, as configured in launchmon-py hardware.yaml. A tone outside
-// it is refused. The radar module's own IF amplifiers set the real passband:
-// check that theirs covers it (docs/wiring_schematic.md 1.3).
+// Front-end passband, as configured in launchmon-py hardware.yaml. A tone
+// outside it has been attenuated by an unknown amount and is refused. The
+// LM358 pre-amp's corners (194 Hz, 14.2 kHz: docs/wiring_schematic.md 1.4)
+// match it.
 constexpr float    BAND_LOW_HZ   = 200.0f;
 constexpr float    BAND_HIGH_HZ  = 15000.0f;
 
