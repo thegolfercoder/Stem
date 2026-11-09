@@ -103,7 +103,17 @@ function BlockView({ block: b }: { block: Block }) {
               <tr className="border-b border-[color:var(--border)]">
                 {b.head.map((h, i) => (
                   <th key={i} scope="col" className="py-2 pr-4 font-semibold">
-                    <T>{h}</T>
+                    {h.includes("$") ? (
+                      <>
+                        {/* Rendered maths is not read as a header name, so give it words. */}
+                        <span className="sr-only">{plainText(h) || "Column"}</span>
+                        <span aria-hidden="true">
+                          <T>{h}</T>
+                        </span>
+                      </>
+                    ) : (
+                      <T>{h}</T>
+                    )}
                   </th>
                 ))}
               </tr>

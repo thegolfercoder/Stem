@@ -3,3 +3,7 @@ import "./indices-and-surds";
 import "./functions";
 import "./quadratic-functions";
 import "./factors-of-polynomials";
+import "./equations-inequalities-graphs";
+import "./simultaneous-equations";
+import "./logarithms-exponentials";
+import "./straight-line-graphs";

@@ -132,7 +132,7 @@ export const straightLineGraphs: Topic = {
           k: "ul",
           items: [
             "**Base and height**: if one side lies along an axis or a horizontal/vertical line, use $\\frac12 \\times$ base $\\times$ height.",
-            "**The shoelace formula**: for vertices $(x_1,y_1)$, $(x_2,y_2)$, $(x_3,y_3)$, the area is $\\frac12\\left|x_1(y_2-y_3) + x_2(y_3-y_1) + x_3(y_1-y_2)\\right|$.",
+            "**The shoelace formula**: for vertices $(x_1,y_1)$, $(x_2,y_2)$, $(x_3,y_3)$, the area is half the modulus of $x_1(y_2-y_3) + x_2(y_3-y_1) + x_3(y_1-y_2)$.",
           ],
         },
         {

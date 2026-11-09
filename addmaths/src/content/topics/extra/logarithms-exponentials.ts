@@ -1,0 +1,222 @@
+import type { TopicExtra } from "@/lib/types";
+
+export const logarithmsExponentialsExtra: TopicExtra = {
+  sections: [
+    {
+      id: "change-of-base",
+      heading: "Changing the base",
+      body: [
+        { k: "p", t: "A calculator has only $\\lg$ and $\\ln$, and many equations mix bases. The change-of-base rule converts any logarithm into any other base." },
+        { k: "math", t: "\\log_a b = \\frac{\\log_c b}{\\log_c a}" },
+        { k: "p", t: "Two special cases come up constantly. Choosing $c = b$ gives a reciprocal, and a base that is a power can be brought out as a fraction." },
+        { k: "math", t: "\\log_a b = \\frac{1}{\\log_b a},\\qquad \\log_{a^n} b = \\frac{1}{n}\\log_a b" },
+        { k: "note", tone: "tip", title: "Bring everything to one base", t: "In $\\log_2 x + \\log_4 x = 6$, write $\\log_4 x = \\tfrac12\\log_2 x$. Then it is one unknown, $\\log_2 x$, and a linear equation." },
+      ],
+    },
+    {
+      id: "log-inequalities",
+      heading: "Inequalities and the smallest integer",
+      body: [
+        { k: "p", t: "Questions such as “find the smallest $n$ for which $0.8^n < 0.1$” are solved by taking logarithms of both sides. Logarithms to base 10 or $e$ preserve the order, because they are increasing functions." },
+        { k: "math", t: "0.8^n < 0.1 \\;\\Rightarrow\\; n\\lg 0.8 < \\lg 0.1" },
+        { k: "p", t: "Now divide by $\\lg 0.8$. It is **negative**, because $0.8 < 1$, so the inequality reverses." },
+        { k: "math", t: "n > \\frac{\\lg 0.1}{\\lg 0.8} = 10.3\\ldots \\;\\Rightarrow\\; n = 11" },
+        { k: "note", tone: "warn", title: "The sign of the log", t: "$\\lg a$ is negative for $0 < a < 1$. Dividing by it reverses an inequality, exactly as dividing by any negative number does." },
+      ],
+    },
+    {
+      id: "log-quadratics",
+      heading: "Quadratics in a logarithm",
+      body: [
+        { k: "p", t: "When $\\log_a x$ and $\\log_x a$ appear together, they are reciprocals. Let $u = \\log_a x$; then $\\log_x a = \\dfrac1u$, and multiplying through by $u$ gives a quadratic." },
+        { k: "math", t: "2\\log_x 3 + \\log_3 x = 3 \\;\\Rightarrow\\; \\frac{2}{u} + u = 3 \\;\\Rightarrow\\; u^2 - 3u + 2 = 0" },
+        { k: "p", t: "So $u = 1$ or $u = 2$, giving $x = 3^1 = 3$ or $x = 3^2 = 9$." },
+      ],
+    },
+  ],
+  examples: [
+    {
+      id: "log-x1",
+      title: "Evaluating two logarithms",
+      difficulty: "easy",
+      prompt: "Without a calculator, find the value of $\\log_3 81 + \\log_2 \\tfrac18$.",
+      steps: [
+        { t: "$81 = 3^4$, so $\\log_3 81 = 4$." },
+        { t: "$\\tfrac18 = 2^{-3}$, so $\\log_2 \\tfrac18 = -3$." },
+        { t: "Add.", m: "4 + (-3) = 1" },
+      ],
+      answer: "$1$",
+    },
+    {
+      id: "log-x2",
+      title: "Combining with the power law",
+      difficulty: "easy",
+      prompt: "Express $2\\lg 5 + \\lg 4$ as a single integer.",
+      steps: [
+        { t: "The power law moves the 2 into the index.", m: "2\\lg 5 = \\lg 5^2 = \\lg 25" },
+        { t: "The product law combines the logs.", m: "\\lg 25 + \\lg 4 = \\lg 100 = 2" },
+      ],
+      answer: "$2$",
+    },
+    {
+      id: "log-x3",
+      title: "Two bases in one equation",
+      difficulty: "medium",
+      prompt: "Solve $\\log_2 x + \\log_4 x = 6$.",
+      steps: [
+        { t: "Change base: $\\log_4 x = \\dfrac{\\log_2 x}{\\log_2 4} = \\tfrac12\\log_2 x$.", m: "\\log_2 x + \\tfrac12\\log_2 x = 6" },
+        { t: "Collect.", m: "\\tfrac32\\log_2 x = 6 \\;\\Rightarrow\\; \\log_2 x = 4" },
+        { t: "Undo the logarithm.", m: "x = 2^4 = 16" },
+      ],
+      answer: "$x = 16$",
+    },
+    {
+      id: "log-x4",
+      title: "Different bases in an exponential equation",
+      difficulty: "medium",
+      prompt: "Solve $3^{2x} = 5^{x+1}$, giving your answer to 3 significant figures.",
+      steps: [
+        { t: "Take natural logs of both sides and bring down the indices.", m: "2x\\ln 3 = (x + 1)\\ln 5" },
+        { t: "Collect the $x$ terms.", m: "x(2\\ln 3 - \\ln 5) = \\ln 5" },
+        { t: "Divide.", m: "x = \\frac{\\ln 5}{\\ln 9 - \\ln 5} = \\frac{\\ln 5}{\\ln 1.8} \\approx 2.74" },
+      ],
+      answer: "$x \\approx 2.74$",
+    },
+    {
+      id: "log-x5",
+      title: "The smallest integer",
+      difficulty: "hard",
+      prompt: "Find the smallest integer $n$ for which $0.8^n < 0.1$.",
+      steps: [
+        { t: "Take $\\lg$ of both sides.", m: "n\\lg 0.8 < \\lg 0.1 = -1" },
+        { t: "$\\lg 0.8 < 0$, so dividing by it reverses the inequality.", m: "n > \\frac{-1}{\\lg 0.8} \\approx 10.3" },
+        { t: "The smallest integer greater than $10.3$ is 11. Check: $0.8^{10} \\approx 0.107$ and $0.8^{11} \\approx 0.0859$." },
+      ],
+      answer: "$n = 11$",
+    },
+    {
+      id: "log-x6",
+      title: "Logarithms of related bases",
+      difficulty: "olympiad",
+      prompt: "Given that $\\log_a b = 3$, find (a) $\\log_b a$, (b) $\\log_{a^2} b$, (c) $\\log_{ab} a$.",
+      steps: [
+        { t: "(a) Reciprocal rule.", m: "\\log_b a = \\frac{1}{\\log_a b} = \\tfrac13" },
+        { t: "(b) A squared base halves the logarithm.", m: "\\log_{a^2} b = \\tfrac12\\log_a b = \\tfrac32" },
+        { t: "(c) Reciprocal rule, then the product law.", m: "\\log_{ab} a = \\frac{1}{\\log_a(ab)} = \\frac{1}{\\log_a a + \\log_a b} = \\frac{1}{1 + 3}" },
+      ],
+      answer: "(a) $\\tfrac13$  (b) $\\tfrac32$  (c) $\\tfrac14$",
+      remark: "Check with $a = 2$, $b = 8$: $\\log_8 2 = \\tfrac13$, $\\log_4 8 = \\tfrac32$ and $\\log_{16} 2 = \\tfrac14$.",
+    },
+  ],
+  examQuestions: [
+    {
+      id: "log-x7",
+      title: "Combining logs and rejecting a root",
+      difficulty: "medium",
+      marks: 5,
+      paper: 1,
+      prompt: "Solve $\\log_3(x + 3) + \\log_3(x - 3) = 3$. [5]",
+      steps: [
+        { t: "Combine with the product law.", m: "\\log_3\\big[(x + 3)(x - 3)\\big] = 3" },
+        { t: "Undo the logarithm.", m: "(x + 3)(x - 3) = 3^3 = 27" },
+        { t: "Solve.", m: "x^2 - 9 = 27 \\;\\Rightarrow\\; x^2 = 36 \\;\\Rightarrow\\; x = \\pm 6" },
+        { t: "$x = -6$ makes both arguments negative, so reject it." },
+      ],
+      answer: "$x = 6$ only",
+      markScheme: [
+        { type: "M", marks: 1, criterion: "Uses the product law correctly" },
+        { type: "M", marks: 1, criterion: "Removes the logarithm: $(x + 3)(x - 3) = 27$" },
+        { type: "A", marks: 1, criterion: "$x^2 = 36$", dependsOn: 1 },
+        { type: "A", marks: 1, criterion: "$x = 6$", dependsOn: 1 },
+        { type: "B", marks: 1, criterion: "Rejects $x = -6$ with a reason" },
+      ],
+    },
+    {
+      id: "log-x8",
+      title: "A growth model",
+      difficulty: "medium",
+      marks: 6,
+      paper: 2,
+      prompt: "The number of bacteria in a culture is modelled by $P = 500e^{0.04t}$, where $t$ is the time in hours.\n(a) Find $P$ when $t = 10$. [2]\n(b) Find the time taken for the population to double. [2]\n(c) Find the first whole number of hours after which the population exceeds 2000. [2]",
+      steps: [
+        { t: "(a) Substitute.", m: "P = 500e^{0.4} \\approx 745.9" },
+        { t: "(b) Doubling means $e^{0.04t} = 2$.", m: "t = \\frac{\\ln 2}{0.04} \\approx 17.3" },
+        { t: "(c) Exceeding 2000 means $e^{0.04t} > 4$.", m: "t > \\frac{\\ln 4}{0.04} \\approx 34.7" },
+        { t: "The first whole number of hours is therefore 35." },
+      ],
+      answer: "(a) $746$  (b) $t \\approx 17.3$ hours  (c) $t = 35$",
+      markScheme: [
+        { part: "(a)", type: "M", marks: 1, criterion: "Substitutes $t = 10$" },
+        { part: "(a)", type: "A", marks: 1, criterion: "$746$, or $745.9$", dependsOn: 0 },
+        { part: "(b)", type: "M", marks: 1, criterion: "Forms $e^{0.04t} = 2$ and takes logs" },
+        { part: "(b)", type: "A", marks: 1, criterion: "$17.3$", dependsOn: 2 },
+        { part: "(c)", type: "M", marks: 1, criterion: "Solves $500e^{0.04t} = 2000$" },
+        { part: "(c)", type: "A", marks: 1, criterion: "$35$", dependsOn: 4 },
+      ],
+    },
+    {
+      id: "log-x9",
+      title: "Reciprocal logarithms",
+      difficulty: "hard",
+      marks: 5,
+      paper: 1,
+      prompt: "Using the substitution $u = \\log_3 x$, solve $2\\log_x 3 + \\log_3 x = 3$. [5]",
+      steps: [
+        { t: "$\\log_x 3 = \\dfrac{1}{\\log_3 x} = \\dfrac1u$.", m: "\\frac2u + u = 3" },
+        { t: "Multiply by $u$, which is non-zero because $x \\ne 1$.", m: "u^2 - 3u + 2 = 0 \\;\\Rightarrow\\; (u - 1)(u - 2) = 0" },
+        { t: "Undo the substitution.", m: "u = 1 \\Rightarrow x = 3,\\qquad u = 2 \\Rightarrow x = 9" },
+      ],
+      answer: "$x = 3$ or $x = 9$",
+      markScheme: [
+        { type: "M", marks: 1, criterion: "Uses $\\log_x 3 = \\dfrac{1}{\\log_3 x}$" },
+        { type: "M", marks: 1, criterion: "Forms a three-term quadratic in $u$" },
+        { type: "A", marks: 1, criterion: "$u = 1$ and $u = 2$", dependsOn: 1 },
+        { type: "M", marks: 1, criterion: "Converts to $x = 3^u$" },
+        { type: "A", marks: 1, criterion: "$x = 3$ and $x = 9$", dependsOn: 3 },
+      ],
+    },
+  ],
+  mistakes: [
+    {
+      wrong: "Writing $3\\lg 2$ as $\\lg 6$.",
+      why: "The power law makes the coefficient an index: $k\\lg a = \\lg a^k$. Multiplying inside the log is a different, false rule.",
+      fix: "$3\\lg 2 = \\lg 2^3 = \\lg 8$.",
+    },
+    {
+      wrong: "From $\\log_2 A = 5$, writing $A = 10$.",
+      why: "That multiplies the base by the logarithm. The definition says the logarithm is the index the base is raised to.",
+      fix: "$\\log_b A = k$ means $A = b^k$, so $A = 2^5 = 32$.",
+    },
+    {
+      wrong: "Solving $0.8^n < 0.1$ to get $n < 10.3$.",
+      why: "$\\lg 0.8$ is negative, so dividing by it reverses the inequality.",
+      fix: "Note the sign of every logarithm you divide by. Here $n > 10.3$, so $n = 11$.",
+    },
+  ],
+  tips: [
+    "Mixed bases? Change everything to one base first, usually the smallest.",
+    "When $\\log_a x$ and $\\log_x a$ appear together, substitute $u$ for one: the other is $\\dfrac1u$.",
+    "For a “smallest integer” question, check the integer either side of your bound by substituting.",
+  ],
+  summary: {
+    bigIdea: "A logarithm answers “what power?”: $\\log_b A = k$ means $b^k = A$. The laws of logarithms are the index laws read backwards, and they turn products into sums and powers into multiples.",
+    mustKnow: [
+      "$\\log_b A = k \\iff A = b^k$",
+      "$\\log(xy) = \\log x + \\log y$ and $\\log\\left(\\tfrac xy\\right) = \\log x - \\log y$",
+      "$\\log x^k = k\\log x$",
+      "$\\log_a b = \\dfrac{\\log_c b}{\\log_c a}$ and $\\log_a b = \\dfrac{1}{\\log_b a}$",
+      "$y = e^x$ and $y = \\ln x$ are reflections in $y = x$",
+    ],
+    methods: [
+      { name: "Log equation", steps: ["Combine into a single log on each side.", "Remove the logs with the definition.", "Solve, then reject roots that make an argument non-positive."] },
+      { name: "Exponential equation", steps: ["If the bases match, equate indices.", "Otherwise take logs and bring the indices down.", "Collect the unknown and divide."] },
+      { name: "Model with $e$", steps: ["Substitute the given values to find constants.", "Isolate the exponential.", "Take $\\ln$ and solve for the time."] },
+    ],
+    traps: [
+      "$\\log(x + y) \\ne \\log x + \\log y$.",
+      "$\\dfrac{\\log 8}{\\log 2} \\ne \\log 4$.",
+      "Dividing by a negative logarithm without reversing the inequality.",
+      "Keeping a root that makes a log's argument negative.",
+    ],
+  },
+};
