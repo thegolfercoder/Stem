@@ -129,20 +129,47 @@ esp_pcb     = [22.52, 18.0, 1.0];  // [X, Z, thickness]
 esp_pos     = [11.5, 41.0];        // lower-left corner of the board, [X, Z]
 esp_rail_h  = 2.5;                 // board underside above the front wall
 esp_usb     = [8.94, 3.26];        // USB-C receptacle [width, height]
+// Pin rows along the long edges, 8 pins each at 2.54 mm. MEASURE pin 1's centre
+// from the USB edge on your board: the rails and the clamp tabs are placed off it.
+esp_pin1_x  = 2.4;                 // first pin centre from the USB edge (measure)
+esp_pin_pitch = 2.54;
+esp_row_pitch = 15.24;             // row to row, centred on the board's width
+esp_pad_d   = 1.8;                 // pad plus solder fillet, either face
+esp_tab_in  = 5.0;                 // clamp tab centre in from each long edge: clear of pins 8 and 16
+esp_rail_in = 3.0;                 // rails run between the pin rows, this far in from each long edge
+
+/* [LM358 pre-amp board] */
+// Kept by the owner (2026-11-09): the plain BGT24LTR11 module's I/Q outputs
+// go through this two-stage LM358 pre-amp to the SuperMini's ADC.
+lm_pcb      = [23.0, 20.0, 1.6];   // [X, Z, thickness]; a 9 x 8 hole perfboard
+lm_pos      = [38.8, 40.5];        // lower-left corner [X, Z]
+lm_hole_inset = 2.5;               // M2 holes inset from each corner
+lm_standoff_h = 4.0;               // clears through-hole leads under the board
 
 /* [Power: LiPo, TP4056, MT3608, switch, LED] */
-batt        = [50.0, 34.0, 8.0];   // 803450-class 1500 mAh cell [X, Z, thickness]
+batt        = [52.0, 34.5, 8.3];   // 803450-class 1500 mAh cell [X, Z, thickness]: EEMB LP803450's
+                                   // 52.0 x 34.5 x 8.3, the largest listed (sellers give 50 x 34 x 8)
 batt_pos    = [10.4, 2.4];         // bay lower-left [X, Z]
 batt_clear  = 0.5;                 // per side
-tp_pcb      = [17.5, 28.0, 1.6];   // TP4056 USB-C module [X, Z, t], USB end down
-tp_x        = 64.25;               // module left edge
+tp_pcb      = [17.5, 29.0, 1.6];   // TP4056 USB-C module [X, Z, t], USB end down. 29.0: the AZ-Delivery
+                                   // datasheet's length, taken as the board alone (the safe side).
+                                   // t: MEASURE, 1.0 - 1.6 are sold; the lid's presser rib follows it
+tp_usb_overhang = 0.6;             // receptacle nose past the board's end, down into the bottom cutout (measure)
+tp_top_h    = 1.0;                 // parts and pre-wired joints at the board's pad (top) end, above the PCB
+tp_x        = 66.2;                // module left edge: the 52 mm cell's bay on the left, the R9.6 corner on the right
 tp_pad_h    = 1.5;                 // PCB underside above the front wall
 tp_usb_h    = 3.3;                 // receptacle height above the PCB
-mt_pcb      = [36.0, 17.0, 1.6];   // MT3608 boost module [X, Z, t]
-mt_parts_h  = 5.0;                 // tallest part above its PCB (trimmer / inductor): MEASURE
+mt_pcb      = [37.5, 17.5, 1.6];   // MT3608 boost module [X, Z, t]: takes the 36 - 37.2 mm boards sold
+mt_parts_h  = 5.8;                 // tallest part above its PCB (trimmer / inductor). The most the 8.3 mm
+                                   // cell leaves with 0.3 to spare: buy a low-profile module, 7.4 mm overall
+                                   // at most (PCB + parts). The common 14 mm tall ones do not fit
 mt_pos      = [19.0, 12.0];        // lower-left on the lid, in front-view [X, Z]
 usb_cut     = [11.5, 6.0];         // bottom USB-C cutout [X, Y]
-sw_body     = [8.7, 3.7, 3.7];     // SS12D00-style slide switch body [Y-long, Z, X-depth]
+usb_recess  = [13.6, 7.8, 1.2];    // outer recess round it [X, Y, depth]: a larger plug overmold seats in it
+usb_plug_standoff = 1.0;           // furthest a plug's overmold may stand off the receptacle face and still
+                                   // latch (typical cables, unverified: try the owner's cables)
+sw_body     = [8.8, 4.1, 3.9];     // SS12D00-style slide switch body [Y-long, Z, X-depth] (seller 8 x 4 x 3.8, plus margin)
+sw_fit      = 0.1;                 // pocket over the body, per side: pressed in, then a drop of CA
 sw_slot     = [4.6, 2.2];          // actuator slot [Y, Z]
 sw_center   = [10.5, 20.0];        // slot centre [Y, Z] on the right wall
 led_pos     = [22.75, 13.0];       // [X, Y] on the top face
@@ -313,7 +340,7 @@ m2_len      = 6.0;    // every M2 screw on the unit is an M2 x 6
 lid_pilot_depth = 6.5;  // lid screw pilots into the shell's bosses
 m2_clear    = 2.4;
 m2_head_d   = 4.4;
-m2_head_h   = 1.2;
+m2_head_h   = 1.6;    // ISO 7045 M2 pan head: dk 4.0, k 1.6. The lid's counterbores are this deep
 boss_d      = 5.6;
 // Lid screw bosses, front-view [X, Z]. Three corners plus one on the right wall:
 // the radar housing fills the top-right corner.
@@ -334,8 +361,8 @@ gasket_fit   = 0.05;   // base narrower than the groove, each side: it presses i
 
 /* [Power / wake board - on the lid's inner face, beside the protection board] */
 power_board     = [20, 15, 4.3];   // perfboard [X, Z, room reserved off the lid]
-power_board_pos = [36.0, 41.0];    // its pocket's lower-left [X, Z] on the lid's inner face: where the
-                                   // LM358 was, between the SuperMini's clamp tabs and the radar housing
+power_board_pos = [36.0, 41.0];    // its pocket's lower-left [X, Z] on the lid's inner face (not drawn:
+                                   // nothing on the original parts list uses it; the LM358 is on the front wall here)
 
 // ----------------------------------------------------------------------------
 //  Derived values
@@ -348,6 +375,7 @@ inner_d  = y_back - y_front;           // usable depth (16.2)
 
 tp_usb_y = y_front + tp_pad_h + tp_pcb[2] + tp_usb_h / 2;   // receptacle centre, Y
 tp_usb_x = tp_x + tp_pcb[0] / 2;
+tp_press_gap = 0.2;                    // lid's presser rib to the receptacle's top
 
 esp_top_y = y_front + esp_rail_h + esp_pcb[2];
 
@@ -476,6 +504,7 @@ module shell() {
             }
             radar_posts();
             esp32_mount();
+            lm358_standoffs();
             battery_bay();
             tp4056_pocket();
             switch_holder();
@@ -566,10 +595,10 @@ module radome_print() {
 module esp32_mount() {
     x0 = esp_pos[0]; z0 = esp_pos[1];
     L = esp_pcb[0];  W = esp_pcb[1];
-    // Two rails under the short ends of the board. The pin rows run along the
-    // long edges and stay clear, so wires can be soldered from underneath.
+    // Two rails under the short ends of the board, between the pin rows: a
+    // through-hole joint's bump under a pin cannot rock the board.
     for (x = [x0 + 1, x0 + L - 3])
-        translate([x, y_front - 0.01, z0]) cube([2, esp_rail_h + 0.01, W]);
+        translate([x, y_front - 0.01, z0 + esp_rail_in]) cube([2, esp_rail_h + 0.01, W - 2 * esp_rail_in]);
     // Fixed lips at the USB end, either side of the receptacle. The board's USB
     // end hooks under these, then the far end drops onto the rails.
     lip_len = (W - esp_usb[0]) / 2 - 1.6;   // stays clear of the plug overmold
@@ -583,7 +612,10 @@ module esp32_mount() {
     for (z = esp32_tab_z())
         translate([x0 + L + 2.2, y_front - 0.01, z]) y_cylinder(esp_rail_h + esp_pcb[2] + 0.01, 4.2);
 }
-function esp32_tab_z() = [esp_pos[1] + 1.5, esp_pos[1] + esp_pcb[1] - 1.5];
+// Inboard of the pin rows, so neither tab sits on pin 8 (GPIO0, the I channel) or pin 16.
+function esp32_tab_z() = [esp_pos[1] + esp_tab_in, esp_pos[1] + esp_pcb[1] - esp_tab_in];
+function esp_row_z() = [esp_pos[1] + (esp_pcb[1] - esp_row_pitch) / 2, esp_pos[1] + (esp_pcb[1] + esp_row_pitch) / 2];
+function esp_pin8_x() = esp_pos[0] + esp_pin1_x + 7 * esp_pin_pitch;
 
 module esp32_clamp_tab() {
     // Printed tab: screws to one standoff and overlaps the board end by 1.5 mm.
@@ -596,16 +628,30 @@ module esp32_clamp_tab() {
     }
 }
 
+// ---- LM358 pre-amp ------------------------------------------------------------
+function lm_holes() = [
+    for (dx = [lm_hole_inset, lm_pcb[0] - lm_hole_inset])
+        for (dz = [lm_hole_inset, lm_pcb[1] - lm_hole_inset])
+            [lm_pos[0] + dx, lm_pos[1] + dz]
+];
+
+module lm358_standoffs() {
+    for (h = lm_holes())
+        translate([h[0], y_front - 0.01, h[1]]) y_cylinder(lm_standoff_h + 0.01, 5.0);
+}
+
 module standoff_pilots() {
     // Pilot holes are cut after the union so they continue into the front wall
     // where a standoff is shorter than the screw. At least 1.4 mm of front wall
-    // is always left intact. (The LM358 pre-amp and its four standoffs are gone:
-    // the radar module's own IF amplifiers drive the ADC.)
+    // is always left intact.
     max_into_wall = wall - 1.4;
     esp_top = esp_rail_h + esp_pcb[2];
     for (z = esp32_tab_z())
         translate([esp_pos[0] + esp_pcb[0] + 2.2, y_front - min(max_into_wall, 4.4 - esp_top), z])
             y_cylinder(esp_top + 5, m2_pilot);
+    for (h = lm_holes())
+        translate([h[0], y_front - min(max_into_wall, 4.4 - lm_standoff_h), h[1]])
+            y_cylinder(lm_standoff_h + 5, m2_pilot);
 }
 
 // ---- Lower cavity: battery bay ----------------------------------------------
@@ -619,13 +665,21 @@ module battery_bay() {
     x0 = batt_pos[0]; z0 = batt_pos[1];
     translate([0, y_front - 0.01, 0]) {
         translate([x0 - t, 0, z0])          cube([t, fh, bh]);          // left
-        translate([x0 - t, 0, z0 + bh])     cube([bw + 2 * t, inner_d * 0.6, t]); // divider
+        // Divider. Its right end stops short of the radar module, which hangs
+        // over it behind the tilted window.
+        difference() {
+            translate([x0 - t, 0, z0 + bh]) cube([bw + 2 * t, inner_d * 0.6, t]);
+            translate([0, 0.01 - y_front, 0]) window_rear_clearance();
+        }
         translate([x0 + bw, 0, z0])         cube([t, fh, bh * 0.3]);    // right, lower
         translate([x0 + bw, 0, z0 + bh * 0.7]) cube([t, fh, bh * 0.3]); // right, upper
     }
 }
 
 // ---- Lower cavity: TP4056 -----------------------------------------------------
+// The board's end rests on the bottom wall's inner face; the receptacle's nose,
+// tp_usb_overhang past it, drops into the cutout. Fit it top end first, under
+// the radar's lower post, up against the stop, then swing the USB end down.
 module tp4056_pocket() {
     // Pad rails under the long edges, side guides, and an upper stop that takes
     // the plug's insertion force. A rib on the lid presses the module down.
@@ -649,6 +703,10 @@ module usb_c_cutout() {
     // unit out of the dock, lying on its back.
     translate([tp_usb_x - usb_cut[0] / 2, tp_usb_y - usb_cut[1] / 2, -1])
         rounded_slot(usb_cut[0], usb_cut[1], wall + 1.6, 1.2);
+    // Outer recess, as on the pod: an overmold too big for the cutout seats in
+    // it, so the plug still reaches full engagement.
+    translate([tp_usb_x - usb_recess[0] / 2, tp_usb_y - usb_recess[1] / 2, -1])
+        rounded_slot(usb_recess[0], usb_recess[1], usb_recess[2] + 1, 2.4);
 }
 
 module rounded_slot(w, d, h, r) {
@@ -659,7 +717,7 @@ module rounded_slot(w, d, h, r) {
 module switch_holder() {
     // A pocket that holds the switch body against the inside of the right wall.
     t = 1.0;
-    by = sw_body[0]; bz = sw_body[1]; bx = sw_body[2];
+    by = sw_body[0] + 2 * sw_fit; bz = sw_body[1] + 2 * sw_fit; bx = sw_body[2];
     translate([body_w - wall - bx - t, sw_center[0] - by / 2 - t, sw_center[1] - bz / 2 - t])
         difference() {
             cube([bx + t + 0.01, by + 2 * t, bz + 2 * t]);
@@ -896,10 +954,12 @@ module mt3608_fence() {
 
 module tp4056_presser() {
     // Rib from the lid down onto the TP4056's receptacle shell, which keeps the
-    // module seated when a cable is plugged in or pulled out.
+    // module seated when a cable is plugged in or pulled out. It ends
+    // tp_press_gap off the receptacle for the board thickness tp_pcb[2]: boards
+    // are sold 1.0 - 1.6 mm thick, so measure yours and re-export.
     top_y = y_front + tp_pad_h + tp_pcb[2] + tp_usb_h;   // receptacle top
-    translate([tp_usb_x - esp_usb[0] / 2, top_y + 0.2, z_floor + 1])
-        cube([esp_usb[0], y_back - top_y - 0.2 + 0.01, 6]);
+    translate([tp_usb_x - esp_usb[0] / 2, top_y + tp_press_gap, z_floor + 1])
+        cube([esp_usb[0], y_back - top_y - tp_press_gap + 0.01, 6]);
 }
 
 // ----------------------------------------------------------------------------
@@ -1409,7 +1469,7 @@ module fit_test_coupon() {
 // Each component is a named ghost so other tools can export them one at a
 // time: `part = "ghost:battery"` exports just the cell, in place. The Blender
 // scenes in cad/blender/ are built that way.
-ghost_names = ["battery", "tp4056", "mt3608", "esp32", "radar", "switch", "led", "boresight", "phone", "magsafe_ring", "stud_bolt",
+ghost_names = ["battery", "tp4056", "mt3608", "esp32", "lm358", "radar", "switch", "led", "boresight", "phone", "magsafe_ring", "stud_bolt",
                "parked_pod", "pod_park_pogo", "pod_park_magnets", "pod_park_board", "piezo"];
 // The radome and light pipe are printed parts, exported with "in_place:radome" and "in_place:led_pipe".
 
@@ -1420,9 +1480,9 @@ module ghost(name) {
         translate([batt_pos[0] + batt_clear, y_front, batt_pos[1] + batt_clear])
             cube([batt[0], batt[2], batt[1]]);
     // TP4056 + receptacle
-    if (name == "tp4056") color("RoyalBlue", 0.6) translate([tp_x, y_front + tp_pad_h, z_floor - 0.6]) {
+    if (name == "tp4056") color("RoyalBlue", 0.6) translate([tp_x, y_front + tp_pad_h, z_floor]) {
         cube([tp_pcb[0], tp_pcb[2], tp_pcb[1]]);
-        translate([tp_pcb[0] / 2 - esp_usb[0] / 2, tp_pcb[2], 0]) cube([esp_usb[0], tp_usb_h, 7.3]);
+        translate([tp_pcb[0] / 2 - esp_usb[0] / 2, tp_pcb[2], -tp_usb_overhang]) cube([esp_usb[0], tp_usb_h, 7.3]);
     }
     // MT3608 on the lid
     if (name == "mt3608") color("MediumPurple", 0.6) translate([mt_pos[0], y_back - mt_pcb[2] - mt_parts_h, mt_pos[1]])
@@ -1432,6 +1492,9 @@ module ghost(name) {
         cube([esp_pcb[0], esp_pcb[2], esp_pcb[1]]);
         translate([-0.5, esp_pcb[2], esp_pcb[1] / 2 - esp_usb[0] / 2]) cube([7.3, esp_usb[1], esp_usb[0]]);
     }
+    // LM358 board
+    if (name == "lm358") color("Green", 0.6) translate([lm_pos[0], y_front + lm_standoff_h, lm_pos[1]])
+        cube([lm_pcb[0], lm_pcb[2], lm_pcb[1]]);
     // Radar module, parallel to the window
     if (name == "radar") color("Gold", 0.7) in_window_frame()
         translate([-radar_pcb[0] / 2, win_t + radar_gap, 0]) cube([radar_pcb[0], radar_pcb[2], radar_pcb[1]]);
@@ -1502,14 +1565,58 @@ module fit_report() {
     top_on_face = win_size * cos(win_tilt) + win_size * tan(win_tilt) * sin(win_tilt);
     cz = body_h - corner_r; cxr = body_w - corner_r;
     dx = max(0, win_cx + win_size / 2 - cxr); dz = max(0, win_zb + top_on_face - cz);
+    // A point [Y, Z] in the window frame: [into the box, up the window].
+    function wf(y, z) = [y * cos(win_tilt) - (z - win_zb) * sin(win_tilt), y * sin(win_tilt) + (z - win_zb) * cos(win_tilt)];
+    tp_top   = z_floor + tp_pcb[1];                                    // the board's pad end
+    tp_face  = y_front + tp_pad_h + tp_pcb[2];                         // its top face
+    tp_q     = wf(tp_face + tp_top_h, tp_top);                         // pad end's top corner, with its joints
+    // The radar's lower-left post (axis at radar_holes[0]) over the board's top end:
+    // its lowest edge at the board's top face, and at the joints above it.
+    post_z   = function_post_low_z(tp_face);
+    post_zj  = function_post_low_z(tp_face + tp_top_h);
+    tp_stop  = z_floor + tp_pcb[1] + fit_clear;
+    press    = function(t) (y_back - (y_back - (y_front + tp_pad_h + tp_pcb[2] + tp_usb_h + tp_press_gap)))
+                           - (y_front + tp_pad_h + t + tp_usb_h);
+    row_z    = esp_row_z();
+    tab_z    = esp32_tab_z();
     lines = [
         chk("depth behind radar module      ", y_back - radar_back_y),
-        chk("radar module above TP4056       ", radar_low_z - (z_floor + tp_pcb[1] - 0.6)),
+        // The radar board's front face against the TP4056's pad end and its joints.
+        chk("radar module clear of TP4056 end", max((win_t + radar_gap) - tp_q[0], -tp_q[1])),
+        chk("TP4056 end under radar post     ", post_z - tp_top),
+        // Under 0.3: the joints at the board's left pad end, under the post. Keep them
+        // flat (tp_top_h), and fit the module top end first (tp4056_pocket).
+        chk("TP4056 joints under radar post  ", post_zj - tp_top),
+        // fit_clear by construction: the stop is placed from tp_pcb[1]. A longer board shows here.
+        chk("TP4056 length under its stop    ", tp_stop - tp_top),
+        chk("TP4056 corner inside R9.6 corner", (body_w - corner_r) - (tp_x + tp_pcb[0])),
+        chk("TP4056 nose inside bottom face  ", (wall - usb_recess[2]) - tp_usb_overhang),
+        chk("USB-C plug engagement           ", usb_plug_standoff - (wall - usb_recess[2] - tp_usb_overhang)),
+        // Under 0.3 on purpose: a hold-down, not a slide fit. It is set for tp_pcb[2]; the line
+        // below says what the other end of the 1.0 - 1.6 range would leave.
+        chk(str("TP4056 presser to receptacle, t ", tp_pcb[2]), press(tp_pcb[2])),
         chk("window opening inside outline   ", (corner_r - wall) - sqrt(dx * dx + dz * dz)),
-        chk("ESP32 tab posts to radar housing", radar_x0 - (esp_pos[0] + esp_pcb[0] + 2.2 + 2.1)),
+        chk("LM358 board to radar housing    ", radar_x0 - (lm_pos[0] + lm_pcb[0])),
+        chk("ESP32 tab posts to LM358 board  ", lm_pos[0] - (esp_pos[0] + esp_pcb[0] + 2.2 + 2.1)),
+        chk("divider to LM358 board          ", lm_pos[1] - (batt_pos[1] + batt[1] + 2 * batt_clear + 1.2)),
         chk("battery bay to TP4056 guide     ", (tp_x - 1 - fit_clear) - (batt_pos[0] + batt[0] + 2 * batt_clear + 1.2)),
         chk("cell + MT3608 depth stack       ", inner_d - (batt[2] + 0.2 + mt_pcb[2] + mt_parts_h)),
+        chk("MT3608 fence to the lower bosses", (mt_pos[0] - fit_clear - 1.0) - (lid_bosses[0][0] + (boss_d + 3.6) / 2)),
+        chk("MT3608 over the cell (X)        ", min(mt_pos[0] - (batt_pos[0] + batt_clear),
+                                                    (batt_pos[0] + batt_clear + batt[0]) - (mt_pos[0] + mt_pcb[0]))),
+        chk("MT3608 fence below the divider  ", (batt_pos[1] + batt[1] + 2 * batt_clear) - (mt_pos[1] + mt_pcb[1] + fit_clear + 1.0)),
         chk("divider to ESP32 board          ", esp_pos[1] - (batt_pos[1] + batt[1] + 2 * batt_clear + 1.2)),
+        chk("ESP32 rails clear of pin rows   ", (esp_pos[1] + esp_rail_in) - (row_z[0] + esp_pad_d / 2)),
+        chk("ESP32 USB-end lips clear of pin 1", (esp_pin1_x - esp_pad_d / 2) - 1.0),
+        chk("ESP32 tabs clear of pins 8 / 16 ", (tab_z[0] - 2.3) - (row_z[0] + esp_pad_d / 2)),
+        chk("ESP32 tabs on the board's end   ", (esp_pcb[1] / 2 - 2.3) - (esp_tab_in - 0)),
+        chk("ESP32 pin 8 on the board        ", (esp_pos[0] + esp_pcb[0]) - (esp_pin8_x() + esp_pad_d / 2)),
+        chk("switch pocket to TP4056 guide   ", (body_w - wall - sw_body[2] - 1.0) - (tp_x + tp_pcb[0] + fit_clear + 1.0)),
+        chk("switch pocket inside the depth  ", min((sw_center[0] - sw_body[0] / 2 - sw_fit - 1.0) - y_front,
+                                                    y_back - (sw_center[0] + sw_body[0] / 2 + sw_fit + 1.0))),
+        chk("switch pocket in the lid relief ", 4 - (sw_body[1] / 2 + sw_fit + 1.0)),
+        chk("lid screw heads not proud       ", (lid_t - 0.8) - m2_head_h + (m2_head_h - m2_head_h)),
+        chk("lid screw tip short of pilot    ", lid_pilot_depth - (m2_len - (lid_t - m2_head_h))),
         chk("radar housing to right wall     ", (body_w - wall) - radar_x1),
         // Stays under 0.3: the bevel's outer corner nearly meets the R12 corner's inner wall. Not a fit
         // between parts, nothing slides here. More room means moving the window, the unit's focal

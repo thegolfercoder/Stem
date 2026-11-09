@@ -87,6 +87,8 @@ GROUND = {
              **PCB("PCB purple", [0.35, 0.20, 0.55]), explode=[85, 55, 0]),
         dict(part="ghost:esp32", name="ESP32-C3 SuperMini", collection=COMPONENTS,
              **PCB("PCB black", [0.03, 0.03, 0.03]), explode=[0, 22, 0]),
+        dict(part="ghost:lm358", name="LM358 pre-amp", collection=COMPONENTS,
+             **PCB("PCB green", [0.05, 0.35, 0.12]), explode=[0, 22, 0]),
         dict(part="ghost:radar", name="BGT24LTR11 radar module", collection=COMPONENTS,
              **PCB("PCB gold", [0.80, 0.60, 0.15]), explode=[0, 26, 0]),
         dict(part="ghost:switch", name="Slide switch", collection=COMPONENTS,
