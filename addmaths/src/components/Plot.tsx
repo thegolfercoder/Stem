@@ -1,4 +1,5 @@
 import type { PlotSpec } from "@/lib/types";
+import { T, plainText } from "./Math";
 
 /**
  * A function plotter that renders to plain SVG on the server.
@@ -42,7 +43,7 @@ export function Plot({ spec }: { spec: PlotSpec }) {
           viewBox={`0 0 ${W} ${H}`}
           className="block h-auto w-full"
           role="img"
-          aria-label={spec.caption ?? "Graph"}
+          aria-label={spec.caption ? plainText(spec.caption) : "Graph"}
         >
           <g className="text-[color:var(--border)]" stroke="currentColor" strokeWidth={1}>
             {xTicks.map((t) => (
@@ -209,7 +210,9 @@ export function Plot({ spec }: { spec: PlotSpec }) {
         </svg>
       </div>
       {spec.caption && (
-        <figcaption className="muted mt-2 text-center text-sm">{spec.caption}</figcaption>
+        <figcaption className="muted mt-2 text-center text-sm">
+          <T>{spec.caption}</T>
+        </figcaption>
       )}
     </figure>
   );

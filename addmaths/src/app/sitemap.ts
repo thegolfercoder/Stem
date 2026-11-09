@@ -18,5 +18,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: "monthly" as const,
     priority: 0.7,
   }));
-  return [...pages, ...topics];
+  const summaries = TOPICS.filter((t) => t.summary).map((t) => ({
+    url: `${SITE.url}/topics/${t.slug}/summary/`,
+    lastModified: now,
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  }));
+  return [...pages, ...topics, ...summaries];
 }

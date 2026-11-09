@@ -85,9 +85,18 @@ for (const topic of TOPICS) {
     });
   }
 
+  if (topic.summary) {
+    docs.push({
+      title: `${topic.title}: one-page summary`,
+      href: `/topics/${topic.slug}/summary/`,
+      kind: "Summary",
+      text: plain([topic.summary.bigIdea, ...topic.summary.mustKnow, ...topic.summary.traps].join(" ")),
+    });
+  }
+
   for (const ex of topic.examples) {
     docs.push({
-      title: ex.title,
+      title: plain(ex.title),
       href: `/topics/${topic.slug}/#${ex.id}`,
       kind: "Example",
       text: plain(`${ex.prompt} ${ex.answer}`),
@@ -96,7 +105,7 @@ for (const topic of TOPICS) {
 
   for (const q of topic.examQuestions) {
     docs.push({
-      title: q.title,
+      title: plain(q.title),
       href: `/topics/${topic.slug}/#${q.id}`,
       kind: "Exam question",
       text: plain(`${q.marks} marks. ${q.prompt}`),

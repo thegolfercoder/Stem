@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "tsx scripts/test.ts && tsx scripts/verify-maths.ts",
+    "test": "tsx scripts/test.ts && tsx scripts/verify-maths.ts && tsx scripts/verify-content.ts",
     "check": "npm run typecheck && npm run lint && npm run test",
     "prebuild": "tsx scripts/build-search-index.ts",
     "audit": "tsx scripts/audit.ts",

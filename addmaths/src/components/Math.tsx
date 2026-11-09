@@ -48,6 +48,27 @@ export function MD({ children, className }: { children: string; className?: stri
  * Text with inline maths between single dollars, e.g.
  * "Solve $x^2 = 9$ for $x$." A literal dollar is written `\$`.
  */
+/**
+ * Text with its inline maths flattened, for places that cannot hold markup:
+ * aria labels, the document title, search results.
+ */
+export function plainText(text: string): string {
+  return text
+    .replace(/\\(dfrac|tfrac|frac)\{([^{}]*)\}\{([^{}]*)\}/g, "$2/$3")
+    .replace(/\\sqrt\{([^{}]*)\}/g, "√($1)")
+    .replace(/\\sqrt/g, "√")
+    .replace(/\\(pi)\b/g, "π")
+    .replace(/\\(theta)\b/g, "θ")
+    .replace(/\\(le)\b/g, "≤")
+    .replace(/\\(ge)\b/g, "≥")
+    .replace(/\\(ne)\b/g, "≠")
+    .replace(/\^\{-1\}/g, "⁻¹")
+    .replace(/\\[a-zA-Z]+/g, "")
+    .replace(/[{}$]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function T({ children }: { children: string }) {
   return <>{parseInline(children)}</>;
 }

@@ -160,6 +160,9 @@
 
   .katex {
     font-size: 1.045em;
+    /* Uppercase labels must not turn f into F inside maths. */
+    text-transform: none;
+    letter-spacing: normal;
   }
 
   .link {

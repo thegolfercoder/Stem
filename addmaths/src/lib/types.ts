@@ -177,6 +177,34 @@ export interface Topic {
   tips: string[];
   /** Ids of question generators in `src/lib/questions`. */
   generators: string[];
+  /** The one-page summary: what to know cold before the exam. */
+  summary?: TopicSummary;
+}
+
+export interface TopicSummary {
+  /** The single idea the topic hangs on, in a sentence or two. */
+  bigIdea: string;
+  /** Facts and formulas to know cold. Inline LaTeX allowed. */
+  mustKnow: string[];
+  /** The standard methods, each as a short recipe. */
+  methods: { name: string; steps: string[] }[];
+  /** The traps that cost the most marks. */
+  traps: string[];
+}
+
+/**
+ * Material added to a topic after its first version. Kept in its own file so
+ * that each topic's original lesson stays readable, and merged in by
+ * `withExtra` in the topic index.
+ */
+export interface TopicExtra {
+  sections?: Section[];
+  formulas?: FormulaEntry[];
+  examples?: WorkedExample[];
+  examQuestions?: ExamQuestion[];
+  mistakes?: Mistake[];
+  tips?: string[];
+  summary: TopicSummary;
 }
 
 export interface GlossaryEntry {

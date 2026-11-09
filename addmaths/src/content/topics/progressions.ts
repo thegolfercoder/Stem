@@ -25,7 +25,7 @@ export const progressions: Topic = {
         },
         {
           k: "table",
-          head: ["", "Arithmetic", "Geometric"],
+          head: ["Property", "Arithmetic", "Geometric"],
           rows: [
             ["Step", "add $d$", "multiply by $r$"],
             ["Test", "$u_2-u_1 = u_3-u_2$", "$\\dfrac{u_2}{u_1} = \\dfrac{u_3}{u_2}$"],

@@ -245,7 +245,8 @@ function walk(dir: string): string[] {
 }
 for (const file of [...walk("src/content"), ...walk("src/lib/questions/generators")]) {
   readFileSync(file, "utf8").split("\n").forEach((line, i) => {
-    if (/(?<!\\)\\;/.test(line)) check(false, `${file}:${i + 1}: single-backslash \\; (renders as a bare semicolon)`);
+    // Also the stripped form, where both backslashes were lost: ";\\Rightarrow;".
+    if (/(?<!\\)\\;/.test(line) || /(?<!\\);\\\\[A-Za-z]+;/.test(line)) check(false, `${file}:${i + 1}: single-backslash \\; (renders as a bare semicolon)`);
     else checks += 1;
   });
 }

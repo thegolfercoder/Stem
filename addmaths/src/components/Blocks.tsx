@@ -1,5 +1,5 @@
 import type { Block, Step } from "@/lib/types";
-import { M, MD, T } from "./Math";
+import { M, MD, T, plainText } from "./Math";
 import { Plot } from "./Plot";
 
 export function Blocks({ blocks }: { blocks: Block[] }) {
@@ -82,7 +82,7 @@ function BlockView({ block: b }: { block: Block }) {
         <aside className={`rounded-xl border px-4 py-3.5 ${tone.cls}`}>
           <p className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.09em]">
             <span aria-hidden>{tone.icon}</span>
-            {b.title ?? tone.label}
+            {b.title ? <T>{b.title}</T> : tone.label}
           </p>
           <div className="text-[0.95rem] leading-[1.7]">
             <T>{b.t}</T>
@@ -92,9 +92,13 @@ function BlockView({ block: b }: { block: Block }) {
     }
     case "table":
       return (
-        <div className="overflow-x-auto" tabIndex={0} role="group" aria-label={b.caption ?? "Table"}>
+        <div className="overflow-x-auto" tabIndex={0} role="group" aria-label={b.caption ? plainText(b.caption) : "Table"}>
           <table className="w-full min-w-[22rem] border-collapse text-left text-[0.94rem]">
-            {b.caption && <caption className="muted mb-2 text-left text-sm">{b.caption}</caption>}
+            {b.caption && (
+              <caption className="muted mb-2 text-left text-sm">
+                <T>{b.caption}</T>
+              </caption>
+            )}
             <thead>
               <tr className="border-b border-[color:var(--border)]">
                 {b.head.map((h, i) => (

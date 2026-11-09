@@ -76,6 +76,13 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
             ) : null;
           })}
         </div>
+        {topic.summary && (
+          <p className="mt-3 text-sm">
+            <Link href={`/topics/${topic.slug}/summary/`} className="link font-medium">
+              One-page summary of this topic
+            </Link>
+          </p>
+        )}
         <TopicComplete slug={topic.slug} />
       </header>
 
@@ -150,7 +157,9 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
                 <details key={ex.id} className="card group overflow-hidden" id={ex.id}>
                   <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 p-5 transition hover:bg-[color:var(--bg-soft)]">
                     <DifficultyBadge level={ex.difficulty} />
-                    <span className="font-medium">{ex.title}</span>
+                    <span className="font-medium">
+                      <T>{ex.title}</T>
+                    </span>
                     <span className="muted ml-auto text-xs group-open:hidden">Show solution</span>
                     <span className="muted ml-auto hidden text-xs group-open:inline">Hide solution</span>
                   </summary>
@@ -193,7 +202,9 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
                 <details key={q.id} className="card group overflow-hidden" id={q.id}>
                   <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 p-5 transition hover:bg-[color:var(--bg-soft)]">
                     <DifficultyBadge level={q.difficulty} />
-                    <span className="font-medium">{q.title}</span>
+                    <span className="font-medium">
+                      <T>{q.title}</T>
+                    </span>
                     <Chip>{q.marks} marks</Chip>
                     {q.paper && <Chip>Paper {q.paper}</Chip>}
                     <span className="muted ml-auto text-xs group-open:hidden">Show solution</span>

@@ -239,7 +239,7 @@ export const circles: Topic = {
         { t: "(c) Find the gradient of the radius $CP$.", m: "m_{CP} = \\frac{2-(-1)}{7-3} = \\frac34" },
         { t: "The tangent is perpendicular to the radius.", m: "m_t = -\\frac43" },
         { t: "Use the point-gradient form at $P$.", m: "y - 2 = -\\tfrac43(x-7)" },
-        { t: "Tidy.", m: "3y - 6 = -4x + 28 ;\\Rightarrow; 4x + 3y = 34" },
+        { t: "Tidy.", m: "3y - 6 = -4x + 28 \\;\\Rightarrow\\; 4x + 3y = 34" },
       ],
       answer: "(a) centre $(3,-1)$, radius 5. (b) $16+9=25=r^2$. (c) $4x+3y=34$.",
     },

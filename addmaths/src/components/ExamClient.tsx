@@ -377,7 +377,7 @@ export function ExamClient({
           <ul className="muted mt-3 space-y-1.5 text-sm">
             {slowest.map(({ item, i, ms }) => (
               <li key={item.id}>
-                Question {i + 1} ({item.title}) took {Math.round(ms / 1000)} s
+                Question {i + 1} (<T>{item.title}</T>) took {Math.round(ms / 1000)} s
                 {item.marks ? ` for ${item.marks} marks — ${(ms / 1000 / item.marks).toFixed(0)} s per mark` : ""}.
               </li>
             ))}
@@ -401,7 +401,9 @@ export function ExamClient({
                     <span className={`text-sm font-semibold ${correct ? "text-[color:var(--easy)]" : "text-[color:var(--hard)]"}`}>
                       {correct ? "✓" : "✗"} Q{i + 1}
                     </span>
-                    <span className="text-sm">{item.title}</span>
+                    <span className="text-sm">
+                      <T>{item.title}</T>
+                    </span>
                     <Chip>{item.marks} marks</Chip>
                     <span className="muted ml-auto text-xs">{Math.round((spent[item.id] ?? 0) / 1000)} s</span>
                   </summary>

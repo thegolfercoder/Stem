@@ -61,7 +61,9 @@ export default function PastPapersPage() {
                   <details key={q.id} className="card group overflow-hidden">
                     <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 p-5 transition hover:bg-[color:var(--bg-soft)]">
                       <DifficultyBadge level={q.difficulty} />
-                      <span className="font-medium">{q.title}</span>
+                      <span className="font-medium">
+                        <T>{q.title}</T>
+                      </span>
                       <Chip>{q.marks} marks</Chip>
                       {q.paper && <Chip>Paper {q.paper}</Chip>}
                       <span className="muted ml-auto text-xs group-open:hidden">Show solution</span>

@@ -58,7 +58,9 @@ export default function ExamplesPage() {
                 <details key={example.id} className="card group overflow-hidden">
                   <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 p-5 transition hover:bg-[color:var(--bg-soft)]">
                     <DifficultyBadge level={example.difficulty} />
-                    <span className="font-medium">{example.title}</span>
+                    <span className="font-medium">
+                      <T>{example.title}</T>
+                    </span>
                     <Chip>{topic.short}</Chip>
                     <span className="muted ml-auto text-xs group-open:hidden">Show</span>
                     <span className="muted ml-auto hidden text-xs group-open:inline">Hide</span>

@@ -1,4 +1,5 @@
-import type { Topic } from "@/lib/types";
+import type { Topic, TopicExtra } from "@/lib/types";
+import { EXTRAS } from "./extra";
 import { functions } from "./functions";
 import { quadraticFunctions } from "./quadratic-functions";
 import { factorsOfPolynomials } from "./factors-of-polynomials";
@@ -35,7 +36,21 @@ import { kinematics } from "./kinematics";
  * Mathematics rather than testing it directly, but the papers lean on it
  * constantly, so it is taught here first.
  */
-export const TOPICS: Topic[] = [
+function withExtra(topic: Topic, extra: TopicExtra | undefined): Topic {
+  if (!extra) return topic;
+  return {
+    ...topic,
+    sections: [...topic.sections, ...(extra.sections ?? [])],
+    formulas: [...topic.formulas, ...(extra.formulas ?? [])],
+    examples: [...topic.examples, ...(extra.examples ?? [])],
+    examQuestions: [...topic.examQuestions, ...(extra.examQuestions ?? [])],
+    mistakes: [...topic.mistakes, ...(extra.mistakes ?? [])],
+    tips: [...topic.tips, ...(extra.tips ?? [])],
+    summary: extra.summary,
+  };
+}
+
+const BASE: Topic[] = [
   indicesAndSurds,
   functions,
   quadraticFunctions,
@@ -59,6 +74,8 @@ export const TOPICS: Topic[] = [
   applicationsOfIntegration,
   kinematics,
 ];
+
+export const TOPICS: Topic[] = BASE.map((t) => withExtra(t, EXTRAS[t.slug]));
 
 export const TOPIC_BY_SLUG: Map<string, Topic> = new Map(TOPICS.map((t) => [t.slug, t]));
 
