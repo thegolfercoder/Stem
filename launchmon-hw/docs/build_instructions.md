@@ -108,15 +108,29 @@ open at the top and two detent holes in its rear wall; the pod pocket sits
 behind the spine. Check the channel is clear of stringing all the way down
 before fitting the slide.
 
-**Arm slide (`ground_radar_arm_slide.stl`).** Flat, hinge tab up, no
-supports. Check it slides the full length of the spine's channel (0.3 mm
-clearance each side) and clicks at both ends. If it is tight, sand its faces
-rather than forcing it; if it is loose, the clicks will be weak.
+**Arm slide (`ground_radar_arm_slide.stl`).** Flat, with the tab that holds
+the swivel's cup up, no supports. Check it slides the full length of the
+spine's channel (0.3 mm clearance each side) and clicks at both ends. If it is
+tight, sand its faces rather than forcing it; if it is loose, the clicks will
+be weak. Clear any stringing out of the cup and its peg hole.
+
+**Arm swivel (`ground_radar_arm_swivel.stl`).** Upright as it sits, the peg
+under the drum on the bed, no supports. Check the drum turns in the slide's
+cup (0.2 mm clearance a side) and clicks at each 5° notch, and that the peg
+drops into the hole in the cup's floor. A stiff turn: sand the drum, not the
+detent rib.
 
 **Arm head (`ground_radar_arm_head_magsafe.stl`).** On its plain face on the
 textured sheet, ring pocket up, no supports: the face that shows when the arm
 is folded is the one on the bed. Check the magnet ring drops into its pocket
 and sits flush or very slightly below the surface.
+
+**Clamp head, instead of the MagSafe head (`ground_radar_arm_head_clamp.stl`
+and `ground_radar_arm_clamp_jaw.stl`).** Only for a phone without MagSafe.
+Both flat on their back faces, jaws up, no supports. Check the sliding jaw's
+sleeve slides along the cross bar and that its pawl clicks over the saw teeth
+one way and holds the other. Not yet printed: how firmly the pawl holds is
+untested.
 
 **Arm pin (`ground_radar_arm_pin.stl`).** Flat. A printed 3 mm pin; print a
 spare. A 3 mm steel pin or a length of 3 mm rod cut to 28 mm can replace it.
@@ -263,7 +277,8 @@ The dock is the stand, the phone holder and the pod's storage in one: a base
 with a lip in front of the unit, a slim spine rising from it behind the lid's
 centre (30 x 5 mm, its top 1 mm under the unit's top edge), and a pocket for
 the club pod behind the spine. The arm is a slide that pulls up out of the
-spine and a round 60 mm MagSafe head hinged to the top of the slide. Folded,
+spine, a swivel drum in a cup at the slide's top, and a round 60 mm MagSafe
+head (or the clamp head) hinged to the swivel. Folded,
 the slide is in the spine and the head hangs flat over it, plain face out:
 nothing stands above the unit. There are no screws in the dock.
 
@@ -273,23 +288,37 @@ nothing stands above the unit. There are no screws in the dock.
    and let it cure. Cover the ring with the 0.5 mm grip pad. Folded, the ring
    sits a few millimetres behind the lid, near the MT3608: measure the
    MT3608's output with the arm folded and open, and it should not move.
-2. **Hinge.** Set the slide's middle knuckle between the head's two outer
+2. **Swivel.** Drop the swivel's drum into the cup at the top of the slide,
+   peg first, so the peg goes into the hole in the cup's floor and the drum's
+   rib clicks into the middle (0°) notch. Leave it at 0° for now. No glue: it
+   has to turn.
+3. **Hinge.** Set the swivel's middle knuckle between the head's two outer
    knuckles and push the 3 mm pin through all three. The head should hold at
    each detent (0, 10, 20, 25, 30, 35°); how firmly has not been tested on a
    print yet. If the pin works loose, a drop of CA in one outer knuckle holds
    it; keep CA off the middle knuckle, which has to turn.
-3. **Slide into the spine.** Push the slide down into the spine's channel from
+4. **Slide into the spine.** Push the slide down into the spine's channel from
    the top, bump toward the rear, until it clicks into the lower (stored)
    detent. Fold the head down over the back of the spine.
-4. **Feet.** Stick four 8 mm silicone bumpers into the recesses under the base
+5. **Feet.** Stick four 8 mm silicone bumpers into the recesses under the base
    for hard floors and hitting mats.
 
 **The pod.** Between sessions the club pod lies on a side face in the pocket
 behind the spine; the finger notch in the rear wall lifts it out. It charges
 out of the pocket, on its own USB-C.
 
-**Phones without MagSafe.** A clamp head for those is not built yet. Today
-such a phone needs a MagSafe-compatible case or a stick-on magnetic ring.
+**Phones without MagSafe: the clamp head.** Print
+`ground_radar_arm_head_clamp.stl` and `ground_radar_arm_clamp_jaw.stl` instead
+of the MagSafe head; skip step 1 (no ring, alignment magnet or grip pad). Slide
+the jaw onto the cross bar from the free end, pawl on the toothed edge, then
+fit the head on the swivel in step 3 with the same knuckles and pin. It takes
+phones 65-80 mm wide. To fit a phone, set it on the bar against the fixed jaw,
+both lips over the screen's edge, and push the sliding jaw in against the
+phone's other side: the pawl clicks over the 2 mm teeth and holds it. To take
+the phone off, lift the pawl and slide the jaw out. The clamp grips the phone
+at its middle, so it does not cover the lens. It has not been printed or tested;
+a MagSafe-compatible case or a stick-on magnetic ring on the MagSafe head is the
+other way.
 
 ### 4.2 Placing it
 
@@ -316,26 +345,33 @@ back, switched off.
 2. Pull the slide straight up until it clicks at the open detent, 46 mm up.
    About 12 mm of it stays in the spine.
 3. Tilt the head back to the **25° detent** (the default; 0-35° are there).
-4. Put the phone on the head, back to the ring, in portrait, camera at the
-   top, screen toward you.
+4. Turn the head on the swivel toward the golfer, to the **20° detent** (the
+   default; ±25° in 5° steps). Turn it **+** for a right-hander and **−** for a
+   left-hander: toward the side the golfer stands on, as seen from behind the
+   unit looking at the target.
+5. Put the phone on the head, back to the ring (or in the clamp), in portrait,
+   camera at the top, screen toward you.
 
 At 25° the phone's lower edge clears the unit by 8.5 mm, the lens's sightline
 clears its top by over 100 mm, and the phone's centre is over the base, so it
 cannot tip the dock backwards. Those numbers are from the CAD's fit report for
 a 147.6 mm stand-in phone; they have not been checked with a printed arm yet.
 
-**Use the 0.5x ultra-wide lens** (most phones since about 2019). The head
-does not swivel toward the golfer yet, so with the 1x lens the golfer may sit
-at the edge of the frame. Check the framing before the first shot: the whole
-golfer and the club at the top should be in it. A more upright detent aims
-the lens lower, with more of the ground and the ball; a further one aims it
-higher, with more of the club at the top.
+**The normal 1x lens works** with the head turned toward the golfer; the 0.5x
+ultra-wide lens is fine too, and takes in more around them. Check the framing
+before the first shot: the whole golfer and the club at the top should be in
+it. A more upright detent aims the lens lower, with more of the ground and the
+ball; a further one aims it higher, with more of the club at the top. If the
+golfer is off to one side, change the swivel by 5°. None of this framing has
+been checked with a printed arm yet.
 
 Fusion removes the time the sound of the strike takes to reach the phone, so
 give it the phone-to-ball distance: with the phone on the unit that is the
 unit's distance you measured, about 1.4 m by default (`fuse_shot.py
 --camera-distance 1.4`). Fold the arm before picking
-the unit up: head up, slide down to its stored click, head flat over the spine.
+the unit up: phone off, **swivel back to 0°** (the head will not fold flat over
+the spine while it is turned), head up, slide down to its stored click, head
+flat over the spine.
 
 ### 4.3 Set the Doppler sign (one-time bench check)
 

@@ -57,10 +57,14 @@ writes `cad/stl/cost_report.txt` each time the STLs are exported.
 
 | | Before (prototype) | Now |
 |---|---|---|
-| Filament, both units | 98 g, including supports | 84 g, no supports |
-| Print time, both units | 5.7 h | 4.9 h |
-| Kit cost, own printer ($0.40/h) | $4.45 | **$3.84** |
-| Kit cost, print farm ($1.50/h) | $11.00 (over budget) | **$9.53** (within $5-10) |
+| Filament, both units | 98 g, including supports | 85.9 g, no supports |
+| Print time, both units | 5.7 h | 5.1 h |
+| Kit cost, own printer ($0.40/h) | $4.45 | **$3.95** |
+| Kit cost, print farm ($1.50/h) | $11.00 (over budget) | **$9.82** (within $5-10) |
+
+"Now" is with the MagSafe head and the swivel. The clamp head, printed instead
+of the MagSafe head, is listed apart in `cost_report.txt` ($0.68 for the head
+and $0.36 for its jaw at the farm rate).
 
 These assume PETG (and TPU for the strap) at $20/kg and a conservative 4 mm³/s sustained flow. A
 faster printer roughly halves the time and the machine cost. The estimate is
@@ -71,8 +75,9 @@ the radome a separate part, which removed the shell's supports. The folding
 arm, the pod pocket and the TPU strap (commit 41c82f1) add about 13 g and 0.7
 hours over the stud stem and pod hood they replace. Most of it is the dock
 base, which now carries the spine and the pocket's walls (9.8 g to 23.6 g);
-the arm's three parts are 11.9 g. The print-farm cost is near the top of the
-budget, at $9.53.
+the arm's three parts were 11.9 g. The swivel (commit 553162a) adds a fourth,
+0.8 g, and brings the arm to 12.9 g. The print-farm cost is near the top of the
+budget, at $9.82.
 
 ## What was left out, and why
 
@@ -110,15 +115,20 @@ stand-in phone at 25°:
 
 None of that has been checked on a printed arm yet.
 
-The phone sits about 1.4 m behind the ball and low, and the head does not
-swivel toward the golfer yet. With the normal 1x lens the golfer may be at the
-edge of the frame, so use the **0.5x ultra-wide** lens, which most phones
-since about 2019 have. A swivel would let the 1x lens work; it is not built.
+The phone sits about 1.4 m behind the ball and low, so the golfer stands off
+to one side of where it points. A swivel turns the head toward them: a drum in
+a cup at the top of the slide carries the tilt hinge and turns ±25° in 5°
+detents, 20° by default (+ for a right-hander, − for a left-hander). That lets
+the normal 1x lens frame the golfer; the 0.5x ultra-wide lens still works. The
+swivel has to be back at 0° for the head to fold flat.
 
-The head holds a phone by MagSafe: an aftermarket MagSafe-compatible ring is
-glued in its pocket under a 0.5 mm grip pad. A clamp head for phones without
-MagSafe is not built yet; today such a phone needs a MagSafe-compatible case
-or a stick-on ring. A tablet is too heavy for the arm.
+The round head holds a phone by MagSafe: an aftermarket MagSafe-compatible
+ring is glued in its pocket under a 0.5 mm grip pad. For phones without
+MagSafe, a clamp head prints instead, on the same knuckles and pin: a cross
+bar at the phone's middle, a fixed jaw at one end and a sliding jaw held by a
+ratchet (a flexing pawl over 2 mm saw teeth), for phones 65-80 mm wide. Push
+the jaw in against the phone; lift the pawl to let go. Neither the swivel nor
+the clamp head has been printed or tested. A tablet is too heavy for the arm.
 
 ## Beyond the plastic
 

@@ -121,13 +121,18 @@ $5-10 budget (`cad/stl/cost_report.txt`).
   decision). At the default 25° the CAD puts the phone's lower edge 8.5 mm
   clear of the unit, the lens sightline over 100 mm clear of it, and the
   phone's centre over the base. The phone sits low, about 1.4 m behind the
-  ball, and the head does not swivel toward the golfer yet, so use the
-  phone's 0.5x ultra-wide lens: with the 1x lens the golfer may be at the edge
-  of the frame. Untested on a print.
-- **MagSafe only, for now.** The head holds a phone by an aftermarket
-  MagSafe-compatible magnet ring. A clamp head for other phones is not built
-  yet; today a phone without MagSafe needs a MagSafe-compatible case or a
-  stick-on ring. The earlier 1/4"-20 tripod stud is gone, with its stem.
+  ball, so a swivel at the top of the slide turns the head toward the golfer:
+  ±25° in 5° detents, 20° by default (+ for a right-hander, − for a
+  left-hander). That lets the phone's normal 1x lens frame the golfer; the
+  0.5x ultra-wide lens still works too. Turn it back to 0° before folding.
+  Untested on a print.
+- **MagSafe, or a clamp head.** The round head holds a phone by an
+  aftermarket MagSafe-compatible magnet ring. For a phone without MagSafe,
+  print the clamp head and its sliding jaw instead: a cross bar at the phone's
+  middle with a fixed jaw at one end and a ratcheting jaw at the other, for
+  phones 65-80 mm wide. It fits the same knuckles and pin. Neither the swivel
+  nor the clamp head has been printed or tested. The earlier 1/4"-20 tripod
+  stud is gone, with its stem.
 - **The radar window is a separate part.** Printed into the shell, the 1.0-1.2
   mm window needed supports, came out rough and varied in thickness, and tied
   the whole shell to an RF-safe filament colour. As a flat-printed radome it is

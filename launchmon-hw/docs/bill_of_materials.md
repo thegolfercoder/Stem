@@ -60,7 +60,8 @@ voltage (wiring doc 1.1).
 ### Dock and phone arm
 
 The dock base carries the folding phone arm and a pocket for the club pod; the
-arm is three printed parts (section 3) and no screws.
+arm is four printed parts (section 3: slide, swivel, head, pin) and no screws.
+G39-G41 are for the MagSafe head only; the clamp head needs none of them.
 
 | # | Part | Specification | Qty | Notes |
 |---|---|---|---|---|
@@ -73,8 +74,8 @@ arm is three printed parts (section 3) and no screws.
 
 | Part | Notes |
 |---|---|
-| The phone, on the arm | It films from the unit: the head holds it by MagSafe at 25° back by default. Use the phone's **0.5x ultra-wide** lens (most phones since about 2019); with the 1x lens the golfer can sit at the edge of the frame, because the head does not yet swivel toward them. No tripod. |
-| A MagSafe-compatible case or a stick-on magnetic ring *(only for a phone without MagSafe)* | A clamp head for non-MagSafe phones is not built yet. |
+| The phone, on the arm | It films from the unit: the head holds it at 25° back and the swivel turns it 20° toward the golfer by default (+ for a right-hander, − for a left-hander, ±25° in 5° detents). The phone's normal **1x** lens frames the golfer; the 0.5x ultra-wide lens is fine too. No tripod. Not yet checked on a print. |
+| A phone without MagSafe | Print the clamp head and its sliding jaw instead of the MagSafe head (section 3): it takes phones 65-80 mm wide, without G39-G41. A MagSafe-compatible case or a stick-on magnetic ring on the MagSafe head also works. |
 
 ---
 
@@ -127,18 +128,23 @@ for the slicer settings.
 | `ground_radar_led_pipe.stl` | Ground | 1 | Flange down. Natural PETG |
 | `ground_radar_esp32_clamp_tab_x2.stl` | Ground | **2** | Flat |
 | `ground_radar_dock_base.stl` | Ground | 1 | As it sits. Carries the arm's spine and the pod pocket |
-| `ground_radar_arm_slide.stl` | Ground | 1 | Flat, hinge tab up |
-| `ground_radar_arm_head_magsafe.stl` | Ground | 1 | On its plain face, ring pocket up |
+| `ground_radar_arm_slide.stl` | Ground | 1 | Flat, the tab with the swivel's cup up |
+| `ground_radar_arm_swivel.stl` | Ground | 1 | Upright as it sits, peg on the bed. The drum that turns in the slide's cup and carries the hinge's middle knuckle |
+| `ground_radar_arm_head_magsafe.stl` | Ground | 1 | On its plain face, ring pocket up. **Or**, for a phone without MagSafe, the two clamp parts below instead |
+| `ground_radar_arm_head_clamp.stl` *(alternative)* | Ground | 1 | Flat on its back face, fixed jaw and teeth up. Clamp head: printed instead of the MagSafe head |
+| `ground_radar_arm_clamp_jaw.stl` *(alternative)* | Ground | 1 | Flat on its back face, jaw lip up. The clamp head's sliding jaw |
 | `ground_radar_arm_pin.stl` | Ground | 1 (print a spare) | Flat. The 3 mm hinge pin; a 3 mm steel pin or a length of 3 mm rod works too |
 | `shaft_pod_base.stl` | Pod | 1 | Standing on its USB end, clamp bore vertical |
 | `shaft_pod_lid.stl` | Pod | 1 | Outside face down |
 | `shaft_pod_strap_TPU.stl` | Pod | 1 (print a spare) | Flat, outer face down. **TPU 95A, not PETG**: it has to stretch. Its length comes from `shaft_d` |
 
-About **84 g** of filament and **4.9 hours** of printing for both units, with no
-supports anywhere. `cad/cost_report.py` estimates it from the STLs and writes
-`cad/stl/cost_report.txt`: about $1.69 of filament, $3.84 a kit on your own
-printer and $9.53 at a print-farm machine rate, against a $5-10 budget for the printed
-parts. Those are estimates, within about 20% of a slice; slice the STLs with
+About **86 g** of filament and **5.1 hours** of printing for both units (85.9 g,
+5.08 h), with no supports anywhere. `cad/cost_report.py` estimates it from the
+STLs and writes `cad/stl/cost_report.txt`: about $1.72 of filament, $3.95 a kit
+on your own printer and $9.82 at a print-farm machine rate, against a $5-10
+budget for the printed parts. That total is with the MagSafe head. The clamp
+head and its jaw are listed apart as an alternative (5.4 g and 1.2 g; $0.68 and
+$0.36 at the farm rate, each on its own plate). Those are estimates, within about 20% of a slice; slice the STLs with
 your printer's profile before quoting a price.
 
 ## 4. Tools
