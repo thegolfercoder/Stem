@@ -17,14 +17,16 @@ jobs:
   core:
     name: swing core (swift test)
     runs-on: ubuntu-24.04
+    # The official Swift image, not swift-actions/setup-swift: that action checks
+    # the toolchain's signature by refreshing keys from keyserver.ubuntu.com, and
+    # when the keyserver is down the job failed before a test ran, for nothing in
+    # this repository. The image carries the toolchain, so nothing is fetched.
+    container: swift:6.1
     defaults:
       run:
         working-directory: ios/SwingCore
     steps:
       - uses: actions/checkout@v5
-      - uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: "6.1"
       - run: swift test
       - name: the committed Xcode project lists every app file
         working-directory: ios
