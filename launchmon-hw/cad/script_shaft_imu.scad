@@ -52,15 +52,22 @@
 //      "base"      body + clamp   (print standing on the USB end, bore vertical)
 //      "lid"       snap-on lid    (print flat, outside face down)
 //      "strap"     reusable strap, TPU 95A (print flat, outer face down; sized from shaft_d)
+//      "strap_fit_coupon"  the strap latch fit test, both pieces side by side (preview);
+//                  export them one at a time, each in its own material:
+//        "strap_fit_coupon_post"   PETG: a slice of the -Y side wall with one strap post
+//                                  (print standing on its -X end, as the base prints)
+//        "strap_fit_coupon_latch"  TPU 95A: the end of the strap, its slot and tab
+//                                  (print flat, outer face down, as the strap prints)
 //      "assembly"  both, with ghost components
 //      "section"   2D cut across the shaft, through the jaw
 // =============================================================================
 
 /* [Render] */
-part            = "assembly";   // [assembly, base, lid, strap, section, print_plate]
+part            = "assembly";   // [assembly, base, lid, strap, strap_fit_coupon, strap_fit_coupon_post, strap_fit_coupon_latch, section, print_plate]
 // Also: "in_place:base|lid" and "ghost:<name>" export one part in its
 // assembled position (used by cad/blender/).
 show_components = true;
+coupon_hooked   = false;        // "strap_fit_coupon" only: the latch hooked on the post, in the pod's frame (a check view, not for printing)
 explode         = 0;            // [0:1:20]
 $fn             = 64;
 
@@ -135,6 +142,10 @@ strap_clear   = 0.2;   // slot over the post, and the saddle cut clear of the st
 strap_post_z  = 5.6;   // shank centre above the floor's underside
 strap_post    = [2.4, 2.0, 1.0, 0.6, 1.0];  // [shank width X at its outer end, shank height Z,
                        //  upper lip (engagement), lower lip (detent), head thickness]
+// Strap latch fit coupon (part "strap_fit_coupon"): both pieces are cut from base() and strap().
+strap_coupon_block = [1.0, 4.0];  // post piece: [margin past the strap band each side (X), thickness (Y): the
+                                  // real wall, with a backer inside it to hold and pull against]
+strap_coupon_tail  = 10.0;        // latch piece: strap left on past the slot, to pull on
 
 /* [Pod park - charging contacts in the +X end face] */
 pod_park       = false;  // no charging contacts or magnets: the pod charges on its own USB-C (owner, 2026-11-06)
@@ -202,6 +213,8 @@ st_shank_l   = strap_t + 0.3;                       // shank stands out past the
 st_hole      = [strap_post[0] + st_shank_l + strap_clear,      // slot across the strap: the post's
                 strap_post[1] + strap_post[2] + 0.3];          // 45-degree underside widens it at the root
 st_zb        = strap_post_z + strap_post[1] / 2;    // the slot's bearing edge: the shank's top
+st_post_x1   = strap_x + st_hole[0] / 2 - strap_clear / 2;      // the post's top face (+X), square
+st_post_xb   = st_post_x1 - strap_post[0] - st_shank_l;         // its 45-degree underside, where it meets the side face
 st_c1        = [edge_r, edge_r];                    // the body's lower edge round, -Y side
 st_r1        = edge_r + strap_t / 2;                // strap centre line round it
 st_c2        = [pod[1] / 2, -(shaft_d / 2 + web)];  // the shaft (bore centre)
@@ -280,7 +293,10 @@ module strap_post_2d() {
     sh = strap_post[1]; up = strap_post[2]; lo = strap_post[3]; ht = strap_post[4];
     c = 0.3;  // the head's outer edges
     translate([0, strap_post_z]) {
-        translate([-0.01, -sh / 2]) square([st_shank_l + 0.02, sh]);
+        // Starts 0.3 mm inside the wall: the rounded box's faceted side face sits
+        // about 0.014 mm proud of y = 0, so a shank from -0.01 left a 0.004 mm gap
+        // and the post exported as a separate solid.
+        translate([-0.3, -sh / 2]) square([st_shank_l + 0.31, sh]);
         polygon([[st_shank_l, -sh / 2 - lo], [st_shank_l + ht - c, -sh / 2 - lo], [st_shank_l + ht, -sh / 2 - lo + c],
                  [st_shank_l + ht, sh / 2 + up - c], [st_shank_l + ht - c, sh / 2 + up], [st_shank_l, sh / 2 + up]]);
     }
@@ -288,8 +304,8 @@ module strap_post_2d() {
 module strap_post_one() {
     // On the -Y face, standing out along -Y. Its top face (+X) is square; its
     // underside rises at 45 degrees, X + Y >= x_b, so the post prints unsupported.
-    px1 = strap_x + st_hole[0] / 2 - strap_clear / 2;        // top face
-    x_b = px1 - strap_post[0] - st_shank_l;                   // underside, at the side face
+    px1 = st_post_x1;                                         // top face
+    x_b = st_post_xb;                                         // underside, at the side face
     intersection() {
         mirror([0, 1, 0]) x_extrude(x_b - 1, px1) strap_post_2d();
         translate([x_b, 0, -1]) rotate([0, 0, 45]) translate([0, -50, 0]) cube([100, 100, pod[2] + 2]);
@@ -346,6 +362,50 @@ module strap_fitted() {
         for (c = c1) translate(c) circle(r = st_r1, $fn = 48);
         translate(st_c2) circle(r = st_r2, $fn = 96);
     }
+}
+
+// ---- Strap latch fit coupon -------------------------------------------------------
+// Two small pieces that test the latch on your printer before the full print. Both
+// are cut out of the real parts, so they follow every strap and post parameter:
+//   post piece (PETG): base() cut to a block of the -Y side wall round the strap
+//     band, carrying that side's post, with a backer added inside the wall;
+//   latch piece (TPU): strap() cut to its first end: tab, lift ridge, slot, and
+//     strap_coupon_tail of strap past the slot.
+// Hook the slot over the post: it should click over the head, sit under the upper
+// lip, and hold when you pull the tail down along the wall.
+sc_x0 = strap_x - strap_w / 2 - strap_coupon_block[0];   // the post piece's block, pod frame
+sc_x1 = strap_x + strap_w / 2 + strap_coupon_block[0];
+sc_y0 = -(st_shank_l + strap_post[4]) - 1;               // past the post's head
+sc_z0 = edge_r;                                          // the side face's flat, between the edge rounds
+sc_z1 = pod[2] - edge_r;
+sc_latch_l = strap_tab + st_hole[1] + strap_coupon_tail; // the latch piece's length, from the strap's tip
+
+module strap_coupon_post() {
+    // Pod frame, as the pod has it.
+    intersection() {
+        base();
+        translate([sc_x0, sc_y0, sc_z0]) cube([sc_x1 - sc_x0, wall - sc_y0, sc_z1 - sc_z0]);
+    }
+    // Backer inside the wall: not part of the pod; it only stiffens the piece.
+    translate([sc_x0, wall - 0.01, sc_z0]) cube([sc_x1 - sc_x0, strap_coupon_block[1] - wall + 0.01, sc_z1 - sc_z0]);
+}
+module strap_coupon_latch() {
+    // Strap frame, as the strap prints: flat, outer face down.
+    intersection() {
+        strap();
+        translate([-1, -strap_w, -1]) cube([sc_latch_l + 1, 2 * strap_w, strap_t + strap_ridge[1] + 2]);
+    }
+}
+// Print orientations. The post stands on its -X end like base_print(), so the
+// post's lips lie in the layers and its 45-degree underside faces down, as on the pod.
+module strap_coupon_post_print() { translate([sc_z1, st_shank_l + strap_post[4], -sc_x0]) rotate([0, -90, 0]) strap_coupon_post(); }
+module strap_coupon_latch_print() { strap_coupon_latch(); }
+// The latch as fitted on the -Y face: strap X runs down the face from the tip,
+// strap Z (outer face 0) runs out from the wall, the slot's bearing edge on the shank's top.
+module strap_coupon_hooked() {
+    color("#2b2b2b") strap_coupon_post();
+    color("#d06a1a") multmatrix([[0, -1, 0, strap_x], [0, 0, 1, -strap_t], [-1, 0, 0, st_zb + strap_tab], [0, 0, 0, 1]])
+        strap_coupon_latch();
 }
 
 module park_cuts() {
@@ -702,6 +762,23 @@ module fit_report() {
              " mm2 at the slots; preload about ", 26 * strap_w * strap_t * strap_preload, " N per leg at E = 26 MPa"));
     echo(str("  info  strap strength: about ", round(25 * (strap_w - st_hole[0]) * strap_t), "-", round(35 * (strap_w - st_hole[0]) * strap_t),
              " N at the slots from TPU 95A's 25-35 MPa datasheet tensile strength; the hold on a club needs a physical pull test"));
+    // Strap latch fit coupon: its post piece must be cut from the side face's flat, clear of the
+    // pry notch and the snap groove, and hold the whole post; its latch piece must stop short of the
+    // strap's other slot.
+    sc_head = [strap_post_z - strap_post[1] / 2 - strap_post[3], strap_post_z + strap_post[1] / 2 + strap_post[2]];  // head, Z
+    echo(chk("strap coupon: block on the flat wall ", min(sc_z0 - edge_r, (pod[2] - edge_r) - sc_z1, sc_x0 - edge_r, (pod[0] - edge_r) - sc_x1,
+                                                       (base_h - lip_h / 2 - 0.45) - sc_z1, (base_h - 0.8) - sc_z1)));
+    echo(chk("strap coupon: whole post in the block", min(st_post_xb - sc_x0, sc_x1 - st_post_x1, sc_head[0] - sc_z0, sc_z1 - sc_head[1],
+                                                       -(st_shank_l + strap_post[4]) - sc_y0)));
+    echo(chk("strap coupon: block >= the real wall  ", strap_coupon_block[1] - wall));
+    echo(chk("strap coupon: latch cut on the straight", min(sc_latch_l - strap_w / 2, (st_len - strap_tab - st_hole[1]) - sc_latch_l)));
+    echo(str("  info  strap coupon post matches the pod's post: shank ", strap_post[0], " (X, outer end) x ", strap_post[1], " (Z) x ",
+             st_shank_l, " mm, head ", strap_post[4], " mm thick, ", sc_head[1] - sc_head[0], " mm tall (lips ", strap_post[2], " up, ",
+             strap_post[3], " down); latch slot ", st_hole, " mm: ", (st_hole[0] - strap_post[0] - st_shank_l) / 2,
+             " mm a side across the post, ", st_shank_l - strap_t, " under the head, ", strap_post[2], " of upper lip over the bearing edge, ",
+             (strap_post[1] + strap_post[2] + strap_post[3]) - st_hole[1], " mm detent"));
+    echo(str("  info  strap coupon pieces: post ", sc_x1 - sc_x0, " x ", sc_z1 - sc_z0, " x ", strap_coupon_block[1], " mm block (",
+             wall, " wall + ", strap_coupon_block[1] - wall, " backer), latch ", sc_latch_l, " x ", strap_w, " x ", strap_t, " mm"));
 }
 
 // ----------------------------------------------------------------------------
@@ -715,6 +792,16 @@ if (part == "base") {
     lid_print();
 } else if (part == "strap") {
     strap();
+} else if (part == "strap_fit_coupon") {
+    if (coupon_hooked) strap_coupon_hooked();
+    else {
+        strap_coupon_post_print();
+        translate([sc_z1 - sc_z0 + 5, strap_w / 2, 0]) strap_coupon_latch_print();
+    }
+} else if (part == "strap_fit_coupon_post") {
+    strap_coupon_post_print();
+} else if (part == "strap_fit_coupon_latch") {
+    strap_coupon_latch_print();
 } else if (part == "section") {
     // Cut across the shaft through the middle of the -X jaw, looking along +X.
     rotate([0, 0, -90]) projection(cut = true) rotate([0, -90, 0]) translate([-jaw_w / 2, 0, 0]) union() {
