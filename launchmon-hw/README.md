@@ -207,20 +207,26 @@ xvfb-run -a python3 launchmon-hw/cad/blender/make_showcase.py OUT_DIR   # blende
 
 This renders eight captioned 1080p, 24 fps shots in EEVEE from the generated `.blend`
 files, and joins them, with title and end cards, into
-`stem_launch_monitor_showcase.mp4` (about 55 s). The shots were made for an
-earlier design (a stud stem, a pod parked on the unit's back, a tripod camera)
-and need re-rendering for the folding arm and the pod pocket:
+`stem_launch_monitor_showcase.mp4` (about 60 s):
 
-- the ground unit turning in its dock, the pod parked on its back
-- the ground unit assembling
-- its placement behind a ball, with the 15° boresight and the tripod camera
+- the ground unit turning in its dock, the arm folded behind the flat lid, the
+  pod in its pocket
+- the ground unit assembling, the LM358 pre-amp included, then the arm and the
+  pod into its pocket
+- the arm opening: the slide pulls up, the head flips up and tilts back, the
+  swivel turns toward the golfer, the phone settles on the head
+- its placement behind a ball, with the 15° boresight and the phone on the
+  unit's arm
 - the pod turning on a shaft
-- the pod assembling
-- the pod snapping onto the shaft
-- the pod parking on the back of the ground unit
+- the pod assembling, then its TPU strap
+- the pod snapping onto the shaft and strapped
 - the radome in smoke, ice and amber
 
-It takes a little over two hours on a 4-core machine without a GPU (EEVEE on software OpenGL, about 9 s a frame); a GPU is far faster. Every frame
+The arm moves about its real pivots (the slide's travel, the swivel's axis and
+the hinge axis, from `script_ground_radar.scad`), and the phone is the CAD's
+stand-in (147.6 x 71.6 x 8.3 mm).
+
+It takes about three hours on a 4-core machine without a GPU (EEVEE on software OpenGL, about 9 s a frame); a GPU is far faster. Every frame
 is the CAD geometry, and the cards say so: "prototype design, CAD renders,
 not product footage". Nothing in them shows or implies a speed, an accuracy
 or any other result the prototype has not produced. The videos are build
