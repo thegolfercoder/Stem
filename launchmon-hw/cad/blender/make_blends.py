@@ -77,6 +77,8 @@ GROUND = {
              explode=[0, 0, -25], props={"print_file": "ground_radar_dock_base.stl"}),
         dict(part="in_place:arm_slide", name="Phone arm slide", collection=PRINTED, **PETG_LID,
              explode=[0, 60, 30], props={"print_file": "ground_radar_arm_slide.stl"}),
+        dict(part="in_place:arm_swivel", name="Phone arm swivel", collection=PRINTED, **PETG_LID,
+             explode=[0, 70, 40], props={"print_file": "ground_radar_arm_swivel.stl"}),
         dict(part="in_place:arm_head", name="Phone arm MagSafe head", collection=PRINTED, **PETG_LID,
              explode=[0, 80, 50], props={"print_file": "ground_radar_arm_head_magsafe.stl"}),
         dict(part="ghost:battery", name="LiPo 1500 mAh", collection=COMPONENTS,

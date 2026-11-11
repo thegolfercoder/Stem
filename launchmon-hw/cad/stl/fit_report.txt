@@ -40,19 +40,19 @@
   ok   sight: rear blade clear of cap   : 8.1 mm
   ok   sight: rear blade inside corner  : 3.9 mm
   ok   sight: groove starts behind ramp : 0.6 mm
-  ok   phone's lower edge over unit, 0 deg: 4.7 mm
-  ok   phone's lower edge over unit, 25 deg: 8.52264 mm
-  ok   phone's lower edge over unit, 35 deg: 12.0786 mm
-  ok   lens sightline over the unit (front): 110.433 mm
-  ok   lens sightline over the unit (rear) : 113.087 mm
-  ok   slide still 12 mm in the spine, open: 2 mm
+  ok   phone's lower edge over unit, 0 deg: 4.9 mm
+  ok   phone's lower edge over unit, 25 deg: 8.72264 mm
+  ok   phone's lower edge over unit, 35 deg: 12.2786 mm
+  ok   lens sightline over the unit (front): 110.624 mm
+  ok   lens sightline over the unit (rear) : 113.281 mm
+  ok   slide still 12 mm in the spine, open: 6 mm
   ok   spine below the unit's top edge     : 1 mm
-  ok   folded head inside the dock (Z)     : 2 mm
+  ok   folded head inside the dock (Z)     : 2.2 mm
   ok   folded head clear of pocket wall    : 0.3 mm
   ok   folded head inside the lid's width  : 16 mm
   ok   pod pocket walls hold half the pod  : 1 mm
   ok   pod pocket over the pod, a side     : 0.3 mm
-  info  open arm, 25 deg: lens at [Y, Z] [48, 65.4641, 185.206] mm; phone's centre 48.4202 mm behind the unit's front, base ends at 68.5 (the phone is over the base: it cannot tip it backwards)
+  info  open arm, 25 deg: lens at [Y, Z] [48, 65.4641, 185.406] mm; phone's centre 48.4202 mm behind the unit's front, base ends at 68.5 (the phone is over the base: it cannot tip it backwards)
   info  radar window centre [76.1, 46.148], boresight 15 deg up, skin 1 mm
   info  USB-C receptacle centre X 74.95 Y 7.15
   info  sight radius 19.6 mm: 0.3 mm of eye misalignment = 0.876908 deg of aim, a Doppler speed error (1 - cos) of 0.0117118 %; eyeballing 10 deg off costs 1.51922 %

@@ -232,6 +232,15 @@ pin_d         = 3.0;
 pin_clear     = 0.25;
 tilt_default  = 25;             // deg back from vertical: frames ball, golfer and club at the top
 tilt_steps    = [0, 10, 20, 25, 30, 35];   // detents
+yaw_default   = 20;             // deg the head turns toward the golfer (+ for a right-hander, - for a left-hander)
+yaw_step      = 5;              // swivel detents every 5 deg, +-yaw_max
+yaw_max       = 25;
+swivel_d      = 12.0;           // swivel drum in the slide's cup
+swivel_h      = 4.2;            // drum height: the tilt axis rises this much over the old tab
+head_style    = "magsafe";      // [magsafe, clamp]: the phone head on the arm
+clamp_range   = [65, 80];       // phone widths the clamp takes, mm
+clamp_hook    = [6.0, 3.0];     // jaw lip [reach over the screen, thickness]
+clamp_pitch   = 2.0;            // ratchet tooth pitch
 arm_open      = false;          // assembly view: arm up (true) or folded flat (false)
 pod_pocket    = [34.1, 33.0, 14];   // pod lying on a side face [X, Y, wall height]: snug, half its height walled.
                                    // X: the 33.5 mm pod (script_shaft_imu.scad) + 0.3 a side
@@ -1136,13 +1145,13 @@ spine_y1 = spine_y0 + arm_t;                        // spine rear face
 ch_w     = slide_w + 2 * slide_clear;               // channel inside the spine
 ch_t     = slide_t + 2 * slide_clear;
 ch_y0    = spine_y0 + (arm_t - ch_t) / 2;
-ch_floor = 3;                                       // channel floor, Z
+ch_floor = -1;                                      // channel floor, Z: 1 mm into the base plate, so the folded swivel sits no higher
 slide_y0 = ch_y0 + slide_clear;
 hinge_y  = spine_y1 + head_t / 2 + 0.6;             // hinge axis: the folded head's mid-plane, behind the spine
 detent_z = [ch_floor + 8, ch_floor + 8 + slide_ext];    // spine holes the slide's bump clicks into: stored, open
 pp_out   = [pod_pocket[0] + 2 * pod_wall, pod_pocket[1] + 2 * pod_wall];
 function slide_z0(open) = ch_floor + (open ? slide_ext : 0);
-function hinge_z(open) = slide_z0(open) + slide_len + knuckle_d / 2 - 1;
+function hinge_z(open) = slide_z0(open) + slide_len + swivel_h + knuckle_d / 2 - 1;
 
 module chamfer_box(size, c) {
     // A box with every edge chamfered by c, from the origin.
@@ -1178,78 +1187,172 @@ module pod_pocket_cut() {
 
 module arm_slide(open = arm_open) {
     // A flat plate in the spine's channel. At its top a tab reaches back over
-    // the spine to the hinge, whose middle knuckle carries the tilt detents.
+    // the spine to a cup the swivel turns in.
     z0 = slide_z0(open);
+    top = z0 + slide_len;
     translate([body_w / 2 - slide_w / 2, slide_y0, z0]) chamfer_box([slide_w, slide_t, slide_len], 0.4);
     // Bump that clicks into the spine's detent holes.
     translate([body_w / 2, slide_y0 + slide_t - 0.01, z0 + 8]) y_cylinder(0.6, 2.0);
-    // Tab and middle knuckle.
-    hz = hinge_z(open);
     difference() {
         hull() {
-            translate([body_w / 2 - 6, slide_y0, z0 + slide_len - 3]) cube([12, slide_t, 3]);
-            translate([body_w / 2 - 6, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 12, d = knuckle_d);
+            translate([body_w / 2 - 6, slide_y0, top - 3]) cube([12, slide_t, 3 + swivel_h - 0.2]);
+            translate([body_w / 2, hinge_y, top - 1.2]) cylinder(h = swivel_h + 1.0, d = swivel_d + 3.2, $fn = 64);
+        }
+        // Cup and the swivel's peg hole.
+        translate([body_w / 2, hinge_y, top]) cylinder(h = swivel_h, d = swivel_d + 0.4, $fn = 64);
+        translate([body_w / 2, hinge_y, top - 2]) cylinder(h = 3, d = pin_d + 2 * pin_clear, $fn = 24);
+        // Detent notches in the cup wall, every yaw_step.
+        for (a = [-yaw_max : yaw_step : yaw_max]) translate([body_w / 2, hinge_y, top + 0.6]) rotate([0, 0, 90 + a])
+            translate([swivel_d / 2 + 0.1, -0.5, 0]) cube([0.6, 1.0, swivel_h]);
+    }
+}
+
+// Swivel: a drum in the slide's cup, turning toward the golfer, carrying the
+// tilt hinge's middle knuckle. A rib on the drum clicks into the cup's notches.
+module arm_swivel(open = arm_open, yaw = yaw_default) {
+    top = slide_z0(open) + slide_len;
+    hz = hinge_z(open);
+    y = open ? yaw : 0;
+    translate([body_w / 2, hinge_y, 0]) rotate([0, 0, y]) translate([-body_w / 2, -hinge_y, 0]) difference() {
+        union() {
+            translate([body_w / 2, hinge_y, top + 0.2]) cylinder(h = swivel_h - 0.2, d = swivel_d, $fn = 64);
+            translate([body_w / 2, hinge_y, top - 1.8]) cylinder(h = 2.2, d = pin_d, $fn = 24);   // peg
+            translate([body_w / 2, hinge_y, top + 0.8]) rotate([0, 0, 90])
+                translate([swivel_d / 2 - 0.2, -0.4, 0]) cube([0.6, 0.8, swivel_h - 1.2]);       // detent rib
+            hull() {
+                translate([body_w / 2 - 6, hinge_y - swivel_d / 2 + 1, top + swivel_h - 0.6]) cube([12, swivel_d - 2, 0.6]);
+                translate([body_w / 2 - 6, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 12, d = knuckle_d);
+            }
         }
         translate([body_w / 2 - 7, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 14, d = pin_d + 2 * pin_clear);
-        // Detent notches every tilt step on the knuckle's ends (shown as grooves).
+        // Tilt detent grooves on the knuckle, every tilt step.
         for (a = tilt_steps) translate([body_w / 2 - 6.4, hinge_y, hz]) rotate([a, 0, 0])
             translate([0, -0.4, knuckle_d / 2 - 0.5]) cube([12.8, 0.8, 1]);
     }
 }
 
-module arm_head_2d() {
-    circle(d = head_d, $fn = 128);
+// Places a head: up from the hinge and tilted back, turned with the swivel;
+// or folded down over the spine.
+module head_place(open, tilt, yaw) {
+    hz = hinge_z(open);
+    translate([body_w / 2, hinge_y, 0]) rotate([0, 0, open ? yaw : 0]) translate([-body_w / 2, -hinge_y, 0])
+        translate([0, hinge_y, hz]) rotate([open ? -tilt : 180, 0, 0]) translate([0, -hinge_y, -hz]) children();
 }
-module arm_head(open = arm_open, tilt = tilt_default) {
+head_cz_off = knuckle_d / 2 + head_d / 2 - 1;   // head centre above the hinge axis
+
+module head_knuckles(hz) {
+    for (x = [body_w / 2 - 13.5, body_w / 2 + 6.5])
+        hull() {
+            translate([x, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 7, d = knuckle_d);
+            translate([x, hinge_y - head_t / 2, hz + knuckle_d / 2]) cube([7, head_t, 2]);
+        }
+}
+
+module arm_head(open = arm_open, tilt = tilt_default, yaw = yaw_default) {
     // The round MagSafe head. Open: up from the hinge, tilted back. Folded:
     // hanging down over the spine, its plain face out.
     hz = hinge_z(open);
-    translate([0, hinge_y, hz]) rotate([open ? -tilt : 180, 0, 0]) translate([0, -hinge_y, -hz]) {
-        difference() {
-            union() {
-                // Disc, its centre a radius plus a little above the hinge.
-                translate([body_w / 2, hinge_y - head_t / 2, hz + knuckle_d / 2 + head_d / 2 - 1])
-                    rotate([-90, 0, 0]) hull() {
-                        cylinder(h = head_t, d = head_d - 1.2, $fn = 128);
-                        translate([0, 0, 0.6]) cylinder(h = head_t - 1.2, d = head_d, $fn = 128);
-                    }
-                // Two outer knuckles either side of the slide's.
-                for (x = [body_w / 2 - 13.5, body_w / 2 + 6.5])
-                    hull() {
-                        translate([x, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 7, d = knuckle_d);
-                        translate([x, hinge_y - head_t / 2, hz + knuckle_d / 2]) cube([7, head_t, 2]);
-                    }
-            }
-            // Pin bore.
-            translate([body_w / 2 - 15, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 30, d = pin_d + 2 * pin_clear);
-            // Magnet ring pocket on the phone side (+Y, away from the unit when open).
-            translate([body_w / 2, hinge_y + head_t / 2 - ring_depth, hz + knuckle_d / 2 + head_d / 2 - 1]) difference() {
-                y_cylinder(ring_depth + 1, ring_od);
-                translate([0, -1, 0]) y_cylinder(ring_depth + 3, ring_id);
-            }
+    head_place(open, tilt, yaw) difference() {
+        union() {
+            translate([body_w / 2, hinge_y - head_t / 2, hz + head_cz_off])
+                rotate([-90, 0, 0]) hull() {
+                    cylinder(h = head_t, d = head_d - 1.2, $fn = 128);
+                    translate([0, 0, 0.6]) cylinder(h = head_t - 1.2, d = head_d, $fn = 128);
+                }
+            head_knuckles(hz);
         }
+        translate([body_w / 2 - 15, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 30, d = pin_d + 2 * pin_clear);
+        // Magnet ring pocket on the phone side (+Y, away from the unit when open).
+        translate([body_w / 2, hinge_y + head_t / 2 - ring_depth, hz + head_cz_off]) difference() {
+            y_cylinder(ring_depth + 1, ring_od);
+            translate([0, -1, 0]) y_cylinder(ring_depth + 3, ring_id);
+        }
+    }
+}
+
+// The clamp ("lock") head, for phones without MagSafe: a stem up from the
+// knuckles to a cross bar at the phone's middle. A fixed jaw at one end; a
+// sliding jaw on the bar, pushed in against the phone, held by a ratchet:
+// a flexing pawl on the jaw over saw teeth on the bar. Lift the pawl to open.
+cl_bar  = [clamp_range[1] + 2 * 7 + 4, 10, head_t];   // [length X, height Z, thickness Y]
+cl_x0   = body_w / 2 - clamp_range[1] / 2;            // fixed jaw's inner face (phones sit to it)
+module clamp_hook_2d(h) {   // jaw profile [Y, Z] in the bar's plane: up the phone's side and over its screen
+    polygon([[0, 0], [phone[2] + 0.6 + clamp_hook[1], 0], [phone[2] + 0.6 + clamp_hook[1], h],
+             [phone[2] + 0.6, h], [phone[2] + 0.6, clamp_hook[0] * 0 + h - 0.01], [0, h]]);
+}
+module arm_clamp(open = arm_open, tilt = tilt_default, yaw = yaw_default) {
+    hz = hinge_z(open);
+    cz = hz + head_cz_off;
+    head_place(open, tilt, yaw) difference() {
+        union() {
+            // Stem from the knuckles to the bar.
+            translate([body_w / 2 - 9, hinge_y - head_t / 2, hz + knuckle_d / 2 - 1]) chamfer_box([18, head_t, cz - hz - knuckle_d / 2 + 6], 0.6);
+            // Cross bar.
+            translate([cl_x0 - 7, hinge_y - head_t / 2, cz - cl_bar[1] / 2]) chamfer_box([cl_bar[0], head_t, cl_bar[1]], 0.6);
+            // Fixed jaw: a wall up the phone's side, with a lip over its screen.
+            translate([cl_x0 - 3, hinge_y + head_t / 2, cz - cl_bar[1] / 2]) {
+                cube([3, phone[2] + 0.6 + clamp_hook[1], cl_bar[1]]);
+                translate([0, phone[2] + 0.6, 0]) cube([3 + clamp_hook[0], clamp_hook[1], cl_bar[1]]);
+            }
+            // Ratchet teeth along the bar's top edge, for the sliding jaw's pawl.
+            for (x = [cl_x0 + clamp_range[0] - 2 : clamp_pitch : cl_x0 + clamp_range[1] + 6])
+                translate([x, hinge_y - head_t / 2, cz + cl_bar[1] / 2 - 0.01])
+                    rotate([90, 0, 0]) mirror([0, 0, 1]) linear_extrude(head_t) polygon([[0, 0], [clamp_pitch, 0], [clamp_pitch, 1.0]]);
+            head_knuckles(hz);
+        }
+        translate([body_w / 2 - 15, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 30, d = pin_d + 2 * pin_clear);
+    }
+}
+// The sliding jaw: a sleeve round the bar, the mirror of the fixed jaw, and a
+// pawl that flexes over the teeth.
+module arm_clamp_jaw(open = arm_open, tilt = tilt_default, yaw = yaw_default, width = phone[0]) {
+    hz = hinge_z(open);
+    cz = hz + head_cz_off;
+    x1 = cl_x0 + width;                                  // its inner face, on the phone's other side
+    head_place(open, tilt, yaw) {
+        difference() {
+            translate([x1, hinge_y - head_t / 2 - 1.6, cz - cl_bar[1] / 2 - 1.6]) chamfer_box([10, head_t + 3.2, cl_bar[1] + 3.2 + 1.2], 0.5);
+            translate([x1 - 1, hinge_y - head_t / 2 - 0.2, cz - cl_bar[1] / 2 - 0.2]) cube([12, head_t + 0.4, cl_bar[1] + 1.4]);
+        }
+        translate([x1, hinge_y + head_t / 2 + 1.6 - 0.01, cz - cl_bar[1] / 2]) {
+            cube([3, phone[2] + 0.6 + clamp_hook[1] - 1.6, cl_bar[1]]);
+            translate([-clamp_hook[0], phone[2] + 0.6 - 1.6, 0]) cube([3 + clamp_hook[0], clamp_hook[1], cl_bar[1]]);
+        }
+        // Pawl: a tongue along the top, its tooth dropping onto the bar's teeth.
+        translate([x1 + 10, hinge_y - head_t / 2, cz + cl_bar[1] / 2 + 1.0]) cube([8, head_t, 1.0]);
+        translate([x1 + 16, hinge_y - head_t / 2, cz + cl_bar[1] / 2 + 0.2]) cube([2, head_t, 0.9]);
     }
 }
 module arm_pin() { rotate([0, 90, 0]) cylinder(h = 28, d = pin_d); }
 
-// The phone on the open head: back to the ring, centred on it.
-module phone_ghost(tilt = tilt_default) {
+// The phone on the open head: back to the head, centred on it.
+module phone_ghost(tilt = tilt_default, yaw = yaw_default) {
     hz = hinge_z(true);
-    c = [body_w / 2, hinge_y, hz + knuckle_d / 2 + head_d / 2 - 1];
-    translate([0, hinge_y, hz]) rotate([-tilt, 0, 0]) translate([0, -hinge_y, -hz])
+    c = [body_w / 2, hinge_y, hz + head_cz_off];
+    head_place(true, tilt, yaw)
         translate([c[0] - phone[0] / 2, c[1] + head_t / 2 + 0.2, c[2] - phone[1] / 2]) cube([phone[0], phone[2], phone[1]]);
 }
-// Lens: a point on the phone's back, phone_lens_from_top below its top edge.
-function lens_pos(tilt = tilt_default) = let(hz = hinge_z(true), r = knuckle_d / 2 + head_d / 2 - 1 + phone[1] / 2 - phone_lens_from_top,
+// Lens: a point on the phone's back, phone_lens_from_top below its top edge (yaw 0).
+function lens_pos(tilt = tilt_default) = let(hz = hinge_z(true), r = head_cz_off + phone[1] / 2 - phone_lens_from_top,
     y = hinge_y + head_t / 2 + 0.2) [body_w / 2, hinge_y + r * sin(tilt) + (y - hinge_y) * cos(tilt), hz + r * cos(tilt) - (y - hinge_y) * sin(tilt)];
-function phone_bottom(tilt) = let(hz = hinge_z(true), r = knuckle_d / 2 + head_d / 2 - 1 - phone[1] / 2)
+function phone_bottom(tilt) = let(hz = hinge_z(true), r = head_cz_off - phone[1] / 2)
     [hinge_y + r * sin(tilt), hz + r * cos(tilt)];
 
-// Print orientations: slide flat (tab up), head on its plain face, pin flat.
+// Print orientations: slide flat (tab up), swivel drum down, heads on their
+// back faces, pin flat.
 module arm_slide_print() { translate([-body_w / 2 + slide_w / 2, slide_len + slide_z0(false) + 12, -slide_y0]) rotate([90, 0, 0]) arm_slide(false); }
+module arm_swivel_print() { translate([-body_w / 2, -hinge_y, -(slide_z0(false) + slide_len) + 1.8]) arm_swivel(false); }
 module arm_head_print() {
     hz = hinge_z(true);
-    translate([0, 0, head_t / 2]) rotate([90, 0, 0]) translate([-body_w / 2, -hinge_y, -(hz + knuckle_d / 2 + head_d / 2 - 1)]) arm_head(true, 0);
+    translate([0, 0, head_t / 2]) rotate([90, 0, 0]) translate([-body_w / 2, -hinge_y, -(hz + head_cz_off)]) arm_head(true, 0, 0);
+}
+module arm_clamp_print() {
+    hz = hinge_z(true);
+    translate([0, 0, head_t / 2]) rotate([90, 0, 0]) translate([-body_w / 2, -hinge_y, -(hz + head_cz_off)]) arm_clamp(true, 0, 0);
+}
+module arm_clamp_jaw_print() {
+    hz = hinge_z(true);
+    translate([0, 0, head_t / 2 + 1.6]) rotate([90, 0, 0]) translate([-body_w / 2, -hinge_y, -(hz + head_cz_off)]) arm_clamp_jaw(true, 0, 0);
 }
 module arm_pin_print() { translate([0, 0, pin_d / 2]) arm_pin(); }
 
@@ -1828,6 +1931,16 @@ if (part == "shell") {
     arm_slide_print();
 } else if (part == "arm_head") {
     arm_head_print();
+} else if (part == "arm_swivel") {
+    arm_swivel_print();
+} else if (part == "arm_clamp") {
+    arm_clamp_print();
+} else if (part == "arm_clamp_jaw") {
+    arm_clamp_jaw_print();
+} else if (part == "in_place:arm_swivel") {
+    arm_swivel();
+} else if (part == "in_place:arm_clamp") {
+    arm_clamp(); arm_clamp_jaw();
 } else if (part == "arm_pin") {
     arm_pin_print();
 } else if (part == "in_place:arm_slide") {
@@ -1884,7 +1997,11 @@ if (part == "shell") {
     dock_base();
     if (phone_mount) translate([0, 2 * explode, 0]) dock_stem();
     if (pod_park) translate([0, explode, 0]) pod_park_hood();
-    if (arm) { arm_slide(); arm_head(); if (arm_open) %phone_ghost(); }
+    if (arm) {
+        arm_slide(); arm_swivel();
+        if (head_style == "clamp") { arm_clamp(); arm_clamp_jaw(); } else arm_head();
+        if (arm_open) %phone_ghost();
+    }
     if (show_components) ghosts();
 }
 

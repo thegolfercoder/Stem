@@ -31,6 +31,9 @@ export_part script_ground_radar.scad dock_base       ground_radar_dock_base.stl
 export_part script_ground_radar.scad arm_slide       ground_radar_arm_slide.stl
 export_part script_ground_radar.scad arm_head        ground_radar_arm_head_magsafe.stl
 export_part script_ground_radar.scad arm_pin         ground_radar_arm_pin.stl
+export_part script_ground_radar.scad arm_swivel      ground_radar_arm_swivel.stl
+export_part script_ground_radar.scad arm_clamp       ground_radar_arm_head_clamp.stl
+export_part script_ground_radar.scad arm_clamp_jaw   ground_radar_arm_clamp_jaw.stl
 echo "shaft motion pod"
 export_part script_shaft_imu.scad    base            shaft_pod_base.stl
 export_part script_shaft_imu.scad    lid             shaft_pod_lid.stl

@@ -65,6 +65,9 @@ PARTS = [
     Part("ground_radar_arm_slide.stl", "ground", note="folding phone arm"),
     Part("ground_radar_arm_head_magsafe.stl", "ground", note="MagSafe head"),
     Part("ground_radar_arm_pin.stl", "ground", note="hinge pin"),
+    Part("ground_radar_arm_swivel.stl", "ground", note="swivel: turns the head toward the golfer"),
+    Part("ground_radar_arm_head_clamp.stl", "ground", kit=False, note="clamp head: instead of the MagSafe head, for phones without MagSafe"),
+    Part("ground_radar_arm_clamp_jaw.stl", "ground", kit=False, note="the clamp head's sliding jaw"),
     Part("shaft_pod_base.stl", "pod"),
     Part("shaft_pod_lid.stl", "pod"),
     Part("shaft_pod_strap_TPU.stl", "pod", density=1.21, usd_kg=30.0, note="TPU 95A"),
@@ -170,7 +173,7 @@ def main() -> None:
         "Labour (support removal, inserts, assembly) is not included.",
     ]
     if extras:
-        lines += ["", "Not in the kit total (printed once, before the first kit):"]
+        lines += ["", "Not in the kit total (alternatives, printed instead of a kit part):"]
         for p, e in extras:
             g, m = e.grams * p.qty, e.minutes * p.qty
             usd = (g / 1000.0 * filament_usd_kg + (m + JOB_OVERHEAD_MIN) / 60.0 * farm_usd_h) * FAILURE_ALLOWANCE
