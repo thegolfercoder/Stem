@@ -138,13 +138,13 @@ for the slicer settings.
 | `shaft_pod_lid.stl` | Pod | 1 | Outside face down |
 | `shaft_pod_strap_TPU.stl` | Pod | 1 (print a spare) | Flat, outer face down. **TPU 95A, not PETG**: it has to stretch. Its length comes from `shaft_d` |
 
-About **86 g** of filament and **5.1 hours** of printing for both units (85.9 g,
-5.08 h), with no supports anywhere. `cad/cost_report.py` estimates it from the
-STLs and writes `cad/stl/cost_report.txt`: about $1.72 of filament, $3.95 a kit
-on your own printer and $9.82 at a print-farm machine rate, against a $5-10
+About **87 g** of filament and **5.1 hours** of printing for both units (86.7 g,
+5.13 h), with no supports anywhere. `cad/cost_report.py` estimates it from the
+STLs and writes `cad/stl/cost_report.txt`: about $1.74 of filament, $3.98 a kit
+on your own printer and $9.90 at a print-farm machine rate, against a $5-10
 budget for the printed parts. That total is with the MagSafe head. The clamp
-head and its jaw are listed apart as an alternative (5.4 g and 1.2 g; $0.68 and
-$0.36 at the farm rate, each on its own plate). Those are estimates, within about 20% of a slice; slice the STLs with
+head and its jaw are listed apart as an alternative (6.3 g and 1.3 g; $0.78 and
+$0.39 at the farm rate, each on its own plate). Those are estimates, within about 20% of a slice; slice the STLs with
 your printer's profile before quoting a price.
 
 ## 4. Tools

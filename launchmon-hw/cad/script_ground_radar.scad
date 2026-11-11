@@ -242,10 +242,10 @@ clamp_range   = [65, 80];       // phone widths the clamp takes, mm
 clamp_hook    = [6.0, 3.0];     // jaw lip [reach over the screen, thickness]
 clamp_pitch   = 2.0;            // ratchet tooth pitch
 arm_open      = false;          // assembly view: arm up (true) or folded flat (false)
-pod_pocket    = [34.1, 33.0, 14];   // pod lying on a side face [X, Y, wall height]: snug, half its height walled.
+pod_pocket    = [34.1, 33.0, 13];   // pod lying on a side face [X, Y, wall height]: snug, half its height walled.
                                    // X: the 33.5 mm pod (script_shaft_imu.scad) + 0.3 a side
-pod_wall      = 2.0;
-pod_pocket_y0 = 33.5;             // pocket's front inner edge, behind the folded head
+pod_wall      = 1.6;
+pod_pocket_y0 = 35.9;             // pocket's front inner edge, behind the folded head
 // 1/4"-20 stud: a 1/4"-20 x 1/2" hex bolt, glued head-down in a hex pocket that
 // opens under the cap, thread up. Tripod screws stand 4.5-6 mm proud.
 cap           = [30, 22, 11.4]; // [X, Y from the stem's front face, Z]
@@ -1147,7 +1147,7 @@ ch_t     = slide_t + 2 * slide_clear;
 ch_y0    = spine_y0 + (arm_t - ch_t) / 2;
 ch_floor = -1;                                      // channel floor, Z: 1 mm into the base plate, so the folded swivel sits no higher
 slide_y0 = ch_y0 + slide_clear;
-hinge_y  = spine_y1 + head_t / 2 + 0.6;             // hinge axis: the folded head's mid-plane, behind the spine
+hinge_y  = spine_y1 + head_t / 2 + (knuckle_d / 2 - head_t / 2 + 0.4) + 0.6;   // hinge axis: the folded head's mid-plane, its raised phone face (phone_standoff) clear of the spine
 detent_z = [ch_floor + 8, ch_floor + 8 + slide_ext];    // spine holes the slide's bump clicks into: stored, open
 pp_out   = [pod_pocket[0] + 2 * pod_wall, pod_pocket[1] + 2 * pod_wall];
 function slide_z0(open) = ch_floor + (open ? slide_ext : 0);
@@ -1239,6 +1239,10 @@ module head_place(open, tilt, yaw) {
         translate([0, hinge_y, hz]) rotate([open ? -tilt : 180, 0, 0]) translate([0, -hinge_y, -hz]) children();
 }
 head_cz_off = knuckle_d / 2 + head_d / 2 - 1;   // head centre above the hinge axis
+// The phone's face stands this far proud of the head, so the phone's back clears
+// the hinge knuckles (8 mm across on a 4 mm head) by 0.4 mm: a raised face that
+// carries the magnet ring (MagSafe) or the jaws (clamp).
+phone_standoff = knuckle_d / 2 - head_t / 2 + 0.4;
 
 module head_knuckles(hz) {
     for (x = [body_w / 2 - 13.5, body_w / 2 + 6.5])
@@ -1260,10 +1264,21 @@ module arm_head(open = arm_open, tilt = tilt_default, yaw = yaw_default) {
                     translate([0, 0, 0.6]) cylinder(h = head_t - 1.2, d = head_d, $fn = 128);
                 }
             head_knuckles(hz);
+            // Raised face that carries the ring, chamfered at its edge.
+            // A ring, not a disc: the phone only bears on the magnet ring.
+            translate([body_w / 2, hinge_y + head_t / 2 - 0.01, hz + head_cz_off]) difference() {
+                hull() {
+                    y_cylinder(phone_standoff - 0.5 + 0.01, ring_od + 2.5);
+                    y_cylinder(phone_standoff + 0.01, ring_od + 1.5);
+                }
+                translate([0, -1, 0]) y_cylinder(phone_standoff + 2, ring_id - 3);
+            }
         }
         translate([body_w / 2 - 15, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 30, d = pin_d + 2 * pin_clear);
+        // Shallow recess inside the ring, behind the phone: material it does not need.
+        translate([body_w / 2, hinge_y + head_t / 2 - 1.6, hz + head_cz_off]) y_cylinder(1.6 + phone_standoff + 1, ring_id - 5);
         // Magnet ring pocket on the phone side (+Y, away from the unit when open).
-        translate([body_w / 2, hinge_y + head_t / 2 - ring_depth, hz + head_cz_off]) difference() {
+        translate([body_w / 2, hinge_y + head_t / 2 + phone_standoff - ring_depth, hz + head_cz_off]) difference() {
             y_cylinder(ring_depth + 1, ring_od);
             translate([0, -1, 0]) y_cylinder(ring_depth + 3, ring_id);
         }
@@ -1288,9 +1303,9 @@ module arm_clamp(open = arm_open, tilt = tilt_default, yaw = yaw_default) {
             // Stem from the knuckles to the bar.
             translate([body_w / 2 - 9, hinge_y - head_t / 2, hz + knuckle_d / 2 - 1]) chamfer_box([18, head_t, cz - hz - knuckle_d / 2 + 6], 0.6);
             // Cross bar.
-            translate([cl_x0 - 7, hinge_y - head_t / 2, cz - cl_bar[1] / 2]) chamfer_box([cl_bar[0], head_t, cl_bar[1]], 0.6);
+            translate([cl_x0 - 7, hinge_y - head_t / 2, cz - cl_bar[1] / 2]) chamfer_box([cl_bar[0], head_t + phone_standoff, cl_bar[1]], 0.6);
             // Fixed jaw: a wall up the phone's side, with a lip over its screen.
-            translate([cl_x0 - 3, hinge_y + head_t / 2, cz - cl_bar[1] / 2]) {
+            translate([cl_x0 - 3, hinge_y + head_t / 2 + phone_standoff, cz - cl_bar[1] / 2]) {
                 cube([3, phone[2] + 0.6 + clamp_hook[1], cl_bar[1]]);
                 translate([0, phone[2] + 0.6, 0]) cube([3 + clamp_hook[0], clamp_hook[1], cl_bar[1]]);
             }
@@ -1311,10 +1326,10 @@ module arm_clamp_jaw(open = arm_open, tilt = tilt_default, yaw = yaw_default, wi
     x1 = cl_x0 + width;                                  // its inner face, on the phone's other side
     head_place(open, tilt, yaw) {
         difference() {
-            translate([x1, hinge_y - head_t / 2 - 1.6, cz - cl_bar[1] / 2 - 1.6]) chamfer_box([10, head_t + 3.2, cl_bar[1] + 3.2 + 1.2], 0.5);
-            translate([x1 - 1, hinge_y - head_t / 2 - 0.2, cz - cl_bar[1] / 2 - 0.2]) cube([12, head_t + 0.4, cl_bar[1] + 1.4]);
+            translate([x1, hinge_y - head_t / 2 - 1.6, cz - cl_bar[1] / 2 - 1.6]) chamfer_box([10, head_t + phone_standoff + 3.2, cl_bar[1] + 3.2 + 1.2], 0.5);
+            translate([x1 - 1, hinge_y - head_t / 2 - 0.2, cz - cl_bar[1] / 2 - 0.2]) cube([12, head_t + phone_standoff + 0.4, cl_bar[1] + 1.4]);
         }
-        translate([x1, hinge_y + head_t / 2 + 1.6 - 0.01, cz - cl_bar[1] / 2]) {
+        translate([x1, hinge_y + head_t / 2 + phone_standoff + 1.6 - 0.01, cz - cl_bar[1] / 2]) {
             cube([3, phone[2] + 0.6 + clamp_hook[1] - 1.6, cl_bar[1]]);
             translate([-clamp_hook[0], phone[2] + 0.6 - 1.6, 0]) cube([3 + clamp_hook[0], clamp_hook[1], cl_bar[1]]);
         }
@@ -1330,11 +1345,11 @@ module phone_ghost(tilt = tilt_default, yaw = yaw_default) {
     hz = hinge_z(true);
     c = [body_w / 2, hinge_y, hz + head_cz_off];
     head_place(true, tilt, yaw)
-        translate([c[0] - phone[0] / 2, c[1] + head_t / 2 + 0.2, c[2] - phone[1] / 2]) cube([phone[0], phone[2], phone[1]]);
+        translate([c[0] - phone[0] / 2, c[1] + head_t / 2 + phone_standoff + 0.2, c[2] - phone[1] / 2]) cube([phone[0], phone[2], phone[1]]);
 }
 // Lens: a point on the phone's back, phone_lens_from_top below its top edge (yaw 0).
 function lens_pos(tilt = tilt_default) = let(hz = hinge_z(true), r = head_cz_off + phone[1] / 2 - phone_lens_from_top,
-    y = hinge_y + head_t / 2 + 0.2) [body_w / 2, hinge_y + r * sin(tilt) + (y - hinge_y) * cos(tilt), hz + r * cos(tilt) - (y - hinge_y) * sin(tilt)];
+    y = hinge_y + head_t / 2 + phone_standoff + 0.2) [body_w / 2, hinge_y + r * sin(tilt) + (y - hinge_y) * cos(tilt), hz + r * cos(tilt) - (y - hinge_y) * sin(tilt)];
 function phone_bottom(tilt) = let(hz = hinge_z(true), r = head_cz_off - phone[1] / 2)
     [hinge_y + r * sin(tilt), hz + r * cos(tilt)];
 
@@ -1861,6 +1876,8 @@ module fit_report() {
         chk("folded head inside the dock (Z)     ", (hinge_z(false) - knuckle_d / 2 - head_d) - 0),
         chk("folded head clear of pocket wall    ", (pod_pocket_y0 - pod_wall) - (hinge_y + head_t / 2) - 0.3),
         chk("folded head inside the lid's width  ", (body_w - head_d) / 2 - 2),
+        chk("phone's back clear of the knuckles  ", (head_t / 2 + phone_standoff + 0.2) - knuckle_d / 2 - 0.3),
+        chk("folded head's raised face to spine  ", (hinge_y - head_t / 2 - phone_standoff) - spine_y1 - 0.3),
         chk("pod pocket walls hold half the pod  ", pod_pocket[2] - 26 / 2),
         chk("pod pocket over the pod, a side     ", (pod_pocket[0] - pp_size[0]) / 2),
     ];

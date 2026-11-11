@@ -77,8 +77,8 @@ What sets it apart, for little or no added cost:
 - **The radome is the one colour choice:** smoke, ice or amber, on a matte black
   body.
 
-All printed parts for both units come to about 84 g and 4.9 hours, an estimated
-$3.84 a kit on your own printer or $9.53 at a print-farm rate, within the
+All printed parts for both units come to about 87 g and 5.1 hours, an estimated
+$3.98 a kit on your own printer or $9.90 at a print-farm rate, within the
 $5-10 budget (`cad/stl/cost_report.txt`).
 
 ## Where it departs from the brief, and why
@@ -149,7 +149,7 @@ Each of these is also explained where it happens, in the CAD and the docs.
 | Clearances in the fit report | All `ok`. Tightest: 0.07 mm (window bevel inside the R12 corner), 0.3 mm (radar posts on their pads, the folded phone head clear of the pod pocket's wall, the pod strap's latch) |
 | Phone on the open arm, 25° | From the fit report, with a 147.6 mm stand-in phone: lower edge 8.5 mm over the unit, lens sightline over 100 mm clear, centre over the base. Not checked on a print |
 | Radar window: 1.0 mm radome, 15° tilt, module parallel behind it | Confirmed on a rendered cutaway |
-| Printed-part cost | Estimated from the STLs (`cost_report.py`): 84 g, 4.9 h, $3.84 a kit on your own printer, $9.53 at $1.50/h (within $10). Not yet sliced |
+| Printed-part cost | Estimated from the STLs (`cost_report.py`): 87 g, 5.1 h, $3.98 a kit on your own printer, $9.90 at $1.50/h (within $10). Not yet sliced |
 | Firmware: C++ syntax, `-Wall -Wextra` | Clean, against stub headers: ground 0.5, pod 0.3 (see `firmware/README.md` for what that does not prove) |
 | Part sizes against datasheets and listings | Reviewed in [docs/hardware_review.md](docs/hardware_review.md); sellers disagree on several, so **measure before printing**: the 1500 mAh cell (up to 52 x 34.5 x 8.3 mm), TP4056 length and board thickness, MT3608 overall height (at most 8 mm), the slide switch and its lever, the radar module, the SuperMini's board thickness, and the pod's cell with its protection PCB (up to about 22 mm) and charger board (build instructions, section 0) |
 | I/Q skew-correction arithmetic | Checked on synthetic tones: about 62 dB image rejection |

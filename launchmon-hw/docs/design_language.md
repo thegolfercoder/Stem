@@ -57,14 +57,14 @@ writes `cad/stl/cost_report.txt` each time the STLs are exported.
 
 | | Before (prototype) | Now |
 |---|---|---|
-| Filament, both units | 98 g, including supports | 85.9 g, no supports |
+| Filament, both units | 98 g, including supports | 86.7 g, no supports |
 | Print time, both units | 5.7 h | 5.1 h |
-| Kit cost, own printer ($0.40/h) | $4.45 | **$3.95** |
-| Kit cost, print farm ($1.50/h) | $11.00 (over budget) | **$9.82** (within $5-10) |
+| Kit cost, own printer ($0.40/h) | $4.45 | **$3.98** |
+| Kit cost, print farm ($1.50/h) | $11.00 (over budget) | **$9.90** (within $5-10) |
 
 "Now" is with the MagSafe head and the swivel. The clamp head, printed instead
-of the MagSafe head, is listed apart in `cost_report.txt` ($0.68 for the head
-and $0.36 for its jaw at the farm rate).
+of the MagSafe head, is listed apart in `cost_report.txt` ($0.78 for the head
+and $0.39 for its jaw at the farm rate).
 
 These assume PETG (and TPU for the strap) at $20/kg and a conservative 4 mm³/s sustained flow. A
 faster printer roughly halves the time and the machine cost. The estimate is
@@ -77,7 +77,9 @@ hours over the stud stem and pod hood they replace. Most of it is the dock
 base, which now carries the spine and the pocket's walls (9.8 g to 23.6 g);
 the arm's three parts were 11.9 g. The swivel (commit 553162a) adds a fourth,
 0.8 g, and brings the arm to 12.9 g. The print-farm cost is near the top of the
-budget, at $9.82.
+budget, at $9.90. The raised ring that holds the phone clear of the hinge
+knuckles (item K) added about 1 g to the head; a shallow recess behind the
+phone and a slimmer pod pocket (1.6 mm walls, 13 mm deep) paid for most of it.
 
 ## What was left out, and why
 
