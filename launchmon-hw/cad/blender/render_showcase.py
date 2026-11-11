@@ -4,21 +4,25 @@
 
 Every object is the CAD geometry from the .blend (itself generated from the
 OpenSCAD). This script adds only lighting, a studio floor, camera moves,
-assembly timing, for the placement shot a turf plane, a ball on a tee and an
-illustrative radar beam, and for the colour shot two copies of the unit that
-differ only in the radome's material. Nothing here depicts a measurement.
+assembly timing, the arm's motion about its real pivots, a stand-in phone
+(script_ground_radar.scad's phone_ghost: a 147.6 x 71.6 x 8.3 mm slab), the
+pod (appended from shaft_pod.blend) in the dock's pocket, for the placement
+shot a turf plane, a ball on a tee and an illustrative radar beam, and for the
+colour shot two copies of the unit that differ only in the radome's material.
+Nothing here depicts a measurement.
 
-Shots: ground_hero, ground_assembly, ground_in_use, pod_park, radome_colours
+Shots: ground_hero, ground_assembly, arm_open, ground_in_use, radome_colours
 (ground_radar_unit.blend); pod_hero, pod_assembly, pod_mount (shaft_pod.blend).
 """
 
 from __future__ import annotations
 
 import math
+import os
 import sys
 
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 FPS = 24
 # Shots are timed in 30 fps frames and rendered at 24 fps: Blender's time
@@ -32,8 +36,22 @@ TIMED_FPS = 30
 WIN_CX, WIN_ZB, WIN_SIZE, WIN_TILT = 76.1, 33.0, 25.4, 15.0
 DOCK_T = 2.4              # the dock base is under the unit: its underside is the floor
 RANGE_FROM_TEE = 1400.0
-CAMERA_FROM_BALL, CAMERA_HEIGHT = 3000.0, 1000.0   # the filming phone, on a tripod (build_instructions 4.2)
 BEAM_AZ_DEG, BEAM_EL_DEG = 80.0, 40.0
+
+# The folding phone arm, from script_ground_radar.scad (echoed with openscad):
+# body_w, hinge_y, hinge_z(false), slide_ext, tilt_default, yaw_default,
+# head_cz_off, head_t. The slide rises SLIDE_EXT; the swivel turns about the
+# vertical axis through [BODY_W/2, HINGE_Y]; the head turns about the X axis
+# through [*, HINGE_Y, hinge z]. Folded, the head is at 180 deg about X from
+# upright; open it is at -TILT (tilted back) and turned YAW toward the golfer.
+BODY_W, HINGE_Y, HINGE_Z_FOLDED = 96.0, 28.9, 66.2
+SLIDE_EXT, TILT, YAW = 46.0, 25.0, 20.0
+HEAD_CZ_OFF, HEAD_T = 33.0, 4.0
+FLIP = 180.0 - TILT        # the head's turn about the hinge, folded to open: 180 -> 335 deg
+PHONE_W, PHONE_H, PHONE_T = 71.6, 147.6, 8.3   # phone = [W, H, T]; its back 0.2 mm off the head (phone_ghost)
+# The pod's pocket in the dock base (pod_pocket, pod_pocket_y0, pod_wall): the
+# pod lies on a side face, its Y axis up, its lid toward the rear.
+POCKET_X0, POCKET_X1, POCKET_Y0, POCKET_Y1 = 30.95, 65.05, 33.5, 66.5
 
 
 def args() -> list[str]:
@@ -48,12 +66,11 @@ def objects_in(col_name: str) -> list[bpy.types.Object]:
     return list(col.objects) if col else []
 
 
-PARKED = "Parked pod"   # the pod hanging in the ground unit's hood (ground .blend only)
-
-
 def product_objects() -> list[bpy.types.Object]:
-    phone = [o for o in objects_in("Reference") if o.name.startswith("Phone")]
-    return objects_in("Printed parts") + objects_in("Components (stand-ins)") + objects_in(PARKED) + phone
+    return objects_in("Printed parts") + objects_in("Components (stand-ins)")
+
+
+_matte = None
 
 
 def matte_black_finish() -> None:
@@ -68,16 +85,21 @@ def matte_black_finish() -> None:
         if key in bsdf.inputs:
             bsdf.inputs[key].default_value = 0.3
     mat.diffuse_color = (0.018, 0.018, 0.02, 1)
-    parked_printed = [o for o in objects_in(PARKED) if "print_file" in o]   # not its brass contacts
-    for o in objects_in("Printed parts") + parked_printed:
-        if o.name.startswith(("Radome", "Light pipe")):   # smoked and natural PETG keep theirs
-            continue
-        o.data.materials.clear()
-        o.data.materials.append(mat)
+    global _matte
+    _matte = mat
+    for o in objects_in("Printed parts"):
+        paint_matte(o)
 
 
-def hide_reference(keep: tuple[str, ...] = ("Phone",)) -> None:
-    """Hide reference geometry, except the stand-in phone on the MagSafe mount."""
+def paint_matte(o) -> None:
+    if o.name.startswith(("Radome", "Light pipe")):   # smoked and natural PETG keep theirs
+        return
+    o.data.materials.clear()
+    o.data.materials.append(_matte)
+
+
+def hide_reference(keep: tuple[str, ...] = ()) -> None:
+    """Hide reference geometry (the boresight arrow, the IMU axes), except names in keep."""
     for o in objects_in("Reference"):
         set_visible(o, o.name.startswith(keep))
 
@@ -243,85 +265,264 @@ def assemble(objs, order: list[list[str]], start: int, step: int, travel: int, e
                 key_loc(o, f0 + travel, a)
 
 
-PARK_RISE = 4.0   # the pod comes in under the hood this far low, then rises into its socket
+# ---------------------------------------------------------------------------
+#  The folding phone arm, the stand-in phone and the pod in its pocket
+# ---------------------------------------------------------------------------
+def obj(prefix: str) -> bpy.types.Object:
+    return next(o for o in product_objects() if o.name.startswith(prefix))
 
 
-def park_start(pod, floor_z: float) -> Vector:
-    """Where the pod waits before it parks: behind the lid, 3 mm off the floor."""
-    plo, _ = bounds(pod)
-    return Vector((0, 42, -(plo.z - floor_z) + 3))
+def empty(name: str, loc, parent=None) -> bpy.types.Object:
+    e = bpy.data.objects.new(name, None)
+    e.location = loc
+    bpy.context.scene.collection.objects.link(e)
+    if parent is not None:
+        attach(e, parent)
+    bpy.context.view_layer.update()
+    return e
 
 
-def park_path(objs, start: Vector, f_start: int, f_under: int, f_seat: int) -> None:
-    """The parked pod's way into the hood. It holds at `start` (an offset from
-    where it parks) until f_start, eases in to sit PARK_RISE under its socket
-    by f_under, clear of the hood, the lid and the dock's rear lip, then rises
-    straight up and seats by f_seat, slowing over the last few millimetres as
-    the magnets take it. Per-axis Bezier keys: X and Y stop at f_under, Z
-    carries on, so the pod glides in and then lifts without a pause."""
-    for o in objs:
-        a = o.location.copy()
-        key_loc(o, 1, a + start)
-        key_loc(o, f_start, a + start)
-        key_loc(o, f_under, a + Vector((0, 0, -PARK_RISE)))
-        key_loc(o, f_seat, a)
+def attach(child, parent) -> None:
+    """Parent, keeping the child where it is with the parent at rest."""
+    bpy.context.view_layer.update()
+    child.parent = parent
+    child.matrix_parent_inverse = parent.matrix_world.inverted()
+
+
+class Arm:
+    """The arm's three moving parts on their real pivots. The slide moves on
+    `lift`; the swivel turns on `yaw` (vertical axis through the drum), which
+    rides on the slide; the head turns on `hinge` (X axis through the
+    knuckles), which turns with the swivel. Each object stays in its folded,
+    as-exported mesh; only the pivots move."""
+
+    def __init__(self):
+        for o in (obj("Phone arm slide"), obj("Phone arm swivel"), obj("Phone arm MagSafe head")):
+            o.animation_data_clear()
+            o.location = (0, 0, 0)
+        self.lift = empty("Arm slide travel", (0, 0, 0))
+        self.yaw = empty("Arm swivel axis", (BODY_W / 2, HINGE_Y, 0), self.lift)
+        self.hinge = empty("Arm hinge axis", (0, HINGE_Y, HINGE_Z_FOLDED), self.yaw)
+        attach(obj("Phone arm slide"), self.lift)
+        attach(obj("Phone arm swivel"), self.yaw)
+        attach(obj("Phone arm MagSafe head"), self.hinge)
+        self.phone = None
+
+    def key(self, frame: int, lift: float | None = None, flip: float | None = None, yaw: float | None = None):
+        """lift 0..1 of SLIDE_EXT, flip 0..1 of FLIP, yaw in degrees."""
+        if lift is not None:
+            self.lift.location = (0, 0, SLIDE_EXT * lift)
+            self.lift.keyframe_insert("location", index=2, frame=frame)
+        if flip is not None:
+            self.hinge.rotation_euler = (math.radians(FLIP * flip), 0, 0)
+            self.hinge.keyframe_insert("rotation_euler", index=0, frame=frame)
+        if yaw is not None:
+            self.yaw.rotation_euler = (0, 0, math.radians(yaw))
+            self.yaw.keyframe_insert("rotation_euler", index=2, frame=frame)
+
+    def open_pose(self) -> None:
+        self.key(1, 1.0, 1.0, YAW)
+
+    def add_phone(self) -> bpy.types.Object:
+        """The stand-in phone (phone_ghost): portrait, its back 0.2 mm off the
+        head's phone-side face, centred on the head. Parented to the hinge, in
+        the folded frame: rotated 180 deg about the hinge like the head."""
+        bpy.ops.mesh.primitive_cube_add(size=1)
+        ph = bpy.context.object
+        ph.name = "Phone (stand-in)"
+        ph.data.transform(Matrix.Diagonal((PHONE_W, PHONE_T, PHONE_H, 1)))
+        bev = ph.modifiers.new("Rounded edges", "BEVEL")
+        bev.width, bev.segments, bev.limit_method = 2.6, 4, "ANGLE"
+        ph.data.materials.append(material("Phone body", (0.045, 0.047, 0.052, 1), 0.3, metallic=0.6))
+        # The screen: dark glass on the face away from the head.
+        bpy.ops.mesh.primitive_cube_add(size=1)
+        scr = bpy.context.object
+        scr.name = "Phone screen (stand-in)"
+        scr.data.transform(Matrix.Diagonal((PHONE_W - 3.0, 0.3, PHONE_H - 3.0, 1)))
+        scr.data.materials.append(material("Phone glass", (0.006, 0.007, 0.009, 1), 0.04))
+        scr.parent = ph
+        scr.location = (0, PHONE_T / 2 + 0.05, 0)
+        bpy.ops.object.select_all(action="DESELECT")
+        # Upright pose at the folded hinge, then folded through 180 deg like the head.
+        up = Matrix.Translation((BODY_W / 2, HINGE_Y + HEAD_T / 2 + 0.2 + PHONE_T / 2, HINGE_Z_FOLDED + HEAD_CZ_OFF))
+        about = Matrix.Translation((0, HINGE_Y, HINGE_Z_FOLDED))
+        self.phone_rest = about @ Matrix.Rotation(math.pi, 4, "X") @ about.inverted() @ up
+        ph.parent = self.hinge
+        ph.matrix_parent_inverse = Matrix.Translation((0, HINGE_Y, HINGE_Z_FOLDED)).inverted()   # the hinge at rest
+        ph.matrix_basis = self.phone_rest
+        self.phone = ph
+        return ph
+
+    def key_phone(self, frame: int, away: float, up: float = 0.0) -> None:
+        """Phone `away` mm off the head along its normal and `up` mm along the
+        head's long axis, in the head's own frame."""
+        self.phone.matrix_basis = self.phone_rest @ Matrix.Translation((0, away, up))
+        self.phone.keyframe_insert("location", frame=frame)
+        self.phone.keyframe_insert("rotation_euler", frame=frame)
+
+
+def load_pod() -> list[bpy.types.Object]:
+    """Append the pod's parts from shaft_pod.blend and lay them in the dock's
+    pocket. Returns the pod's objects, under one empty ("Pod in pocket")."""
+    path = os.path.join(os.path.dirname(bpy.data.filepath), "shaft_pod.blend")
+    with bpy.data.libraries.load(path, link=False) as (src, dst):
+        dst.collections = [c for c in src.collections if c in ("Printed parts", "Components (stand-ins)")]
+    pod = []
+    for col in dst.collections:
+        col.name = "Pod " + col.name.split(".")[0].lower()
+        bpy.context.scene.collection.children.link(col)
+        for o in col.objects:
+            o.animation_data_clear()
+            o.location = (0, 0, 0)
+            if "print_file" in o:
+                paint_matte(o)
+            pod.append(o)
+    lo, hi = bounds(pod)
+    # Lying on a side face: pod (x, y, z) -> (x, z, -y); centred in the pocket, on its floor.
+    rot = Matrix.Rotation(math.radians(-90), 4, "X")
+    size_x, size_y = hi.x - lo.x, hi.z - lo.z
+    t = Vector(((POCKET_X0 + POCKET_X1) / 2 - (lo.x + size_x / 2),
+                (POCKET_Y0 + POCKET_Y1) / 2 - (lo.z + size_y / 2),
+                hi.y + 0.05))
+    holder = empty("Pod in pocket", (0, 0, 0))
+    holder.matrix_world = Matrix.Translation(t) @ rot
+    bpy.context.view_layer.update()
+    for o in pod:
+        o.parent = holder
+        o.matrix_parent_inverse = Matrix()
+    bpy.context.view_layer.update()
+    return pod
+
+
+def back_fill(view: Vector, strength: float = 1.6) -> None:
+    """The back is matte black in the key's shadow: a soft fill from over the
+    camera's shoulder brings out its edges."""
+    sun("Back fill", -(view + Vector((0.3, 0, 0.5))), strength, 25, (0.95, 0.97, 1.0))
 
 
 # ---------------------------------------------------------------------------
 #  Shots
 # ---------------------------------------------------------------------------
 def shot_ground_hero():
-    # The product alone: unit and dock. The phone appears in the placement shot.
-    hide_reference(keep=())
-    objs = [o for o in product_objects() if not o.name.startswith("Phone")]
+    # The product alone: unit and dock, the arm folded, the pod in its pocket.
+    hide_reference()
+    objs = product_objects()
     assembled_and_exploded(objs)   # drop the .blend's explode animation: assembled throughout
+    objs += load_pod()
     lo, hi = bounds(objs)
     c, r = (lo + hi) / 2, (hi - lo).length / 2
     studio(lo.z, r)
+    back_fill(Vector((-0.5, 0.8, 0.4)).normalized(), 1.0)
     cam = camera(70)
     orbit(cam, c + Vector((0, 0, -6)), fit_distance(r, 70, 0.95), 14, -35, 250, 180, rise=r * 0.4)
     return 180
 
 
+def drop_in(objs, final_off: Vector, mid_off: Vector, f0: int, f_mid: int, f_end: int) -> None:
+    """Hold at final + final_off, glide to final + mid_off, then straight down home."""
+    for o in objs:
+        a = o.location.copy()
+        key_loc(o, 1, a + final_off)
+        key_loc(o, f0, a + final_off)
+        key_loc(o, f_mid, a + mid_off)
+        key_loc(o, f_end, a)
+
+
 def shot_ground_assembly():
-    hide_reference(keep=())   # no phone in this shot: it would hide the inside
-    objs = [o for o in product_objects() if not o.name.startswith("Phone")]
+    hide_reference()
+    objs = product_objects()
     lo, hi = bounds(objs)
     c, r = (lo + hi) / 2, (hi - lo).length / 2
     studio(lo.z, r)
-    # Inside first, the buzzer on the left wall with the cell; then the lid with
-    # the MT3608 and the pod park's protection board on it; the pins and magnets
-    # pressed into the hood, the hood screwed on from inside; the radome, the
-    # stem; and last the pod, parking in the hood.
-    order = [["LiPo", "Piezo"], ["TP4056"], ["BGT24LTR11"], ["LM358"], ["ESP32-C3"], ["ESP32 clamp"],
-             ["Slide switch", "Light pipe", "Status LED"], ["Lid", "MT3608", "Pod park protection board"],
-             ["Pod park spring pins", "Pod park magnets"], ["Pod park hood"], ["Radome"],
-             ["Dock stem", "1/4-20 stud"]]
+    # Inside first: the cell, the charger, the radar, its LM358 pre-amp, the
+    # ESP32-C3 and its clamp tabs, the switch and the LED; then the lid with the
+    # MT3608 on it and the radome. Then the arm: the slide drops into the
+    # spine's channel, the swivel and the folded head (pinned together) down
+    # behind it; last the pod, into its pocket in the dock base.
+    order = [["LiPo"], ["TP4056"], ["BGT24LTR11"], ["LM358"], ["ESP32-C3"], ["ESP32 clamp"],
+             ["Slide switch", "Light pipe", "Status LED"], ["Lid", "MT3608"], ["Radome"]]
     step = 13
-    pod = objects_in(PARKED)
-    assemble(objs, order, start=20, step=step, travel=40, extra=(0, 30, 0))
+    arm = [o for o in objs if o.name.startswith("Phone arm")]
+    inside = [o for o in objs if o not in arm]
+    assemble(inside, order, start=20, step=step, travel=40, extra=(0, 30, 0))
+    assembled_and_exploded(arm)
     for o in objs:   # the dock base stays put in this shot
         if o.name.startswith("Dock base"):
             o.animation_data_clear()
             o.location = (0, 0, 0)
-    # The pod parks last, on the path it takes in the pod_park shot. It waits
-    # behind the unit rather than at its exploded place, which is under this
-    # camera, and a straight flight home from there would clip the hood.
-    f0 = 20 + len(order) * step
-    park_path(pod, park_start(pod, lo.z), f0, f0 + 34, f0 + 58)
-    frames = f0 + 58 + 22
+    f_arm = 20 + (len(order) - 1) * step + 30
+    slide = [o for o in arm if o.name.startswith("Phone arm slide")]
+    head = [o for o in arm if not o.name.startswith("Phone arm slide")]
+    # Both come down from above the frame, straight into place.
+    drop_in(slide, Vector((0, 0, 260)), Vector((0, 0, 70)), f_arm, f_arm + 22, f_arm + 40)
+    drop_in(head, Vector((0, 0, 300)), Vector((0, 0, 80)), f_arm + 26, f_arm + 48, f_arm + 68)
+    pod = load_pod()
+    f_pod = f_arm + 70
+    for o in [bpy.data.objects["Pod in pocket"]]:
+        drop_in([o], Vector((0, 95, 0)), Vector((0, 0, 50)), f_pod, f_pod + 24, f_pod + 44)
+    frames = f_pod + 44 + 24
     cam = camera(60)
-    # From behind and above, where the parts come in, swinging round to the front.
-    orbit(cam, c + Vector((0, 12, -4)), fit_distance(r * 1.3, 60, 1.0), 24, 205, 150, frames)
+    # From behind and above, where the parts come in, swinging round toward the side.
+    back_fill(Vector((0.3, 1.0, 0.5)).normalized(), 0.8)
+    orbit(cam, c + Vector((0, 12, 4)), fit_distance(r * 1.35, 60, 1.0), 24, 205, 150, frames)
     return frames
 
 
+def shot_arm_open():
+    """The arm opens: the slide pulls up out of the spine, the head flips up
+    and tilts back, the swivel turns toward the golfer, and the phone settles
+    onto the head. Close three-quarter view from behind, then a slight pull back."""
+    hide_reference()
+    objs = product_objects()
+    assembled_and_exploded(objs)
+    objs += load_pod()
+    lo, hi = bounds(objs)
+    studio(lo.z, (hi - lo).length / 2)
+    arm = Arm()
+    arm.key(1, 0, 0, 0)
+    arm.key(14, 0, None, None)
+    arm.key(52, 1.0, None, None)                 # slide up 46 mm
+    arm.key(50, None, 0, None)
+    arm.key(98, None, 1.0, None)                 # head flips up and back to -25 deg
+    arm.key(96, None, None, 0)
+    arm.key(126, None, None, YAW)                # swivel turns 20 deg
+    # The phone comes down from above and settles onto the open head.
+    phone = arm.add_phone()
+    for f, hidden in ((1, True), (119, True), (120, False)):
+        for o in (phone, *phone.children):
+            o.hide_render = hidden
+            o.keyframe_insert("hide_render", frame=f)
+    arm.key_phone(1, 70, 260)
+    arm.key_phone(120, 70, 260)
+    arm.key_phone(150, 14, 10)
+    arm.key_phone(166, 0, 0)
+
+    view = Vector((-0.62, 0.72, 0.30)).normalized()   # behind, on the side the head turns to, a little above
+    back_fill(view, 2.6)
+    cam = camera(50)
+    tgt = target_empty()
+    folded = Vector((BODY_W / 2, 30, 38))
+    opened = Vector((BODY_W / 2, 36, 112))
+    key_loc(tgt, 1, folded)
+    key_loc(tgt, 30, folded)
+    key_loc(tgt, 120, opened)
+    key_loc(tgt, 180, opened)
+    key_loc(cam, 1, folded + view * fit_distance(64, 50, 1.0))
+    key_loc(cam, 30, folded + view * fit_distance(66, 50, 1.0))
+    key_loc(cam, 120, opened + view * fit_distance(142, 50, 1.0))
+    key_loc(cam, 180, opened + view * fit_distance(134, 50, 1.0))
+    cam.data.dof.aperture_fstop = 11.0
+    return 180
+
+
 def shot_ground_in_use():
+    hide_reference()
     objs = product_objects()
     assembled_and_exploded(objs)   # drop the .blend's explode animation: assembled throughout
-    hide_reference()
-    for o in objects_in(PARKED):   # in play the pod is on the club, not parked
-        set_visible(o, False)
+    # In play the pod is on the club, so the pocket is empty; the phone films from the open arm.
+    arm = Arm()
+    arm.open_pose()
+    arm.add_phone()
     floor_z = -DOCK_T
     studio(floor_z, 300, dark=False)
     floor = bpy.data.objects["Studio floor"]
@@ -368,58 +569,23 @@ def shot_ground_in_use():
     for f, hidden in ((1, True), (75, True), (76, False)):
         beam.hide_render = hidden
         beam.keyframe_insert("hide_render", frame=f)
-    # The camera films from a tripod 3 m behind the ball, at hip height.
-    tripod_phone(floor_z, WIN_CX - 150, -RANGE_FROM_TEE + CAMERA_FROM_BALL, CAMERA_HEIGHT)
 
     cam = camera(35)
     tgt = target_empty()
     window = start
-    mid = Vector((WIN_CX, (-RANGE_FROM_TEE + CAMERA_FROM_BALL - RANGE_FROM_TEE) / 2, floor_z + 330))
-    # Close on the window, then pull back and up to show the unit, beam and ball.
-    key_loc(cam, 1, window + Vector((120, -130, 30)))
-    key_loc(cam, 50, window + Vector((160, -175, 45)))
-    key_loc(cam, 210, Vector((WIN_CX + 3600, -650, 1250)))
-    key_loc(tgt, 1, window)
-    key_loc(tgt, 50, window)
+    mid = Vector((WIN_CX, -RANGE_FROM_TEE * 0.37, floor_z + 80))
+    # The unit and the phone on its arm from in front, then pull back, up and
+    # round behind the unit to show the phone, the beam and the ball.
+    look = window + Vector((0, 0, 45))
+    key_loc(cam, 1, look + Vector((170, -250, 40)))
+    key_loc(cam, 50, look + Vector((215, -310, 60)))
+    key_loc(cam, 210, Vector((WIN_CX + 1000, 1300, 750)))
+    key_loc(tgt, 1, look)
+    key_loc(tgt, 50, look)
     key_loc(tgt, 210, mid)
     cam.data.dof.aperture_fstop = 16.0
     cam.data.clip_end = 100000
     return 210
-
-
-def shot_pod_park():
-    """The pod parks on the back of the unit: from below and behind the lid it
-    slides in under the hood and rises into the socket. Close three-quarter
-    view from behind, on the hood's side, then a slight push-in."""
-    hide_reference(keep=())
-    objs = [o for o in product_objects() if not o.name.startswith("Phone")]
-    assembled_and_exploded(objs)
-    pod = objects_in(PARKED)
-    lo, hi = bounds(objs)
-    studio(lo.z, (hi - lo).length / 2)
-    hood = next(o for o in objs if o.name.startswith("Pod park hood"))
-    hlo, hhi = bounds([hood])
-    plo, phi = bounds(pod)
-    start = park_start(pod, lo.z)
-    park_path(pod, start, 16, 82, 126)
-
-    cam = camera(50)
-    tgt = target_empty()
-    seat = Vector(((hlo.x + hhi.x) / 2, (plo.y + phi.y) / 2, (plo.z + hhi.z) / 2))
-    mid = seat + Vector((0, start.y * 0.45, start.z * 0.35))
-    view = Vector((-0.62, 0.74, 0.30)).normalized()   # behind, on the hood's (left) side, a little above
-    # The back is matte black in the key's shadow: a soft fill from over the
-    # camera's shoulder brings out the hood's edges and the pod's arrow.
-    sun("Back fill", -(view + Vector((0.3, 0, 0.5))), 1.6, 25, (0.95, 0.97, 1.0))
-    d = fit_distance(58, 50, 1.0)
-    key_loc(tgt, 1, mid)
-    key_loc(tgt, 70, seat + Vector((0, start.y * 0.15, 0)))
-    key_loc(tgt, 150, seat)
-    key_loc(cam, 1, mid + view * d)
-    key_loc(cam, 100, seat + view * d * 0.94)
-    key_loc(cam, 150, seat + view * d * 0.78)
-    cam.data.dof.aperture_fstop = 11.0
-    return 150
 
 
 def shot_radome_colours():
@@ -427,8 +593,8 @@ def shot_radome_colours():
     design's), ice and amber. Translucent PETG without carbon black passes
     24 GHz, so the radome is where a colour choice can go; the body stays
     matte black. A slow lateral move along the row."""
-    hide_reference(keep=())
-    objs = [o for o in product_objects() if not o.name.startswith("Phone")]
+    hide_reference()
+    objs = product_objects()   # the arm folded, as exported
     assembled_and_exploded(objs)
     lo, hi = bounds(objs)
     pitch = (hi.x - lo.x) + 36
@@ -472,51 +638,6 @@ def shot_radome_colours():
     return 120
 
 
-def cylinder_between(p0: Vector, p1: Vector, radius: float, mat) -> bpy.types.Object:
-    d = p1 - p0
-    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=d.length, vertices=24, location=(p0 + p1) / 2)
-    ob = bpy.context.object
-    ob.rotation_mode = "QUATERNION"
-    ob.rotation_quaternion = d.normalized().to_track_quat("Z", "Y")
-    ob.data.materials.append(mat)
-    return ob
-
-
-def tripod_phone(floor_z: float, x: float, y: float, lens_h: float) -> None:
-    """A generic tripod with a phone in a clamp, portrait, rear camera toward
-    the ball (-Y): the filming position the docs recommend. Illustrative only."""
-    black = material("Tripod", (0.025, 0.025, 0.028, 1), 0.45)
-    phone_w, phone_h, phone_t = 71.6, 147.6, 8.3
-    pc = floor_z + lens_h - (phone_h / 2 - 25)           # lens 25 mm below the phone's top
-    bpy.ops.mesh.primitive_cube_add(location=(x, y, pc))
-    phone = bpy.context.object
-    phone.name = "Filming phone (stand-in)"
-    phone.scale = (phone_w / 2, phone_t / 2, phone_h / 2)
-    phone.data.materials.append(material("Phone body", (0.05, 0.05, 0.06, 1), 0.25))
-    bpy.ops.mesh.primitive_cylinder_add(radius=6, depth=2, vertices=32,
-                                        location=(x - phone_w / 2 + 16, y - phone_t / 2 - 0.8, pc + phone_h / 2 - 25))
-    lens = bpy.context.object
-    lens.rotation_euler = (math.radians(90), 0, 0)
-    lens.data.materials.append(material("Lens", (0.01, 0.01, 0.012, 1), 0.05))
-    # Clamp: a bar behind the phone with a jaw at each side.
-    bpy.ops.mesh.primitive_cube_add(location=(x, y + phone_t / 2 + 6, pc))
-    bar = bpy.context.object
-    bar.scale = (phone_w / 2 + 6, 6, 9)
-    bar.data.materials.append(black)
-    for sx in (-1, 1):
-        bpy.ops.mesh.primitive_cube_add(location=(x + sx * (phone_w / 2 + 3), y, pc))
-        jaw = bpy.context.object
-        jaw.scale = (3, phone_t / 2 + 6, 9)
-        jaw.data.materials.append(black)
-    head = Vector((x, y + phone_t / 2 + 6, pc - 9))
-    hub = Vector((x, y + 20, floor_z + lens_h - 330))
-    cylinder_between(hub, head, 9, black)                                   # centre column
-    for k in range(3):
-        a = math.radians(90 + 120 * k)
-        foot = Vector((x + 420 * math.cos(a), y + 20 + 420 * math.sin(a), floor_z))
-        cylinder_between(hub, foot, 7, black)
-
-
 def shot_pod_hero():
     objs = product_objects()
     assembled_and_exploded(objs)   # drop the .blend's explode animation: assembled throughout
@@ -541,12 +662,17 @@ def shot_pod_assembly():
     lo, hi = bounds(objs)
     c, r = (lo + hi) / 2, (hi - lo).length / 2
     studio(lo.z - 30, r)
-    order = [["LSM6DS3TR-C"], ["LiPo", "Micro charger"], ["Park magnets", "Park diode", "Park contacts"],
-             ["ESP32-C3"], ["Pod lid"]]
-    assemble(objs, order, start=20, step=22, travel=40, extra=(0, 0, 18))
+    # The IMU on its datum floor, the cell and charger, the diode P5, the
+    # ESP32-C3, the lid; then the reusable TPU strap comes up under the shaft
+    # and hooks over its two posts. The liner strips stay in the clamp.
+    order = [["LSM6DS3TR-C"], ["LiPo", "Micro charger"], ["P5 Schottky"], ["ESP32-C3"], ["Pod lid"]]
+    strap = [o for o in objs if o.name.startswith("Reusable strap")]
+    assemble([o for o in objs if o not in strap], order, start=20, step=22, travel=40, extra=(0, 0, 18))
+    assembled_and_exploded(strap)
+    drop_in(strap, Vector((0, 0, -34)), Vector((0, 0, -14)), 132, 150, 172)
     cam = camera(70)
-    orbit(cam, c + Vector((0, 0, 14)), fit_distance(r * 1.9, 70, 1.0), 34, 25, 60, 180)
-    return 180
+    orbit(cam, c + Vector((0, 0, 14)), fit_distance(r * 1.9, 70, 1.0), 34, 25, 60, 195)
+    return 195
 
 
 def shot_pod_mount():
@@ -559,20 +685,25 @@ def shot_pod_mount():
     c, r = (lo + hi) / 2, (hi - lo).length / 2
     studio(lo.z - 30, r)
     assembled_and_exploded(objs)   # flatten to assembled
-    # The C-clamp's mouth faces down: the pod is pushed down onto the shaft.
+    # The C-clamp's mouth faces down: the pod is pushed down onto the shaft,
+    # then the reusable TPU strap comes up under the shaft to its two posts.
+    strap = [o for o in objs if o.name.startswith("Reusable strap")]
     for o in objs:
+        if o in strap:
+            continue
         a = o.location.copy()
         key_loc(o, 1, a + Vector((0, 0, 30)))
         key_loc(o, 40, a + Vector((0, 0, 30)))
         key_loc(o, 85, a)
+    drop_in(strap, Vector((0, 0, -40)), Vector((0, 0, -12)), 92, 112, 132)
     cam = camera(70)
     # Looking along the shaft, slightly off-axis, so the C closing round it shows.
-    orbit(cam, c + Vector((0, 0, 12)), fit_distance(r * 1.9, 70, 1.0), 20, -70, -50, 150)
-    return 150
+    orbit(cam, c + Vector((0, 0, 12)), fit_distance(r * 1.9, 70, 1.0), 20, -70, -45, 170)
+    return 170
 
 
-SHOTS = {f.__name__[5:]: f for f in [shot_ground_hero, shot_ground_assembly, shot_ground_in_use,
-                                     shot_pod_park, shot_radome_colours,
+SHOTS = {f.__name__[5:]: f for f in [shot_ground_hero, shot_ground_assembly, shot_arm_open,
+                                     shot_ground_in_use, shot_radome_colours,
                                      shot_pod_hero, shot_pod_assembly, shot_pod_mount]}
 
 
