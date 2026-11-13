@@ -11,6 +11,7 @@ import { GENERATORS, checkAnswer, diagnose, generate, misconceptionInput, parseN
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { schemeFor } from "../src/lib/marks";
+import { questionTypes } from "../src/lib/questions/gallery";
 import { TOPICS, TOPIC_BY_SLUG } from "../src/content/topics";
 import { CAMBRIDGE_UNITS } from "../src/lib/content";
 import type { Answer } from "../src/lib/questions";
@@ -221,6 +222,20 @@ for (const topic of TOPICS) {
   for (const s of strings) {
     const d = (s.match(/(?<!\\)\$/g) ?? []).length;
     check(d % 2 === 0, `${topic.slug}: unbalanced $ in "${s.slice(0, 60)}…"`);
+  }
+}
+
+console.log("A worked instance of every question type");
+{
+  const covered = new Set<string>();
+  for (const topic of TOPICS) {
+    for (const t of questionTypes(topic.generators)) {
+      check(t.instances.length > 0, `${t.generator}: no worked instance`);
+      covered.add(t.generator);
+    }
+  }
+  for (const gen of GENERATORS) {
+    check(covered.has(gen.id), `${gen.id}: not listed on any topic page, so it has no worked instance`);
   }
 }
 

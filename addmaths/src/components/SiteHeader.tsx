@@ -31,16 +31,10 @@ export function SiteHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-[color:var(--border)] bg-[color:var(--bg)]/85 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-[color:var(--rule)] bg-[color:var(--bg)]">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4 sm:px-6">
-          <Link href="/" className="flex shrink-0 items-center gap-2.5 font-semibold">
-            <span
-              aria-hidden
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color:var(--accent)] font-serif text-[15px] font-semibold text-[color:var(--accent-contrast)]"
-            >
-              ƒ
-            </span>
-            <span className="hidden text-[0.98rem] tracking-tight sm:inline">{SITE.name}</span>
+          <Link href="/" className="smallcaps shrink-0 text-[1.05rem] font-bold">
+            {SITE.name}
           </Link>
 
           <nav aria-label="Main" className="ml-2 hidden items-center gap-1 lg:flex">
@@ -51,10 +45,8 @@ export function SiteHeader() {
                   key={item.href}
                   href={item.href}
                   aria-current={active ? "page" : undefined}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                    active
-                      ? "bg-[color:var(--accent-soft)] text-[color:var(--accent)]"
-                      : "hover:bg-[color:var(--bg-soft)]"
+                  className={`px-2.5 py-2 text-[0.95rem] ${
+                    active ? "font-bold underline underline-offset-4" : "hover:underline hover:underline-offset-4"
                   }`}
                 >
                   {item.label}
@@ -67,7 +59,7 @@ export function SiteHeader() {
             <button
               type="button"
               onClick={() => setSearch(true)}
-              className="flex items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-soft)] px-3 py-1.5 text-sm text-[color:var(--text-muted)] transition hover:border-[color:var(--accent)]/40"
+              className="flex items-center gap-2 border border-[color:var(--border)] px-3 py-1.5 text-sm text-[color:var(--text-muted)] hover:border-[color:var(--rule)]"
             >
               <SearchIcon />
               <span className="hidden sm:inline">Search</span>

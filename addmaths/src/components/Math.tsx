@@ -35,7 +35,7 @@ export function MD({ children, className }: { children: string; className?: stri
   // which is what WCAG 2.1 asks of any scrollable region.
   return (
     <div
-      className={className}
+      className={`overflow-x-auto overflow-y-hidden ${className ?? ""}`}
       tabIndex={0}
       role="group"
       aria-label="Equation"

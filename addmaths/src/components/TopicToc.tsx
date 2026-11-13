@@ -30,19 +30,17 @@ export function TopicToc({ items }: { items: { id: string; label: string }[] }) 
   return (
     <nav aria-label="On this page" className="hidden w-56 shrink-0 lg:block">
       <div className="sticky top-24 py-8">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
-          On this page
-        </p>
-        <ul className="space-y-0.5 border-l border-[color:var(--border)]">
+        <p className="mb-2 font-bold">Contents</p>
+        <ul className="space-y-0.5">
           {items.map((item) => (
             <li key={item.id}>
               <a
                 href={`#${item.id}`}
                 aria-current={active === item.id ? "location" : undefined}
-                className={`-ml-px block border-l-2 py-1.5 pl-3 text-[0.82rem] leading-snug transition ${
+                className={`block whitespace-pre-wrap py-1 text-[0.9rem] leading-snug ${
                   active === item.id
-                    ? "border-[color:var(--accent)] font-medium text-[color:var(--accent)]"
-                    : "border-transparent text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
+                    ? "font-bold text-[color:var(--text)]"
+                    : "text-[color:var(--accent)] hover:underline"
                 }`}
               >
                 {item.label}

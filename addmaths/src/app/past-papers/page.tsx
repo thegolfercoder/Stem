@@ -2,12 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { allExamQuestions } from "@/lib/content";
 import { TOPICS } from "@/content/topics";
-import { Steps } from "@/components/Blocks";
-import { MarkScheme } from "@/components/MarkScheme";
+import { TexExample } from "@/components/TexExample";
 import { schemeFor } from "@/lib/marks";
-import { T } from "@/components/Math";
-import { Plot } from "@/components/Plot";
-import { Callout, Chip, DifficultyBadge, PageHeader } from "@/components/ui";
+import { Callout, PageHeader } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Past-paper style questions",
@@ -35,12 +32,12 @@ export default function PastPapersPage() {
           paper under timed conditions.
         </Callout>
 
-        <nav aria-label="Jump to topic" className="mt-7 flex flex-wrap gap-2">
+        <nav aria-label="Jump to topic" className="mt-7 flex flex-wrap gap-x-4 gap-y-1">
           {TOPICS.filter((t) => t.examQuestions.length > 0).map((t) => (
             <a
               key={t.slug}
               href={`#${t.slug}`}
-              className="rounded-lg border border-[color:var(--border)] px-3 py-1.5 text-sm transition hover:border-[color:var(--accent)]/50"
+              className="link text-[0.95rem]"
             >
               {t.short}
             </a>
@@ -48,48 +45,31 @@ export default function PastPapersPage() {
         </nav>
 
         <div className="mt-8 space-y-10">
-          {TOPICS.filter((t) => t.examQuestions.length > 0).map((topic) => (
+          {TOPICS.filter((t) => t.examQuestions.length > 0).map((topic, ti) => (
             <section key={topic.slug} id={topic.slug} className="scroll-mt-24">
               <div className="mb-4 flex flex-wrap items-baseline gap-3 border-b border-[color:var(--border)] pb-2">
-                <h2 className="text-lg font-bold">{topic.title}</h2>
+                <h2 className="text-[1.3rem] font-bold">
+                  {ti + 1}&ensp;{topic.title}
+                </h2>
                 <Link href={`/topics/${topic.slug}/`} className="link text-sm">
                   notes
                 </Link>
               </div>
-              <div className="space-y-4">
-                {topic.examQuestions.map((q) => (
-                  <details key={q.id} className="card group overflow-hidden">
-                    <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 p-5 transition hover:bg-[color:var(--bg-soft)]">
-                      <DifficultyBadge level={q.difficulty} />
-                      <span className="font-medium">
-                        <T>{q.title}</T>
-                      </span>
-                      <Chip>{q.marks} marks</Chip>
-                      {q.paper && <Chip>Paper {q.paper}</Chip>}
-                      <span className="muted ml-auto text-xs group-open:hidden">Show solution</span>
-                      <span className="muted ml-auto hidden text-xs group-open:inline">Hide solution</span>
-                    </summary>
-                    <div className="border-t border-[color:var(--border)] p-5">
-                      <div className="rounded-xl bg-[color:var(--bg-soft)] p-4 leading-relaxed">
-                        {q.prompt.split("\n").map((line, i) => (
-                          <p key={i}>
-                            <T>{line}</T>
-                          </p>
-                        ))}
-                      </div>
-                      {q.figure && <Plot spec={q.figure} />}
-                      <div className="mt-5">
-                        <Steps steps={q.steps} />
-                        <MarkScheme items={schemeFor(q)} total={q.marks} />
-                      </div>
-                      <div className="mt-5 rounded-xl border border-[color:var(--accent)]/40 bg-[color:var(--accent-soft)] p-4">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.09em]">Answer</p>
-                        <p className="mt-1">
-                          <T>{q.answer}</T>
-                        </p>
-                      </div>
-                    </div>
-                  </details>
+              <div>
+                {topic.examQuestions.map((q, qi) => (
+                  <TexExample
+                    key={q.id}
+                    label={`Question ${ti + 1}.${qi + 1}`}
+                    title={q.title}
+                    difficulty={q.difficulty}
+                    prompt={q.prompt}
+                    {...(q.figure ? { figure: q.figure } : {})}
+                    steps={q.steps}
+                    answer={q.answer}
+                    marks={q.marks}
+                    {...(q.paper ? { paper: q.paper } : {})}
+                    scheme={schemeFor(q)}
+                  />
                 ))}
               </div>
             </section>

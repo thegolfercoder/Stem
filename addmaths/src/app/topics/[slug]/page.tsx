@@ -3,14 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TOPICS, getTopic } from "@/content/topics";
 import { unitName } from "@/lib/content";
-import { Blocks, Steps } from "@/components/Blocks";
-import { MarkScheme } from "@/components/MarkScheme";
+import { Blocks } from "@/components/Blocks";
 import { schemeFor } from "@/lib/marks";
 import { M, T } from "@/components/Math";
-import { Plot } from "@/components/Plot";
-import { Chip, DifficultyBadge } from "@/components/ui";
 import { TopicToc } from "@/components/TopicToc";
 import { TopicComplete } from "@/components/TopicComplete";
+import { TexExample } from "@/components/TexExample";
+import { questionTypes } from "@/lib/questions/gallery";
 
 export function generateStaticParams() {
   return TOPICS.map((t) => ({ slug: t.slug }));
@@ -26,9 +25,18 @@ export async function generateMetadata({
   if (!topic) return {};
   return {
     title: topic.title,
-    description: `${topic.blurb} Full notes, worked examples, exam-style questions with solutions, common mistakes and practice for IGCSE Additional Mathematics 0606.`,
+    description: `${topic.blurb} Full notes, worked examples of every question type, exam-style questions with mark schemes, common mistakes and practice for IGCSE Additional Mathematics 0606.`,
     alternates: { canonical: `/topics/${topic.slug}/` },
   };
+}
+
+function SectionHeading({ n, id, children }: { n: number; id: string; children: React.ReactNode }) {
+  return (
+    <h2 id={`${id}-heading`} className="mb-3 flex gap-4 text-[1.3rem] font-bold leading-snug sm:text-[1.45rem]">
+      <span className="tabular-nums">{n}</span>
+      <span>{children}</span>
+    </h2>
+  );
 }
 
 export default async function TopicPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -39,67 +47,95 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
   const index = TOPICS.findIndex((t) => t.slug === topic.slug);
   const prev = index > 0 ? TOPICS[index - 1] : undefined;
   const next = index < TOPICS.length - 1 ? TOPICS[index + 1] : undefined;
+  const types = questionTypes(topic.generators);
+  const typeCount = types.reduce((n, t) => n + t.instances.length, 0);
+
+  // Section numbers run on from the lesson into the reference material.
+  const k = topic.sections.length;
+  const num = {
+    formulas: k + 1,
+    examples: k + 2,
+    types: k + 3,
+    exam: k + 4,
+    mistakes: k + 5,
+    tips: k + 6,
+    practice: k + 7,
+  };
 
   const sectionLinks = [
-    ...topic.sections.map((s) => ({ id: s.id, label: s.heading })),
-    { id: "formulas", label: "Formulas for this topic" },
-    { id: "examples", label: "Worked examples" },
-    { id: "exam-questions", label: "Exam-style questions" },
-    { id: "mistakes", label: "Common mistakes" },
-    { id: "tips", label: "Exam tips" },
-    { id: "practice", label: "Practise this topic" },
+    ...topic.sections.map((s, i) => ({ id: s.id, label: `${i + 1}  ${s.heading}` })),
+    { id: "formulas", label: `${num.formulas}  Formulas` },
+    { id: "examples", label: `${num.examples}  Worked examples` },
+    ...(types.length ? [{ id: "question-types", label: `${num.types}  Every question type` }] : []),
+    { id: "exam-questions", label: `${num.exam}  Exam-style questions` },
+    { id: "mistakes", label: `${num.mistakes}  Common mistakes` },
+    { id: "tips", label: `${num.tips}  Exam tips` },
+    { id: "practice", label: `${num.practice}  Practice` },
   ];
 
   return (
     <article className="pb-10">
-      <nav aria-label="Breadcrumb" className="muted flex flex-wrap items-center gap-1.5 pt-6 text-xs">
-        <Link href="/topics/" className="hover:text-[color:var(--accent)]">
+      <nav aria-label="Breadcrumb" className="muted flex flex-wrap items-center gap-1.5 pt-6 text-sm">
+        <Link href="/topics/" className="link">
           Topics
         </Link>
         <span aria-hidden>/</span>
         <span>{topic.unit === 0 ? "Assumed knowledge" : `Unit ${topic.unit}: ${unitName(topic.unit)}`}</span>
       </nav>
 
-      <header className="border-b border-[color:var(--border)] py-6">
-        <h1 className="text-[1.9rem] font-bold leading-tight sm:text-[2.4rem]">{topic.title}</h1>
-        <p className="muted mt-3 max-w-3xl text-[1.02rem] leading-relaxed">{topic.blurb}</p>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Chip tone="accent">{topic.estimatedMinutes} min</Chip>
-          <Chip>{topic.syllabus.length} syllabus objectives</Chip>
-          <Chip>{topic.examples.length + topic.examQuestions.length} full solutions</Chip>
-          {topic.prerequisites.map((p) => {
-            const pre = getTopic(p);
-            return pre ? (
-              <Link key={p} href={`/topics/${p}/`} className="link text-xs">
-                Needs: {pre.short}
-              </Link>
-            ) : null;
-          })}
-        </div>
-        {topic.summary && (
-          <p className="mt-3 text-sm">
-            <Link href={`/topics/${topic.slug}/summary/`} className="link font-medium">
-              One-page summary of this topic
-            </Link>
+      <header className="border-b border-[color:var(--rule)] pb-6 pt-6 text-center">
+        <h1 className="text-[1.9rem] font-bold leading-tight sm:text-[2.35rem]">{topic.title}</h1>
+        <p className="smallcaps mt-2 text-[color:var(--text-muted)]">
+          Cambridge IGCSE Additional Mathematics 0606 · {topic.unit === 0 ? "assumed knowledge" : `unit ${topic.unit}`}
+        </p>
+        <div className="mx-auto mt-5 max-w-2xl text-left">
+          <p className="text-center text-sm font-bold">Abstract</p>
+          <p className="mt-1 text-[0.98rem] leading-[1.7]" style={{ textAlign: "justify" }}>
+            <T>{topic.blurb}</T> This note has {k} sections of exposition, {topic.examples.length} worked examples,{" "}
+            {typeCount > 0 ? `${typeCount} worked instances covering every question type the practice engine sets, ` : ""}
+            and {topic.examQuestions.length} exam-style questions with mark schemes. Reading time about{" "}
+            {topic.estimatedMinutes} minutes.
           </p>
-        )}
+          <p className="mt-2 text-center text-sm">
+            {topic.prerequisites.length > 0 && (
+              <>
+                <span className="muted">Prerequisites: </span>
+                {topic.prerequisites.map((p, i) => {
+                  const pre = getTopic(p);
+                  return pre ? (
+                    <span key={p}>
+                      {i > 0 ? ", " : ""}
+                      <Link href={`/topics/${p}/`} className="link">
+                        {pre.short}
+                      </Link>
+                    </span>
+                  ) : null;
+                })}
+                {topic.summary ? " · " : ""}
+              </>
+            )}
+            {topic.summary && (
+              <Link href={`/topics/${topic.slug}/summary/`} className="link">
+                One-page summary
+              </Link>
+            )}
+          </p>
+        </div>
         <TopicComplete slug={topic.slug} />
       </header>
 
       <div className="gap-10 lg:flex">
         <TopicToc items={sectionLinks} />
 
-        <div className="min-w-0 flex-1">
-          <section className="py-8" aria-labelledby="objectives">
-            <h2 id="objectives" className="text-lg font-bold">
-              What the syllabus asks for
+        <div className="mx-auto min-w-0 max-w-[46rem] flex-1">
+          <section className="py-7" aria-labelledby="objectives">
+            <h2 id="objectives" className="mb-2 text-[1.1rem] font-bold">
+              Syllabus objectives
             </h2>
-            <ul className="mt-3 space-y-2">
+            <ul className="space-y-1.5">
               {topic.syllabus.map((s) => (
-                <li key={s.code} className="flex gap-3 text-[0.95rem] leading-relaxed">
-                  <span className="mt-0.5 shrink-0 rounded-md bg-[color:var(--bg-soft)] px-2 py-0.5 font-mono text-[11px] tabular-nums text-[color:var(--text-muted)]">
-                    {s.code}
-                  </span>
+                <li key={s.code} className="flex gap-3 leading-[1.65]">
+                  <span className="w-10 shrink-0 tabular-nums text-[color:var(--text-muted)]">{s.code}</span>
                   <span>
                     <T>{s.text}</T>
                   </span>
@@ -108,209 +144,199 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
             </ul>
           </section>
 
-          {topic.sections.map((s) => (
-            <section key={s.id} id={s.id} className="scroll-mt-24 border-t border-[color:var(--border)] py-8">
-              <h2 className="mb-4 text-xl font-bold sm:text-2xl">{s.heading}</h2>
+          {topic.sections.map((s, i) => (
+            <section key={s.id} id={s.id} className="scroll-mt-24 py-6" aria-labelledby={`${s.id}-heading`}>
+              <SectionHeading n={i + 1} id={s.id}>
+                {s.heading}
+              </SectionHeading>
               <Blocks blocks={s.body} />
             </section>
           ))}
 
-          <section id="formulas" className="scroll-mt-24 border-t border-[color:var(--border)] py-8">
-            <h2 className="text-xl font-bold sm:text-2xl">Formulas for this topic</h2>
-            <p className="muted mt-1.5 text-sm">
-              “Given” means it is printed in the List of formulas on page 2 of the exam paper.
-              Everything else you must know.
+          <section id="formulas" className="scroll-mt-24 py-6" aria-labelledby="formulas-heading">
+            <SectionHeading n={num.formulas} id="formulas">
+              Formulas
+            </SectionHeading>
+            <p className="leading-[1.7]">
+              Formulas tagged <span className="smallcaps">given</span> are printed in the list of formulas on page 2
+              of the paper; the rest must be known.
             </p>
-            <ul className="mt-5 space-y-3">
-              {topic.formulas.map((f) => (
-                <li key={f.name} className="card flex flex-wrap items-center justify-between gap-3 p-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">{f.name}</p>
+            <ol className="mt-3">
+              {topic.formulas.map((f, i) => (
+                <li key={f.name} className="flex items-baseline gap-4 border-t border-[color:var(--border)] py-3 first:border-t-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[0.95rem]">
+                      <span className="tex-italic-label">{f.name}.</span>
+                    </p>
                     <div className="mt-1 overflow-x-auto" tabIndex={0} role="group" aria-label={f.name}>
                       <M>{f.latex}</M>
                     </div>
                     {f.note && (
-                      <p className="muted mt-1 text-xs">
+                      <p className="muted mt-1 text-sm">
                         <T>{f.note}</T>
                       </p>
                     )}
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${
-                      f.given
-                        ? "border-[color:var(--easy)]/40 bg-[color:var(--easy)]/10 text-[color:var(--easy)]"
-                        : "border-[color:var(--hard)]/40 bg-[color:var(--hard)]/10 text-[color:var(--hard)]"
-                    }`}
-                  >
-                    {f.given ? "Given" : "Learn it"}
+                  <span className="shrink-0 tabular-nums">
+                    ({num.formulas}.{i + 1}){" "}
+                    <span className="smallcaps text-[color:var(--text-muted)]">{f.given ? "given" : "learn"}</span>
                   </span>
                 </li>
               ))}
-            </ul>
+            </ol>
           </section>
 
-          <section id="examples" className="scroll-mt-24 border-t border-[color:var(--border)] py-8">
-            <h2 className="text-xl font-bold sm:text-2xl">Worked examples</h2>
-            <p className="muted mt-1.5 text-sm">From a first pass through the idea to the hardest version of it.</p>
-            <div className="mt-5 space-y-4">
-              {topic.examples.map((ex) => (
-                <details key={ex.id} className="card group overflow-hidden" id={ex.id}>
-                  <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 p-5 transition hover:bg-[color:var(--bg-soft)]">
-                    <DifficultyBadge level={ex.difficulty} />
-                    <span className="font-medium">
-                      <T>{ex.title}</T>
-                    </span>
-                    <span className="muted ml-auto text-xs group-open:hidden">Show solution</span>
-                    <span className="muted ml-auto hidden text-xs group-open:inline">Hide solution</span>
-                  </summary>
-                  <div className="border-t border-[color:var(--border)] p-5">
-                    <div className="rounded-xl bg-[color:var(--bg-soft)] p-4">
-                      {ex.prompt.split("\n").map((line, i) => (
-                        <p key={i} className="leading-relaxed">
-                          <T>{line}</T>
-                        </p>
-                      ))}
-                    </div>
-                    {ex.figure && <Plot spec={ex.figure} />}
-                    <div className="mt-5">
-                      <Steps steps={ex.steps} />
-                    </div>
-                    <div className="mt-5 rounded-xl border border-[color:var(--accent)]/40 bg-[color:var(--accent-soft)] p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.09em]">Answer</p>
-                      <p className="mt-1 leading-relaxed">
-                        <T>{ex.answer}</T>
-                      </p>
-                    </div>
-                    {ex.remark && (
-                      <p className="muted mt-4 text-sm leading-relaxed">
-                        <T>{ex.remark}</T>
-                      </p>
-                    )}
-                  </div>
-                </details>
+          <section id="examples" className="scroll-mt-24 py-6" aria-labelledby="examples-heading">
+            <SectionHeading n={num.examples} id="examples">
+              Worked examples
+            </SectionHeading>
+            <p className="leading-[1.7]">Ordered from a first pass through the idea to its hardest form.</p>
+            <div className="mt-2">
+              {topic.examples.map((ex, i) => (
+                <TexExample
+                  key={ex.id}
+                  id={ex.id}
+                  label={`Example ${num.examples}.${i + 1}`}
+                  title={ex.title}
+                  difficulty={ex.difficulty}
+                  prompt={ex.prompt}
+                  {...(ex.figure ? { figure: ex.figure } : {})}
+                  steps={ex.steps}
+                  answer={ex.answer}
+                  {...(ex.remark ? { remark: ex.remark } : {})}
+                />
               ))}
             </div>
           </section>
 
-          <section id="exam-questions" className="scroll-mt-24 border-t border-[color:var(--border)] py-8">
-            <h2 className="text-xl font-bold sm:text-2xl">Exam-style questions</h2>
-            <p className="muted mt-1.5 text-sm">
-              Written in the style and mark tariff of the real papers. Try them before opening the solution.
-            </p>
-            <div className="mt-5 space-y-4">
-              {topic.examQuestions.map((q) => (
-                <details key={q.id} className="card group overflow-hidden" id={q.id}>
-                  <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 p-5 transition hover:bg-[color:var(--bg-soft)]">
-                    <DifficultyBadge level={q.difficulty} />
-                    <span className="font-medium">
-                      <T>{q.title}</T>
-                    </span>
-                    <Chip>{q.marks} marks</Chip>
-                    {q.paper && <Chip>Paper {q.paper}</Chip>}
-                    <span className="muted ml-auto text-xs group-open:hidden">Show solution</span>
-                    <span className="muted ml-auto hidden text-xs group-open:inline">Hide solution</span>
-                  </summary>
-                  <div className="border-t border-[color:var(--border)] p-5">
-                    <div className="rounded-xl bg-[color:var(--bg-soft)] p-4">
-                      {q.prompt.split("\n").map((line, i) => (
-                        <p key={i} className="leading-relaxed">
-                          <T>{line}</T>
-                        </p>
-                      ))}
-                    </div>
-                    {q.figure && <Plot spec={q.figure} />}
-                    <div className="mt-5">
-                      <Steps steps={q.steps} />
-                      <MarkScheme items={schemeFor(q)} total={q.marks} />
-                    </div>
-                    <div className="mt-5 rounded-xl border border-[color:var(--accent)]/40 bg-[color:var(--accent-soft)] p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.09em]">Answer</p>
-                      <p className="mt-1 leading-relaxed">
-                        <T>{q.answer}</T>
-                      </p>
-                    </div>
-                  </div>
-                </details>
-              ))}
-            </div>
-          </section>
-
-          <section id="mistakes" className="scroll-mt-24 border-t border-[color:var(--border)] py-8">
-            <h2 className="text-xl font-bold sm:text-2xl">Common mistakes</h2>
-            <p className="muted mt-1.5 text-sm">Each of these costs marks every session. Read them once before the exam.</p>
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              {topic.mistakes.map((m, i) => (
-                <div key={i} className="card p-5">
-                  <p className="flex items-start gap-2 font-medium text-[color:var(--hard)]">
-                    <span aria-hidden className="mt-0.5">✗</span>
-                    <span>
-                      <T>{m.wrong}</T>
-                    </span>
-                  </p>
-                  <p className="muted mt-2 text-sm leading-relaxed">
-                    <T>{m.why}</T>
-                  </p>
-                  <p className="mt-2.5 flex items-start gap-2 text-sm leading-relaxed text-[color:var(--easy)]">
-                    <span aria-hidden className="mt-0.5">✓</span>
-                    <span>
-                      <T>{m.fix}</T>
-                    </span>
-                  </p>
+          {types.length > 0 && (
+            <section id="question-types" className="scroll-mt-24 py-6" aria-labelledby="question-types-heading">
+              <SectionHeading n={num.types} id="question-types">
+                Every question type
+              </SectionHeading>
+              <p className="leading-[1.7]" style={{ textAlign: "justify" }}>
+                One fully worked instance of every kind of question the practice engine sets for this topic. Where a
+                template can be answered by more than one method, each method has its own worked instance. Practice
+                questions use the same methods with fresh numbers.
+              </p>
+              {types.map((t, ti) => (
+                <div key={t.generator} className="mt-4">
+                  <h3 className="text-[1.05rem] font-bold">
+                    {num.types}.{ti + 1}&ensp;
+                    <T>{t.title}</T>
+                  </h3>
+                  {t.instances.map((q, qi) => (
+                    <TexExample
+                      key={q.id}
+                      id={`type-${t.generator}-${qi + 1}`}
+                      label={`Type ${num.types}.${ti + 1}${t.instances.length > 1 ? String.fromCharCode(97 + qi) : ""}`}
+                      title={t.instances.length > 1 ? `variant ${qi + 1} of ${t.instances.length}` : "worked instance"}
+                      difficulty={q.difficulty}
+                      prompt={q.prompt}
+                      steps={q.solution}
+                      answer={q.answer.display}
+                      marks={q.marks}
+                      paper={q.paper}
+                      scheme={q.markScheme}
+                    />
+                  ))}
                 </div>
               ))}
+            </section>
+          )}
+
+          <section id="exam-questions" className="scroll-mt-24 py-6" aria-labelledby="exam-questions-heading">
+            <SectionHeading n={num.exam} id="exam-questions">
+              Exam-style questions
+            </SectionHeading>
+            <p className="leading-[1.7]">Written in the style and mark tariff of the real papers, with mark schemes.</p>
+            <div className="mt-2">
+              {topic.examQuestions.map((q, i) => (
+                <TexExample
+                  key={q.id}
+                  id={q.id}
+                  label={`Question ${num.exam}.${i + 1}`}
+                  title={q.title}
+                  difficulty={q.difficulty}
+                  prompt={q.prompt}
+                  {...(q.figure ? { figure: q.figure } : {})}
+                  steps={q.steps}
+                  answer={q.answer}
+                  marks={q.marks}
+                  {...(q.paper ? { paper: q.paper } : {})}
+                  scheme={schemeFor(q)}
+                />
+              ))}
             </div>
           </section>
 
-          <section id="tips" className="scroll-mt-24 border-t border-[color:var(--border)] py-8">
-            <h2 className="text-xl font-bold sm:text-2xl">Exam tips</h2>
-            <ul className="mt-5 space-y-3">
-              {topic.tips.map((tip, i) => (
-                <li key={i} className="flex gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.07] p-4 text-[0.95rem] leading-relaxed">
-                  <span aria-hidden className="text-[color:var(--easy)]">★</span>
-                  <span>
-                    <T>{tip}</T>
-                  </span>
+          <section id="mistakes" className="scroll-mt-24 py-6" aria-labelledby="mistakes-heading">
+            <SectionHeading n={num.mistakes} id="mistakes">
+              Common mistakes
+            </SectionHeading>
+            <ol className="mt-2">
+              {topic.mistakes.map((m, i) => (
+                <li key={i} className="border-t border-[color:var(--border)] py-3 leading-[1.7] first:border-t-0">
+                  <p>
+                    <span className="tex-label">
+                      {num.mistakes}.{i + 1}&ensp;Error.
+                    </span>{" "}
+                    <T>{m.wrong}</T>
+                  </p>
+                  <p className="mt-1">
+                    <span className="tex-italic-label">Why it is wrong.</span> <T>{m.why}</T>
+                  </p>
+                  <p className="mt-1">
+                    <span className="tex-italic-label">Correction.</span> <T>{m.fix}</T>
+                  </p>
                 </li>
               ))}
-            </ul>
+            </ol>
           </section>
 
-          <section id="practice" className="scroll-mt-24 border-t border-[color:var(--border)] py-8">
-            <h2 className="text-xl font-bold sm:text-2xl">Practise this topic</h2>
-            <p className="muted mt-1.5 max-w-2xl text-sm leading-relaxed">
+          <section id="tips" className="scroll-mt-24 py-6" aria-labelledby="tips-heading">
+            <SectionHeading n={num.tips} id="tips">
+              Exam tips
+            </SectionHeading>
+            <ol className="ml-7 list-[lower-roman] space-y-1.5">
+              {topic.tips.map((tip, i) => (
+                <li key={i} className="pl-1 leading-[1.7]">
+                  <T>{tip}</T>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <section id="practice" className="scroll-mt-24 py-6" aria-labelledby="practice-heading">
+            <SectionHeading n={num.practice} id="practice">
+              Practice
+            </SectionHeading>
+            <p className="leading-[1.7]">
               {topic.generators.length > 0
                 ? `${topic.generators.length} question templates for this topic, each with randomised numbers, instant marking and a full worked solution.`
-                : "Practise this topic inside a mixed set, alongside the topics that use it."}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Link
-                href={`/practice/?topic=${topic.slug}`}
-                className="rounded-xl bg-[color:var(--accent)] px-5 py-2.5 text-sm font-semibold text-[color:var(--accent-contrast)] transition hover:opacity-90"
-              >
+                : "Practise this topic inside a mixed set, alongside the topics that use it."}{" "}
+              <Link href={`/practice/?topic=${topic.slug}`} className="link">
                 Start practising
+              </Link>{" "}
+              or{" "}
+              <Link href="/exam/" className="link">
+                take a timed paper
               </Link>
-              <Link
-                href="/exam/"
-                className="rounded-xl border border-[color:var(--border)] px-5 py-2.5 text-sm font-semibold transition hover:border-[color:var(--accent)]/50"
-              >
-                Take a timed paper
-              </Link>
-            </div>
+              .
+            </p>
           </section>
 
-          <nav className="flex flex-wrap justify-between gap-3 border-t border-[color:var(--border)] pt-6">
+          <nav aria-label="Previous and next topic" className="flex flex-wrap justify-between gap-3 border-t border-[color:var(--rule)] pt-5">
             {prev ? (
-              <Link href={`/topics/${prev.slug}/`} className="card p-4 transition hover:border-[color:var(--accent)]/50">
-                <span className="muted block text-xs">Previous</span>
-                <span className="text-sm font-medium">{prev.title}</span>
+              <Link href={`/topics/${prev.slug}/`} className="link">
+                ← {prev.title}
               </Link>
             ) : (
               <span />
             )}
             {next && (
-              <Link href={`/topics/${next.slug}/`} className="card p-4 text-right transition hover:border-[color:var(--accent)]/50">
-                <span className="muted block text-xs">Next</span>
-                <span className="text-sm font-medium">{next.title}</span>
+              <Link href={`/topics/${next.slug}/`} className="link text-right">
+                {next.title} →
               </Link>
             )}
           </nav>

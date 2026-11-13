@@ -2,21 +2,9 @@ import Link from "next/link";
 import type { Difficulty } from "@/lib/types";
 import { DIFFICULTY_LABEL } from "@/lib/types";
 
-const DIFF_CLASS: Record<Difficulty, string> = {
-  easy: "border-[color:var(--easy)]/40 text-[color:var(--easy)] bg-[color:var(--easy)]/10",
-  medium: "border-[color:var(--medium)]/40 text-[color:var(--medium)] bg-[color:var(--medium)]/10",
-  hard: "border-[color:var(--hard)]/40 text-[color:var(--hard)] bg-[color:var(--hard)]/10",
-  olympiad: "border-[color:var(--olympiad)]/40 text-[color:var(--olympiad)] bg-[color:var(--olympiad)]/10",
-};
-
+/** Difficulty, set as a small-caps tag in brackets, as a typeset paper would. */
 export function DifficultyBadge({ level }: { level: Difficulty }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] ${DIFF_CLASS[level]}`}
-    >
-      {DIFFICULTY_LABEL[level]}
-    </span>
-  );
+  return <span className="smallcaps text-[0.92em] text-[color:var(--text-muted)]">[{DIFFICULTY_LABEL[level].toLowerCase()}]</span>;
 }
 
 export function Chip({
@@ -27,13 +15,7 @@ export function Chip({
   tone?: "neutral" | "accent";
 }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${
-        tone === "accent"
-          ? "border-[color:var(--accent)]/35 bg-[color:var(--accent-soft)] text-[color:var(--accent)]"
-          : "border-[color:var(--border)] bg-[color:var(--bg-soft)] text-[color:var(--text-muted)]"
-      }`}
-    >
+    <span className={`smallcaps text-[0.92em] ${tone === "accent" ? "text-[color:var(--text)]" : "text-[color:var(--text-muted)]"}`}>
       {children}
     </span>
   );
@@ -51,14 +33,14 @@ export function PageHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <header className="border-b border-[color:var(--border)] pb-7">
+    <header className="border-b border-[color:var(--rule)] pb-7 pt-4 text-center">
       {eyebrow && (
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--accent)]">
+        <p className="smallcaps mb-2 text-[0.95rem] text-[color:var(--text-muted)]">
           {eyebrow}
         </p>
       )}
-      <h1 className="text-[1.9rem] font-bold leading-tight sm:text-[2.4rem]">{title}</h1>
-      {lead && <p className="muted mt-3 max-w-2xl text-[1.02rem] leading-relaxed">{lead}</p>}
+      <h1 className="text-[1.85rem] font-bold leading-tight sm:text-[2.2rem]">{title}</h1>
+      {lead && <p className="muted mx-auto mt-3 max-w-2xl text-[1.02rem] italic leading-relaxed">{lead}</p>}
       {children && <div className="mt-5">{children}</div>}
     </header>
   );
@@ -102,9 +84,9 @@ export function LinkCard({
   return (
     <Link
       href={href}
-      className="card group flex flex-col gap-2 p-5 transition duration-200 hover:-translate-y-0.5 hover:border-[color:var(--accent)]/50"
+      className="group flex flex-col gap-1.5 border-t border-[color:var(--border)] py-4"
     >
-      <h3 className="font-semibold leading-snug group-hover:text-[color:var(--accent)]">{title}</h3>
+      <h3 className="font-bold leading-snug text-[color:var(--accent)] group-hover:underline">{title}</h3>
       <p className="muted text-sm leading-relaxed">{description}</p>
       {meta && <div className="mt-1 flex flex-wrap gap-1.5">{meta}</div>}
     </Link>
@@ -122,11 +104,7 @@ export function Callout({
 }) {
   return (
     <div
-      className={`rounded-xl border px-4 py-3.5 ${
-        tone === "accent"
-          ? "border-[color:var(--accent)]/40 bg-[color:var(--accent-soft)]"
-          : "border-[color:var(--border)] bg-[color:var(--bg-soft)]"
-      }`}
+      className={`py-0.5 pl-4 ${tone === "accent" ? "border-l-2 border-[color:var(--rule)]" : "border-l border-[color:var(--border)]"}`}
     >
       {title && <p className="mb-1 text-sm font-semibold">{title}</p>}
       <div className="text-sm leading-relaxed">{children}</div>

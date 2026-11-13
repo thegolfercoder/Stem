@@ -12,27 +12,12 @@ export function Blocks({ blocks }: { blocks: Block[] }) {
   );
 }
 
-const TONE: Record<string, { label: string; cls: string; icon: string }> = {
-  key: {
-    label: "Key idea",
-    cls: "border-[color:var(--accent)]/45 bg-[color:var(--accent-soft)]",
-    icon: "◆",
-  },
-  tip: {
-    label: "Exam tip",
-    cls: "border-emerald-500/40 bg-emerald-500/8",
-    icon: "★",
-  },
-  warn: {
-    label: "Watch out",
-    cls: "border-amber-500/50 bg-amber-500/10",
-    icon: "!",
-  },
-  info: {
-    label: "Note",
-    cls: "border-[color:var(--border)] bg-[color:var(--bg-soft)]",
-    icon: "\u2139",
-  },
+/** Notes read like amsthm environments: a bold run-in label, then the text. */
+const TONE: Record<string, { label: string; cls: string }> = {
+  key: { label: "Key idea", cls: "border-l-2 border-[color:var(--rule)]" },
+  tip: { label: "Exam tip", cls: "border-l border-[color:var(--border)]" },
+  warn: { label: "Caution", cls: "border-l-2 border-[color:var(--hard)]" },
+  info: { label: "Remark", cls: "border-l border-[color:var(--border)]" },
 };
 
 function BlockView({ block: b }: { block: Block }) {
@@ -47,31 +32,20 @@ function BlockView({ block: b }: { block: Block }) {
       return <MD className="my-4">{b.t}</MD>;
     case "ul":
       return (
-        <ul className="ml-1 space-y-2">
+        <ul className="ml-6 list-disc space-y-1.5 marker:text-[color:var(--text)]">
           {b.items.map((it, i) => (
-            <li key={i} className="flex gap-2.5 leading-[1.7]">
-              <span aria-hidden className="mt-[0.6em] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--accent)]" />
-              <span>
-                <T>{it}</T>
-              </span>
+            <li key={i} className="pl-1 leading-[1.7]">
+              <T>{it}</T>
             </li>
           ))}
         </ul>
       );
     case "ol":
       return (
-        <ol className="ml-1 space-y-2">
+        <ol className="ml-7 list-[lower-roman] space-y-1.5">
           {b.items.map((it, i) => (
-            <li key={i} className="flex gap-3 leading-[1.7]">
-              <span
-                aria-hidden
-                className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[color:var(--accent-soft)] text-[11px] font-semibold text-[color:var(--accent)]"
-              >
-                {i + 1}
-              </span>
-              <span>
-                <T>{it}</T>
-              </span>
+            <li key={i} className="pl-1 leading-[1.7]">
+              <T>{it}</T>
             </li>
           ))}
         </ol>
@@ -79,14 +53,11 @@ function BlockView({ block: b }: { block: Block }) {
     case "note": {
       const tone = TONE[b.tone] ?? TONE.info!;
       return (
-        <aside className={`rounded-xl border px-4 py-3.5 ${tone.cls}`}>
-          <p className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.09em]">
-            <span aria-hidden>{tone.icon}</span>
-            {b.title ? <T>{b.title}</T> : tone.label}
-          </p>
-          <div className="text-[0.95rem] leading-[1.7]">
+        <aside className={`py-0.5 pl-4 ${tone.cls}`}>
+          <p className="leading-[1.7]">
+            <span className="tex-label">{b.title ? <T>{b.title}</T> : tone.label}.</span>{" "}
             <T>{b.t}</T>
-          </div>
+          </p>
         </aside>
       );
     }
@@ -95,12 +66,13 @@ function BlockView({ block: b }: { block: Block }) {
         <div className="overflow-x-auto" tabIndex={0} role="group" aria-label={b.caption ? plainText(b.caption) : "Table"}>
           <table className="w-full min-w-[22rem] border-collapse text-left text-[0.94rem]">
             {b.caption && (
-              <caption className="muted mb-2 text-left text-sm">
+              <caption className="caption-bottom pt-2 text-center text-sm">
+                <span className="tex-label">Table.</span>{" "}
                 <T>{b.caption}</T>
               </caption>
             )}
             <thead>
-              <tr className="border-b border-[color:var(--border)]">
+              <tr>
                 {b.head.map((h, i) => (
                   <th key={i} scope="col" className="py-2 pr-4 font-semibold">
                     {h.includes("$") ? (
@@ -120,7 +92,7 @@ function BlockView({ block: b }: { block: Block }) {
             </thead>
             <tbody>
               {b.rows.map((r, i) => (
-                <tr key={i} className="border-b border-[color:var(--border)]/60 last:border-0">
+                <tr key={i}>
                   {r.map((c, j) => (
                     <td key={j} className="py-2 pr-4 align-top">
                       <T>{c}</T>
@@ -148,20 +120,17 @@ function BlockView({ block: b }: { block: Block }) {
 
 export function Steps({ steps }: { steps: Step[] }) {
   return (
-    <ol className="space-y-3.5">
+    <ol className="space-y-2.5">
       {steps.map((s, i) => (
-        <li key={i} className="flex gap-3.5">
-          <span
-            aria-hidden
-            className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--bg-soft)] text-[11px] font-semibold tabular-nums"
-          >
-            {i + 1}
+        <li key={i} className="flex gap-3">
+          <span aria-hidden className="w-7 shrink-0 pt-px text-right tabular-nums text-[color:var(--text-muted)]">
+            ({i + 1})
           </span>
           <div className="min-w-0 flex-1">
             <p className="leading-[1.7]">
               <T>{s.t}</T>
             </p>
-            {s.m && <MD className="mt-1">{s.m}</MD>}
+            {s.m && <MD className="mt-0.5">{s.m}</MD>}
           </div>
         </li>
       ))}
