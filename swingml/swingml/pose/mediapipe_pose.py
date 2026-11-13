@@ -39,7 +39,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from swingml.assets import POSE_MODEL_ENV_VAR as MODEL_ENV_VAR
 from swingml.assets import POSE_MODEL_URL as MODEL_URL
-from swingml.assets import ensure_pose_model, find_pose_model
+from swingml.assets import ensure_pose_model, find_pose_model, verify_pose_model
 from swingml.pose.base import PoseSequence
 from swingml.skeleton import NUM_LANDMARKS
 
@@ -81,10 +81,12 @@ def resolve_model_path(configured: Path | None, allow_download: bool = True) -> 
     A caller that must not touch the network can turn it off.
     """
     if configured is not None and Path(configured).is_file():
+        verify_pose_model(Path(configured))
         return Path(configured)
 
     found = find_pose_model()
     if found is not None:
+        verify_pose_model(found)
         return found
 
     if not allow_download:

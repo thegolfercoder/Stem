@@ -1,0 +1,9 @@
+{
+  "name": "stem-results",
+  "private": true,
+  "description": "Static results screen for the Stem ground unit. No dependencies and no build step; this file only tells node the .js files are ES modules.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

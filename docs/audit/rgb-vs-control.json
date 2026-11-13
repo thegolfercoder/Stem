@@ -1,0 +1,155 @@
+{
+  "split": "golfdb-validation-v2",
+  "n_clips": 141,
+  "n_groups": 29,
+  "control": "shipped",
+  "variants": {
+    "shipped": {
+      "notes": "out/exp/rgb_control_s0/swing_event_net.pt",
+      "band": 0.2736
+    },
+    "rgb_candidate_s0": {
+      "notes": "out/exp/rgb_candidate_s0/swing_event_net.pt",
+      "band": 0.2736
+    }
+  },
+  "results": {
+    "shipped": {
+      "answered": {
+        "value": 1.0,
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "within_1_core4": {
+        "value": 0.4876,
+        "ci95": [
+          0.4446,
+          0.5317
+        ]
+      },
+      "tempo_median_rel_error": {
+        "value": 0.1315,
+        "ci95": [
+          0.0896,
+          0.1668
+        ]
+      },
+      "tempo_slope": {
+        "value": 0.2773,
+        "ci95": [
+          0.103,
+          0.6206
+        ]
+      },
+      "tempo_band_coverage": {
+        "value": 0.8794,
+        "ci95": [
+          0.7943,
+          0.9451
+        ]
+      },
+      "false_confidence_rate": {
+        "value": 0.1206,
+        "ci95": [
+          0.0549,
+          0.2057
+        ]
+      },
+      "address_median_abs_error": {
+        "value": 7.4447,
+        "ci95": [
+          5.0081,
+          10.9636
+        ]
+      }
+    },
+    "rgb_candidate_s0": {
+      "answered": {
+        "value": 1.0,
+        "ci95": [
+          1.0,
+          1.0
+        ],
+        "minus_control": 0.0,
+        "minus_control_ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "within_1_core4": {
+        "value": 0.4947,
+        "ci95": [
+          0.4556,
+          0.5342
+        ],
+        "minus_control": 0.0071,
+        "minus_control_ci95": [
+          -0.021,
+          0.033
+        ]
+      },
+      "tempo_median_rel_error": {
+        "value": 0.1189,
+        "ci95": [
+          0.0919,
+          0.1499
+        ],
+        "minus_control": -0.0126,
+        "minus_control_ci95": [
+          -0.0365,
+          0.0287
+        ]
+      },
+      "tempo_slope": {
+        "value": 0.3306,
+        "ci95": [
+          0.1294,
+          0.6981
+        ],
+        "minus_control": 0.0533,
+        "minus_control_ci95": [
+          -0.0314,
+          0.1943
+        ]
+      },
+      "tempo_band_coverage": {
+        "value": 0.9007,
+        "ci95": [
+          0.8194,
+          0.9648
+        ],
+        "minus_control": 0.0213,
+        "minus_control_ci95": [
+          -0.0309,
+          0.0781
+        ]
+      },
+      "false_confidence_rate": {
+        "value": 0.0993,
+        "ci95": [
+          0.0352,
+          0.1806
+        ],
+        "minus_control": -0.0213,
+        "minus_control_ci95": [
+          -0.0781,
+          0.0309
+        ]
+      },
+      "address_median_abs_error": {
+        "value": 6.9734,
+        "ci95": [
+          4.9979,
+          9.9723
+        ],
+        "minus_control": -0.4713,
+        "minus_control_ci95": [
+          -2.6787,
+          1.0215
+        ]
+      }
+    }
+  }
+}

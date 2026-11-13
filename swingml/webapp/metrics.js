@@ -8,7 +8,7 @@
  * was measured failing badly enough to be refused outright.
  */
 
-import { L, SWING_LANDMARKS, normalisePose, bodyScale, bodyAxisAngle } from "./engine.js";
+import { L, SWING_LANDMARKS, PoseSequence, normalisePose, bodyScale, bodyAxisAngle } from "./engine.js";
 
 const mid = (frame, a, b) => [
   0.5 * (frame[a][0] + frame[b][0]),
@@ -81,7 +81,6 @@ export function computeMetrics(sequence, events, handedness, config) {
 
   const backswing = frames[TOP] - frames[ADDRESS];
   const downswing = frames[IMPACT] - frames[TOP];
-  const whole = frames[FINISH] - frames[ADDRESS];
 
   const coords = normalisePose(sequence, config);
   const square = sequence.squareXY();
@@ -142,7 +141,10 @@ export function computeMetrics(sequence, events, handedness, config) {
     tempoRatio: downswing > 0 ? backswing / downswing : null,
     backswingMs: backswing * 1000,
     downswingMs: downswing * 1000,
-    wholeMs: whole * 1000,
+    // The finish lands a median 29 frames from the label on 201 held-out real
+    // swings, so no duration ending there is reported (see FINISH_UNRELIABLE in
+    // swingml/metrics/swing.py, which this mirrors).
+    wholeMs: null,
     peakHandSpeedMs: (times[peakFrame] - times[impact]) * 1000,
     shoulderTurnDeg: shoulderTurn,
     hipTurnDeg: hipTurn,
@@ -151,6 +153,106 @@ export function computeMetrics(sequence, events, handedness, config) {
     pelvisLift: lift,
     feetInShot: haveFeet,
   };
+}
+
+/* Slow motion, exactly as swingml.analysis.analyse_pose_sequence handles it.
+ *
+ * A phone's slow-motion export plays a swing four or eight times slower than it
+ * happened. Read at playback speed the backswing lasts three seconds, which the
+ * plausibility gate rightly refuses, and the model is unsure of a swing moving
+ * that slowly. Of 82 slow-motion replays in the real test set the Python side
+ * refused 71 before it retried them; read as if played 2, 4 or 8 times faster,
+ * all 82 decode. The factor is a guess the video cannot confirm, so every
+ * duration that depends on it is refused and the tempo ratio - which a uniform
+ * slow-down leaves unchanged - carries that assumption. */
+export const SLOWED_ASSUMPTION =
+  "slow motion: assumes the whole swing was slowed by the same factor. A phone's " +
+  "slow-motion clip ramps speed at its start and end; if the swing crosses a ramp " +
+  "this ratio is wrong";
+
+export const slowedReason = (factor) =>
+  `the clip reads as a swing only when treated as slow motion played back about ` +
+  `${factor.toFixed(0)} times slower, and how much slower it really was cannot be known ` +
+  `from the video, so no duration is reported. Film at normal speed for timings`;
+
+const CORE_EVENTS = [0, 3, 4, 5];
+
+/* Metrics read at a guessed speed, with everything that depends on the guess refused.
+ * Event times go back onto the clip's own timeline; a recorded-speed read
+ * (`retimed` false, #49) is already on it. */
+export function slowedMetrics(metrics, factor, retimed = true) {
+  return {
+    ...metrics,
+    eventTimes: retimed ? metrics.eventTimes.map((t) => t * factor) : metrics.eventTimes.slice(),
+    backswingMs: null,
+    downswingMs: null,
+    wholeMs: null,
+    peakHandSpeedMs: null,
+    tempoAssumptions: [SLOWED_ASSUMPTION],
+    slowedBy: factor,
+    slowedRetimed: retimed,
+  };
+}
+
+const coreConfidence = (c) => Math.exp(
+  CORE_EVENTS.reduce((sum, i) => sum + Math.log(Math.max(c[i], 1e-12)), 0) / CORE_EVENTS.length,
+);
+
+/* `attempt(sequence)` reads one pose sequence at its own timestamps and returns
+ * `{ok, refusedBy, decoded, metrics, ...}`, where `refusedBy` is "events" when the
+ * decoder or the plausibility gate refused it. An events refusal is retried: a
+ * clip with no body in it is not a swing at any speed. Of the factors that
+ * decode, the one with the most confident core events is kept.
+ *
+ * `check` ({backswingS, margin, rateHz}, from the payload's thresholds) also
+ * retries an answered clip whose backswing, in whole frames on the model's grid,
+ * is longer than `backswingS`: a clip slowed two or three times passes every gate
+ * at recorded speed (#32). It is read as slow motion only if the best slowed read
+ * beats the recorded-speed core confidence by more than `margin`. Same rule as
+ * analyse_pose_sequence. */
+/* The answered-clip check from a payload's thresholds, or null where the payload
+ * predates it (only refused clips are then retried, as before). */
+export function slowMotionCheck(thresholds, features) {
+  if (thresholds.slow_motion_check_backswing_s == null) return null;
+  return {
+    backswingS: thresholds.slow_motion_check_backswing_s,
+    margin: thresholds.slow_motion_margin || 0,
+    rateHz: features.canonical_rate_hz,
+    // What a fired check does: keep the recorded-speed read and withhold durations
+    // (#49), or re-read at the slowed speed (#32's rule). Older payloads re-read.
+    rereads: thresholds.slow_motion_check_rereads ?? true,
+  };
+}
+
+export function readAtSpeeds(sequence, attempt, factors, check = null) {
+  const first = attempt(sequence);
+  let toBeat = null;
+  if (first.ok) {
+    if (!check || check.backswingS == null) return { ...first, slowedBy: null };
+    const f = first.decoded.frames;
+    if ((f[3] - f[0]) / check.rateHz <= check.backswingS) return { ...first, slowedBy: null };
+    toBeat = coreConfidence(first.decoded.confidence) + check.margin;
+  } else if (first.refusedBy !== "events") {
+    return { ...first, slowedBy: null };
+  }
+  let best = null;
+  for (const factor of factors || []) {
+    const faster = new PoseSequence(
+      sequence.xy, sequence.visibility, sequence.world, sequence.detected,
+      Array.from(sequence.times, (t) => t / factor), sequence.width, sequence.height,
+    );
+    const got = attempt(faster);
+    if (!got.ok) continue;
+    const core = coreConfidence(got.decoded.confidence);
+    if (!best || core > best.core) best = { core, factor, got };
+  }
+  if (!best || (toBeat !== null && best.core <= toBeat)) return { ...first, slowedBy: null };
+  if (toBeat !== null && !check.rereads) {
+    return { ...first, slowedBy: best.factor, retimed: false,
+             metrics: slowedMetrics(first.metrics, best.factor, false) };
+  }
+  return { ...best.got, slowedBy: best.factor, retimed: true,
+           metrics: slowedMetrics(best.got.metrics, best.factor) };
 }
 
 /* Whether what was found is shaped like a golf swing at all.

@@ -84,3 +84,25 @@ def default_radar_pipeline(
         implied_smash_bounds=(1.05, 1.60),
         ball_band_low_fraction=0.75,
     )
+
+
+GROUND_UNIT_SAMPLE_RATE_HZ = 40_000.0
+
+
+def ground_unit_radar_pipeline() -> RadarPipelineConfig:
+    """The pipeline for the ESP32-C3 ground unit's I/Q capture, after `ingest.iq`.
+
+    40 kHz per channel, so the transform is 1024 points with a 256-sample hop:
+    25.6 ms frames and 39 Hz bins. The 2048 points of the default would be a
+    51 ms window at this rate, and on synthetic driver shots that window smears
+    the club band enough to read the clubhead about 5 percent low, which then
+    fails the smash cross-check. 1024 points recovers both speeds, as the
+    synthetic study for the default also found. The search band stops at 18 kHz,
+    short of the 20 kHz Nyquist limit; the front end passes 200 Hz to 15 kHz.
+    """
+    return default_radar_pipeline(
+        sample_rate_hz=GROUND_UNIT_SAMPLE_RATE_HZ,
+        n_fft=1024,
+        hop=256,
+        band_high_hz=18_000.0,
+    )
