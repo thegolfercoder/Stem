@@ -61,6 +61,7 @@
 //      "dock_stem"         stem with the 1/4"-20 stud cap, or the MagSafe ring (print flat)
 //      "pod_park_hood"     the hood the pod parks and charges in, on the lid (print rear face down)
 //      "fit_test_coupon"   print this first: every tight fit of both units on one 10-minute plate
+//      "arm_fit_coupon"    print this before the arm: slices of its channel, hinge and swivel, 15 minutes
 //      "assembly"          everything placed, with ghost components (viewing only)
 //      "print_plate"       shell + lid + small parts laid out for one export
 // =============================================================================
@@ -70,7 +71,7 @@
 use <script_shaft_imu.scad>
 
 /* [Render] */
-part            = "assembly";   // [assembly, shell, lid, radome, led_pipe, esp32_clamp_tab, dock_base, dock_stem, pod_park_hood, fit_test_coupon, print_plate, section]
+part            = "assembly";   // [assembly, shell, lid, radome, led_pipe, esp32_clamp_tab, dock_base, dock_stem, pod_park_hood, fit_test_coupon, arm_fit_coupon, print_plate, section]
 // Also: "in_place:shell|lid|radome|led_pipe|tab0|tab1|dock_base|dock_stem|pod_park_hood" and "ghost:<name>" export one
 // part in its assembled position (used by cad/blender/).
 show_components = true;         // ghost components in the assembly view
@@ -1599,6 +1600,112 @@ module fit_test_coupon() {
 }
 
 // ----------------------------------------------------------------------------
+//  Arm fit coupon: print it before the arm
+// ----------------------------------------------------------------------------
+// Every fit of the folding arm on one 15-minute plate. Each piece is a box cut
+// out of the real part (the part's own module, intersected), so its clearances
+// are the full print's and follow any change to the arm's numbers. One pair a row:
+//   S  channel  cpa_h of the dock base's spine round the stored detent: the channel
+//               and its detent hole. Stands as the base prints.
+//      slide    The same cpa_h of the slide, with its bump: flat, front face down, as
+//               the slide prints. Push it into the channel until the bump clicks.
+//   H  head     Both of the head's knuckles and a band of the head round them, cut
+//               at the ring pocket's floor, printed upside down (knuckles up): the
+//               head itself prints on its back face, which its knuckles stand 2 mm
+//               below. A 3 mm pin goes through it and the swivel's knuckle.
+//      knuckle  The swivel above its drum: the knuckle and its tilt grooves, drum
+//               side down, as the swivel prints.
+//   Y  cup      The slide's cup with its yaw notches and peg hole, floor down (the
+//               slide prints it on its side).
+//      drum     The swivel's drum, rib and peg, upside down: drop it into the cup.
+// Set coupon_assembled to see the pieces where they mate.
+coupon_assembled = false;
+cpa_h     = 11;                          // the S pair's height, centred on the stored detent
+cpa_z0    = detent_z[0] - cpa_h / 2;
+cpa_z1    = cpa_z0 + cpa_h;
+cpa_top   = slide_z0(true) + slide_len;  // the open slide's top: the swivel's seat
+cpa_hz    = hinge_z(true);
+cpa_floor = 1.2;                         // arm_slide's cup starts this far under its top: the cup piece's flat underside
+cpa_r     = swivel_d / 2 + 2;            // the box round the cup, swivel_d + 3.2 across
+cpa_hw    = 30;                          // the box round the head's knuckles: as long as the head's pin bore
+cpa_band  = knuckle_d / 2 + 5;           // the head piece reaches this far over the axis
+cpa_hy0   = hinge_y - knuckle_d / 2;     // the head piece in Y: the knuckles' back to the ring pocket's floor
+cpa_hy1   = hinge_y + max(head_t / 2, head_t / 2 + phone_standoff - ring_depth);
+// Footprints [X, Y] as laid out: channel, slide; head, knuckle; cup, drum. One pair a row.
+cpa_fp    = [[arm_w, arm_t], [slide_w, cpa_h], [cpa_hw, cpa_hy1 - cpa_hy0], [swivel_d + 2, swivel_d],
+             [2 * cpa_r, 2 * cpa_r], [swivel_d + 2, swivel_d + 2]];
+cpa_row_d = [for (i = [0 : 2]) max(cpa_fp[2 * i][1], cpa_fp[2 * i + 1][1])];
+cpa_row_y = [0, cpa_row_d[0] + coupon_gap, cpa_row_d[0] + cpa_row_d[1] + 2 * coupon_gap];
+cpa_plate = [max([for (i = [0 : 2]) cpa_fp[2 * i][0] + coupon_gap + cpa_fp[2 * i + 1][0]]), cpa_row_y[2] + cpa_row_d[2]];
+
+module cpa_box(p0, p1) translate(p0) cube(p1 - p0);
+// The pieces where they are on the arm: the S pair folded, the rest open, tilt and yaw 0.
+module cpa_channel() intersection() {
+    dock_base();
+    cpa_box([body_w / 2 - arm_w / 2 - 1, spine_y0 - 1, cpa_z0], [body_w / 2 + arm_w / 2 + 1, spine_y1 + 1, cpa_z1]);
+}
+module cpa_slide() intersection() {
+    arm_slide(false);
+    cpa_box([body_w / 2 - slide_w / 2 - 1, slide_y0 - 1, cpa_z0], [body_w / 2 + slide_w / 2 + 1, spine_y1, cpa_z1]);
+}
+module cpa_head() intersection() {
+    if (head_style == "clamp") arm_clamp(true, 0, 0); else arm_head(true, 0, 0);
+    cpa_box([body_w / 2 - cpa_hw / 2, cpa_hy0 - 1, cpa_hz - knuckle_d / 2 - 1], [body_w / 2 + cpa_hw / 2, cpa_hy1, cpa_hz + cpa_band]);
+}
+module cpa_knuckle() intersection() {
+    arm_swivel(true, 0);
+    // From 0.01 over the drum's top face: cut exactly at it, the face would be left as a sheet.
+    cpa_box([body_w / 2 - swivel_d / 2 - 1, hinge_y - swivel_d / 2, cpa_top + swivel_h + 0.01], [body_w / 2 + swivel_d / 2 + 1, hinge_y + swivel_d / 2, cpa_hz + knuckle_d]);
+}
+module cpa_cup() intersection() {
+    arm_slide(true);
+    cpa_box([body_w / 2 - cpa_r, hinge_y - cpa_r, cpa_top - cpa_floor], [body_w / 2 + cpa_r, hinge_y + cpa_r, cpa_top + swivel_h + 1]);
+}
+module cpa_drum() intersection() {
+    arm_swivel(true, 0);
+    cpa_box([body_w / 2 - swivel_d / 2 - 1, hinge_y - swivel_d / 2 - 1, cpa_top - 3], [body_w / 2 + swivel_d / 2 + 1, hinge_y + swivel_d / 2 + 1, cpa_top + swivel_h]);
+}
+// A label engraved mark_depth into the face it is placed on (the text's +Z out of the face).
+module cpa_mark(s) translate([0, 0, -mark_depth]) linear_extrude(mark_depth + 1) text(s, size = coupon_text, font = font, halign = "center", valign = "center");
+
+// Each piece laid down with its footprint's corner at the origin.
+module cpa_channel_print() translate([-(body_w / 2 - arm_w / 2), -spine_y0, -cpa_z0]) cpa_channel();
+module cpa_slide_print() difference() {
+    translate([-(body_w / 2 - slide_w / 2), cpa_z1, -slide_y0]) rotate([90, 0, 0]) cpa_slide();
+    translate([slide_w * 0.8, cpa_h / 2, slide_t]) cpa_mark("S");
+}
+module cpa_head_print() difference() {
+    translate([-(body_w / 2 - cpa_hw / 2), cpa_hy1, cpa_hz + cpa_band]) rotate([180, 0, 0]) cpa_head();
+    // On the head's back face, now facing +Y, midway up the band under the swivel's knuckle.
+    translate([cpa_hw / 2, cpa_hy1 - (hinge_y - head_t / 2), (cpa_band - (head_cz_off - head_d / 2)) / 2]) rotate([90, 0, 180]) cpa_mark("H");
+}
+module cpa_knuckle_print() translate([-(body_w / 2 - swivel_d / 2 - 1), -(hinge_y - swivel_d / 2), -(cpa_top + swivel_h + 0.01)]) cpa_knuckle();
+module cpa_cup_print() translate([-(body_w / 2 - cpa_r), -(hinge_y - cpa_r), -(cpa_top - cpa_floor)]) cpa_cup();
+module cpa_drum_print() translate([-(body_w / 2 - swivel_d / 2 - 1), hinge_y + swivel_d / 2 + 1, cpa_top + swivel_h]) rotate([180, 0, 0]) cpa_drum();
+module cpa_place(row, col) translate([col == 0 ? 0 : cpa_fp[2 * row][0] + coupon_gap, cpa_row_y[row], 0]) children();
+
+module arm_fit_coupon() {
+    if (coupon_assembled) {
+        color("burlywood") cpa_channel();
+        color("steelblue") cpa_slide();
+        // The hinge stack beside the S pair, brought down to it.
+        translate([arm_w + 2 * coupon_gap, 0, cpa_z0 - (cpa_top - cpa_floor)]) {
+            color("burlywood") cpa_cup();
+            color("steelblue") { cpa_drum(); cpa_knuckle(); }
+            color("salmon") cpa_head();
+            color("silver") translate([body_w / 2 - 14, hinge_y, cpa_hz]) arm_pin();
+        }
+    } else {
+        cpa_place(0, 0) cpa_channel_print();
+        cpa_place(0, 1) cpa_slide_print();
+        cpa_place(1, 0) cpa_head_print();
+        cpa_place(1, 1) cpa_knuckle_print();
+        cpa_place(2, 0) cpa_cup_print();
+        cpa_place(2, 1) cpa_drum_print();
+    }
+}
+
+// ----------------------------------------------------------------------------
 //  Ghost components (assembly view only)
 // ----------------------------------------------------------------------------
 // Each component is a named ghost so other tools can export them one at a
@@ -1880,6 +1987,8 @@ module fit_report() {
         chk("folded head's raised face to spine  ", (hinge_y - head_t / 2 - phone_standoff) - spine_y1 - 0.3),
         chk("pod pocket walls hold half the pod  ", pod_pocket[2] - 26 / 2),
         chk("pod pocket over the pod, a side     ", (pod_pocket[0] - pp_size[0]) / 2),
+        chk("arm fit coupon inside 80 x 60 plate ", min(80 - cpa_plate[0], 60 - cpa_plate[1])),
+        chk("arm fit coupon slices hold a detent ", min(detent_z[0] - cpa_z0, cpa_z1 - detent_z[0]) - 2),
     ];
     for (l = concat(lines, ms_lines, st_lines, stem_lines, pp_lines, sight_lines, pz_lines, arm_lines)) echo(l);
     if (arm) {
@@ -1894,6 +2003,9 @@ module fit_report() {
                  cg_phone, " mm behind the unit's front, base ends at ", rear,
                  tipping < 0 ? " (the phone is over the base: it cannot tip it backwards)" :
                  str("; tipping moment ", tipping, " g.mm against ", restoring)));
+        echo(str("  info  arm fit coupon: plate ", cpa_plate, " mm; channel ", [ch_w, ch_t], " over the slide's ", [slide_w, slide_t],
+                 " (", slide_clear, " a side); hinge bores ", pin_d + 2 * pin_clear, " for the ", pin_d, " mm pin; drum ", swivel_d,
+                 ", notches every ", yaw_step, " deg; tilt grooves at ", tilt_steps, " deg"));
     }
     echo(str("  info  radar window centre ", [win_cx, win_zb + top_on_face / 2],
              ", boresight ", win_tilt, " deg up, skin ", win_t, " mm"));
@@ -1970,6 +2082,8 @@ if (part == "shell") {
     pod_park_hood_print();
 } else if (part == "fit_test_coupon") {
     fit_test_coupon();
+} else if (part == "arm_fit_coupon") {
+    arm_fit_coupon();
 } else if (part == "section") {
     // 2D cut through the radar boresight (the Y/Z plane at X = win_cx), for
     // checking the window skin thickness and tilt. Horizontal = Y, vertical = Z.
