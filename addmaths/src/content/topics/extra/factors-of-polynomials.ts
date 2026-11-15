@@ -1,0 +1,245 @@
+import type { TopicExtra } from "@/lib/types";
+
+export const factorsOfPolynomialsExtra: TopicExtra = {
+  sections: [
+    {
+      id: "linear-factors-ax-b",
+      heading: "Dividing by a linear factor ax − b",
+      body: [
+        { k: "p", t: "The remainder theorem works for any linear divisor, not only $(x - a)$. The divisor $(ax - b)$ is zero at $x = \\dfrac ba$, so that is the value to substitute." },
+        { k: "math", t: "P(x) \\div (ax - b) \\text{ leaves remainder } P\\!\\left(\\tfrac ba\\right)" },
+        { k: "p", t: "For example, dividing $P(x) = 2x^3 - 3x^2 + 4$ by $(2x - 1)$ leaves $P\\!\\left(\\tfrac12\\right) = \\tfrac14 - \\tfrac34 + 4 = \\tfrac72$." },
+        { k: "note", tone: "key", title: "The factor test too", t: "$(ax - b)$ is a factor of $P(x)$ exactly when $P\\!\\left(\\tfrac ba\\right) = 0$. Candidate fractions $\\tfrac ba$ have $b$ dividing the constant term and $a$ dividing the leading coefficient." },
+      ],
+    },
+    {
+      id: "sketching-cubics",
+      heading: "Sketching a factorised cubic",
+      body: [
+        { k: "p", t: "Once a cubic is factorised, its graph needs no plotting. The factors give the roots, the constant gives the $y$-intercept, and the sign of the $x^3$ term gives the ends." },
+        {
+          k: "ul",
+          items: [
+            "Positive $x^3$ coefficient: the curve starts bottom left and ends top right.",
+            "Negative $x^3$ coefficient: it starts top left and ends bottom right.",
+            "A single factor $(x - a)$: the curve crosses the axis at $x = a$.",
+            "A squared factor $(x - a)^2$: the curve touches the axis at $x = a$ and turns back.",
+          ],
+        },
+        {
+          k: "plot",
+          spec: {
+            xRange: [-4, 5],
+            yRange: [-12, 14],
+            curves: [{ f: (x) => (x + 2) * (x - 1) * (x - 3), label: "y = (x + 2)(x − 1)(x − 3)", color: 0 }],
+            points: [
+              { x: -2, y: 0, label: "−2" },
+              { x: 1, y: 0, label: "1" },
+              { x: 3, y: 0, label: "3" },
+              { x: 0, y: 6, label: "(0, 6)" },
+            ],
+            yTick: 4,
+            caption: "Three single factors, so three crossings. The $y$-intercept is $(2)(-1)(-3) = 6$.",
+          },
+        },
+      ],
+    },
+    {
+      id: "cubic-inequalities",
+      heading: "Cubic inequalities",
+      body: [
+        { k: "p", t: "To solve $P(x) > 0$ for a cubic, factorise it and sketch it. The answer is wherever the curve is above the axis." },
+        { k: "math", t: "(x + 2)(x - 1)(x - 3) > 0 \\;\\Rightarrow\\; -2 < x < 1 \\text{ or } x > 3" },
+        { k: "note", tone: "warn", title: "Never divide by a factor", t: "Dividing both sides by $(x - 1)$ throws away a root and may reverse the inequality without warning, because $(x - 1)$ can be negative." },
+      ],
+    },
+  ],
+  examples: [
+    {
+      id: "poly-x1",
+      title: "A remainder by substitution",
+      difficulty: "easy",
+      prompt: "Find the remainder when $x^3 + 2x^2 - 5x + 1$ is divided by $(x - 2)$.",
+      steps: [
+        { t: "The divisor is zero at $x = 2$, so substitute 2.", m: "P(2) = 8 + 8 - 10 + 1" },
+        { t: "Evaluate.", m: "P(2) = 7" },
+      ],
+      answer: "The remainder is $7$",
+    },
+    {
+      id: "poly-x2",
+      title: "Show a factor, then factorise",
+      difficulty: "easy",
+      prompt: "Show that $(x + 1)$ is a factor of $x^3 - 7x - 6$, and hence factorise it completely.",
+      steps: [
+        { t: "Substitute $x = -1$.", m: "P(-1) = -1 + 7 - 6 = 0" },
+        { t: "The remainder is zero, so $(x + 1)$ is a factor. Compare coefficients to find the quadratic factor.", m: "x^3 - 7x - 6 = (x + 1)(x^2 - x - 6)" },
+        { t: "Factorise the quadratic.", m: "(x + 1)(x + 2)(x - 3)" },
+      ],
+      answer: "$(x + 1)(x + 2)(x - 3)$",
+    },
+    {
+      id: "poly-x3",
+      title: "Remainder by a divisor of the form $(ax - b)$",
+      difficulty: "medium",
+      prompt: "Find the remainder when $2x^3 - 3x^2 + 4$ is divided by $(2x - 1)$.",
+      steps: [
+        { t: "$(2x - 1)$ is zero at $x = \\tfrac12$.", m: "P\\!\\left(\\tfrac12\\right) = 2\\left(\\tfrac18\\right) - 3\\left(\\tfrac14\\right) + 4" },
+        { t: "Evaluate.", m: "\\tfrac14 - \\tfrac34 + 4 = \\tfrac72" },
+      ],
+      answer: "The remainder is $\\dfrac{7}{2}$",
+    },
+    {
+      id: "poly-x4",
+      title: "A cubic inequality",
+      difficulty: "medium",
+      prompt: "Solve $x^3 - 2x^2 - 5x + 6 > 0$.",
+      steps: [
+        { t: "Try factors of 6. $P(1) = 1 - 2 - 5 + 6 = 0$, so $(x - 1)$ is a factor.", m: "x^3 - 2x^2 - 5x + 6 = (x - 1)(x^2 - x - 6)" },
+        { t: "Factorise the quadratic.", m: "(x - 1)(x - 3)(x + 2)" },
+        { t: "The $x^3$ coefficient is positive, so the curve rises from bottom left, crosses at $-2$, comes back down through $1$ and rises again through $3$." },
+        { t: "It is above the axis between the first two roots and beyond the third.", m: "-2 < x < 1 \\text{ or } x > 3" },
+      ],
+      answer: "$-2 < x < 1$ or $x > 3$",
+    },
+    {
+      id: "poly-x5",
+      title: "Two conditions, two unknowns, one real root",
+      difficulty: "hard",
+      prompt: "$P(x) = x^3 + ax^2 + bx - 6$. $(x - 2)$ is a factor of $P(x)$, and the remainder when $P(x)$ is divided by $(x + 2)$ is $-12$. Find $a$ and $b$, and show that $P(x) = 0$ has only one real root.",
+      steps: [
+        { t: "Factor theorem with $x = 2$.", m: "8 + 4a + 2b - 6 = 0 \\;\\Rightarrow\\; 2a + b = -1" },
+        { t: "Remainder theorem with $x = -2$.", m: "-8 + 4a - 2b - 6 = -12 \\;\\Rightarrow\\; 2a - b = 1" },
+        { t: "Add the equations.", m: "4a = 0 \\;\\Rightarrow\\; a = 0,\\quad b = -1" },
+        { t: "So $P(x) = x^3 - x - 6$. Divide out the known factor.", m: "x^3 - x - 6 = (x - 2)(x^2 + 2x + 3)" },
+        { t: "The quadratic has discriminant $4 - 12 = -8 < 0$, so it has no real roots." },
+      ],
+      answer: "$a = 0$, $b = -1$; the only real root is $x = 2$",
+    },
+    {
+      id: "poly-x6",
+      title: "A remainder by a quadratic divisor",
+      difficulty: "olympiad",
+      prompt: "When the polynomial $P(x)$ is divided by $(x - 1)$ the remainder is 3, and when it is divided by $(x - 2)$ the remainder is 5. Find the remainder when $P(x)$ is divided by $(x - 1)(x - 2)$.",
+      steps: [
+        { t: "Dividing by a quadratic leaves a remainder of degree at most 1. Write the division as an identity.", m: "P(x) = (x - 1)(x - 2)Q(x) + Ax + B" },
+        { t: "Put $x = 1$: the first term vanishes.", m: "P(1) = A + B = 3" },
+        { t: "Put $x = 2$.", m: "P(2) = 2A + B = 5" },
+        { t: "Subtract.", m: "A = 2,\\quad B = 1" },
+      ],
+      answer: "The remainder is $2x + 1$",
+      remark: "We never needed $P(x)$ itself. Choosing values that kill the unknown quotient is the whole idea.",
+    },
+  ],
+  examQuestions: [
+    {
+      id: "poly-x7",
+      title: "Root, factorise, solve",
+      difficulty: "easy",
+      marks: 6,
+      paper: 1,
+      prompt: "$P(x) = 2x^3 + 3x^2 - 11x - 6$.\n(a) Show that $x = 2$ is a root of $P(x) = 0$. [2]\n(b) Factorise $P(x)$ completely. [3]\n(c) Hence solve $P(x) = 0$. [1]",
+      steps: [
+        { t: "(a) Substitute.", m: "P(2) = 16 + 12 - 22 - 6 = 0" },
+        { t: "(b) $(x - 2)$ is a factor. Compare coefficients: the quadratic factor starts $2x^2$ and ends $+3$.", m: "2x^3 + 3x^2 - 11x - 6 = (x - 2)(2x^2 + 7x + 3)" },
+        { t: "Factorise the quadratic.", m: "(x - 2)(2x + 1)(x + 3)" },
+        { t: "(c) Set each factor to zero.", m: "x = 2,\\quad x = -\\tfrac12,\\quad x = -3" },
+      ],
+      answer: "(b) $(x - 2)(2x + 1)(x + 3)$  (c) $x = 2$, $x = -\\tfrac12$, $x = -3$",
+      markScheme: [
+        { part: "(a)", type: "M", marks: 1, criterion: "Substitutes $x = 2$" },
+        { part: "(a)", type: "A", marks: 1, criterion: "Shows the value is 0 and concludes", dependsOn: 0 },
+        { part: "(b)", type: "M", marks: 1, criterion: "Finds a quadratic factor by division or comparing coefficients" },
+        { part: "(b)", type: "A", marks: 1, criterion: "$2x^2 + 7x + 3$", dependsOn: 2 },
+        { part: "(b)", type: "A", marks: 1, criterion: "$(x - 2)(2x + 1)(x + 3)$", dependsOn: 2 },
+        { part: "(c)", type: "B", marks: 1, criterion: "All three roots, follow through their factors" },
+      ],
+    },
+    {
+      id: "poly-x8",
+      title: "Two given factors",
+      difficulty: "medium",
+      marks: 5,
+      paper: 1,
+      prompt: "$(x - 1)$ and $(x + 2)$ are factors of $f(x) = x^3 + ax^2 + bx - 4$.\n(a) Find $a$ and $b$. [4]\n(b) Find the third linear factor of $f(x)$. [1]",
+      steps: [
+        { t: "(a) $f(1) = 0$.", m: "1 + a + b - 4 = 0 \\;\\Rightarrow\\; a + b = 3" },
+        { t: "$f(-2) = 0$.", m: "-8 + 4a - 2b - 4 = 0 \\;\\Rightarrow\\; 2a - b = 6" },
+        { t: "Add the equations.", m: "3a = 9 \\;\\Rightarrow\\; a = 3,\\quad b = 0" },
+        { t: "(b) $f(x) = x^3 + 3x^2 - 4$. The product of the three constant terms of the factors must be $-4$: $(-1)(2)(c) = -4$ gives $c = 2$.", m: "f(x) = (x - 1)(x + 2)^2" },
+      ],
+      answer: "(a) $a = 3$, $b = 0$  (b) $(x + 2)$, which is a repeated factor",
+      markScheme: [
+        { part: "(a)", type: "M", marks: 1, criterion: "Substitutes $x = 1$ and equates to 0" },
+        { part: "(a)", type: "M", marks: 1, criterion: "Substitutes $x = -2$ and equates to 0" },
+        { part: "(a)", type: "M", marks: 1, criterion: "Solves two linear equations in $a$ and $b$" },
+        { part: "(a)", type: "A", marks: 1, criterion: "$a = 3$ and $b = 0$", dependsOn: 2 },
+        { part: "(b)", type: "B", marks: 1, criterion: "$(x + 2)$" },
+      ],
+    },
+    {
+      id: "poly-x9",
+      title: "A cubic with irrational roots",
+      difficulty: "hard",
+      marks: 6,
+      paper: 2,
+      prompt: "Solve $x^3 - 5x^2 + 3x + 1 = 0$, giving any non-integer roots to 3 significant figures. [6]",
+      steps: [
+        { t: "Try factors of 1. $P(1) = 1 - 5 + 3 + 1 = 0$, so $(x - 1)$ is a factor.", m: "x^3 - 5x^2 + 3x + 1 = (x - 1)(x^2 - 4x - 1)" },
+        { t: "The quadratic does not factorise. Use the formula.", m: "x = \\frac{4 \\pm \\sqrt{16 + 4}}{2} = 2 \\pm \\sqrt5" },
+        { t: "Evaluate to 3 significant figures.", m: "2 + \\sqrt5 \\approx 4.24,\\qquad 2 - \\sqrt5 \\approx -0.236" },
+      ],
+      answer: "$x = 1$, $x \\approx 4.24$, $x \\approx -0.236$",
+      markScheme: [
+        { type: "M", marks: 1, criterion: "Finds a root by trying factors of the constant" },
+        { type: "A", marks: 1, criterion: "$x = 1$", dependsOn: 0 },
+        { type: "M", marks: 1, criterion: "Finds the quadratic factor by division or comparing coefficients" },
+        { type: "A", marks: 1, criterion: "$x^2 - 4x - 1$", dependsOn: 2 },
+        { type: "M", marks: 1, criterion: "Solves their quadratic by formula or completing the square" },
+        { type: "A", marks: 1, criterion: "$4.24$ and $-0.236$", dependsOn: 4 },
+      ],
+    },
+  ],
+  mistakes: [
+    {
+      wrong: "Solving $(x - 1)(x + 2)(x + 3) = 0$ as $x = -1, 2, 3$.",
+      why: "Each root is the value that makes its bracket zero, which has the opposite sign to the number in the bracket.",
+      fix: "$x - 1 = 0$ gives $x = 1$; $x + 2 = 0$ gives $x = -2$; $x + 3 = 0$ gives $x = -3$.",
+    },
+    {
+      wrong: "Substituting $x = 1$ or $x = 2$ to find the remainder on dividing by $(2x - 1)$.",
+      why: "The remainder theorem needs the value that makes the divisor zero.",
+      fix: "$2x - 1 = 0$ at $x = \\tfrac12$, so the remainder is $P\\!\\left(\\tfrac12\\right)$.",
+    },
+    {
+      wrong: "Solving a cubic inequality by dividing both sides by one of its factors.",
+      why: "The factor can be negative, which reverses the inequality, and the division loses a critical value.",
+      fix: "Factorise fully, sketch the cubic, and read the regions above or below the axis.",
+    },
+  ],
+  tips: [
+    "Try the factors of the constant term first. If the leading coefficient is not 1, also try fractions: factor of the constant over factor of the leading coefficient.",
+    "Write the quadratic factor by comparing coefficients. Its first and last terms are free, and only the middle one needs working.",
+    "For a remainder on division by a quadratic, write the remainder as $Ax + B$ and substitute the two roots of the divisor.",
+  ],
+  summary: {
+    bigIdea: "Substituting a single number into a polynomial tells you the remainder on division by the matching linear factor. Zero remainder means a factor, and a factor means a root.",
+    mustKnow: [
+      "Remainder on dividing $P(x)$ by $(x - a)$ is $P(a)$",
+      "Remainder on dividing by $(ax - b)$ is $P\\!\\left(\\tfrac ba\\right)$",
+      "$(x - a)$ is a factor $\\iff P(a) = 0$",
+      "A cubic has at least one real root and at most three",
+      "A squared factor means the graph touches the axis there",
+    ],
+    methods: [
+      { name: "Factorise a cubic", steps: ["Find a root by trying factors of the constant.", "Divide out the linear factor by comparing coefficients.", "Factorise or solve the quadratic factor."] },
+      { name: "Find unknown coefficients", steps: ["Turn each piece of information into an equation using $P(a)$.", "Solve the equations simultaneously.", "Write out the polynomial and check one condition."] },
+      { name: "Solve a cubic inequality", steps: ["Factorise completely.", "Sketch using the roots and the sign of $x^3$.", "Read off the regions."] },
+    ],
+    traps: [
+      "Substituting $x = 3$ for the divisor $(x + 3)$.",
+      "Stopping at linear × quadratic when asked to factorise completely.",
+      "Claiming three roots when the quadratic factor has a negative discriminant.",
+    ],
+  },
+};
