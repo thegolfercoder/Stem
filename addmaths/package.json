@@ -13,7 +13,8 @@
     "prebuild": "tsx scripts/build-search-index.ts",
     "audit": "tsx scripts/audit.ts",
     "serve": "node server.mjs",
-    "build:singlefile": "npm run build && tsx scripts/singlefile/build.ts"
+    "build:singlefile": "npm run build && tsx scripts/singlefile/build.ts",
+    "book": "TARGET=2000 tsx scripts/book/fit.ts"
   },
   "license": "MIT",
   "dependencies": {

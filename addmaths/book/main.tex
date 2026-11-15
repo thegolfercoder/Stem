@@ -1,0 +1,91 @@
+% IGCSE Additional Mathematics 0606: the companion book.
+% Generated content lives in build/; run `npm run book` to rebuild.
+\documentclass[11pt,a4paper,openany]{book}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs,tabularx}
+\usepackage[inline]{enumitem}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{newunicodechar}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{bookmark}
+
+\allowdisplaybreaks
+\setlength{\emergencystretch}{3em}
+\hbadness=10000 \vbadness=10000 \hfuzz=8pt
+
+% Characters that appear in the source text.
+\newunicodechar{—}{---}
+\newunicodechar{–}{--}
+\newunicodechar{−}{\ensuremath{-}}
+\newunicodechar{²}{\ensuremath{^{2}}}
+\newunicodechar{³}{\ensuremath{^{3}}}
+\newunicodechar{¹}{\ensuremath{^{1}}}
+\newunicodechar{⁻}{\ensuremath{^{-}}}
+\newunicodechar{ˣ}{\ensuremath{^{x}}}
+\newunicodechar{₁}{\ensuremath{_{1}}}
+\newunicodechar{ₙ}{\ensuremath{_{n}}}
+\newunicodechar{₋}{\ensuremath{_{-}}}
+\newunicodechar{✓}{\ensuremath{\checkmark}}
+\newunicodechar{π}{\ensuremath{\pi}}
+\newunicodechar{δ}{\ensuremath{\delta}}
+\newunicodechar{θ}{\ensuremath{\theta}}
+\newunicodechar{·}{\ensuremath{\cdot}}
+\newunicodechar{½}{\ensuremath{\tfrac12}}
+\newunicodechar{⅔}{\ensuremath{\tfrac23}}
+\newunicodechar{≤}{\ensuremath{\le}}
+\newunicodechar{≥}{\ensuremath{\ge}}
+\newunicodechar{≠}{\ensuremath{\ne}}
+\newunicodechar{√}{\ensuremath{\surd}}
+\newunicodechar{→}{\ensuremath{\to}}
+\newunicodechar{⇒}{\ensuremath{\Rightarrow}}
+\newunicodechar{∞}{\ensuremath{\infty}}
+\newunicodechar{∫}{\ensuremath{\int}}
+\newunicodechar{∪}{\ensuremath{\cup}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{′}{\ensuremath{'}}
+\newunicodechar{…}{\ldots}
+\newunicodechar{∠}{\ensuremath{\angle}}
+\newunicodechar{°}{\ensuremath{^\circ}}
+
+% amsthm environments, numbered within chapters.
+\theoremstyle{definition}
+\newtheorem{example}{Example}[chapter]
+\newtheorem{question}[example]{Question}
+\renewcommand{\qedsymbol}{$\square$}
+\newenvironment{solution}{\begin{proof}[Solution]}{\end{proof}}
+\newenvironment{note}[1]{\par\smallskip\noindent\textbf{#1.}\ }{\par\smallskip}
+\newenvironment{chapterabstract}{\begin{quote}\small}{\end{quote}}
+\newcommand{\checkmarkfix}{}
+
+\title{\Huge\bfseries Additional Mathematics\\[6pt]\Large A Complete Course for Cambridge IGCSE 0606}
+\author{Theory, worked examples, every question type, exercises and full solutions}
+\date{Syllabus for 2025, 2026 and 2027}
+
+\begin{document}
+\frontmatter
+\maketitle
+\chapter*{Preface}
+This book follows the Cambridge IGCSE Additional Mathematics (0606) syllabus through all fourteen units.
+Part~I teaches each topic: the theory, the formulas, the errors that cost marks and a one-page summary.
+Part~II works the written examples and exam-style questions in full, with mark schemes.
+Part~III gives a worked instance of every type of question, once for each method it can call for.
+Part~IV is a bank of graded exercises, and Part~V solves every one of them step by step.
+The exercises are produced by the same generators as the practice engine on the companion website,
+and every generated answer is checked independently before the book is built.
+Cambridge past papers are copyright and are not reproduced here.
+\tableofcontents
+\mainmatter
+\input{build/part1}
+\input{build/part2}
+\input{build/part3}
+\input{build/part4}
+\input{build/part5}
+\input{build/appendix}
+\end{document}
