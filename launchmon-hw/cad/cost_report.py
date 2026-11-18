@@ -3,6 +3,7 @@
 
     python3 cad/cost_report.py                 # reads cad/stl/, writes cad/stl/cost_report.txt
     python3 cad/cost_report.py --filament=25 --machine=0.4
+    python3 cad/cost_report.py --stl-dir=some/dir   # cost a trial export elsewhere (nothing written)
 
 Each STL is read in the orientation it is printed in. Material is estimated
 from the part's surface area and volume, as a slicer lays it down: a solid
@@ -122,6 +123,10 @@ def opt(name: str, default: float) -> float:
 
 
 def main() -> None:
+    global STL_DIR
+    trial = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--stl-dir=")), None)
+    if trial:
+        STL_DIR = Path(trial)
     filament_usd_kg = opt("filament", 20.0)  # PETG, retail spool
     own_usd_h = opt("machine", 0.40)  # own printer: power + wear + depreciation
     farm_usd_h = opt("farm", 1.50)  # typical print-farm machine rate
@@ -184,7 +189,7 @@ def main() -> None:
         lines.append("Not exported yet: " + ", ".join(missing))
     text = "\n".join(lines) + "\n"
     print(text, end="")
-    if "--no-write" not in sys.argv:
+    if "--no-write" not in sys.argv and not trial:
         (STL_DIR / "cost_report.txt").write_text(text)
 
 
