@@ -1,0 +1,596 @@
+<title>CoolBrick Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: lab-notebook tool — a 3D bench on top, a strip of live readouts, then the measured-style charts and the spec sheet. */
+:root{
+  --bg:#f3f4ef; --panel:#fbfbf8; --ink:#16201a; --ink-2:#4b564e; --ink-3:#7a847c;
+  --rule:#d9ddd3; --accent:#d9661f; --accent-ink:#a9470b; --leaf:#2f7d3a;
+  --scene-bg:#e7eae1; --ground:#cfd4c6;
+  --s-clay:#2a78d6; --s-cool:#eb6834; --s-v1:#1baf7a; --s-air:#8a918a;
+  --hot:#e34948; --cold:#2a78d6; --mid:#d8d8d2;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#111513; --panel:#181d1a; --ink:#eef1ea; --ink-2:#b9c1b8; --ink-3:#88918a;
+  --rule:#2b322d; --accent:#f08a45; --accent-ink:#f5a56f; --leaf:#5bbf68;
+  --scene-bg:#1b211d; --ground:#26302a;
+  --s-clay:#3987e5; --s-cool:#d95926; --s-v1:#199e70; --s-air:#8f978f;
+  --hot:#e66767; --cold:#3987e5; --mid:#4a4f4a; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#111513; --panel:#181d1a; --ink:#eef1ea; --ink-2:#b9c1b8; --ink-3:#88918a;
+  --rule:#2b322d; --accent:#f08a45; --accent-ink:#f5a56f; --leaf:#5bbf68;
+  --scene-bg:#1b211d; --ground:#26302a;
+  --s-clay:#3987e5; --s-cool:#d95926; --s-v1:#199e70; --s-air:#8f978f;
+  --hot:#e66767; --cold:#3987e5; --mid:#4a4f4a; color-scheme:dark }
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body)}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 64px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;gap:28px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(30px,5vw,46px);font-weight:800;line-height:1.05}
+h1 em{font-style:normal;color:var(--accent)}
+h2{font-size:22px;font-weight:700}
+h3{font-size:15px;font-weight:700}
+p{margin:0;max-width:68ch}
+.eyebrow{font:500 12px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.head{display:grid;gap:12px}
+.lede{color:var(--ink-2);font-size:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:14px 16px;display:grid;gap:4px;min-width:0}
+.kpi b{font:700 26px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.kpi span{color:var(--ink-2);font-size:13px}
+.bench{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+@media (max-width:900px){.bench{grid-template-columns:minmax(0,1fr)}}
+.stage{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--rule);background:var(--scene-bg);aspect-ratio:16/10;max-width:100%}
+@media (max-width:700px){.stage{aspect-ratio:4/5}}
+.stage canvas{display:block;width:100%;height:100%}
+.labels{position:absolute;inset:0;pointer-events:none}
+.tag{font:500 11px/1.2 var(--f-mono);color:var(--ink);background:color-mix(in srgb,var(--panel) 88%,transparent);
+  border:1px solid var(--rule);padding:3px 6px;border-radius:5px;white-space:nowrap}
+.tabs{position:absolute;top:12px;left:12px;display:flex;gap:4px;background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:3px}
+.tabs button{all:unset;cursor:pointer;font:600 13px/1 var(--f-body);padding:8px 12px;border-radius:6px;color:var(--ink-2)}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.tabs button:focus-visible,.ctl button:focus-visible,.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.legendbar{position:absolute;right:12px;bottom:12px;background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:8px 10px;display:grid;gap:4px;font:500 11px/1 var(--f-mono);color:var(--ink-2)}
+.legendbar .grad{width:160px;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--cold),var(--mid) 25%,var(--hot))}
+.legendbar .ticks{display:flex;justify-content:space-between}
+.hint{position:absolute;left:12px;bottom:12px;font:500 11px/1.3 var(--f-mono);color:var(--ink-3)}
+.side{display:grid;gap:12px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:14px 16px;display:grid;gap:10px;min-width:0}
+.ctl{display:grid;gap:10px}
+.ctl label{font:500 12px/1 var(--f-mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3)}
+.seg{display:flex;flex-wrap:wrap;gap:4px}
+.seg button{all:unset;cursor:pointer;font:500 13px/1 var(--f-body);padding:8px 10px;border-radius:6px;border:1px solid var(--rule);color:var(--ink-2)}
+.seg button[aria-pressed="true"]{border-color:var(--ink);color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.row{display:flex;align-items:center;gap:10px}
+.row input[type=range]{flex:1;accent-color:var(--accent)}
+.play{all:unset;cursor:pointer;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#fff;font:700 13px/1 var(--f-body)}
+.time{font:500 20px/1 var(--f-mono);font-variant-numeric:tabular-nums;min-width:58px}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-2);cursor:pointer}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+dl.read{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:0;font-size:13.5px}
+dl.read dt{color:var(--ink-2)}
+dl.read dd{margin:0;font:500 13.5px/1.4 var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+.dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:baseline}
+.charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:820px){.charts{grid-template-columns:minmax(0,1fr)}}
+.chart{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:14px 16px 10px;display:grid;gap:8px;min-width:0}
+.chart .sub{color:var(--ink-2);font-size:13px}
+.chart .cv{position:relative;height:250px}
+.sectionhead{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px}
+.tablewrap{overflow-x:auto;background:var(--panel);border:1px solid var(--rule);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:13.5px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font:600 12px/1.3 var(--f-mono);letter-spacing:.03em;color:var(--ink-3);text-transform:uppercase}
+td.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.notes .card p,.notes .card li{font-size:13.5px;color:var(--ink-2)}
+.notes ul{margin:0;padding-left:18px;display:grid;gap:4px}
+code,.mono{font-family:var(--f-mono);font-size:12.5px}
+.warn{border-left:3px solid var(--accent)}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div class="eyebrow">Poly Citra · Project Rebrick · 3D model and heat simulation</div>
+    <h1>CoolBrick <em>Lab</em></h1>
+    <p class="lede">A look inside the CoolBrick and a small edge data-centre shelter built from it, on a hot north-Indian day. The heat numbers come from a simulation in your browser that compares fired clay, the original Poly Citra brick (v1) and the CoolBrick.</p>
+    <div class="kpis" id="kpis">
+      <div class="kpi"><b id="k1">…</b><span>less wall and roof heat reaching the shelter in a day than with clay</span></div>
+      <div class="kpi"><b id="k2">…</b><span>cooling electricity saved per shelter per year (200 hot days, cooling COP 3)</span></div>
+      <div class="kpi"><b id="k3">…</b><span>before the room reaches 35 °C after the cooling fails (CoolBrick vs clay, 1.5 kW servers)</span></div>
+    </div>
+  </header>
+
+  <section class="bench" aria-label="3D model">
+    <div class="stage" id="stage">
+      <canvas id="three" aria-label="3D view of the CoolBrick and data-centre shelter"></canvas>
+      <div class="labels" id="labels"></div>
+      <div class="tabs" role="group" aria-label="3D view">
+        <button id="tabBrick" aria-pressed="true">The brick</button>
+        <button id="tabShelter" aria-pressed="false">Data-centre shelter</button>
+      </div>
+      <div class="legendbar" id="legendbar" aria-hidden="true">
+        <span>Temperature, °C</span>
+        <div class="grad"></div>
+        <div class="ticks"><span>15</span><span>25</span><span>40</span><span>55</span></div>
+      </div>
+      <div class="hint">Drag to rotate · scroll or pinch to zoom</div>
+    </div>
+
+    <aside class="side">
+      <div class="card ctl">
+        <label for="time">Time of day</label>
+        <div class="row">
+          <button class="play" id="play" aria-label="Play the day">▶</button>
+          <span class="time" id="timeLabel">15:00</span>
+          <input id="time" type="range" min="0" max="143" step="1" value="90" aria-label="Time of day">
+        </div>
+        <label>Wall material</label>
+        <div class="seg" role="group" aria-label="Wall material" id="matSeg">
+          <button data-m="clay" aria-pressed="false">Clay</button>
+          <button data-m="v1" aria-pressed="false">Poly Citra v1</button>
+          <button data-m="cool" aria-pressed="true">CoolBrick</button>
+        </div>
+        <label class="check"><input type="checkbox" id="heatView" checked> Show temperatures</label>
+        <label class="check" id="explodeWrap"><input type="checkbox" id="explode"> Exploded view</label>
+        <label class="check" id="jaaliWrap" hidden><input type="checkbox" id="jaali" checked> Jaali sun-screen (west)</label>
+      </div>
+      <div class="card">
+        <h3 id="readTitle">West wall right now</h3>
+        <dl class="read">
+          <dt>Outdoor air</dt><dd id="rAir">–</dd>
+          <dt>Sun on the wall</dt><dd id="rSun">–</dd>
+          <dt>Outer surface</dt><dd id="rOut">–</dd>
+          <dt>Inner surface</dt><dd id="rIn">–</dd>
+          <dt>Heat into the room</dt><dd id="rQ">–</dd>
+          <dt>Whole shelter gain</dt><dd id="rG">–</dd>
+        </dl>
+      </div>
+    </aside>
+  </section>
+
+  <section style="display:grid;gap:14px">
+    <div class="sectionhead">
+      <div style="display:grid;gap:6px">
+        <h2>Cooling performance over one day</h2>
+        <p class="lede" style="font-size:14px">Air 27–41 °C with strong sun. Inside the shelter is held at 25 °C. The dashed grey line is the outdoor air.</p>
+      </div>
+      <div class="seg" role="group" aria-label="Surface shown in the first two charts" id="surfSeg">
+        <button data-s="west" aria-pressed="true">West wall</button>
+        <button data-s="roof" aria-pressed="false">Roof</button>
+        <button data-s="east" aria-pressed="false">East wall</button>
+      </div>
+    </div>
+    <div class="charts">
+      <figure class="chart" style="margin:0">
+        <h3 id="c1t">Outer surface temperature, west wall</h3>
+        <div class="sub">How hot the outside face gets in the sun (°C)</div>
+        <div class="cv"><canvas id="c1" role="img" aria-label="Line chart of outer surface temperature through the day"></canvas></div>
+      </figure>
+      <figure class="chart" style="margin:0">
+        <h3 id="c2t">Heat flowing into the room, west wall</h3>
+        <div class="sub">Watts per square metre the cooling has to remove; below zero means heat is leaving</div>
+        <div class="cv"><canvas id="c2" role="img" aria-label="Line chart of heat flow into the room through the day"></canvas></div>
+      </figure>
+      <figure class="chart" style="margin:0">
+        <h3>Daily heat gain for the whole shelter</h3>
+        <div class="sub">Walls and roof of a 3 × 3 × 3 m shelter, kWh of heat per day</div>
+        <div class="cv"><canvas id="c3" role="img" aria-label="Bar chart of daily heat gain per shelter"></canvas></div>
+      </figure>
+      <figure class="chart" style="margin:0">
+        <h3>If the cooling fails at 14:00</h3>
+        <div class="row" style="gap:12px;flex-wrap:wrap">
+          <span class="sub" style="flex:1;min-width:180px">Room air temperature with the servers still running (°C)</span>
+          <label class="sub" for="itLoad" style="white-space:nowrap">Server load <b class="mono" id="itLabel">1.5 kW</b></label>
+          <input id="itLoad" type="range" min="0.5" max="4" step="0.5" value="1.5" style="accent-color:var(--accent);width:120px" aria-label="Server load in kilowatts">
+        </div>
+        <div class="cv"><canvas id="c4" role="img" aria-label="Line chart of room temperature after cooling failure"></canvas></div>
+      </figure>
+    </div>
+  </section>
+
+  <section style="display:grid;gap:14px">
+    <h2>Material properties used in the model</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Material</th><th>Conductivity k</th><th>Density</th><th>U-value, 230 mm wall</th><th>Sun absorbed</th><th>Heat emissivity</th><th>Phase-change layer</th></tr></thead>
+        <tbody>
+          <tr><td><span class="dot" style="background:var(--s-clay)"></span>Fired clay brick</td><td class="n">0.81 W/mK</td><td class="n">1800 kg/m³</td><td class="n" id="uClay">–</td><td class="n">70%</td><td class="n">0.90</td><td>None</td></tr>
+          <tr><td><span class="dot" style="background:var(--s-v1)"></span>Poly Citra v1 (solid gel)</td><td class="n">0.20 W/mK</td><td class="n">1050 kg/m³</td><td class="n" id="uV1">–</td><td class="n">55%</td><td class="n">0.90</td><td>None</td></tr>
+          <tr><td><span class="dot" style="background:var(--s-cool)"></span>CoolBrick</td><td class="n">0.15 core · 0.18 PCM zone</td><td class="n">600 · 850 kg/m³</td><td class="n" id="uCool">–</td><td class="n">5% (CaCO₃ coat)</td><td class="n">0.94</td><td>30 mm on the room side, 50% coconut-oil blend, melts at 27 °C, 110 kJ/kg</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="notes">
+    <div class="card">
+      <h3>How the simulation works</h3>
+      <p>Each wall is split into 47 thin slices. Every 10 seconds of simulated time the program works out how much heat moves between neighbouring slices (<span class="mono">q = k·ΔT/Δx</span>). On the outside, the wall takes in sunlight (<span class="mono">α·I</span>), swaps heat with the air (<span class="mono">h = 15 W/m²K</span>), and radiates heat to a sky about 18 °C colder than the air. On the inside it meets 25 °C room air (<span class="mono">h = 8 W/m²K</span>). The phase-change layer stores extra heat as it melts. The model runs three days and shows the third, so the starting guess doesn't matter.</p>
+    </div>
+    <div class="card">
+      <h3>Shelter and failure test</h3>
+      <ul>
+        <li>3 × 3 × 3 m shelter: roof, east and west walls 9 m² each, north and south walls 18 m² together.</li>
+        <li>Roof and walls use the chosen material.</li>
+        <li>Failure test: from 14:00 the cooling stops. The servers keep heating the room air and the equipment (about 230 kJ/K), and that heat soaks into the walls.</li>
+      </ul>
+    </div>
+    <div class="card warn">
+      <h3>Read this before quoting numbers</h3>
+      <p>These are model estimates built from assumed material values, not measurements. The CoolBrick values are design targets. Swap in your own lab results (conductivity, density, the PCM melting point and latent heat) and repeat the mini data-centre experiment to confirm them.</p>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+/* =================== 1. HEAT SIMULATION =================== */
+const SIG = 5.670e-8, H_OUT = 15, H_IN = 8, T_ROOM = 25, DT = 10, N = 47, L = 0.23, DX = L/(N-1);
+const MATS = {
+  clay: {name:'Clay', alpha:0.70, eps:0.90, layer:x=>({k:0.81,rho:1800,c:840,pcm:0})},
+  v1:   {name:'Poly Citra v1', alpha:0.55, eps:0.90, layer:x=>({k:0.20,rho:1050,c:1300,pcm:0})},
+  cool: {name:'CoolBrick', alpha:0.05, eps:0.94, layer:x=> x>0.20-1e-9 ? {k:0.18,rho:850,c:1800,pcm:0.5} : {k:0.15,rho:600,c:1300,pcm:0}},
+};
+const PCM = {Tm:27, sd:0.7, Lh:110e3};
+const ORIENTS = {
+  roof:{label:'Roof', area:9, fsky:1.0},
+  east:{label:'East wall', area:9, fsky:0.5},
+  west:{label:'West wall', area:9, fsky:0.5},
+  shade:{label:'North + south walls', area:18, fsky:0.5},
+};
+const tOut = h => 34 + 7*Math.cos(2*Math.PI*(h-15)/24);
+const dayS = h => Math.max(0, Math.sin(Math.PI*(h-6)/13));
+function solar(o, h){
+  const s = dayS(h);
+  if(o==='roof') return 950*Math.pow(s,1.2);
+  if(o==='east') return 90*s + (h>6&&h<12 ? 600*Math.pow(Math.sin(Math.PI*(h-6)/6),1.5) : 0);
+  if(o==='west') return 90*s + (h>12.5&&h<19 ? 620*Math.pow(Math.sin(Math.PI*(h-12.5)/6.5),1.5) : 0);
+  return 110*s;
+}
+function makeWall(mk){
+  const m = MATS[mk], P = [];
+  for(let i=0;i<N;i++) P.push(m.layer(i*DX));
+  const kf = new Float64Array(N-1);
+  for(let i=0;i<N-1;i++) kf[i] = 2*P[i].k*P[i+1].k/(P[i].k+P[i+1].k);
+  return {m, P, kf, T:new Float64Array(N).fill(30), q:new Float64Array(N)};
+}
+function cap(p, T){ // apparent heat capacity per m3
+  let c = p.rho*p.c;
+  if(p.pcm>0){ const z=(T-PCM.Tm)/PCM.sd; c += p.rho*p.pcm*PCM.Lh*Math.exp(-0.5*z*z)/(PCM.sd*2.5066283); }
+  return c;
+}
+function stepWall(w, o, h, Troom){
+  const {P,kf,T,q,m} = w, Ta = tOut(h), Tsky = Ta-18, I = solar(o,h), f = ORIENTS[o].fsky;
+  for(let i=0;i<N-1;i++) q[i] = kf[i]*(T[i]-T[i+1])/DX;
+  const T0k=T[0]+273.15, rad = m.eps*SIG*( f*(Math.pow(Tsky+273.15,4)-Math.pow(T0k,4)) + (1-f)*(Math.pow(Ta+273.15,4)-Math.pow(T0k,4)) );
+  const qOut = m.alpha*I + H_OUT*(Ta-T[0]) + rad;
+  const qIn = H_IN*(T[N-1]-Troom);
+  const n0 = T[0];
+  T[0] += DT*(qOut - q[0])/(cap(P[0],n0)*DX/2);
+  for(let i=1;i<N-1;i++) T[i] += DT*(q[i-1]-q[i])/(cap(P[i],T[i])*DX);
+  T[N-1] += DT*(q[N-2]-qIn)/(cap(P[N-1],T[N-1])*DX/2);
+  return qIn;
+}
+const SAMPLES = 144, PER = 600/DT;
+function runDay(mk, o){
+  const w = makeWall(mk);
+  const out = {Tso:[],Tsi:[],q:[],prof:[]};
+  const steps = 3*86400/DT;
+  for(let s=0;s<steps;s++){
+    const h = (s*DT/3600)%24;
+    const qi = stepWall(w,o,h,T_ROOM);
+    if(s >= 2*86400/DT && (s - 2*86400/DT) % PER === 0){
+      out.Tso.push(w.T[0]); out.Tsi.push(w.T[N-1]); out.q.push(qi); out.prof.push(Float32Array.from(w.T));
+    }
+  }
+  return out;
+}
+function rideThrough(mk, itKW){
+  const walls = Object.keys(ORIENTS).map(o=>({o, w:makeWall(mk)}));
+  const C = 1.2*27*1005 + 200e3, fail = 62, end = 62+12;
+  let Tr = T_ROOM; const pts = [];
+  const steps = end*3600/DT;
+  for(let s=0;s<steps;s++){
+    const tt = s*DT/3600, h = tt%24;
+    let gain = 0;
+    for(const {o,w} of walls) gain += ORIENTS[o].area*stepWall(w,o,h, tt<fail?T_ROOM:Tr);
+    if(tt>=fail){
+      Tr += DT*(itKW*1000 + gain)/C;
+      if((s % 30)===0) pts.push({x:+(tt-fail).toFixed(3), y:Tr});
+    }
+  }
+  const hit = pts.find(p=>p.y>=35);
+  return {pts, t35: hit ? hit.x : null};
+}
+
+const SIM = {};
+for(const mk of Object.keys(MATS)){ SIM[mk] = {}; for(const o of Object.keys(ORIENTS)) SIM[mk][o] = runDay(mk,o); }
+const dailyGain = mk => Object.keys(ORIENTS).reduce((a,o)=>a + ORIENTS[o].area*SIM[mk][o].q.reduce((x,y)=>x+y,0)*600/3.6e6, 0);
+const gainNow = (mk,i) => Object.keys(ORIENTS).reduce((a,o)=>a + ORIENTS[o].area*SIM[mk][o].q[i], 0);
+const U = mk => { let R = 0.13+0.04; for(let i=0;i<N-1;i++){ R += DX/makeWall(mk).kf[i]; } return 1/R; };
+let RT = {};
+function computeRT(it){ for(const mk of Object.keys(MATS)) RT[mk] = rideThrough(mk,it); }
+computeRT(1.5);
+
+/* =================== 2. PAGE NUMBERS =================== */
+const fmt1 = v => v.toFixed(1);
+const fh = t => t==null ? 'over 12 h' : (t<1 ? Math.round(t*60)+' min' : t.toFixed(1)+' h');
+const G = {clay:dailyGain('clay'), v1:dailyGain('v1'), cool:dailyGain('cool')};
+document.getElementById('k1').textContent = Math.round((1-G.cool/G.clay)*100)+'%';
+document.getElementById('k2').textContent = '≈ '+Math.round((G.clay-G.cool)/3*200).toLocaleString('en-IN')+' kWh';
+function setK3(){ document.getElementById('k3').textContent = fh(RT.cool.t35)+' vs '+fh(RT.clay.t35); }
+setK3();
+document.getElementById('uClay').textContent = U('clay').toFixed(2)+' W/m²K';
+document.getElementById('uV1').textContent = U('v1').toFixed(2)+' W/m²K';
+document.getElementById('uCool').textContent = U('cool').toFixed(2)+' W/m²K';
+
+/* =================== 3. THEME HELPERS =================== */
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const hex = s => new THREE.Color(s);
+function divColor(T){ // diverging: cold blue - neutral at 25 - hot red
+  const c0=hex(css('--cold')), cm=hex(css('--mid')), c1=hex(css('--hot'));
+  if(T<=25){ const u=Math.min(1,(25-T)/10); return cm.clone().lerp(c0,u); }
+  const u=Math.min(1,(T-25)/30); return cm.clone().lerp(c1,u);
+}
+
+/* =================== 4. CHARTS =================== */
+const hours = Array.from({length:SAMPLES},(_,i)=>i/6);
+let surf = 'west', mat = 'cool', idx = 90;
+const nowLine = {id:'nowLine', afterDatasetsDraw(ch){ if(!ch.options.plugins.nowLine) return; const x = ch.scales.x.getPixelForValue(idx/6), a=ch.chartArea, c=ch.ctx;
+  c.save(); c.strokeStyle=css('--ink-3'); c.setLineDash([3,3]); c.lineWidth=1; c.beginPath(); c.moveTo(x,a.top); c.lineTo(x,a.bottom); c.stroke(); c.restore(); }};
+Chart.register(nowLine);
+function baseOpts(yTitle, xTitle, xMax){
+  const ink=css('--ink-2'), grid=css('--rule');
+  return {responsive:true, maintainAspectRatio:false, animation:false, parsing:false,
+    interaction:{mode:'index', intersect:false},
+    plugins:{nowLine:true, legend:{labels:{color:ink, boxWidth:12, boxHeight:3, font:{family:'IBM Plex Sans', size:12}}},
+      tooltip:{callbacks:{title:it=>xTitle==='Hour'? hh(it[0].parsed.x) : it[0].parsed.x.toFixed(1)+' h after failure', label:it=>`${it.dataset.label}: ${it.parsed.y.toFixed(1)}`}}},
+    scales:{x:{type:'linear', min:0, max:xMax, ticks:{color:ink, stepSize: xTitle==='Hour'?3:2, callback:v=> xTitle==='Hour'? hh(v): v+' h'}, grid:{color:grid}, title:{display:false}},
+            y:{ticks:{color:ink}, grid:{color:grid}, title:{display:true, text:yTitle, color:ink, font:{size:11}}}}};
+}
+const hh = v => String(Math.floor(v)%24).padStart(2,'0')+':'+String(Math.round((v%1)*60)).padStart(2,'0');
+const series = (mk, arr) => arr.map((y,i)=>({x:i/6, y}));
+const DS = (mk, data, extra={}) => ({label:MATS[mk].name, data, borderColor:css(mk==='clay'?'--s-clay':mk==='cool'?'--s-cool':'--s-v1'), backgroundColor:'transparent', borderWidth:2, pointRadius:0, pointHoverRadius:4, borderDash: mk==='v1'?[6,4]:[], ...extra});
+let c1, c2, c3, c4;
+function buildCharts(){
+  [c1,c2,c3,c4].forEach(c=>c&&c.destroy());
+  const air = {label:'Outdoor air', data:hours.map(h=>({x:h,y:tOut(h)})), borderColor:css('--s-air'), borderDash:[2,4], borderWidth:1.5, pointRadius:0, backgroundColor:'transparent'};
+  c1 = new Chart(document.getElementById('c1'), {type:'line', data:{datasets:[air, ...['clay','v1','cool'].map(mk=>DS(mk, series(mk, SIM[mk][surf].Tso)))]}, options:baseOpts('°C','Hour',24)});
+  c2 = new Chart(document.getElementById('c2'), {type:'line', data:{datasets:['clay','v1','cool'].map(mk=>DS(mk, series(mk, SIM[mk][surf].q)))}, options:baseOpts('W/m²','Hour',24)});
+  const ink=css('--ink-2'), grid=css('--rule');
+  c3 = new Chart(document.getElementById('c3'), {type:'bar', data:{labels:['Clay','Poly Citra v1','CoolBrick'], datasets:[{label:'kWh per day', data:[G.clay,G.v1,G.cool].map(v=>+v.toFixed(2)),
+      backgroundColor:[css('--s-clay'),css('--s-v1'),css('--s-cool')], borderRadius:4, borderSkipped:'bottom', maxBarThickness:56}]},
+    options:{responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:it=>`${it.parsed.y.toFixed(1)} kWh of heat per day`}}},
+      scales:{x:{ticks:{color:ink}, grid:{display:false}}, y:{beginAtZero:true, ticks:{color:ink}, grid:{color:grid}, title:{display:true,text:'kWh / day',color:ink,font:{size:11}}}}},
+    plugins:[{id:'vals', afterDatasetsDraw(ch){ const c=ch.ctx; c.save(); c.fillStyle=css('--ink'); c.font='500 12px IBM Plex Mono'; c.textAlign='center';
+      ch.getDatasetMeta(0).data.forEach((b,i)=>c.fillText(ch.data.datasets[0].data[i].toFixed(1), b.x, b.y-6)); c.restore(); }}]});
+  const lim = {label:'Limit 35 °C', data:[{x:0,y:35},{x:12,y:35}], borderColor:css('--ink-3'), borderDash:[4,4], borderWidth:1, pointRadius:0, backgroundColor:'transparent'};
+  const o4 = baseOpts('°C','After',12); o4.plugins.nowLine=false;
+  c4 = new Chart(document.getElementById('c4'), {type:'line', data:{datasets:[...['clay','v1','cool'].map(mk=>DS(mk, RT[mk].pts)), lim]}, options:o4});
+}
+buildCharts();
+function setSurf(s){ surf=s; const lab=ORIENTS[s].label;
+  document.getElementById('c1t').textContent='Outer surface temperature, '+lab.toLowerCase();
+  document.getElementById('c2t').textContent='Heat flowing into the room, '+lab.toLowerCase();
+  document.getElementById('readTitle').textContent=lab+' right now';
+  document.querySelectorAll('#surfSeg button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.s===s));
+  buildCharts(); updateFrame(); }
+document.querySelectorAll('#surfSeg button').forEach(b=>b.onclick=()=>setSurf(b.dataset.s));
+document.getElementById('itLoad').oninput = e => { const v=+e.target.value; document.getElementById('itLabel').textContent=v.toFixed(1)+' kW';
+  computeRT(v); setK3Label(v); buildCharts(); };
+function setK3Label(v){ document.getElementById('k3').textContent = fh(RT.cool.t35)+' vs '+fh(RT.clay.t35);
+  document.querySelector('#k3 + span').textContent = `before the room reaches 35 °C after the cooling fails (CoolBrick vs clay, ${v.toFixed(1)} kW servers)`; }
+
+/* =================== 5. 3D SCENE =================== */
+const canvas = document.getElementById('three'), stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, preserveDrawingBuffer:false});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.shadowMap.enabled = true;
+const labelR = new CSS2DRenderer({element: document.getElementById('labels')});
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1.6, 0.5, 2000);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.maxPolarAngle = Math.PI*0.49;
+const hemi = new THREE.HemisphereLight(0xffffff, 0x8a8f86, 0.9); scene.add(hemi);
+const sunL = new THREE.DirectionalLight(0xfff1d6, 1.6); sunL.castShadow = true; sunL.shadow.mapSize.set(1024,1024);
+Object.assign(sunL.shadow.camera,{left:-60,right:60,top:60,bottom:-60,near:1,far:300}); scene.add(sunL);
+
+function brickTexture(base, mortar, w=512, h=512, rows=8){
+  const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d');
+  g.fillStyle=mortar; g.fillRect(0,0,w,h); const bh=h/rows, bw=w/4;
+  for(let r=0;r<rows;r++){ const off=(r%2)*bw/2;
+    for(let i=-1;i<5;i++){ const x=i*bw+off; const v=0.9+Math.random()*0.2; const col=new THREE.Color(base).multiplyScalar(v);
+      g.fillStyle='#'+col.getHexString(); g.fillRect(x+3,r*bh+3,bw-6,bh-6);} }
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
+}
+const LABELS=[];
+function addLabel(text, obj, pos){ const d=document.createElement('div'); d.className='tag'; d.textContent=text; const l=new CSS2DObject(d); l.position.copy(pos); obj.add(l); LABELS.push(l); return l; }
+function inView(o){ for(let p=o; p; p=p.parent){ if(p===brickG) return view==='brick'; if(p===shelterG) return view==='shelter'; } return true; }
+
+/* ---- 5a. Brick bench (units: cm) ---- */
+const brickG = new THREE.Group(); scene.add(brickG);
+const BX=23, BY=7.5, BZ=11;
+function sliceTexture(){ const c=document.createElement('canvas'); c.width=256; c.height=4; const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return {c,t}; }
+function paintSlice(sl, prof){ const g=sl.c.getContext('2d');
+  for(let px=0;px<256;px++){ const f=px/255*(N-1), i=Math.floor(f), u=f-i; const T=prof[i]*(1-u)+prof[Math.min(N-1,i+1)]*u; g.fillStyle='#'+divColor(T).getHexString(); g.fillRect(px,0,1,4); }
+  sl.t.needsUpdate=true; }
+// Clay brick (solid) at z = -10
+const clayG = new THREE.Group(); clayG.position.z = -10; brickG.add(clayG);
+const clayMat = new THREE.MeshStandardMaterial({color:0xb5532f, roughness:0.95, transparent:true, opacity:1});
+const clayMesh = new THREE.Mesh(new THREE.BoxGeometry(BX,BY,BZ), clayMat); clayMesh.castShadow=true; clayG.add(clayMesh);
+const claySlice = sliceTexture();
+const clayPlane = new THREE.Mesh(new THREE.PlaneGeometry(BX,BZ), new THREE.MeshBasicMaterial({map:claySlice.t, side:THREE.DoubleSide}));
+clayPlane.rotation.x = -Math.PI/2; clayG.add(clayPlane);
+addLabel('Fired clay brick', clayG, new THREE.Vector3(0,BY/2+2.2,0));
+// CoolBrick (cutaway) at z = +10
+const coolG = new THREE.Group(); coolG.position.z = 10; brickG.add(coolG);
+const shellMat = new THREE.MeshPhysicalMaterial({color:0xd9c79a, roughness:0.6, transparent:true, opacity:0.33, depthWrite:false});
+const shell = new THREE.Mesh(new THREE.BoxGeometry(BX,BY,BZ), shellMat); coolG.add(shell);
+const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(BX,BY,BZ)), new THREE.LineBasicMaterial({color:0x6d5a2e})); coolG.add(edges);
+const coat = new THREE.Mesh(new THREE.BoxGeometry(0.5,BY,BZ), new THREE.MeshStandardMaterial({color:0xf7f7f4, roughness:0.35})); coat.position.x = -BX/2-0.25; coat.castShadow=true; coolG.add(coat);
+const parts = []; // [mesh, explodeOffset]
+parts.push([coat, -4]);
+const airMat = new THREE.MeshPhysicalMaterial({color:0x9fd3ff, transparent:true, opacity:0.55, roughness:0.1});
+const pcmMat = new THREE.MeshStandardMaterial({color:0x9b59b6, roughness:0.4, transparent:true, opacity:0.9});
+for(const x0 of [-8.5,-2.5]) for(const z0 of [-2.6,2.6]){ const m=new THREE.Mesh(new THREE.BoxGeometry(5,6,4.2), airMat); m.position.set(x0,0,z0); coolG.add(m); parts.push([m, x0<-5?-2:0]); }
+for(const z0 of [-2.6,2.6]){ const m=new THREE.Mesh(new THREE.BoxGeometry(4,6,4.2), pcmMat); m.position.set(7,0,z0); coolG.add(m); parts.push([m, 3.5]); }
+// biochar specks
+const speck = new THREE.InstancedMesh(new THREE.SphereGeometry(0.18,6,6), new THREE.MeshStandardMaterial({color:0x2b2b2b}), 220);
+const dm = new THREE.Matrix4(); for(let i=0;i<220;i++){ dm.setPosition((Math.random()-.5)*(BX-0.6),(Math.random()-.5)*(BY-0.4),(Math.random()-.5)*(BZ-0.4)); speck.setMatrixAt(i,dm); } coolG.add(speck);
+// interlocking keys
+for(const z0 of [-2.6,2.6]){ const k=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,0.8,24), new THREE.MeshStandardMaterial({color:0xcbb683})); k.position.set(4,BY/2+0.4,z0); coolG.add(k); }
+const coolSlice = sliceTexture();
+const coolPlane = new THREE.Mesh(new THREE.PlaneGeometry(BX,BZ), new THREE.MeshBasicMaterial({map:coolSlice.t, side:THREE.DoubleSide, transparent:true, opacity:0.95}));
+coolPlane.rotation.x = -Math.PI/2; coolPlane.position.y = -BY/2+0.05; coolG.add(coolPlane);
+const labs = {
+  coat:addLabel('CaCO₃ cool-face coat', coolG, new THREE.Vector3(-BX/2-1,BY/2+1.6,-BZ/2)),
+  air:addLabel('Air cells', coolG, new THREE.Vector3(-5.5,BY/2+1.6,BZ/2)),
+  pcm:addLabel('Bio-PCM pockets', coolG, new THREE.Vector3(7,BY/2+2.4,-BZ/2)),
+  mat:addLabel('PS gel + peel biochar', coolG, new THREE.Vector3(0,-BY/2-2,BZ/2)),
+  name:addLabel('CoolBrick', coolG, new THREE.Vector3(0,BY/2+4,0)),
+};
+addLabel('outside · sun', brickG, new THREE.Vector3(-BX/2-6,0,0));
+addLabel('inside · room', brickG, new THREE.Vector3(BX/2+6,0,0));
+const bench = new THREE.Mesh(new THREE.CircleGeometry(40,64), new THREE.MeshStandardMaterial({color:0xcfd4c6, roughness:1}));
+bench.rotation.x=-Math.PI/2; bench.position.y=-BY/2-0.01; bench.receiveShadow=true; brickG.add(bench);
+
+/* ---- 5b. Shelter (units: 1 m = 10) ---- */
+const shelterG = new THREE.Group(); shelterG.visible=false; scene.add(shelterG);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(260,260), new THREE.MeshStandardMaterial({color:0xcfd4c6, roughness:1}));
+ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; shelterG.add(ground);
+const LOOK = {clay:{base:'#b5532f', mortar:'#d9cbb5', roof:0x8f8f8a}, v1:{base:'#d7a54a', mortar:'#efe2c6', roof:0xc9a35a}, cool:{base:'#f2f1ea', mortar:'#d9d9d0', roof:0xfbfbf7}};
+const TEX = {}; for(const k in LOOK) TEX[k]=brickTexture(LOOK[k].base, LOOK[k].mortar);
+const W=30, Ht=30, Tk=2.3;
+function wallMat(){ return new THREE.MeshStandardMaterial({map:TEX.cool, roughness:0.9}); }
+const walls = {
+  west:new THREE.Mesh(new THREE.BoxGeometry(Tk,Ht,W), wallMat()),
+  east:new THREE.Mesh(new THREE.BoxGeometry(Tk,Ht,W), wallMat()),
+  north:new THREE.Mesh(new THREE.BoxGeometry(W+Tk,Ht,Tk), wallMat()),
+  south:new THREE.Mesh(new THREE.BoxGeometry(W+Tk,Ht*0.38,Tk), wallMat()),
+};
+walls.west.position.set(-W/2,Ht/2,0); walls.east.position.set(W/2,Ht/2,0);
+walls.north.position.set(0,Ht/2,-W/2); walls.south.position.set(0,Ht*0.19,W/2);
+for(const k in walls){ walls[k].castShadow=true; walls[k].receiveShadow=true; shelterG.add(walls[k]); }
+const roofM = new THREE.MeshStandardMaterial({color:0xfbfbf7, roughness:0.5, transparent:true, opacity:0.92});
+const roof = new THREE.Mesh(new THREE.BoxGeometry(W+Tk+1,1.6,W+Tk+1), roofM); roof.position.y=Ht+0.8; roof.castShadow=true; shelterG.add(roof);
+// racks
+for(const x0 of [-6,6]){ const r=new THREE.Mesh(new THREE.BoxGeometry(6,20,9), new THREE.MeshStandardMaterial({color:0x2b3036, roughness:0.6})); r.position.set(x0,10,-4); r.castShadow=true; shelterG.add(r);
+  for(let i=0;i<9;i++){ const led=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.25,0.1), new THREE.MeshBasicMaterial({color: i%3? 0x46d36b : 0x3aa0ff})); led.position.set(x0-1.8+(i%3)*1.6, 3+Math.floor(i/3)*5.5, 0.56); shelterG.add(led); } }
+addLabel('Server racks', shelterG, new THREE.Vector3(0,23,-4));
+const ac = new THREE.Mesh(new THREE.BoxGeometry(3,7,10), new THREE.MeshStandardMaterial({color:0xe6e8e4})); ac.position.set(W/2+Tk/2+1.6,12,6); shelterG.add(ac);
+addLabel('Cooling unit', shelterG, new THREE.Vector3(W/2+4,17,6));
+// jaali
+function jaaliTex(){ const c=document.createElement('canvas'); c.width=c.height=512; const g=c.getContext('2d'); g.fillStyle='#ffffff'; g.fillRect(0,0,512,512);
+  g.globalCompositeOperation='destination-out'; for(let i=0;i<8;i++) for(let j=0;j<8;j++){ g.beginPath(); g.arc(32+i*64,32+j*64,22,0,Math.PI*2); g.fill(); }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(4,4); return t; }
+const jaali = new THREE.Mesh(new THREE.PlaneGeometry(W,Ht*0.9), new THREE.MeshStandardMaterial({color:0xf0ede4, alphaMap:jaaliTex(), transparent:true, alphaTest:0.5, side:THREE.DoubleSide}));
+jaali.rotation.y = Math.PI/2; jaali.position.set(-W/2-6, Ht*0.45, 0); jaali.castShadow=true; shelterG.add(jaali);
+const jaaliLab = addLabel('Jaali sun-screen', shelterG, new THREE.Vector3(-W/2-6, Ht*0.95, W/2-4));
+addLabel('West', shelterG, new THREE.Vector3(-W/2-12, 1, -W/2)); addLabel('East', shelterG, new THREE.Vector3(W/2+8, 1, -W/2));
+// sun
+const sunBall = new THREE.Mesh(new THREE.SphereGeometry(3.2,24,24), new THREE.MeshBasicMaterial({color:0xffc94d})); scene.add(sunBall);
+// heat arrows: roof (down), west (+x), east (-x)
+const arrows = [];
+function mkArrow(o, origin, dir){ const a=new THREE.ArrowHelper(dir, origin, 6, 0xe34948, 2.2, 1.6); a.userData={o, origin:origin.clone(), dir:dir.clone()}; shelterG.add(a); arrows.push(a); }
+for(const z0 of [-9,0,9]) mkArrow('roof', new THREE.Vector3(z0*0.9,Ht+10,z0), new THREE.Vector3(0,-1,0));
+for(const z0 of [-9,0,9]) mkArrow('west', new THREE.Vector3(-W/2-11,Ht*0.5+z0*0.4,z0), new THREE.Vector3(1,0,0));
+for(const z0 of [-9,0,9]) mkArrow('east', new THREE.Vector3(W/2+11,Ht*0.62+z0*0.4,z0), new THREE.Vector3(-1,0,0));
+
+/* ---- 5c. view state ---- */
+let view='brick';
+const CAM = {brick:{pos:[22,22,34], tgt:[0,0,0], min:15, max:120}, shelter:{pos:[62,48,78], tgt:[0,12,0], min:30, max:260}};
+function setView(v){ view=v; brickG.visible = v==='brick'; shelterG.visible = v==='shelter';
+  const c=CAM[v]; camera.position.set(...c.pos); controls.target.set(...c.tgt); controls.minDistance=c.min; controls.maxDistance=c.max; controls.update();
+  document.getElementById('tabBrick').setAttribute('aria-pressed', v==='brick'); document.getElementById('tabShelter').setAttribute('aria-pressed', v==='shelter');
+  document.getElementById('explodeWrap').hidden = v!=='brick'; document.getElementById('jaaliWrap').hidden = v!=='shelter';
+  updateFrame(); }
+document.getElementById('tabBrick').onclick=()=>setView('brick');
+document.getElementById('tabShelter').onclick=()=>setView('shelter');
+document.querySelectorAll('#matSeg button').forEach(b=>b.onclick=()=>{ mat=b.dataset.m; document.querySelectorAll('#matSeg button').forEach(x=>x.setAttribute('aria-pressed', x===b)); updateFrame(); });
+const heatView=document.getElementById('heatView'), explode=document.getElementById('explode'), jaaliCb=document.getElementById('jaali');
+heatView.onchange=updateFrame; jaaliCb.onchange=updateFrame;
+let explodeT=0;
+
+function applyTheme(){
+  scene.background = hex(css('--scene-bg'));
+  ground.material.color = hex(css('--ground')); bench.material.color = hex(css('--ground'));
+  buildCharts(); updateFrame();
+}
+
+/* ---- per-frame update from simulation ---- */
+function updateFrame(){
+  const h = idx/6;
+  document.getElementById('timeLabel').textContent = hh(h);
+  document.getElementById('time').value = idx;
+  // sun
+  const th = Math.PI*(h-6)/13, up = h>6 && h<19;
+  const sp = view==='brick' ? new THREE.Vector3(-60*Math.cos(Math.PI-th)*0+(-50), 50*Math.max(0.15,Math.sin(th)), 10) : new THREE.Vector3(90*Math.cos(th), 90*Math.sin(th), 25);
+  if(view==='shelter'){ sunBall.position.copy(sp); sunBall.visible = up; } else sunBall.visible=false;
+  sunL.position.copy(view==='shelter'? sp : new THREE.Vector3(-40,50,25)); sunL.intensity = view==='brick'?1.4 : (up? 0.4+1.4*Math.sin(th) : 0.05);
+  hemi.intensity = view==='brick'?0.9 : (up?0.75:0.35);
+  // readouts
+  const S=SIM[mat][surf]; const Tso=S.Tso[idx], Tsi=S.Tsi[idx], q=S.q[idx];
+  document.getElementById('rAir').textContent = fmt1(tOut(h))+' °C';
+  document.getElementById('rSun').textContent = Math.round(solar(surf,h))+' W/m²';
+  document.getElementById('rOut').textContent = fmt1(Tso)+' °C';
+  document.getElementById('rIn').textContent = fmt1(Tsi)+' °C';
+  document.getElementById('rQ').textContent = fmt1(q)+' W/m²';
+  document.getElementById('rG').textContent = Math.round(gainNow(mat,idx))+' W';
+  // brick slices (use west wall profile for both bricks, or chosen surface)
+  paintSlice(claySlice, SIM.clay[surf].prof[idx]); paintSlice(coolSlice, SIM.cool[surf].prof[idx]);
+  const hv = heatView.checked;
+  clayPlane.visible = coolPlane.visible = hv; clayMat.opacity = hv?0.35:1; clayMat.depthWrite=!hv;
+  shellMat.opacity = hv?0.18:0.33;
+  document.getElementById('legendbar').hidden = !hv;
+  // shelter materials
+  const look=LOOK[mat];
+  for(const k in walls){ const m=walls[k].material; m.map = hv? null : TEX[mat];
+    const o = (k==='north'||k==='south')?'shade':k;
+    m.color = hv ? divColor(SIM[mat][o].Tso[idx]) : new THREE.Color(0xffffff); m.needsUpdate=true; }
+  roofM.color = hv ? divColor(SIM[mat].roof.Tso[idx]) : new THREE.Color(look.roof);
+  jaali.visible = jaaliCb.checked && mat==='cool';
+  for(const l of LABELS) l.visible = inView(l);
+  jaaliLab.visible = jaali.visible && view==='shelter';
+  for(const a of arrows){ const qq = SIM[mat][a.userData.o].q[idx]; const len = Math.min(16, Math.max(0.01, Math.abs(qq)*0.45));
+    a.visible = Math.abs(qq)>0.6; a.setColor(qq>0? hex(css('--hot')) : hex(css('--cold')));
+    const d = a.userData.dir.clone().multiplyScalar(qq>0?1:-1); a.setDirection(d);
+    a.position.copy(qq>0? a.userData.origin : a.userData.origin.clone().add(a.userData.dir.clone().multiplyScalar(6)));
+    a.setLength(len+2, Math.min(2.2,len*0.5+1), 1.6); }
+  [c1,c2].forEach(c=>c&&c.draw());
+}
+
+/* ---- loop ---- */
+let playing=false, last=0, acc=0;
+const playBtn=document.getElementById('play');
+playBtn.onclick=()=>{ playing=!playing; playBtn.textContent=playing?'❚❚':'▶'; playBtn.setAttribute('aria-label', playing?'Pause':'Play the day'); };
+document.getElementById('time').oninput=e=>{ idx=+e.target.value; updateFrame(); };
+function resize(){ const r=stage.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); labelR.setSize(r.width,r.height); camera.aspect=r.width/r.height; camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(stage);
+function loop(t){
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.1,(t-last)/1000||0); last=t;
+  if(playing){ acc+=dt; if(acc>0.12){ acc=0; idx=(idx+1)%SAMPLES; updateFrame(); } }
+  const target = explode.checked && view==='brick' ? 1 : 0; explodeT += (target-explodeT)*Math.min(1,dt*6);
+  for(const [m,off] of parts){ if(m.userData.x0===undefined) m.userData.x0=m.position.x; m.position.x = m.userData.x0 + off*explodeT; }
+  controls.update(); renderer.render(scene,camera); labelR.render(scene,camera);
+}
+const mq = window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change', applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement,{attributes:true, attributeFilter:['data-theme']});
+setView('brick'); resize(); applyTheme(); requestAnimationFrame(loop);
+window.__coolbrick = {G, RT, U:{clay:U('clay'),v1:U('v1'),cool:U('cool')}};
+</script>
