@@ -1,0 +1,848 @@
+% =====================================================================
+%  Poly Citra CoolBrick  —  Project Rebrick v2
+%  Beamer deck converted from the LGIC'26 APAC India deck and extended
+%  with a passive-cooling research track.
+%
+%  Compile:  pdflatex poly_citra_coolbrick.tex   (run twice)
+%  Needs:    beamer + metropolis theme, pgfplots, tikz, tcolorbox, booktabs
+%
+%  Anything in \todo{...} is a placeholder the team should fill in or
+%  verify with its own measurements before submission.
+% =====================================================================
+\documentclass[aspectratio=169,10pt]{beamer}
+
+\usetheme[progressbar=frametitle,numbering=fraction,block=fill]{metropolis}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,decorations.pathmorphing,patterns}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage[most]{tcolorbox}
+
+\graphicspath{{img/}}
+
+% ---------- palette (matches the original deck: orange + green) ----------
+\definecolor{citrus}{HTML}{E8731A}
+\definecolor{leaf}{HTML}{2E7D32}
+\definecolor{sky}{HTML}{1E88C8}
+\definecolor{plum}{HTML}{8E2A8E}
+\definecolor{ink}{HTML}{1F2A36}
+\definecolor{paper}{HTML}{FAFAF7}
+\definecolor{heat}{HTML}{C62828}
+
+\setbeamercolor{frametitle}{bg=ink,fg=white}
+\setbeamercolor{progress bar}{fg=citrus,bg=citrus!20}
+\setbeamercolor{title separator}{fg=citrus}
+\setbeamercolor{normal text}{fg=ink,bg=paper}
+\setbeamercolor{alerted text}{fg=citrus}
+\setbeamercolor{example text}{fg=leaf}
+\setbeamercolor{block title}{bg=leaf!15,fg=leaf!70!black}
+\setbeamercolor{block body}{bg=leaf!5}
+\setbeamercolor{block title alerted}{bg=citrus!18,fg=citrus!70!black}
+\setbeamercolor{block body alerted}{bg=citrus!5}
+
+\newcommand{\todo}[1]{\textcolor{heat}{\textbf{[#1]}}}
+\newcommand{\new}{\tikz[baseline=-0.6ex]\node[fill=citrus,text=white,font=\tiny\bfseries,rounded corners=2pt,inner sep=2pt]{NEW};}
+\newcommand{\src}[1]{\par\vfill{\tiny\color{gray}Source: #1}}
+
+\newtcolorbox{card}[2][]{enhanced,colback=white,colframe=#2,boxrule=0pt,
+  leftrule=3pt,arc=2pt,left=5pt,right=5pt,top=3pt,bottom=3pt,
+  fontupper=\small,#1}
+
+\title{Poly Citra \textcolor{citrus}{Cool}Brick}
+\subtitle{From Styrofoam \& orange peel to bricks that keep homes cool}
+\author{Project Rebrick \quad\textbar\quad \todo{Team names}}
+\institute{\todo{School / City} \quad\textbar\quad \todo{Competition name, 2026}}
+\date{}
+\titlegraphic{\vspace*{4.6cm}\hfill\includegraphics[height=2.4cm]{prototype.jpg}}
+
+\begin{document}
+
+% =====================================================================
+\maketitle
+
+% =====================================================================
+\section{Where we started}
+
+\begin{frame}{Recap: Poly Citra Bricks (v1)}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\textbf{Transforming waste into sustainable building materials.}
+Combining \alert{Styrofoam} waste with \alert{D-limonene} extracted from
+\textcolor{citrus}{orange peels} to create durable, lightweight bricks.
+
+\medskip
+\begin{itemize}\small
+  \item Built and tested a working prototype
+  \item Recognised at national-level competitions \todo{list awards}
+  \item Flagged one open question in our own Future Plans:\\
+        \emph{``improve thermal insulation''}
+\end{itemize}
+
+\begin{card}{citrus}\textbf{This submission} answers that question:
+version 2 turns the brick into a \textbf{passive cooling system} for
+India's heat.\end{card}
+
+\column{0.45\textwidth}
+\includegraphics[width=0.49\linewidth,height=2.3cm]{styrofoam.jpg}\hfill
+\includegraphics[width=0.49\linewidth,height=2.3cm]{peels.jpg}\\[3pt]
+\includegraphics[width=\linewidth,height=3.1cm]{prototype.jpg}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Problem statement (two wastes)}
+\begin{columns}[c]
+\column{0.5\textwidth}
+\begin{itemize}
+  \item \textbf{Styrofoam (EPS) waste} contributes to landfill overflow and
+        environmental pollution.
+  \item \textbf{Orange peel waste} ends up in landfills or is incinerated,
+        leading to environmental pollution.
+  \item Without effective recycling methods, these wastes worsen pollution
+        and waste-management issues.
+  \item A sustainable solution is needed to repurpose them into eco-friendly
+        alternatives.
+\end{itemize}
+\column{0.48\textwidth}
+\includegraphics[width=\linewidth,height=2.6cm]{peel-waste.jpg}\\[3pt]
+\includegraphics[width=\linewidth,height=2.6cm]{plastic-waste.jpg}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{\new\ Problem 2.0: India is overheating}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{itemize}\small
+  \item Heatwaves are getting longer and hotter; the poorest homes
+        (tin, thin brick, concrete roofs) trap the most heat.
+  \item India Cooling Action Plan (ICAP): national cooling demand will grow
+        \alert{$\sim$8$\times$} by 2037--38 vs.\ 2017--18.
+  \item \textbf{Space cooling in buildings} grows fastest:
+        \alert{$\sim$11$\times$}, and becomes about \alert{74\%} of all
+        cooling demand.
+  \item ICAP target: cut cooling demand 20--25\% and cooling energy
+        25--40\% --- largely through \emph{better building envelopes}.
+\end{itemize}
+\column{0.47\textwidth}
+\begin{tikzpicture}
+\begin{axis}[
+  ybar, width=\linewidth, height=5.0cm, bar width=16pt,
+  ymin=0, ymax=13, ylabel={Growth vs.\ 2017--18 (\texttimes)},
+  symbolic x coords={Buildings,Transport AC,Cold chain,All cooling},
+  xtick=data, x tick label style={font=\scriptsize,rotate=20,anchor=north east},
+  ylabel style={font=\scriptsize}, yticklabel style={font=\scriptsize},
+  nodes near coords, nodes near coords style={font=\scriptsize},
+  axis lines*=left, enlarge x limits=0.18]
+\addplot[fill=heat!80,draw=none] coordinates
+  {(Buildings,11) (Transport AC,5) (Cold chain,4) (All cooling,8)};
+\end{axis}
+\end{tikzpicture}
+\end{columns}
+\begin{card}{citrus}
+\textbf{The insight:} every AC we \emph{don't} need is the cheapest, cleanest
+cooling there is. The wall is the first line of defence.
+\end{card}
+\src{MoEFCC, \emph{India Cooling Action Plan} (2019), reference scenario.}
+\end{frame}
+
+% =====================================================================
+\section{The original solution}
+
+\begin{frame}{Solution: Poly Citra Bricks}
+\begin{columns}[T]
+\column{0.5\textwidth}
+Combining Styrofoam with D-limonene extracted from orange peels to create
+durable and lightweight bricks.
+
+\medskip
+\small The project aligns with the following SDGs and, if scaled, can
+create a global impact in reversing climate change:
+\begin{description}\footnotesize
+  \item[SDG 11] Sustainable Cities \& Communities --- eco-friendly construction.
+  \item[SDG 12] Responsible Consumption \& Production --- reducing waste and
+        repurposing materials.
+  \item[SDG 13] Climate Action --- lower emissions than kiln-fired bricks.
+  \item[\new\ SDG 3] Good Health --- fewer heat-stress illnesses indoors.
+  \item[\new\ SDG 7] Affordable \& Clean Energy --- lower AC electricity use.
+\end{description}
+\column{0.47\textwidth}
+\includegraphics[width=0.49\linewidth,height=2.3cm]{dissolving.jpg}\hfill
+\includegraphics[width=0.49\linewidth,height=2.3cm]{brick-sample.jpg}\\[3pt]
+\includegraphics[width=0.49\linewidth,height=2.3cm]{heat-test.jpg}\hfill
+\includegraphics[width=0.49\linewidth,height=2.3cm]{load-test.jpg}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{How it works (v1 process)}
+\centering
+\begin{tikzpicture}[
+  stp/.style={rectangle,rounded corners=3pt,minimum width=2.45cm,minimum height=1.9cm,
+               text width=2.3cm,align=center,font=\scriptsize,text=white},
+  arr/.style={-{Stealth[length=3mm]},line width=1.2pt,color=ink!60}]
+\node[stp,fill=citrus] (a) {\textbf{Collection}\\[2pt]Styrofoam waste is gathered.};
+\node[stp,fill=leaf,right=0.45cm of a] (b) {\textbf{Processing}\\[2pt]D-limonene is extracted from orange peel by steam distillation.};
+\node[stp,fill=leaf!70!black,right=0.45cm of b] (c) {\textbf{Dissolving}\\[2pt]D-limonene dissolves Styrofoam into polystyrene gel.};
+\node[stp,fill=sky,right=0.45cm of c] (d) {\textbf{Moulding}\\[2pt]The gel is shaped into bricks.};
+\node[stp,fill=plum,right=0.45cm of d] (e) {\textbf{Curing}\\[2pt]Bricks are dried and solidified --- ready for construction.};
+\draw[arr] (a)--(b); \draw[arr] (b)--(c); \draw[arr] (c)--(d); \draw[arr] (d)--(e);
+\end{tikzpicture}
+
+\vspace{0.6cm}
+\begin{columns}[T]
+\column{0.32\textwidth}
+\begin{card}{citrus}Styrofoam is $\sim$98\% air: dissolving it shrinks
+volume dramatically, so a lot of waste goes into one brick.\end{card}
+\column{0.32\textwidth}
+\begin{card}{leaf}D-limonene is a natural, bio-based solvent --- the same
+idea Sony piloted for EPS recycling.\end{card}
+\column{0.32\textwidth}
+\begin{card}{sky}No kiln firing: avoids the coal/biomass burning used for
+conventional clay bricks.\end{card}
+\end{columns}
+\src{Sony limonene EPS-recycling programme (c.\ 2001); EPS composition is standard industry data.}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Benefits of Poly Citra Bricks}
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{card}{citrus}\textbf{Less landfill.} Minimises landfill waste and
+microplastic contamination.\end{card}
+\begin{card}{sky}\textbf{Less mining.} Reduces reliance on natural resources
+like clay and topsoil.\end{card}
+\column{0.48\textwidth}
+\begin{card}{leaf}\textbf{Affordable.} A low-cost, sustainable alternative to
+conventional bricks.\end{card}
+\begin{card}{plum}\textbf{Circular.} Promotes circular-economy principles ---
+two waste streams in, one product out.\end{card}
+\end{columns}
+\begin{card}{heat}\new\ \textbf{Cooler homes.} Version 2 adds a measurable
+thermal benefit --- the rest of this deck shows how.\end{card}
+\end{frame}
+
+% =====================================================================
+\section{Version 2: the CoolBrick}
+
+\begin{frame}{How heat gets into a room}
+\begin{columns}[c]
+\column{0.5\textwidth}
+\begin{tikzpicture}[scale=0.92]
+  % sun
+  \fill[citrus!90] (0,4.0) circle (0.45);
+  \foreach \a in {0,45,...,315}{\draw[citrus,line width=1pt] ($(0,4.0)+(\a:0.55)$)--($(0,4.0)+(\a:0.8)$);}
+  % wall
+  \fill[pattern=bricks,pattern color=citrus!60] (2.2,0) rectangle (3.0,3.6);
+  \draw[ink,line width=0.8pt] (2.2,0) rectangle (3.0,3.6);
+  \node[font=\scriptsize,align=center] at (2.6,-0.35) {wall};
+  % room
+  \node[font=\scriptsize] at (4.6,3.3) {indoor room};
+  \draw[ink!40,dashed] (3.0,0) -- (6.0,0);
+  % arrows
+  \draw[-{Stealth},heat,line width=1.5pt,decorate,decoration={snake,amplitude=1.5pt,segment length=6pt}] (0.4,3.5)--(2.15,2.5)
+     node[pos=0.35,above right,font=\scriptsize,text=heat]{1 radiation};
+  \draw[-{Stealth},heat,line width=1.5pt] (2.6,1.8)--(4.4,1.8)
+     node[pos=0.75,above,font=\scriptsize,text=heat]{2 conduction};
+  \draw[-{Stealth},sky,line width=1.5pt] (3.2,0.8)--(4.6,0.8)
+     node[pos=0.95,right,font=\scriptsize,text=sky,align=left]{3 stored heat\\released at night};
+\end{tikzpicture}
+\column{0.48\textwidth}
+\small
+\textbf{Steady heat flow through a wall}
+\[
+  Q = U\,A\,\Delta T,
+  \qquad
+  U = \frac{1}{R_{si} + \sum_i \frac{d_i}{k_i} + R_{so}}
+\]
+\footnotesize
+$U$ = heat transmittance (\si{W/m^2K}), $d$ = layer thickness (m),
+$k$ = thermal conductivity (\si{W/mK}), $R_{si}=0.13$, $R_{so}=0.04$ \si{m^2K/W}.
+
+\medskip
+\small A CoolBrick must beat \textbf{all three paths}:
+\begin{enumerate}\footnotesize
+  \item reflect sunlight \& radiate heat to the sky,
+  \item have a low $k$ (lots of trapped air),
+  \item buffer peaks with stored ``coolth''.
+\end{enumerate}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Key insight: dissolving foam throws away its best feature}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{itemize}\small
+  \item Styrofoam insulates because it is \alert{$\sim$98\% trapped air}
+        ($k \approx \SI{0.035}{W/mK}$).
+  \item When limonene dissolves it, the air escapes. Solid polystyrene has
+        $k \approx 0.10$--$\SI{0.17}{W/mK}$ --- still far better than fired
+        clay ($\approx\SI{0.8}{W/mK}$), but $3$--$5\times$ worse than the foam.
+  \item \textbf{v2 design principle: put the air back} --- with engineered
+        cavities, porous bio-fillers, and a controlled foaming step.
+\end{itemize}
+\begin{exampleblock}{Why this matters to judges}
+It shows we understand the \emph{physics} of our material, not just the
+chemistry, and it gives v2 a clear, testable hypothesis.
+\end{exampleblock}
+\column{0.42\textwidth}
+\begin{tikzpicture}
+\begin{axis}[
+  xbar, width=\linewidth, height=5.4cm, bar width=9pt,
+  xmin=0, xmax=1.0, xlabel={$k$ (\si{W/mK}), lower is better},
+  xlabel style={font=\scriptsize}, xticklabel style={font=\scriptsize},
+  symbolic y coords={EPS foam,Solid PS gel,Orange-peel board,AAC block,Fired clay brick},
+  ytick=data, yticklabel style={font=\scriptsize},
+  nodes near coords, nodes near coords style={font=\tiny,/pgf/number format/fixed,/pgf/number format/precision=3},
+  xticklabel style={/pgf/number format/fixed},
+  axis lines*=left, enlarge y limits=0.15]
+\addplot[fill=leaf!70,draw=none] coordinates
+  {(0.035,EPS foam) (0.15,Solid PS gel) (0.065,Orange-peel board) (0.18,AAC block) (0.81,Fired clay brick)};
+\end{axis}
+\end{tikzpicture}
+\end{columns}
+\src{Typical handbook values; orange-peel board: Vitale \& Cascone (2022), TeMA 8(2).}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{The CoolBrick: five cooling upgrades}
+\centering
+\begin{tikzpicture}[
+  feat/.style={rectangle,rounded corners=3pt,minimum width=2.75cm,minimum height=2.7cm,
+               text width=2.55cm,align=center,font=\scriptsize,draw=none},
+  num/.style={circle,fill=white,text=ink,font=\small\bfseries,inner sep=1pt,minimum size=0.5cm}]
+\node[feat,fill=citrus!18] (f1) {\textbf{\color{citrus!80!black}Air-cell core}\\[3pt]Hollow cavities \& foamed gel put the insulating air back.};
+\node[feat,fill=plum!15,right=0.2cm of f1] (f2) {\textbf{\color{plum}Bio-PCM pockets}\\[3pt]Sealed coconut-oil-based PCM soaks up daytime heat peaks.};
+\node[feat,fill=sky!15,right=0.2cm of f2] (f3) {\textbf{\color{sky!80!black}Cool face}\\[3pt]CaCO$_3$ radiative-cooling coat reflects sun \& emits heat to the sky.};
+\node[feat,fill=leaf!15,right=0.2cm of f3] (f4) {\textbf{\color{leaf}Peel biochar filler}\\[3pt]Distillation leftovers become a porous, flame-retardant filler.};
+\node[feat,fill=heat!12,right=0.2cm of f4] (f5) {\textbf{\color{heat}Breeze-block variant}\\[3pt]Jaali-pattern CoolBricks for shaded, ventilated walls.};
+\foreach \i/\c in {1/citrus,2/plum,3/sky,4/leaf,5/heat}{\node[num,draw=\c,line width=1pt] at (f\i.north) {\i};}
+\end{tikzpicture}
+
+\vspace{0.4cm}
+\begin{card}{leaf}
+\textbf{Whole-orange, zero-waste:} the peel gives us the solvent (limonene),
+the filler (biochar from the distillation residue), and the limonene is
+\emph{recovered by distillation and reused}.
+\end{card}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Inside a CoolBrick (cross-section concept)}
+\begin{columns}[c]
+\column{0.58\textwidth}
+\centering
+\begin{tikzpicture}[scale=1.0]
+  % outer shell
+  \fill[leaf!25] (0,0) rectangle (6,3);
+  \draw[ink,line width=1pt] (0,0) rectangle (6,3);
+  % cool face (outdoor side = left)
+  \fill[white] (-0.25,0) rectangle (0,3); \draw[ink] (-0.25,0) rectangle (0,3);
+  % air cavities
+  \foreach \x in {0.6,2.4}{\fill[sky!20] (\x,0.45) rectangle ++(1.2,0.85); \draw[sky] (\x,0.45) rectangle ++(1.2,0.85);
+                           \fill[sky!20] (\x,1.7) rectangle ++(1.2,0.85); \draw[sky] (\x,1.7) rectangle ++(1.2,0.85);}
+  % PCM pockets (indoor side)
+  \fill[plum!35] (4.2,0.45) rectangle ++(1.2,0.85); \draw[plum] (4.2,0.45) rectangle ++(1.2,0.85);
+  \fill[plum!35] (4.2,1.7) rectangle ++(1.2,0.85); \draw[plum] (4.2,1.7) rectangle ++(1.2,0.85);
+  % biochar speckles
+  \foreach \i in {1,...,70}{\fill[ink!70] ({0.1+5.8*rnd},{0.08+2.84*rnd}) circle (0.025);}
+  % labels
+  \node[font=\scriptsize,rotate=90] at (-0.6,1.5) {OUTSIDE (sun)};
+  \node[font=\scriptsize,rotate=90] at (6.4,1.5) {INSIDE (room)};
+  \draw[ink!60] (-0.12,3) -- (-0.12,3.35) node[above,font=\scriptsize]{1 cool-face coat};
+  \draw[ink!60] (1.2,2.55) -- (1.2,3.9) node[above,font=\scriptsize]{2 air cells};
+  \draw[ink!60] (3.3,2.9) -- (3.3,3.35) node[above,font=\scriptsize]{3 PS + biochar matrix};
+  \draw[ink!60] (4.8,2.55) -- (4.8,3.9) node[above,font=\scriptsize]{4 sealed bio-PCM};
+  \draw[ink!60] (5.7,0) -- (5.7,-0.35) node[below,font=\scriptsize]{5 interlocking key};
+\end{tikzpicture}
+\column{0.4\textwidth}
+\small
+\textbf{Layer logic, outside $\rightarrow$ inside}
+\begin{enumerate}\footnotesize
+  \item Reflect \& radiate before heat enters.
+  \item Slow conduction with still air.
+  \item Strong, water-proof PS matrix holds it together; biochar adds
+        porosity \& fire resistance.
+  \item PCM on the \emph{room} side absorbs what gets through, releases it at
+        night (when windows are open).
+  \item Interlocking keys reduce mortar --- mortar joints are thermal bridges.
+\end{enumerate}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Upgrade 1 --- Air-cell core: the numbers}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\small \textbf{U-value of a 230 mm (one-brick) wall}
+
+\smallskip
+\footnotesize
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Wall material & $k_\text{eff}$ (\si{W/mK}) & $U$ (\si{W/m^2K}) \\
+\midrule
+Fired clay brick       & 0.81 & \textbf{2.20} \\
+AAC block (benchmark)  & 0.18 & 0.69 \\
+Poly Citra v1 (solid)  & 0.20\textsuperscript{*} & 0.76 \\
+\textcolor{citrus}{CoolBrick v2 (target)} & \textcolor{citrus}{0.15\textsuperscript{*}} & \textcolor{citrus}{\textbf{0.59}} \\
+\bottomrule
+\end{tabular}
+
+\smallskip
+\scriptsize\textsuperscript{*}Estimates; to be measured (guarded hot plate, IS 3346).
+Example: $U_\text{clay} = 1/(0.13 + 0.23/0.81 + 0.04) = \SI{2.20}{W/m^2K}$.
+
+\begin{alertblock}{Result}
+\small Up to \textbf{$\sim$73\% less heat conducted} through the wall than
+fired clay.
+\end{alertblock}
+\column{0.47\textwidth}
+\begin{tikzpicture}
+\begin{axis}[
+  ybar, width=\linewidth, height=5.5cm, bar width=18pt,
+  ymin=0, ymax=2.6, bar shift=0pt, ylabel={$U$ (\si{W/m^2K}) --- lower is better},
+  ylabel style={font=\scriptsize}, yticklabel style={font=\scriptsize},
+  symbolic x coords={Clay,AAC,v1,CoolBrick},
+  xtick={Clay,AAC,v1,CoolBrick}, xticklabel style={font=\scriptsize},
+  nodes near coords, nodes near coords style={font=\scriptsize},
+  axis lines*=left, enlarge x limits=0.2]
+\addplot[fill=heat!75,draw=none] coordinates {(Clay,2.20)};
+\addplot[fill=ink!40,draw=none] coordinates {(AAC,0.69)};
+\addplot[fill=leaf!60,draw=none] coordinates {(v1,0.76)};
+\addplot[fill=citrus,draw=none] coordinates {(CoolBrick,0.59)};
+\end{axis}
+\end{tikzpicture}
+
+\scriptsize How we add air: (a) moulded hollow cells ($\sim$30--40\% void),
+(b) partial gel foaming, (c) porous biochar filler.
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Upgrade 2 --- Bio-PCM pockets: a thermal battery}
+\begin{columns}[T]
+\column{0.48\textwidth}
+\small
+\begin{itemize}
+  \item A \textbf{phase-change material} melts when the room passes its
+        melting point, absorbing large amounts of heat at near-constant
+        temperature; it re-solidifies at night.
+  \item Candidate: \alert{coconut-oil--based blend} (pure coconut oil melts
+        $\approx$\SI{24}{\celsius}); blend/tune to \SIrange{26}{28}{\celsius}
+        for Indian comfort. Cheap, local, non-toxic.
+  \item Sealed in PS cavities: polystyrene is water-proof, so no leakage
+        into plaster. \todo{verify oil--PS compatibility}
+  \item Published PCM-brick studies report \textbf{lower peaks (up to
+        \SIrange{3}{11}{\celsius}) and 2-hour delays} depending on set-up.
+\end{itemize}
+\column{0.5\textwidth}
+\begin{tikzpicture}
+\begin{axis}[
+  width=\linewidth, height=5.4cm,
+  xmin=0, xmax=24, ymin=24, ymax=44,
+  xtick={0,6,12,18,24}, xlabel={Hour of day}, ylabel={Temperature (\si{\celsius})},
+  xlabel style={font=\scriptsize}, ylabel style={font=\scriptsize},
+  ticklabel style={font=\scriptsize}, axis lines*=left,
+  legend style={font=\tiny,at={(0.02,0.98)},anchor=north west,draw=none,fill=white,fill opacity=0.8},
+  domain=0:24, samples=60]
+\addplot[heat,thick,dashed] {34+8*sin(deg((x-9)*pi/12))};
+\addlegendentry{Outdoor}
+\addplot[ink!60,thick] {32.5+5.5*sin(deg((x-11)*pi/12))};
+\addlegendentry{Clay-brick room}
+\addplot[citrus,very thick] {30.5+2.2*sin(deg((x-13)*pi/12))};
+\addlegendentry{CoolBrick room}
+\end{axis}
+\end{tikzpicture}
+\centering\scriptsize\emph{Illustrative curves showing the expected effect ---
+to be replaced with our model-hut data.}
+\end{columns}
+\src{PCM-brick results: e.g.\ CaCl$_2\cdot$6H$_2$O-infused brick (COMSOL + experiment); hybrid PCM brick walls, Mediterranean climate.}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Upgrade 3 --- The cool face: radiative cooling}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\small
+\begin{itemize}
+  \item Ordinary walls absorb sunlight and heat up to
+        \SIrange{15}{25}{\celsius} above air temperature.
+  \item A \textbf{calcium-carbonate radiative-cooling coat} reflects
+        \alert{95.5\%} of sunlight and emits heat through the
+        ``sky window'' (\SIrange{8}{13}{\micro m}, emissivity 0.94).
+  \item Purdue field test: surface stayed \alert{1.7\,\si{\celsius} below
+        air temperature at noon} and \SI{10}{\celsius} below at night.
+  \item CaCO$_3$ is cheap --- and can come from \textbf{waste eggshells or
+        marble slurry}, adding a third waste stream.
+\end{itemize}
+\begin{card}{sky}\footnotesize Best use: roof-facing and west/south walls,
+and the top course of a parapet. Also protects polystyrene from UV.\end{card}
+\column{0.42\textwidth}
+\begin{tikzpicture}
+\begin{axis}[
+  ybar, width=\linewidth, height=5.3cm, bar width=20pt,
+  ymin=0, ymax=105, ylabel={Solar reflectance (\%)},
+  ylabel style={font=\scriptsize}, yticklabel style={font=\scriptsize},
+  symbolic x coords={Bare brick,White paint,CaCO$_3$ coat},
+  xtick=data, xticklabel style={font=\scriptsize},
+  nodes near coords, nodes near coords style={font=\scriptsize},
+  axis lines*=left, enlarge x limits=0.25]
+\addplot[fill=sky!70,draw=none] coordinates {(Bare brick,30) (White paint,85) (CaCO$_3$ coat,95.5)};
+\end{axis}
+\end{tikzpicture}
+\end{columns}
+\src{Li et al., \emph{Cell Reports Physical Science} (2020), Purdue University; commercial white paints reflect $\sim$80--90\%. Bare-brick value typical.}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Upgrade 4 --- Peel biochar: using the whole orange}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\small
+After steam distillation, the peel residue is still waste. We
+\textbf{pyrolyse it into biochar} and mix it into the gel:
+\begin{itemize}\footnotesize
+  \item \textbf{Porous} $\rightarrow$ adds trapped air, lowers $k$.
+        Orange-peel biochar in a polymer composite reached
+        $k = \SI{0.081}{W/mK}$.
+  \item \textbf{Flame retardant} $\rightarrow$ the same study achieved a
+        UL-94 \textbf{V-1} rating. This tackles the biggest weakness of any
+        polystyrene product: \alert{fire}.
+  \item \textbf{Carbon storage} $\rightarrow$ biochar locks carbon into the
+        wall instead of releasing it by burning peels.
+\end{itemize}
+\column{0.47\textwidth}
+\begin{tikzpicture}[
+  n/.style={rectangle,rounded corners=3pt,text width=2.3cm,align=center,font=\scriptsize,minimum height=0.8cm},
+  a/.style={-{Stealth},thick,ink!60}]
+\node[n,fill=citrus!25] (p) at (2.1,4.6) {Orange peel waste};
+\node[n,fill=leaf!20] (l) at (0.6,3.0) {Limonene (solvent)};
+\node[n,fill=ink!15] (r) at (3.6,3.0) {Peel residue};
+\node[n,fill=sky!20] (g) at (0.6,1.5) {PS gel (EPS dissolved)};
+\node[n,fill=ink!30] (b) at (3.6,1.5) {Biochar filler};
+\node[n,fill=citrus,text=white] (c) at (2.1,0) {\textbf{CoolBrick}};
+\draw[a] (p) -- node[left,font=\tiny,pos=0.4]{steam distil} (l);
+\draw[a] (p) -- (r);
+\draw[a] (r) -- node[right,font=\tiny]{pyrolyse} (b);
+\draw[a] (l) -- node[left,font=\tiny]{+ EPS} (g);
+\draw[a] (g) -- (c); \draw[a] (b) -- (c);
+\draw[a,leaf,dashed] (c.west) to[out=180,in=180,looseness=1.6] node[left,font=\tiny,text=leaf,align=right,pos=0.5]{limonene\\recovered} (l.west);
+\end{tikzpicture}
+\end{columns}
+\src{Ca-crosslinked orange-peel biochar/PLA composite (Chung-Ang Univ.); Vitale \& Cascone, orange-peel insulation boards.}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Upgrade 5 --- Breeze-block (jaali) CoolBricks}
+\begin{columns}[c]
+\column{0.5\textwidth}
+\small
+\begin{itemize}
+  \item Traditional Indian \textbf{jaali} screens shade walls and windows
+        while letting breezes through --- cooling with zero energy.
+  \item Our gel is mouldable, so the same process can cast
+        \textbf{perforated CoolBrick screens} for verandas, stairwells,
+        school corridors and the west face of buildings.
+  \item Lightweight and water-proof: suitable for upper floors and
+        rooftop shading frames.
+  \item Optional \textbf{terracotta-clad} panels for hot-\emph{dry} zones,
+        where wet clay surfaces add evaporative cooling.
+\end{itemize}
+\column{0.45\textwidth}
+\centering
+\begin{tikzpicture}
+  \fill[citrus!30] (0,0) rectangle (4.2,4.2);
+  \foreach \x in {0,1.05,2.1,3.15}{\foreach \y in {0,1.05,2.1,3.15}{
+     \fill[paper] (\x+0.525,\y+0.525) circle (0.36);
+     \draw[citrus!80!black,line width=0.6pt] (\x+0.525,\y+0.525) circle (0.36);
+     \draw[citrus!80!black,line width=0.4pt] (\x,\y) rectangle ++(1.05,1.05);}}
+  \foreach \y in {0.6,1.6,2.6,3.6}{\draw[-{Stealth},sky,thick] (-0.8,\y)--(-0.1,\y);
+                                    \draw[-{Stealth},sky!70,thick,dashed] (4.3,\y)--(5.0,\y);}
+  \node[font=\scriptsize,sky,align=center] at (-0.5,4.5) {breeze};
+  \node[font=\scriptsize,align=center] at (2.1,-0.35) {CoolBrick jaali module (concept)};
+\end{tikzpicture}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Updated process (v2)}
+\centering
+\begin{tikzpicture}[
+  s/.style={rectangle,rounded corners=3pt,minimum width=2.05cm,minimum height=1.55cm,
+            text width=1.9cm,align=center,font=\scriptsize,text=white},
+  arr/.style={-{Stealth[length=2.5mm]},line width=1pt,color=ink!60}]
+\node[s,fill=citrus] (1) {\textbf{1 Collect}\\EPS + peels from juice vendors \& packaging};
+\node[s,fill=leaf,right=0.3cm of 1] (2) {\textbf{2 Distil}\\Steam-distil limonene};
+\node[s,fill=ink!70,right=0.3cm of 2] (3) {\textbf{3 Char}\\Pyrolyse residue to biochar};
+\node[s,fill=leaf!70!black,right=0.3cm of 3] (4) {\textbf{4 Mix}\\EPS + limonene gel + biochar};
+\node[s,fill=sky,right=0.3cm of 4] (5) {\textbf{5 Mould}\\Hollow / jaali moulds; fill \& seal PCM};
+\node[s,fill=plum,right=0.3cm of 5] (6) {\textbf{6 Cure \& recover}\\Dry; condense limonene for reuse};
+\node[s,fill=citrus!80!black,below=0.6cm of 6] (7) {\textbf{7 Coat}\\CaCO$_3$ cool face on sun side};
+\node[s,fill=heat,left=0.3cm of 7] (8) {\textbf{8 Test}\\Strength, $k$, fire, water};
+\foreach \a/\b in {1/2,2/3,3/4,4/5,5/6,6/7,7/8}{\draw[arr] (\a)--(\b);}
+\end{tikzpicture}
+
+\vspace{0.4cm}
+\begin{card}{leaf}\small\textbf{Closed solvent loop:} curing in a covered
+tray with a simple condenser recovers limonene vapour instead of releasing
+it --- lower cost, lower odour, lower VOCs.\end{card}
+\end{frame}
+
+% =====================================================================
+\section{Proving it}
+
+\begin{frame}{Test plan}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}l X l l@{}}
+\toprule
+Property & Method & Standard / ref. & Target \\
+\midrule
+Compressive strength & Universal testing machine, 5 samples per mix & IS 3495 (Pt 1) & $\geq$ \SI{3.5}{MPa} (IS 1077 class) \\
+Water absorption     & 24 h immersion, weigh before/after & IS 3495 (Pt 2) & $<$ 5\% \\
+Thermal conductivity & Guarded hot plate (or DIY hot-box) & IS 3346 & $k \leq$ \SI{0.15}{W/mK} \\
+Fire behaviour       & Bunsen-flame burn test, char length, dripping & UL-94 (adapted) & V-1 or better \\
+PCM performance      & DSC (melting point, latent heat) at a partner lab & --- & \SIrange{26}{28}{\celsius} \\
+Surface temperature  & IR thermometer, coated vs.\ uncoated, noon sun & --- & $\leq$ air temp. \\
+\textbf{Room cooling} & \textbf{Two identical model huts, Arduino + DS18B20 loggers, 30 summer days} & --- & \textbf{peak $-$\SI{4}{\celsius}} \\
+\bottomrule
+\end{tabularx}
+
+\medskip
+\begin{card}{citrus}\small\textbf{Model-hut experiment:} build two
+\SI{0.6}{m} cubes --- one fired clay, one CoolBrick --- on the school roof.
+Log indoor/outdoor temperature every 5 minutes. Compare peak temperature,
+time lag and hours above \SI{32}{\celsius}. \todo{add your results}\end{card}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Results so far \todo{fill in}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\footnotesize
+\begin{tabular}{@{}lccc@{}}
+\toprule
+ & Clay & v1 & CoolBrick \\
+\midrule
+Mass per brick (kg)        & \todo{} & \todo{} & \todo{} \\
+Compressive strength (MPa) & \todo{} & \todo{} & \todo{} \\
+Water absorption (\%)      & \todo{} & \todo{} & \todo{} \\
+Surface temp.\ at noon (\si{\celsius}) & \todo{} & \todo{} & \todo{} \\
+Peak indoor temp.\ (\si{\celsius})     & \todo{} & \todo{} & \todo{} \\
+Time lag (h)               & \todo{} & \todo{} & \todo{} \\
+\bottomrule
+\end{tabular}
+\column{0.45\textwidth}
+\includegraphics[width=0.49\linewidth,height=2.4cm]{water-test.jpg}\hfill
+\includegraphics[width=0.49\linewidth,height=2.4cm]{heat-test.jpg}\\[3pt]
+\includegraphics[width=0.49\linewidth,height=2.4cm]{load-test.jpg}\hfill
+\includegraphics[width=0.49\linewidth,height=2.4cm]{brick-sample.jpg}
+
+\scriptsize v1 testing photos: water, heat, load.
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Risks we have thought about}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}l X X@{}}
+\toprule
+Risk & Why it matters & Our mitigation \\
+\midrule
+\textbf{Fire} & Polystyrene burns and drips. & Biochar filler (V-1 in literature); mineral cool-face coat; use as infill with plaster, not structural columns; burn tests. \\
+\textbf{UV ageing} & PS yellows and becomes brittle in sun. & CaCO$_3$ coat / plaster blocks UV on exposed faces. \\
+\textbf{Limonene vapour} & Flammable during processing; strong odour. & Small batches, ventilation, no open flame; condense \& reuse solvent; full cure before use. \\
+\textbf{Strength} & Must carry loads in low-rise walls. & Sand/fly-ash/biochar ratios optimised by testing; interlocking geometry. \\
+\textbf{PCM leakage} & Oil could seep or go rancid. & Fully sealed PS pockets; test blends with antioxidant; compatibility trials. \\
+\textbf{Cost} & Must compete with $\sim$Rs\, 8--12 clay bricks. & Free waste inputs; solvent recovery; no kiln fuel. \todo{cost per brick} \\
+\bottomrule
+\end{tabularx}
+\end{frame}
+
+% =====================================================================
+\section{Impact \& scale}
+
+\begin{frame}{Impact estimate: one small home}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\small\textbf{Assumptions} (transparent, conservative)
+\begin{itemize}\footnotesize
+  \item \SI{40}{m^2} of external wall, average $\Delta T = \SI{8}{K}$
+        for 10 h/day, 120 hot days/year.
+  \item Room AC with COP 3; electricity Rs\, 7/kWh;
+        grid factor \SI{0.71}{kg\,CO_2/kWh}.
+\end{itemize}
+\[
+\Delta Q = (2.20 - 0.59)\times 40 \times 8 \approx \SI{515}{W}
+\]
+\footnotesize
+$\Rightarrow$ $\approx$ \SI{5.2}{kWh} of heat/day kept out
+$\Rightarrow$ $\approx$ \SI{1.7}{kWh} of AC electricity/day.
+\column{0.45\textwidth}
+\begin{tcolorbox}[colback=citrus!8,colframe=citrus,arc=2pt,boxrule=0.8pt]
+\centering
+{\Large\bfseries\color{citrus} $\sim$\SI{200}{kWh}}\\{\scriptsize electricity saved / home / year}\\[4pt]
+{\Large\bfseries\color{leaf} $\sim$\SI{145}{kg}}\\{\scriptsize CO$_2$ avoided / home / year}\\[4pt]
+{\Large\bfseries\color{sky} $\sim$Rs\, 1,400}\\{\scriptsize saved on bills / home / year}
+\end{tcolorbox}
+\scriptsize For homes \emph{without} AC, the same heat shows up as a cooler,
+safer room --- the benefit is health, not money.
+\end{columns}
+\src{Walls only (roof excluded); first-order steady-state estimate --- to be validated against model-hut data.}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Target audience}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\small The Poly Citra project targets stakeholders focused on
+sustainability and affordable housing:
+\begin{itemize}\footnotesize
+  \item NGOs, government bodies, educators, architects and environmental
+        start-ups.
+  \item \new\ City \textbf{Heat Action Plan} teams and affordable-housing
+        schemes.
+  \item \new\ Schools and Anganwadis --- heat-proof classrooms.
+  \item \new\ Farmers \& small shops --- cooler storage sheds that cut
+        produce spoilage.
+\end{itemize}
+\column{0.45\textwidth}
+\begin{card}{leaf}\small\textbf{Policy fit.} India's residential energy code
+(Eco Niwas Samhita) caps envelope heat gain at
+\textbf{RETV $\leq$ \SI{15}{W/m^2}}. Low-$U$ CoolBrick walls make that target
+easier and cheaper to hit.\end{card}
+\begin{card}{citrus}\small\textbf{ICAP fit.} Passive cooling through
+better envelopes is a core ICAP recommendation for buildings.\end{card}
+\end{columns}
+\src{BEE, Eco Niwas Samhita 2018 (Part I: Building Envelope); MoEFCC ICAP 2019.}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Revenue model \& adaptation strategy}
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{card}{citrus}\textbf{Direct sales.} Sell to NGOs, builders,
+disaster-relief organisations and eco-conscious customers.\end{card}
+\begin{card}{leaf}\textbf{Partnerships.} Collect waste from juice vendors and
+packaging companies to secure raw materials.\end{card}
+\begin{card}{sky}\textbf{Custom shelters.} Pre-designed eco-friendly shelter
+units for NGOs and CSR projects.\end{card}
+\column{0.48\textwidth}
+\begin{card}{heat}\new\ \textbf{Cool-room retrofit kits.} CoolBrick jaali
+screens + cool-face coat for existing hot rooms and rooftop classrooms.\end{card}
+\begin{card}{plum}\new\ \textbf{Premium CoolBrick line.} PCM + coated bricks
+at a higher price for west-facing walls; standard v1 bricks for the rest.\end{card}
+\begin{card}{ink}\new\ \textbf{Carbon \& CSR credits.} Biochar carbon
+storage and avoided AC emissions as a story for CSR funders.\end{card}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Marketing \& messaging strategies}
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{enumerate}\small
+  \item \textbf{Social-media storytelling} --- videos showing waste
+        transformed into eco-bricks.
+  \item \textbf{Live demonstrations} --- hands-on events in schools and
+        communities to build trust.
+  \item \textbf{NGO collaborations} --- pilot projects demonstrating
+        durability and cost-effectiveness.
+  \item \textbf{Student Ambassador Program} --- youth lead sustainability
+        drives and workshops.
+\end{enumerate}
+\column{0.48\textwidth}
+\begin{card}{citrus}\new\ \textbf{``Feel the difference'' demo.} Two model
+huts side by side with live temperature displays --- visitors put a hand
+inside each.\end{card}
+\begin{card}{sky}\new\ \textbf{Thermal-camera reels.} IR images of a
+CoolBrick wall vs.\ a clay wall at 2\,pm make the benefit instantly
+visible.\end{card}
+\begin{card}{leaf}\new\ \textbf{Open data.} Publish our hut temperature
+logs so others can verify and replicate.\end{card}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Roadmap}
+\centering
+\begin{tikzpicture}[
+  ph/.style={rectangle,rounded corners=3pt,minimum width=3.1cm,minimum height=3.2cm,
+             text width=2.9cm,align=left,font=\scriptsize,anchor=north},
+  hd/.style={rectangle,rounded corners=3pt,minimum width=3.1cm,minimum height=0.7cm,
+             font=\small\bfseries,text=white,anchor=south}]
+\foreach \i/\c/\t/\b in {
+  0/plum/{Now}/{\textbullet\ Cavity \& biochar mixes\\\textbullet\ Measure $k$, strength\\\textbullet\ Burn \& water tests},
+  1/sky/{Next 3 months}/{\textbullet\ Model-hut trial (30 days)\\\textbullet\ Bio-PCM blend tuning\\\textbullet\ CaCO$_3$ coat from eggshells},
+  2/leaf/{6 months}/{\textbullet\ Pilot wall/jaali at school or NGO site\\\textbullet\ Cost per brick vs.\ clay},
+  3/citrus/{12 months+}/{\textbullet\ Scale production\\\textbullet\ Partner with local builders\\\textbullet\ Seek BIS/lab certification}}{
+  \node[hd,fill=\c] at (\i*3.4,0) {\t};
+  \node[ph,fill=\c!10] at (\i*3.4,0) {\b};
+}
+\draw[-{Stealth},thick,ink!50] (-1.6,-3.5) -- (11.9,-3.5);
+\end{tikzpicture}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{What changed from v1 to v2}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}l X X@{}}
+\toprule
+ & \textbf{Poly Citra Bricks (v1)} & \textbf{Poly Citra CoolBrick (v2)} \\
+\midrule
+Goal & Turn two wastes into a brick & \ldots{} that also \textbf{cools the home} \\
+Inputs & EPS + orange-peel limonene & + peel biochar, bio-PCM, CaCO$_3$ (eggshell/marble waste) \\
+Structure & Solid moulded brick & Hollow air-cell core, sealed PCM pockets, interlocking key, jaali variant \\
+Thermal & Not measured & Target $U \approx$ \SI{0.6}{W/m^2K} vs.\ 2.2 for clay; time-lagged peaks \\
+Fire safety & Not addressed & Biochar flame retardance + mineral coat + burn testing \\
+Solvent & Single use & Recovered by condensation and reused \\
+Evidence & Prototype & Standard tests + 30-day model-hut experiment \\
+SDGs & 11, 12, 13 & 3, 7, 11, 12, 13 \\
+\bottomrule
+\end{tabularx}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{References}
+\scriptsize
+\begin{enumerate}
+\item Ministry of Environment, Forest \& Climate Change (2019).
+      \emph{India Cooling Action Plan}. Govt.\ of India.
+\item Bureau of Energy Efficiency (2018). \emph{Eco Niwas Samhita 2018
+      (Energy Conservation Building Code for Residential Buildings), Part I:
+      Building Envelope}.
+\item Li, X., Peoples, J., Huang, Z., Zhao, Z., Qiu, J., \& Ruan, X. (2020).
+      Full daytime sub-ambient radiative cooling in commercial-like paints
+      with high figure of merit. \emph{Cell Reports Physical Science}, 1(10).
+\item Vitale, M., \& Cascone, S. (2022). Orange peels as a potential
+      ecological thermal insulation material for building application.
+      \emph{TeMA -- Technologies, Engineering, Materials, Architecture}, 8(2).
+\item Enhanced biodegradability and thermal insulation capability of
+      poly(lactic acid) reinforced with calcium-crosslinked orange-peel
+      biochar. Chung-Ang University. \todo{complete citation}
+\item Sony Corporation (c.\ 2001). Limonene-based expanded-polystyrene
+      recycling system. \todo{complete citation}
+\item Computational and experimental analysis of PCM-infused brick for
+      sustainable heat regulation. \todo{complete citation}
+\item Bureau of Indian Standards: IS 1077 (common burnt clay building
+      bricks), IS 3495 Parts 1--4 (methods of test of burnt clay bricks),
+      IS 3346 (thermal conductivity by guarded hot plate).
+\item UL 94: Standard for Safety of Flammability of Plastic Materials.
+\end{enumerate}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}[standout]
+Thank you!\\[0.5em]
+{\normalsize Waste in. Cool homes out.}
+\end{frame}
+
+\end{document}
