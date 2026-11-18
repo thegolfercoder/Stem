@@ -1,0 +1,416 @@
+{
+  "model": "swingml/data/swing_event_net.pt",
+  "clips": [
+    "out/golfdb/split/holdout.npz"
+  ],
+  "overall": {
+    "n": 201,
+    "within_1_all8": 0.4185,
+    "within_1_core4": 0.4888,
+    "within_2_core4": 0.6405,
+    "tempo_median_rel_error": 0.1505,
+    "tempo_p80_rel_error": 0.2812,
+    "median_abs_error_frames": {
+      "Address": 7.0,
+      "Toe Up": 2.0,
+      "Mid Backswing": 2.0,
+      "Top": 2.0,
+      "Mid Downswing": 1.0,
+      "Impact": 1.0,
+      "Mid Follow Through": 1.0,
+      "Finish": 29.0
+    },
+    "median_signed_error_frames": {
+      "Address": -0.03,
+      "Toe Up": 0.02,
+      "Mid Backswing": 0.07,
+      "Top": 0.9,
+      "Mid Downswing": -0.04,
+      "Impact": -0.02,
+      "Mid Follow Through": 0.83,
+      "Finish": -25.69
+    }
+  },
+  "tempo_error_if_one_event_were_exact": {
+    "none": 0.1505,
+    "Address": 0.1097,
+    "Top": 0.1045,
+    "Impact": 0.1271
+  },
+  "by_condition": {
+    "camera_view": {
+      "face_on": {
+        "n": 41,
+        "within_1_all8": 0.4756,
+        "within_1_core4": 0.5366,
+        "within_2_core4": 0.7195,
+        "tempo_median_rel_error": 0.1462,
+        "tempo_p80_rel_error": 0.2683,
+        "median_abs_error_frames": {
+          "Address": 5.0,
+          "Toe Up": 2.0,
+          "Mid Backswing": 1.0,
+          "Top": 1.0,
+          "Mid Downswing": 1.0,
+          "Impact": 1.0,
+          "Mid Follow Through": 1.0,
+          "Finish": 21.0
+        },
+        "median_signed_error_frames": {
+          "Address": -0.02,
+          "Toe Up": -1.03,
+          "Mid Backswing": 0.02,
+          "Top": 0.96,
+          "Mid Downswing": -0.07,
+          "Impact": -0.05,
+          "Mid Follow Through": 0.78,
+          "Finish": -19.9
+        }
+      },
+      "down_the_line": {
+        "n": 96,
+        "within_1_all8": 0.4245,
+        "within_1_core4": 0.4818,
+        "within_2_core4": 0.638,
+        "tempo_median_rel_error": 0.1481,
+        "tempo_p80_rel_error": 0.267,
+        "median_abs_error_frames": {
+          "Address": 7.0,
+          "Toe Up": 2.0,
+          "Mid Backswing": 2.0,
+          "Top": 2.0,
+          "Mid Downswing": 1.0,
+          "Impact": 1.0,
+          "Mid Follow Through": 1.0,
+          "Finish": 32.0
+        },
+        "median_signed_error_frames": {
+          "Address": -2.51,
+          "Toe Up": 0.04,
+          "Mid Backswing": -0.02,
+          "Top": 0.11,
+          "Mid Downswing": 0.02,
+          "Impact": -0.0,
+          "Mid Follow Through": 0.78,
+          "Finish": -29.01
+        }
+      },
+      "other": {
+        "n": 64,
+        "within_1_all8": 0.373,
+        "within_1_core4": 0.4688,
+        "within_2_core4": 0.5938,
+        "tempo_median_rel_error": 0.1637,
+        "tempo_p80_rel_error": 0.3024,
+        "median_abs_error_frames": {
+          "Address": 8.5,
+          "Toe Up": 3.0,
+          "Mid Backswing": 3.0,
+          "Top": 2.0,
+          "Mid Downswing": 1.0,
+          "Impact": 1.0,
+          "Mid Follow Through": 1.5,
+          "Finish": 24.5
+        },
+        "median_signed_error_frames": {
+          "Address": 1.5,
+          "Toe Up": 0.98,
+          "Mid Backswing": 1.05,
+          "Top": 0.94,
+          "Mid Downswing": -0.86,
+          "Impact": -0.09,
+          "Mid Follow Through": 0.91,
+          "Finish": -23.63
+        }
+      }
+    },
+    "slow_motion": {
+      "slow_motion": {
+        "n": 82,
+        "within_1_all8": 0.2195,
+        "within_1_core4": 0.2652,
+        "within_2_core4": 0.4268,
+        "tempo_median_rel_error": 0.1514,
+        "tempo_p80_rel_error": 0.2696,
+        "median_abs_error_frames": {
+          "Address": 16.0,
+          "Toe Up": 7.0,
+          "Mid Backswing": 5.0,
+          "Top": 4.0,
+          "Mid Downswing": 2.0,
+          "Impact": 2.0,
+          "Mid Follow Through": 2.0,
+          "Finish": 94.5
+        },
+        "median_signed_error_frames": {
+          "Address": -3.03,
+          "Toe Up": 1.05,
+          "Mid Backswing": 2.02,
+          "Top": 1.99,
+          "Mid Downswing": -0.03,
+          "Impact": 0.9,
+          "Mid Follow Through": 0.05,
+          "Finish": -93.13
+        }
+      },
+      "real_time": {
+        "n": 119,
+        "within_1_all8": 0.5557,
+        "within_1_core4": 0.6429,
+        "within_2_core4": 0.7878,
+        "tempo_median_rel_error": 0.1502,
+        "tempo_p80_rel_error": 0.2829,
+        "median_abs_error_frames": {
+          "Address": 4.0,
+          "Toe Up": 1.0,
+          "Mid Backswing": 1.0,
+          "Top": 1.0,
+          "Mid Downswing": 1.0,
+          "Impact": 1.0,
+          "Mid Follow Through": 1.0,
+          "Finish": 18.0
+        },
+        "median_signed_error_frames": {
+          "Address": 0.01,
+          "Toe Up": 0.01,
+          "Mid Backswing": 0.03,
+          "Top": 0.08,
+          "Mid Downswing": -0.05,
+          "Impact": -0.15,
+          "Mid Follow Through": 0.88,
+          "Finish": -17.85
+        }
+      }
+    },
+    "handedness": {
+      "left": {
+        "n": 23,
+        "within_1_all8": 0.3641,
+        "within_1_core4": 0.4239,
+        "within_2_core4": 0.5543,
+        "tempo_median_rel_error": 0.1806,
+        "tempo_p80_rel_error": 0.4314,
+        "median_abs_error_frames": {
+          "Address": 8.0,
+          "Toe Up": 3.0,
+          "Mid Backswing": 3.0,
+          "Top": 2.0,
+          "Mid Downswing": 1.0,
+          "Impact": 1.0,
+          "Mid Follow Through": 2.0,
+          "Finish": 25.0
+        },
+        "median_signed_error_frames": {
+          "Address": -2.01,
+          "Toe Up": 1.02,
+          "Mid Backswing": 0.96,
+          "Top": 0.95,
+          "Mid Downswing": -0.07,
+          "Impact": 0.06,
+          "Mid Follow Through": 0.99,
+          "Finish": -25.14
+        }
+      },
+      "right": {
+        "n": 178,
+        "within_1_all8": 0.4256,
+        "within_1_core4": 0.4972,
+        "within_2_core4": 0.6517,
+        "tempo_median_rel_error": 0.1461,
+        "tempo_p80_rel_error": 0.2693,
+        "median_abs_error_frames": {
+          "Address": 7.0,
+          "Toe Up": 2.0,
+          "Mid Backswing": 2.0,
+          "Top": 2.0,
+          "Mid Downswing": 1.0,
+          "Impact": 1.0,
+          "Mid Follow Through": 1.0,
+          "Finish": 29.0
+        },
+        "median_signed_error_frames": {
+          "Address": -0.01,
+          "Toe Up": 0.01,
+          "Mid Backswing": 0.05,
+          "Top": 0.89,
+          "Mid Downswing": -0.04,
+          "Impact": -0.05,
+          "Mid Follow Through": 0.82,
+          "Finish": -26.21
+        }
+      }
+    },
+    "wrist_visibility_at_impact": {
+      "lowest_third_below_0.65": {
+        "n": 67,
+        "within_1_all8": 0.4104,
+        "within_1_core4": 0.4851,
+        "within_2_core4": 0.6343,
+        "tempo_median_rel_error": 0.174,
+        "tempo_p80_rel_error": 0.3081,
+        "median_abs_error_frames": {
+          "Address": 6.0,
+          "Toe Up": 3.0,
+          "Mid Backswing": 2.0,
+          "Top": 2.0,
+          "Mid Downswing": 1.0,
+          "Impact": 1.0,
+          "Mid Follow Through": 1.0,
+          "Finish": 22.0
+        },
+        "median_signed_error_frames": {
+          "Address": -0.0,
+          "Toe Up": 0.02,
+          "Mid Backswing": 0.0,
+          "Top": 0.87,
+          "Mid Downswing": -0.0,
+          "Impact": 0.04,
+          "Mid Follow Through": 0.78,
+          "Finish": -21.08
+        }
+      },
+      "middle_third": {
+        "n": 67,
+        "within_1_all8": 0.4049,
+        "within_1_core4": 0.459,
+        "within_2_core4": 0.6269,
+        "tempo_median_rel_error": 0.1169,
+        "tempo_p80_rel_error": 0.2667,
+        "median_abs_error_frames": {
+          "Address": 7.0,
+          "Toe Up": 3.0,
+          "Mid Backswing": 2.0,
+          "Top": 2.0,
+          "Mid Downswing": 1.0,
+          "Impact": 1.0,
+          "Mid Follow Through": 1.0,
+          "Finish": 30.0
+        },
+        "median_signed_error_frames": {
+          "Address": -1.01,
+          "Toe Up": 0.01,
+          "Mid Backswing": 0.03,
+          "Top": 1.01,
+          "Mid Downswing": -0.07,
+          "Impact": -0.15,
+          "Mid Follow Through": 0.83,
+          "Finish": -28.89
+        }
+      },
+      "highest_third_from_0.73": {
+        "n": 67,
+        "within_1_all8": 0.4403,
+        "within_1_core4": 0.5224,
+        "within_2_core4": 0.6604,
+        "tempo_median_rel_error": 0.1668,
+        "tempo_p80_rel_error": 0.2651,
+        "median_abs_error_frames": {
+          "Address": 9.0,
+          "Toe Up": 2.0,
+          "Mid Backswing": 2.0,
+          "Top": 1.0,
+          "Mid Downswing": 1.0,
+          "Impact": 1.0,
+          "Mid Follow Through": 1.0,
+          "Finish": 32.0
+        },
+        "median_signed_error_frames": {
+          "Address": -1.0,
+          "Toe Up": 0.86,
+          "Mid Backswing": 0.97,
+          "Top": 0.14,
+          "Mid Downswing": -0.04,
+          "Impact": -0.05,
+          "Mid Follow Through": 0.92,
+          "Finish": -28.77
+        }
+      }
+    },
+    "true_tempo": {
+      "below_3.0": {
+        "n": 62,
+        "within_1_all8": 0.4032,
+        "within_1_core4": 0.4355,
+        "within_2_core4": 0.6089,
+        "tempo_median_rel_error": 0.1904,
+        "tempo_p80_rel_error": 0.3328,
+        "median_abs_error_frames": {
+          "Address": 7.0,
+          "Toe Up": 2.0,
+          "Mid Backswing": 2.0,
+          "Top": 2.0,
+          "Mid Downswing": 1.0,
+          "Impact": 1.0,
+          "Mid Follow Through": 1.0,
+          "Finish": 32.0
+        },
+        "median_signed_error_frames": {
+          "Address": -3.97,
+          "Toe Up": 0.48,
+          "Mid Backswing": 0.09,
+          "Top": 1.05,
+          "Mid Downswing": -0.05,
+          "Impact": -0.76,
+          "Mid Follow Through": 0.85,
+          "Finish": -32.13
+        }
+      },
+      "3.0_to_4.0": {
+        "n": 99,
+        "within_1_all8": 0.447,
+        "within_1_core4": 0.5379,
+        "within_2_core4": 0.6667,
+        "tempo_median_rel_error": 0.1115,
+        "tempo_p80_rel_error": 0.2388,
+        "median_abs_error_frames": {
+          "Address": 5.0,
+          "Toe Up": 2.0,
+          "Mid Backswing": 2.0,
+          "Top": 1.0,
+          "Mid Downswing": 1.0,
+          "Impact": 1.0,
+          "Mid Follow Through": 1.0,
+          "Finish": 23.0
+        },
+        "median_signed_error_frames": {
+          "Address": 0.0,
+          "Toe Up": 0.02,
+          "Mid Backswing": 0.12,
+          "Top": 0.9,
+          "Mid Downswing": -0.07,
+          "Impact": -0.01,
+          "Mid Follow Through": 0.84,
+          "Finish": -22.16
+        }
+      },
+      "4.0_and_above": {
+        "n": 40,
+        "within_1_all8": 0.3719,
+        "within_1_core4": 0.45,
+        "within_2_core4": 0.625,
+        "tempo_median_rel_error": 0.1755,
+        "tempo_p80_rel_error": 0.3111,
+        "median_abs_error_frames": {
+          "Address": 12.5,
+          "Toe Up": 3.0,
+          "Mid Backswing": 3.0,
+          "Top": 1.0,
+          "Mid Downswing": 1.0,
+          "Impact": 1.5,
+          "Mid Follow Through": 1.0,
+          "Finish": 30.5
+        },
+        "median_signed_error_frames": {
+          "Address": 7.5,
+          "Toe Up": -0.53,
+          "Mid Backswing": -0.01,
+          "Top": -0.57,
+          "Mid Downswing": 0.08,
+          "Impact": 0.1,
+          "Mid Follow Through": 0.13,
+          "Finish": -24.48
+        }
+      }
+    }
+  }
+}

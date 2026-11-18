@@ -1,0 +1,32 @@
+Printed-part cost estimate (not a slice: within about 20% of one)
+PETG 20 $/kg, 0.2 mm layers, 20% infill, 4.0 mm3/s sustained, 5% scrap allowance
+
+part                                     qty   grams  minutes
+ground_radar_shell.stl                     1    26.0       85  
+ground_radar_lid.stl                       1    14.0       46  
+ground_radar_radome.stl                    1     0.8        3  translucent smoke PETG
+ground_radar_led_pipe.stl                  1     0.0        1  natural PETG
+ground_radar_esp32_clamp_tab_x2.stl        2     0.1        2  
+ground_radar_dock_base.stl                 1    23.7       78  
+ground_radar_arm_slide.stl                 1     4.1       13  folding phone arm
+ground_radar_arm_head_magsafe.stl          1     8.9       29  MagSafe head
+ground_radar_arm_pin.stl                   1     0.2        2  hinge pin
+ground_radar_arm_swivel.stl                1     0.8        6  swivel: turns the head toward the golfer
+shaft_pod_base.stl                         1     6.0       20  
+shaft_pod_lid.stl                          1     1.5        5  
+shaft_pod_strap_TPU.stl                    1     0.6        2  TPU 95A
+
+ground     78.6 g   4.55 h
+pod         8.1 g   0.58 h
+both       86.7 g   5.13 h
+
+material                         $ 1.74
+own printer   ($0.40/h machine) $ 3.98  per kit
+print farm    ($1.50/h machine) $ 9.90  per kit
+budget                           $5-10: WITHIN at the print-farm rate
+
+Labour (support removal, inserts, assembly) is not included.
+
+Not in the kit total (alternatives, printed instead of a kit part):
+ground_radar_arm_head_clamp.stl            1     6.3       21  $0.78 at the farm rate, own plate. clamp head: instead of the MagSafe head, for phones without MagSafe
+ground_radar_arm_clamp_jaw.stl             1     1.3       10  $0.39 at the farm rate, own plate. the clamp head's sliding jaw

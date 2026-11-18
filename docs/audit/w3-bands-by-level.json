@@ -1,0 +1,424 @@
+{
+  "band": 0.2735849056603773,
+  "fit": "golfdb-calibration-v2",
+  "cuts": {
+    "true": [
+      3.310344827586207,
+      4.066666666666666
+    ],
+    "read": [
+      3.4013626564120436,
+      3.996584178242163
+    ]
+  },
+  "model": "swingml/data/swing_event_net.pt",
+  "resamples": 1000,
+  "splits": {
+    "golfdb-calibration-v2": {
+      "true_0": {
+        "n": {
+          "value": 44.0,
+          "ci95": [
+            25.0,
+            68.0
+          ]
+        },
+        "coverage": {
+          "value": 0.7273,
+          "ci95": [
+            0.5608,
+            0.8491
+          ]
+        },
+        "false_confidence_rate": {
+          "value": 0.2727,
+          "ci95": [
+            0.1509,
+            0.4392
+          ]
+        },
+        "median_signed_rel_error": {
+          "value": 0.0801,
+          "ci95": [
+            0.0121,
+            0.2403
+          ]
+        },
+        "answered": {
+          "value": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "true_1": {
+        "n": {
+          "value": 44.0,
+          "ci95": [
+            18.0,
+            74.0
+          ]
+        },
+        "coverage": {
+          "value": 0.8182,
+          "ci95": [
+            0.5581,
+            0.9616
+          ]
+        },
+        "false_confidence_rate": {
+          "value": 0.1818,
+          "ci95": [
+            0.0384,
+            0.4419
+          ]
+        },
+        "median_signed_rel_error": {
+          "value": -0.0049,
+          "ci95": [
+            -0.1065,
+            0.0577
+          ]
+        },
+        "answered": {
+          "value": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "true_2": {
+        "n": {
+          "value": 45.0,
+          "ci95": [
+            24.0,
+            73.0
+          ]
+        },
+        "coverage": {
+          "value": 0.8444,
+          "ci95": [
+            0.7377,
+            0.9667
+          ]
+        },
+        "false_confidence_rate": {
+          "value": 0.1556,
+          "ci95": [
+            0.0333,
+            0.2623
+          ]
+        },
+        "median_signed_rel_error": {
+          "value": -0.096,
+          "ci95": [
+            -0.1373,
+            0.0006
+          ]
+        },
+        "answered": {
+          "value": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "read_0": {
+        "n": {
+          "value": 44.0,
+          "ci95": [
+            20.975,
+            76.0
+          ]
+        },
+        "coverage": {
+          "value": 0.7955,
+          "ci95": [
+            0.7105,
+            0.9412
+          ]
+        },
+        "false_confidence_rate": {
+          "value": 0.2045,
+          "ci95": [
+            0.0588,
+            0.2895
+          ]
+        },
+        "median_signed_rel_error": {
+          "value": -0.0592,
+          "ci95": [
+            -0.1469,
+            -0.0205
+          ]
+        }
+      },
+      "read_1": {
+        "n": {
+          "value": 44.0,
+          "ci95": [
+            24.0,
+            68.025
+          ]
+        },
+        "coverage": {
+          "value": 0.7727,
+          "ci95": [
+            0.5556,
+            0.9131
+          ]
+        },
+        "false_confidence_rate": {
+          "value": 0.2273,
+          "ci95": [
+            0.0869,
+            0.4444
+          ]
+        },
+        "median_signed_rel_error": {
+          "value": 0.0514,
+          "ci95": [
+            -0.0469,
+            0.1094
+          ]
+        }
+      },
+      "read_2": {
+        "n": {
+          "value": 45.0,
+          "ci95": [
+            26.975,
+            66.0
+          ]
+        },
+        "coverage": {
+          "value": 0.8222,
+          "ci95": [
+            0.625,
+            0.9394
+          ]
+        },
+        "false_confidence_rate": {
+          "value": 0.1778,
+          "ci95": [
+            0.0606,
+            0.375
+          ]
+        },
+        "median_signed_rel_error": {
+          "value": 0.0797,
+          "ci95": [
+            -0.0257,
+            0.1979
+          ]
+        }
+      }
+    },
+    "golfdb-validation-v2": {
+      "true_0": {
+        "n": {
+          "value": 54.0,
+          "ci95": [
+            36.0,
+            73.0
+          ]
+        },
+        "coverage": {
+          "value": 0.8704,
+          "ci95": [
+            0.8,
+            0.9413
+          ]
+        },
+        "false_confidence_rate": {
+          "value": 0.1296,
+          "ci95": [
+            0.0587,
+            0.2
+          ]
+        },
+        "median_signed_rel_error": {
+          "value": 0.1268,
+          "ci95": [
+            0.0757,
+            0.1674
+          ]
+        },
+        "answered": {
+          "value": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "true_1": {
+        "n": {
+          "value": 51.0,
+          "ci95": [
+            37.975,
+            66.0
+          ]
+        },
+        "coverage": {
+          "value": 0.9216,
+          "ci95": [
+            0.8297,
+            1.0
+          ]
+        },
+        "false_confidence_rate": {
+          "value": 0.0784,
+          "ci95": [
+            0.0,
+            0.1703
+          ]
+        },
+        "median_signed_rel_error": {
+          "value": 0.0132,
+          "ci95": [
+            -0.025,
+            0.0397
+          ]
+        },
+        "answered": {
+          "value": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "true_2": {
+        "n": {
+          "value": 36.0,
+          "ci95": [
+            15.975,
+            60.025
+          ]
+        },
+        "coverage": {
+          "value": 0.8611,
+          "ci95": [
+            0.6296,
+            1.0
+          ]
+        },
+        "false_confidence_rate": {
+          "value": 0.1389,
+          "ci95": [
+            0.0,
+            0.3704
+          ]
+        },
+        "median_signed_rel_error": {
+          "value": -0.092,
+          "ci95": [
+            -0.2151,
+            0.0066
+          ]
+        },
+        "answered": {
+          "value": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "read_0": {
+        "n": {
+          "value": 49.0,
+          "ci95": [
+            34.0,
+            63.0
+          ]
+        },
+        "coverage": {
+          "value": 0.9388,
+          "ci95": [
+            0.875,
+            1.0
+          ]
+        },
+        "false_confidence_rate": {
+          "value": 0.0612,
+          "ci95": [
+            0.0,
+            0.125
+          ]
+        },
+        "median_signed_rel_error": {
+          "value": -0.0446,
+          "ci95": [
+            -0.1119,
+            0.0308
+          ]
+        }
+      },
+      "read_1": {
+        "n": {
+          "value": 57.0,
+          "ci95": [
+            42.0,
+            74.0
+          ]
+        },
+        "coverage": {
+          "value": 0.9123,
+          "ci95": [
+            0.8,
+            1.0
+          ]
+        },
+        "false_confidence_rate": {
+          "value": 0.0877,
+          "ci95": [
+            0.0,
+            0.2
+          ]
+        },
+        "median_signed_rel_error": {
+          "value": 0.0397,
+          "ci95": [
+            -0.0349,
+            0.1268
+          ]
+        }
+      },
+      "read_2": {
+        "n": {
+          "value": 35.0,
+          "ci95": [
+            19.0,
+            55.0
+          ]
+        },
+        "coverage": {
+          "value": 0.7714,
+          "ci95": [
+            0.5499,
+            0.9184
+          ]
+        },
+        "false_confidence_rate": {
+          "value": 0.2286,
+          "ci95": [
+            0.0816,
+            0.4501
+          ]
+        },
+        "median_signed_rel_error": {
+          "value": 0.0713,
+          "ci95": [
+            0.0502,
+            0.2198
+          ]
+        }
+      }
+    }
+  }
+}

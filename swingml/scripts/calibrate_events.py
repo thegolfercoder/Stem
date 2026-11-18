@@ -25,6 +25,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from swingml.analysis import load_model, model_fingerprint
+from swingml.dataset.manifest import guard_archive
 from swingml.events import NUM_EVENTS, SwingEvent
 from swingml.model.calibration import (
     ModelCalibration,
@@ -47,6 +48,7 @@ def load_clips(paths: list[Path]) -> list[tuple[np.ndarray, np.ndarray]]:
     """Every cached detected clip, as (features, true event frames)."""
     clips: list[tuple[np.ndarray, np.ndarray]] = []
     for path in paths:
+        guard_archive(path)
         data = np.load(path)
         # Pulled out of the loop on purpose. Indexing an npz decompresses the whole
         # member every time, so reading it per clip turns a hundred megabytes into

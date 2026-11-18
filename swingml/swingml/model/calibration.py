@@ -86,6 +86,21 @@ class ErrorBand(BaseModel):
         )
 
 
+LEFT_HANDED_TEMPO_NOTE = (
+    "Not measured for left-handed swings: 8 of the 85 swings this spread was measured "
+    "on were left-handed, too few for a band of their own. On held-out swings, 80% of "
+    "left-handed tempo readings were within 43% (23 swings), against 27% for "
+    "right-handed ones (178)."
+)
+"""Shown with the tempo band on a left-handed swing, in all three apps (#33).
+
+The counts are golfdb-calibration-v1 (where the band was measured) and the
+published holdout breakdown, docs/audit/error-breakdown.json -> handedness.
+The model reads a mirrored swing differently (#33), so the band measured on
+mostly right-handed swings is not evidence about left-handed ones.
+"""
+
+
 class EventCalibration(BaseModel):
     """Measured error bands, per event, indexed by the model's own confidence.
 
@@ -133,6 +148,15 @@ class EventCalibration(BaseModel):
             if any(b < a for a, b in pairwise(edges)):
                 raise ValueError(f"event {event}: confidence edges must ascend, got {edges}")
         return self
+
+    @property
+    def varies_with_confidence(self) -> bool:
+        """Whether any event's band depends on the confidence the model reported.
+
+        A table with one bin per event gives every swing the same band, and a page
+        must not then say that a doubtful event gets a wider one.
+        """
+        return any(len(edges) > 0 for edges in self.confidence_edges)
 
     def band(self, event: SwingEvent, confidence: float) -> ErrorBand | NoReading:
         """The band for one prediction, or a refusal saying why there is none."""
@@ -430,8 +454,12 @@ def load_calibration(path: Path | str) -> ModelCalibration:
     """Read a calibration from disk, validating it rather than trusting it.
 
     A hand-edited or half-written table would otherwise surface as a wrong error
-    bar, which is the one failure this whole module exists to prevent.
+    bar, which is the one failure this whole module exists to prevent. The table
+    shipped in the package is also checked against its released SHA-256.
     """
+    from swingml.assets import verify_shipped
+
+    verify_shipped(path)
     return ModelCalibration.model_validate_json(Path(path).read_text(encoding="utf-8"))
 
 

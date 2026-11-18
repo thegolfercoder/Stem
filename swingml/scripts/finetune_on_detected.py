@@ -30,6 +30,7 @@ from torch.utils.data import DataLoader
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from swingml.analysis import load_model, save_model
+from swingml.dataset.manifest import guard_archive
 from swingml.model.data import SwingDataset, collate, masked_soft_cross_entropy
 from swingml.model.evaluate import decode_batch, evaluate_predictions
 from swingml.skeleton import Handedness
@@ -38,6 +39,7 @@ from synth.dataset import Sample
 
 def load_detected(path: Path) -> list[Sample]:
     """Unpack the cached detected clips back into the ordinary sample type."""
+    guard_archive(path)
     data = np.load(path)
     # Pulled out of the loop: indexing an npz decompresses the whole member on
     # each access, which turns a large cache into tens of gigabytes of churn.
