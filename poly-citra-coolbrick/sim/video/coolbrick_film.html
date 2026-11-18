@@ -255,7 +255,10 @@ const DUR=86;window.DURATION=DUR;
 const $=id=>document.getElementById(id);
 function show(id,on,op=1){const e=$(id);e.style.display=on?'':'none';if(on)e.style.opacity=op;}
 function caption(chip,h,p,op=1){$('chip').textContent=chip;$('capH').innerHTML=h;$('capP').innerHTML=p;show('chip',!!chip,op);show('cap',!!h,op);}
-function camTo(p,tg){camera.position.copy(p);camera.lookAt(tg);}
+const VIEW=window.VIEW={yaw:0,pitch:0,zoom:1};
+function camTo(p,tg){const off=p.clone().sub(tg),sp=new THREE.Spherical().setFromVector3(off);
+  sp.theta+=VIEW.yaw;sp.phi=Math.min(Math.PI*.49,Math.max(.12,sp.phi-VIEW.pitch));sp.radius*=VIEW.zoom;
+  camera.position.copy(tg).add(new THREE.Vector3().setFromSpherical(sp));camera.lookAt(tg);}
 function partOpacity(c,dimAll,hi){const set=(m,o)=>{m.opacity=o;};
   const D=.12;set(c.coatM,hi==='coat'||!dimAll?1:D);set(c.airM,hi==='air'||!dimAll?.55:.08);set(c.pcmM,hi==='pcm'||!dimAll?.92:D);
   set(c.shellM,hi==='body'||!dimAll?.28:.06);c.edges.material.opacity=hi==='body'||!dimAll?1:.15;set(c.spM,hi==='body'||!dimAll?1:.1);set(c.keyM,hi==='key'||!dimAll?1:D);}
