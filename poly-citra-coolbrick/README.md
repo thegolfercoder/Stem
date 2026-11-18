@@ -4,7 +4,8 @@ A LaTeX Beamer version of the LGIC'26 APAC India "Poly Citra Bricks" deck. It ke
 
 - `poly_citra_coolbrick.tex`: the deck source (16:9 Beamer, metropolis theme)
 - `poly_citra_coolbrick.pdf`: the compiled deck
-- `img/`: photos taken from the original deck
+- `poly_citra_coolbrick_a4.tex` / `.pdf`: the same content as an A4 report (13 pages), with the deck's text and pictures laid out in a framed page design
+- `img/`: photos and graphics taken from the original deck
 
 Build it by running `pdflatex poly_citra_coolbrick.tex` twice. It needs the TeX Live packages `latex-extra` and `science` (for siunitx).
 
