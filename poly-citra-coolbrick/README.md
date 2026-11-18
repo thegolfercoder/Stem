@@ -1,6 +1,6 @@
 # Poly Citra CoolBrick (Project Rebrick v2)
 
-A LaTeX Beamer version of the LGIC'26 APAC India "Poly Citra Bricks" deck. It keeps all of the original content and adds a passive-cooling research track.
+A LaTeX Beamer version of the LGIC'26 APAC India "Poly Citra Bricks" deck. It keeps all of the original content and adds a passive-cooling research track aimed at **data centres**: edge and telecom shelters, roofs and sun-facing walls, UPS and battery rooms, and thermal ride-through when cooling fails. Server Styrofoam packaging becomes a raw material, closing the loop.
 
 - `poly_citra_coolbrick.tex`: the deck source (16:9 Beamer, metropolis theme)
 - `poly_citra_coolbrick.pdf`: the compiled deck
@@ -31,4 +31,8 @@ The deck also covers a test plan (IS 3495, IS 3346, UL-94, and a 30-day model-hu
 - Orange-peel biochar/PLA (k = 0.081 W/mK, UL-94 V-1): https://scholarworks.bwise.kr/cau/bitstream/2019.sw.cau/83546/1/Enhancedbiodegradabilityandthermalinsulationcapabilityofpolylacticacidreinforcedwithcalcium-crosslinkedorangepeelbiochar.pdf
 - PCM-infused bricks: https://www.ebsco.com/articles/construction-and-building/72d6bf1c-1035-5d4f-8fa9-87104f33b801/computational-and-experimental-analysis-of-pcm-infused-brick-for-sustainable-heat-regulation/, https://arxiv.org/pdf/2510.18883
 - Limonene EPS recycling (Sony) and solvent recovery: https://www.preprints.org/manuscript/202407.1983, https://uspto.report/patent/app/20220243028
+- India data-centre capacity forecasts: https://www.woodmac.com/zh/press-releases/india-data-centre-capacity-to-reach-12-gw-by-2030/, https://www.nbmcw.com/news/indias-data-centre-capacity-to-grow-4x-to-4-gw-by-2030-careedge-ratings.html, https://yourstory.com/ai-story/data-centre-installed-capacity-to-grow-up-to-6-gw-2030-india-redseer
+- IEA, data-centre cooling share (about 7% to over 30%): https://iea.org/reports/energy-and-ai/energy-demand-from-ai
+- PCM thermal time shifting in data centres (Skach et al., ISCA 2015): https://cseweb.ucsd.edu/~tullsen/isca15.pdf
+- Telecom shelter envelope and radiative-cooling studies: https://link.springer.com/content/pdf/10.1007/s12273-022-0894-z.pdf, https://www.esru.strath.ac.uk/EandE/Web_sites/10-11/Mobile_mast/esp_results.htm
 - Polystyrene-waste bricks and insulation: https://www.scientific.net/AMR.652-654.1191, https://doi.org/10.3390/en14071844

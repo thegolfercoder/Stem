@@ -56,7 +56,7 @@
   fontupper=\small,#1}
 
 \title{Poly Citra \textcolor{citrus}{Cool}Brick}
-\subtitle{From Styrofoam \& orange peel to bricks that keep homes cool}
+\subtitle{From Styrofoam \& orange peel to bricks that help keep data centres cool}
 \author{Project Rebrick \quad\textbar\quad Rian Sikka \& Daiwik Abroo}
 \institute{Scottish High International School \quad\textbar\quad Grade 9 (IGCSE) \quad\textbar\quad \todo{Competition name, 2026}}
 \date{}
@@ -87,7 +87,7 @@ Combining \alert{Styrofoam} waste with \alert{D-limonene} extracted from
 
 \begin{card}{citrus}\textbf{This submission} answers that question:
 version 2 turns the brick into a \textbf{passive cooling system} for
-India's heat.\end{card}
+India's fast-growing \textbf{data centres}.\end{card}
 
 \column{0.45\textwidth}
 \includegraphics[width=0.49\linewidth,height=2.3cm]{styrofoam.jpg}\hfill
@@ -117,40 +117,41 @@ India's heat.\end{card}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{\new\ Problem 2.0: India is overheating}
+\begin{frame}{\new\ Problem 2.0: data centres are heating up}
 \begin{columns}[T]
-\column{0.5\textwidth}
-\begin{itemize}\small
-  \item Heatwaves are getting longer and hotter; the poorest homes
-        (tin, thin brick, concrete roofs) trap the most heat.
-  \item India Cooling Action Plan (ICAP): national cooling demand will grow
-        \alert{$\sim$8$\times$} by 2037--38 vs.\ 2017--18.
-  \item \textbf{Space cooling in buildings} grows fastest:
-        \alert{$\sim$11$\times$}, and becomes about \alert{74\%} of all
-        cooling demand.
-  \item ICAP target: cut cooling demand 20--25\% and cooling energy
-        25--40\% --- largely through \emph{better building envelopes}.
+\column{0.52\textwidth}
+\begin{itemize}\footnotesize
+  \item India's data-centre capacity was about \alert{1.5--2.2 GW} in 2025.
+        Forecasts for 2030 range from \alert{4 GW to 12 GW}, driven by AI
+        and cloud.
+  \item Every watt a server uses becomes heat that has to be removed.
+        \textbf{Cooling uses about 7\% of a data centre's electricity in
+        the most efficient hyperscale sites, and over 30\% in less efficient
+        ones} (IEA).
+  \item India is hot: outdoor air above \SI{40}{\celsius} and strong sun
+        push extra heat through walls and roofs, especially in small
+        \textbf{edge sites and telecom shelters}.
+  \item Server deliveries bring huge amounts of \textbf{Styrofoam packaging}.
 \end{itemize}
-\column{0.47\textwidth}
+\column{0.45\textwidth}
 \begin{tikzpicture}
 \begin{axis}[
-  ybar, width=\linewidth, height=5.0cm, bar width=16pt,
-  ymin=0, ymax=13, ylabel={Growth vs.\ 2017--18 (\texttimes)},
-  symbolic x coords={Buildings,Transport AC,Cold chain,All cooling},
-  xtick=data, x tick label style={font=\scriptsize,rotate=20,anchor=north east},
+  ybar, width=\linewidth, height=4.6cm, bar width=18pt,
+  ymin=0, ymax=14, ylabel={India DC capacity (GW)},
+  symbolic x coords={2025,2030 low,2030 high},
+  xtick=data, x tick label style={font=\scriptsize},
   ylabel style={font=\scriptsize}, yticklabel style={font=\scriptsize},
   nodes near coords, nodes near coords style={font=\scriptsize},
-  axis lines*=left, enlarge x limits=0.18]
-\addplot[fill=heat!80,draw=none] coordinates
-  {(Buildings,11) (Transport AC,5) (Cold chain,4) (All cooling,8)};
+  axis lines*=left, enlarge x limits=0.25]
+\addplot[fill=sky!80,draw=none] coordinates {(2025,2.2) (2030 low,4) (2030 high,12)};
 \end{axis}
 \end{tikzpicture}
 \end{columns}
 \begin{card}{citrus}
-\textbf{The insight:} every AC we \emph{don't} need is the cheapest, cleanest
-cooling there is. The wall is the first line of defence.
+\textbf{The insight:} every watt of heat a data centre's walls and roof
+keep out is a watt its chillers don't have to remove --- 24/7, all year.
 \end{card}
-\src{MoEFCC, \emph{India Cooling Action Plan} (2019), reference scenario.}
+\src{Wood Mackenzie (2026); CareEdge, Redseer, Rubix forecasts; IEA, \emph{Energy and AI} (2025).}
 \end{frame}
 
 % =====================================================================
@@ -170,8 +171,9 @@ create a global impact in reversing climate change:
   \item[SDG 12] Responsible Consumption \& Production --- reducing waste and
         repurposing materials.
   \item[SDG 13] Climate Action --- lower emissions than kiln-fired bricks.
-  \item[\new\ SDG 3] Good Health --- fewer heat-stress illnesses indoors.
-  \item[\new\ SDG 7] Affordable \& Clean Energy --- lower AC electricity use.
+  \item[\new\ SDG 7] Affordable \& Clean Energy --- lower cooling electricity.
+  \item[\new\ SDG 9] Industry, Innovation \& Infrastructure --- greener
+        digital infrastructure.
 \end{description}
 \column{0.47\textwidth}
 \includegraphics[width=0.49\linewidth,height=2.3cm]{dissolving.jpg}\hfill
@@ -225,14 +227,54 @@ conventional bricks.\end{card}
 \begin{card}{plum}\textbf{Circular.} Promotes circular-economy principles ---
 two waste streams in, one product out.\end{card}
 \end{columns}
-\begin{card}{heat}\new\ \textbf{Cooler homes.} Version 2 adds a measurable
-thermal benefit --- the rest of this deck shows how.\end{card}
+\begin{card}{heat}\new\ \textbf{Cooler data centres.} Version 2 adds a
+measurable thermal benefit for data-centre buildings --- the rest of this
+deck shows how.\end{card}
 \end{frame}
 
 % =====================================================================
 \section{Version 2: the CoolBrick}
 
-\begin{frame}{How heat gets into a room}
+\begin{frame}{\new\ Where CoolBricks fit in a data centre}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\small
+\textbf{Being honest about the physics.} In a large data hall, most of the
+heat comes from the servers, not through the walls. So we target the places
+where the \textbf{building envelope matters most}:
+\begin{enumerate}\footnotesize
+  \item \textbf{Edge data centres and telecom shelters} --- small boxes in
+        full sun, where heat through walls and roof is a large share of the
+        cooling load.
+  \item \textbf{Roofs and sun-facing walls} of large sites --- cool-face
+        coating and jaali sun-screens cut solar heat gain.
+  \item \textbf{UPS, battery and generator rooms} --- batteries age faster
+        when hot.
+  \item \textbf{Ride-through} --- PCM walls soak up heat for a while if the
+        cooling fails.
+\end{enumerate}
+\column{0.47\textwidth}
+\begin{tikzpicture}[scale=0.95]
+  \fill[ink!8] (0,0) rectangle (5.2,3.4);
+  \draw[ink,thick] (0,0) rectangle (5.2,3.4);
+  \foreach \x in {0.5,1.5,2.5,3.5}{\fill[ink!60] (\x,0.2) rectangle ++(0.6,2.0);
+     \foreach \y in {0.4,0.8,...,2.0}{\fill[leaf!70] (\x+0.08,\y) rectangle ++(0.1,0.08);}}
+  \node[font=\scriptsize,text=ink] at (2.4,2.65) {servers: \textbf{most} of the heat};
+  \fill[white] (0,3.4) rectangle (5.2,3.6); \draw[ink] (0,3.4) rectangle (5.2,3.6);
+  \fill[citrus!40] (-0.25,0) rectangle (0,3.4); \fill[citrus!40] (5.2,0) rectangle (5.45,3.4);
+  \fill[citrus!90] (5.9,4.4) circle (0.32);
+  \draw[-{Stealth},heat,thick,decorate,decoration={snake,amplitude=1pt,segment length=5pt}] (5.6,4.2)--(4.6,3.7);
+  \draw[-{Stealth},heat,thick,decorate,decoration={snake,amplitude=1pt,segment length=5pt}] (5.8,4.0)--(5.55,2.6);
+  \node[font=\scriptsize,text=heat,align=left] at (6.0,1.9) {sun on roof\\\& walls};
+  \node[font=\scriptsize,text=citrus!80!black] at (2.6,-0.35) {CoolBrick walls + cool-face roof};
+\end{tikzpicture}
+\end{columns}
+\begin{card}{leaf}\small\textbf{Closed loop:} data centres throw away
+Styrofoam from server packaging. We collect it and turn it into the bricks
+and screens for their own buildings.\end{card}
+\end{frame}
+
+\begin{frame}{How heat gets into a building}
 \begin{columns}[c]
 \column{0.5\textwidth}
 \begin{tikzpicture}[scale=0.92]
@@ -431,18 +473,20 @@ fired clay.
 \begin{frame}{Upgrade 2 --- Bio-PCM pockets: a thermal battery}
 \begin{columns}[T]
 \column{0.48\textwidth}
-\small
-\begin{itemize}
+\footnotesize
+\begin{itemize}\setlength{\itemsep}{1pt}
   \item A \textbf{phase-change material} melts when the room passes its
         melting point, absorbing large amounts of heat at near-constant
         temperature; it re-solidifies at night.
   \item Candidate: \alert{coconut-oil--based blend} (pure coconut oil melts
         $\approx$\SI{24}{\celsius}); blend/tune to \SIrange{26}{28}{\celsius}
-        for Indian comfort. Cheap, local, non-toxic.
+        for Indian comfort.
   \item Sealed in PS cavities: polystyrene is water-proof, so no leakage
         into plaster. \todo{verify oil--PS compatibility}
   \item Published PCM-brick studies report \textbf{lower peaks (up to
-        \SIrange{3}{11}{\celsius}) and 2-hour delays} depending on set-up.
+        \SIrange{3}{11}{\celsius}) and 2-hour delays}.
+  \item \new\ \textbf{Data-centre bonus:} PCM can delay server thermal
+        limits by \textbf{over 3 hours} --- time if a chiller fails.
 \end{itemize}
 \column{0.5\textwidth}
 \begin{tikzpicture}
@@ -484,8 +528,9 @@ to be replaced with our model-hut data.}
   \item CaCO$_3$ is cheap --- and can come from \textbf{waste eggshells or
         marble slurry}, adding a third waste stream.
 \end{itemize}
-\begin{card}{sky}\footnotesize Best use: roof-facing and west/south walls,
-and the top course of a parapet. Also protects polystyrene from UV.\end{card}
+\begin{card}{sky}\footnotesize Best use: data-centre \textbf{roofs} (often
+huge, flat and in full sun), west/south walls and shelter roofs. It also
+protects polystyrene from UV.\end{card}
 \column{0.42\textwidth}
 \begin{tikzpicture}
 \begin{axis}[
@@ -550,8 +595,8 @@ After steam distillation, the peel residue is still waste. We
   \item Traditional Indian \textbf{jaali} screens shade walls and windows
         while letting breezes through --- cooling with zero energy.
   \item Our gel is mouldable, so the same process can cast
-        \textbf{perforated CoolBrick screens} for verandas, stairwells,
-        school corridors and the west face of buildings.
+        \textbf{perforated CoolBrick screens} as a sun-shading ``second skin''
+        on data-centre facades, generator yards and rooftop plant areas.
   \item Lightweight and water-proof: suitable for upper floors and
         rooftop shading frames.
   \item Optional \textbf{terracotta-clad} panels for hot-\emph{dry} zones,
@@ -601,26 +646,29 @@ it --- lower cost, lower odour, lower VOCs.\end{card}
 \section{Proving it}
 
 \begin{frame}{Test plan}
-\footnotesize
+\scriptsize
 \begin{tabularx}{\textwidth}{@{}l X l l@{}}
 \toprule
 Property & Method & Standard / ref. & Target \\
 \midrule
-Compressive strength & Universal testing machine, 5 samples per mix & IS 3495 (Pt 1) & $\geq$ \SI{3.5}{MPa} (IS 1077 class) \\
+Compressive strength & Universal testing machine, 5 samples per mix & IS 3495 (Pt 1) & $\geq$ \SI{3.5}{MPa} \\
 Water absorption     & 24 h immersion, weigh before/after & IS 3495 (Pt 2) & $<$ 5\% \\
 Thermal conductivity & Guarded hot plate (or DIY hot-box) & IS 3346 & $k \leq$ \SI{0.15}{W/mK} \\
 Fire behaviour       & Bunsen-flame burn test, char length, dripping & UL-94 (adapted) & V-1 or better \\
 PCM performance      & DSC (melting point, latent heat) at a partner lab & --- & \SIrange{26}{28}{\celsius} \\
 Surface temperature  & IR thermometer, coated vs.\ uncoated, noon sun & --- & $\leq$ air temp. \\
-\textbf{Room cooling} & \textbf{Two identical model huts, Arduino + DS18B20 loggers, 30 summer days} & --- & \textbf{peak $-$\SI{4}{\celsius}} \\
+\textbf{Mini data centre} & \textbf{Two model shelters, each with a \SI{100}{W} heater as ``servers'' and a small cooler; log temperature and energy for 30 days} & --- & \textbf{$-$20\% cooling energy} \\
+\textbf{Ride-through} & \textbf{Switch cooling off; time until inside reaches \SI{35}{\celsius}} & --- & \textbf{2$\times$ longer} \\
 \bottomrule
 \end{tabularx}
 
-\medskip
-\begin{card}{citrus}\small\textbf{Model-hut experiment:} build two
-\SI{0.6}{m} cubes --- one fired clay, one CoolBrick --- on the school roof.
-Log indoor/outdoor temperature every 5 minutes. Compare peak temperature,
-time lag and hours above \SI{32}{\celsius}. \todo{add your results}\end{card}
+\smallskip
+\begin{card}{citrus}\footnotesize\textbf{Mini data-centre experiment:} build two
+\SI{0.6}{m} shelters on the school roof --- one fired clay, one CoolBrick.
+Put the same heater inside each to act like servers, and run each one's
+cooling from a plug-in energy meter. Compare energy used, peak temperature,
+and how long each stays below \SI{35}{\celsius} when cooling is switched
+off. \todo{add your results}\end{card}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -636,8 +684,8 @@ Mass per brick (kg)        & \todo{} & \todo{} & \todo{} \\
 Compressive strength (MPa) & \todo{} & \todo{} & \todo{} \\
 Water absorption (\%)      & \todo{} & \todo{} & \todo{} \\
 Surface temp.\ at noon (\si{\celsius}) & \todo{} & \todo{} & \todo{} \\
-Peak indoor temp.\ (\si{\celsius})     & \todo{} & \todo{} & \todo{} \\
-Time lag (h)               & \todo{} & \todo{} & \todo{} \\
+Cooling energy, 30 days (kWh) & \todo{} & \todo{} & \todo{} \\
+Ride-through to \SI{35}{\celsius} (min) & \todo{} & \todo{} & \todo{} \\
 \bottomrule
 \end{tabular}
 \column{0.45\textwidth}
@@ -657,12 +705,12 @@ Time lag (h)               & \todo{} & \todo{} & \todo{} \\
 \toprule
 Risk & Why it matters & Our mitigation \\
 \midrule
-\textbf{Fire} & Polystyrene burns and drips. & Biochar filler (V-1 in literature); mineral cool-face coat; use as infill with plaster, not structural columns; burn tests. \\
+\textbf{Fire} & Polystyrene burns and drips; data centres have very strict fire rules. & Biochar filler (V-1 in literature); mineral coat; plastered infill only; never inside fire-rated server halls without certification; burn tests. \\
 \textbf{UV ageing} & PS yellows and becomes brittle in sun. & CaCO$_3$ coat / plaster blocks UV on exposed faces. \\
 \textbf{Limonene vapour} & Flammable during processing; strong odour. & Small batches, ventilation, no open flame; condense \& reuse solvent; full cure before use. \\
 \textbf{Strength} & Must carry loads in low-rise walls. & Sand/fly-ash/biochar ratios optimised by testing; interlocking geometry. \\
 \textbf{PCM leakage} & Oil could seep or go rancid. & Fully sealed PS pockets; test blends with antioxidant; compatibility trials. \\
-\textbf{Cost} & Must compete with $\sim$Rs\, 8--12 clay bricks. & Free waste inputs; solvent recovery; no kiln fuel. \todo{cost per brick} \\
+\textbf{Adoption} & Data-centre operators are cautious and need proof. & Start with edge shelters and non-critical rooms; publish open test data. \todo{cost per brick} \\
 \bottomrule
 \end{tabularx}
 \end{frame}
@@ -670,78 +718,82 @@ Risk & Why it matters & Our mitigation \\
 % =====================================================================
 \section{Impact \& scale}
 
-\begin{frame}{Impact estimate: one small home}
+\begin{frame}{Impact estimate: one edge data-centre shelter}
 \begin{columns}[T]
 \column{0.52\textwidth}
-\small\textbf{Assumptions} (transparent, conservative)
+\small\textbf{Assumptions} (transparent, first-order)
 \begin{itemize}\footnotesize
-  \item \SI{40}{m^2} of external wall, average $\Delta T = \SI{8}{K}$
-        for 10 h/day, 120 hot days/year.
-  \item Room AC with COP 3; electricity Rs\, 7/kWh;
-        grid factor \SI{0.71}{kg\,CO_2/kWh}.
+  \item Shelter \SI{3}{m}\,$\times$\,\SI{3}{m}\,$\times$\,\SI{3}{m}:
+        \SI{36}{m^2} of walls. Outdoor (sun-heated) wall surface averages
+        \SI{12}{K} above the \SI{25}{\celsius} inside, for 24 h on 200 hot
+        days a year.
+  \item Cooling COP 3; commercial power Rs\,8/kWh; grid factor
+        \SI{0.71}{kg\,CO_2/kWh}.
 \end{itemize}
 \[
-\Delta Q = (2.20 - 0.59)\times 40 \times 8 \approx \SI{515}{W}
+\Delta Q = (2.20 - 0.59)\times 36 \times 12 \approx \SI{695}{W}
 \]
 \footnotesize
-$\Rightarrow$ $\approx$ \SI{5.2}{kWh} of heat/day kept out
-$\Rightarrow$ $\approx$ \SI{1.7}{kWh} of AC electricity/day.
+$\Rightarrow$ $\approx$ \SI{230}{W} less cooling power, all day and night
+$\Rightarrow$ $\approx$ \SI{5.6}{kWh} saved per day.
 \column{0.45\textwidth}
 \begin{tcolorbox}[colback=citrus!8,colframe=citrus,arc=2pt,boxrule=0.8pt]
 \centering
-{\Large\bfseries\color{citrus} $\sim$\SI{200}{kWh}}\\{\scriptsize electricity saved / home / year}\\[4pt]
-{\Large\bfseries\color{leaf} $\sim$\SI{145}{kg}}\\{\scriptsize CO$_2$ avoided / home / year}\\[4pt]
-{\Large\bfseries\color{sky} $\sim$Rs\, 1,400}\\{\scriptsize saved on bills / home / year}
+{\Large\bfseries\color{citrus} $\sim$\SI{1100}{kWh}}\\{\scriptsize electricity saved / shelter / year}\\[4pt]
+{\Large\bfseries\color{leaf} $\sim$\SI{790}{kg}}\\{\scriptsize CO$_2$ avoided / shelter / year}\\[4pt]
+{\Large\bfseries\color{sky} $\sim$Rs\,8,900}\\{\scriptsize saved / shelter / year}
 \end{tcolorbox}
-\scriptsize For homes \emph{without} AC, the same heat shows up as a cooler,
-safer room --- the benefit is health, not money.
+\scriptsize India has lakhs of telecom and edge sites. Even a small share
+adds up to millions of kWh a year.
 \end{columns}
-\src{Walls only (roof excluded); first-order steady-state estimate --- to be validated against model-hut data.}
+\src{Walls only (roof and cool-face coat would add more); steady-state estimate --- to be validated against the mini data-centre experiment.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{Target audience}
+\begin{frame}{Target audience: data centres}
 \begin{columns}[T]
 \column{0.5\textwidth}
-\small The Poly Citra project targets stakeholders focused on
-sustainability and affordable housing:
+\small \textbf{Primary customers}
 \begin{itemize}\footnotesize
-  \item NGOs, government bodies, educators, architects and environmental
-        start-ups.
-  \item \new\ City \textbf{Heat Action Plan} teams and affordable-housing
-        schemes.
-  \item \new\ Schools and Anganwadis --- heat-proof classrooms.
-  \item \new\ Farmers \& small shops --- cooler storage sheds that cut
-        produce spoilage.
+  \item \textbf{Edge data-centre and telecom-tower companies} --- thousands
+        of small shelters in full sun.
+  \item \textbf{Colocation and hyperscale operators} --- roofs, sun-facing
+        walls, UPS/battery rooms, and sustainability (ESG) targets.
+  \item \textbf{Modular data-centre builders and EPC contractors} who design
+        and build these sites.
+\end{itemize}
+\textbf{Also}
+\begin{itemize}\footnotesize
+  \item NGOs, government bodies, architects and environmental start-ups
+        (the original Poly Citra audience) for affordable housing.
 \end{itemize}
 \column{0.45\textwidth}
-\begin{card}{leaf}\small\textbf{Policy fit.} India's residential energy code
-(Eco Niwas Samhita) caps envelope heat gain at
-\textbf{RETV $\leq$ \SI{15}{W/m^2}}. Low-$U$ CoolBrick walls make that target
-easier and cheaper to hit.\end{card}
-\begin{card}{citrus}\small\textbf{ICAP fit.} Passive cooling through
-better envelopes is a core ICAP recommendation for buildings.\end{card}
+\begin{card}{leaf}\small\textbf{Why they'll listen.} Cooling is one of a
+data centre's biggest running costs, and big operators publish carbon and
+waste targets. CoolBricks cut cooling energy \emph{and} recycle their own
+packaging waste.\end{card}
+\begin{card}{citrus}\small\textbf{Policy fit.} India's Cooling Action Plan
+calls for passive cooling and better building envelopes.\end{card}
 \end{columns}
-\src{BEE, Eco Niwas Samhita 2018 (Part I: Building Envelope); MoEFCC ICAP 2019.}
 \end{frame}
 
 % ---------------------------------------------------------------------
 \begin{frame}{Revenue model \& adaptation strategy}
 \begin{columns}[T]
 \column{0.48\textwidth}
-\begin{card}{citrus}\textbf{Direct sales.} Sell to NGOs, builders,
-disaster-relief organisations and eco-conscious customers.\end{card}
-\begin{card}{leaf}\textbf{Partnerships.} Collect waste from juice vendors and
-packaging companies to secure raw materials.\end{card}
-\begin{card}{sky}\textbf{Custom shelters.} Pre-designed eco-friendly shelter
-units for NGOs and CSR projects.\end{card}
+\begin{card}{citrus}\textbf{B2B supply.} Sell CoolBricks, jaali screens and
+cool-face coating to data-centre builders and edge/telecom operators.\end{card}
+\begin{card}{leaf}\textbf{Packaging take-back.} Collect server Styrofoam from
+data centres (a waste they pay to remove) plus peels from juice vendors.\end{card}
+\begin{card}{sky}\textbf{Shelter retrofit kits.} CoolBrick panels + cool-face
+coat for existing hot telecom and edge shelters.\end{card}
 \column{0.48\textwidth}
-\begin{card}{heat}\new\ \textbf{Cool-room retrofit kits.} CoolBrick jaali
-screens + cool-face coat for existing hot rooms and rooftop classrooms.\end{card}
-\begin{card}{plum}\new\ \textbf{Premium CoolBrick line.} PCM + coated bricks
-at a higher price for west-facing walls; standard v1 bricks for the rest.\end{card}
-\begin{card}{ink}\new\ \textbf{Carbon \& CSR credits.} Biochar carbon
-storage and avoided AC emissions as a story for CSR funders.\end{card}
+\begin{card}{heat}\textbf{Pilot-then-scale.} Paid pilot at one edge site with
+sensors; the data becomes our sales case.\end{card}
+\begin{card}{plum}\textbf{ESG reporting.} Give operators numbers for waste
+recycled and CO$_2$ avoided for their sustainability reports.\end{card}
+\begin{card}{ink}\textbf{Original market.} Eco-shelters and housing for NGOs
+and CSR projects continue alongside.\end{card}
 \end{columns}
 \end{frame}
 
@@ -750,24 +802,24 @@ storage and avoided AC emissions as a story for CSR funders.\end{card}
 \begin{columns}[T]
 \column{0.48\textwidth}
 \begin{enumerate}\small
-  \item \textbf{Social-media storytelling} --- videos showing waste
-        transformed into eco-bricks.
-  \item \textbf{Live demonstrations} --- hands-on events in schools and
-        communities to build trust.
-  \item \textbf{NGO collaborations} --- pilot projects demonstrating
-        durability and cost-effectiveness.
-  \item \textbf{Student Ambassador Program} --- youth lead sustainability
-        drives and workshops.
+  \item \textbf{Mini data-centre demo} --- two shelters side by side with
+        live temperature and energy readings.
+  \item \textbf{Thermal-camera images} of a CoolBrick wall vs.\ a clay wall
+        at 2\,pm.
+  \item \textbf{Data-centre industry events} and sustainability teams ---
+        pitch the packaging-to-brick closed loop.
+  \item \textbf{Social-media storytelling} --- ``your server box became your
+        wall''.
+  \item \textbf{Student Ambassador Program} --- youth lead workshops and
+        waste-collection drives.
 \end{enumerate}
 \column{0.48\textwidth}
-\begin{card}{citrus}\new\ \textbf{``Feel the difference'' demo.} Two model
-huts side by side with live temperature displays --- visitors put a hand
-inside each.\end{card}
-\begin{card}{sky}\new\ \textbf{Thermal-camera reels.} IR images of a
-CoolBrick wall vs.\ a clay wall at 2\,pm make the benefit instantly
-visible.\end{card}
-\begin{card}{leaf}\new\ \textbf{Open data.} Publish our hut temperature
-logs so others can verify and replicate.\end{card}
+\begin{card}{citrus}\textbf{Core message:} \emph{Cooler data centres from
+their own waste.}\end{card}
+\begin{card}{sky}\textbf{Open data.} Publish our test logs so engineers can
+check the numbers themselves --- the way to win a cautious industry.\end{card}
+\begin{card}{leaf}\textbf{Partnerships.} Approach one edge/telecom operator
+and one colocation provider for pilots.\end{card}
 \end{columns}
 \end{frame}
 
@@ -781,9 +833,9 @@ logs so others can verify and replicate.\end{card}
              font=\small\bfseries,text=white,anchor=south}]
 \foreach \i/\c/\t/\b in {
   0/plum/{Now}/{\textbullet\ Cavity \& biochar mixes\\\textbullet\ Measure $k$, strength\\\textbullet\ Burn \& water tests},
-  1/sky/{Next 3 months}/{\textbullet\ Model-hut trial (30 days)\\\textbullet\ Bio-PCM blend tuning\\\textbullet\ CaCO$_3$ coat from eggshells},
-  2/leaf/{6 months}/{\textbullet\ Pilot wall/jaali at school or NGO site\\\textbullet\ Cost per brick vs.\ clay},
-  3/citrus/{12 months+}/{\textbullet\ Scale production\\\textbullet\ Partner with local builders\\\textbullet\ Seek BIS/lab certification}}{
+  1/sky/{Next 3 months}/{\textbullet\ Mini data-centre trial (30 days)\\\textbullet\ Bio-PCM blend tuning\\\textbullet\ CaCO$_3$ coat from eggshells},
+  2/leaf/{6 months}/{\textbullet\ Pilot at one edge / telecom shelter\\\textbullet\ Cost per brick vs.\ clay},
+  3/citrus/{12 months+}/{\textbullet\ Scale production\\\textbullet\ Partner with DC builders\\\textbullet\ Fire \& lab certification}}{
   \node[hd,fill=\c] at (\i*3.4,0) {\t};
   \node[ph,fill=\c!10] at (\i*3.4,0) {\b};
 }
@@ -798,14 +850,15 @@ logs so others can verify and replicate.\end{card}
 \toprule
  & \textbf{Poly Citra Bricks (v1)} & \textbf{Poly Citra CoolBrick (v2)} \\
 \midrule
-Goal & Turn two wastes into a brick & \ldots{} that also \textbf{cools the home} \\
+Goal & Turn two wastes into a brick & \ldots{} that also \textbf{cuts data-centre cooling energy} \\
+Audience & NGOs, housing, government & \textbf{Data centres}, edge \& telecom sites (+ housing) \\
 Inputs & EPS + orange-peel limonene & + peel biochar, bio-PCM, CaCO$_3$ (eggshell/marble waste) \\
 Structure & Solid moulded brick & Hollow air-cell core, sealed PCM pockets, interlocking key, jaali variant \\
 Thermal & Not measured & Target $U \approx$ \SI{0.6}{W/m^2K} vs.\ 2.2 for clay; time-lagged peaks \\
 Fire safety & Not addressed & Biochar flame retardance + mineral coat + burn testing \\
 Solvent & Single use & Recovered by condensation and reused \\
-Evidence & Prototype & Standard tests + 30-day model-hut experiment \\
-SDGs & 11, 12, 13 & 3, 7, 11, 12, 13 \\
+Evidence & Prototype & Standard tests + 30-day mini data-centre experiment \\
+SDGs & 11, 12, 13 & 7, 9, 11, 12, 13 \\
 \bottomrule
 \end{tabularx}
 \end{frame}
@@ -836,13 +889,16 @@ SDGs & 11, 12, 13 & 3, 7, 11, 12, 13 \\
       bricks), IS 3495 Parts 1--4 (methods of test of burnt clay bricks),
       IS 3346 (thermal conductivity by guarded hot plate).
 \item UL 94: Standard for Safety of Flammability of Plastic Materials.
+\item International Energy Agency (2025). \emph{Energy and AI}: Energy demand from AI.
+\item Wood Mackenzie (2026). India data centre capacity to reach 12 GW by 2030.
+\item Skach, M.\ et al.\ (2015). Thermal time shifting: leveraging phase change materials to reduce cooling costs in warehouse-scale computers. \emph{ISCA 2015}.
 \end{enumerate}
 \end{frame}
 
 % ---------------------------------------------------------------------
 \begin{frame}[standout]
 Thank you!\\[0.5em]
-{\normalsize Waste in. Cool homes out.}
+{\normalsize Waste in. Cool data centres out.}
 \end{frame}
 
 \end{document}
