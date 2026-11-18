@@ -1,0 +1,395 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>CoolBrick Film</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{--ink:#f3f1ea;--ink2:#c9cfc6;--dim:#8d978f;--accent:#ff8a3d;--cool:#ffb070;--clay:#6fb0ff;--hot:#ff5a4f;--panel:rgba(14,20,17,.86);--line:rgba(255,255,255,.14)}
+html,body{margin:0;background:#0d1310;overflow:hidden}
+#stage{position:relative;width:1280px;height:720px;font-family:"IBM Plex Sans",sans-serif;color:var(--ink)}
+canvas#gl{position:absolute;inset:0}
+.ov{position:absolute;inset:0;pointer-events:none}
+.chip{position:absolute;top:28px;left:36px;font:600 13px/1 "IBM Plex Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+  background:var(--panel);border:1px solid var(--line);padding:9px 12px;border-radius:6px}
+.cap{position:absolute;left:36px;bottom:34px;max-width:640px;display:grid;gap:6px}
+.cap h2{margin:0;font:800 38px/1.05 "Archivo",sans-serif;letter-spacing:-.01em;text-shadow:0 2px 18px rgba(0,0,0,.55)}
+.cap p{margin:0;font:500 19px/1.35 "IBM Plex Sans",sans-serif;color:var(--ink2);text-shadow:0 2px 12px rgba(0,0,0,.6)}
+.cap .num{color:var(--accent)}
+.title{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:14px}
+.title h1{margin:0;font:900 92px/0.95 "Archivo",sans-serif;letter-spacing:-.02em}
+.title h1 span{color:var(--accent)}
+.title p{margin:0;font:500 22px/1.3 "IBM Plex Sans";color:var(--ink2)}
+.title .by{font:600 14px/1 "IBM Plex Mono";letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.tag3d{font:700 15px/1 "Archivo",sans-serif;color:#0d1310;background:var(--ink);padding:7px 10px;border-radius:6px;white-space:nowrap;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.tag3d.big{font-size:20px;padding:9px 13px}
+.tag3d.cool{background:var(--cool)} .tag3d.clay{background:var(--clay)}
+.hud{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px;display:grid;gap:6px;min-width:250px}
+.hud .h{font:700 13px/1 "IBM Plex Mono";letter-spacing:.1em;text-transform:uppercase}
+.hud .row{display:flex;justify-content:space-between;gap:18px;font:500 16px/1.2 "IBM Plex Sans";color:var(--ink2)}
+.hud .row b{font:600 18px/1.2 "IBM Plex Mono";color:var(--ink);font-variant-numeric:tabular-nums}
+.clock{position:absolute;top:26px;right:36px;font:600 34px/1 "IBM Plex Mono";background:var(--panel);border:1px solid var(--line);padding:10px 14px;border-radius:8px;font-variant-numeric:tabular-nums}
+.clock small{display:block;font:600 11px/1 "IBM Plex Mono";letter-spacing:.14em;color:var(--dim);margin-bottom:6px}
+.banner{position:absolute;top:96px;left:50%;transform:translateX(-50%);font:900 30px/1 "Archivo";letter-spacing:.06em;color:#fff;background:#c62828;padding:12px 22px;border-radius:8px;box-shadow:0 8px 30px rgba(198,40,40,.45)}
+.results{position:absolute;inset:0;display:grid;align-content:center;justify-items:center;gap:30px;background:radial-gradient(ellipse at center,rgba(13,19,16,.55),rgba(13,19,16,.92))}
+.results .cards{display:grid;grid-template-columns:repeat(3,320px);gap:20px}
+.results .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;display:grid;gap:8px}
+.results .card b{font:900 52px/1 "Archivo";color:var(--accent)}
+.results .card span{font:500 17px/1.35 "IBM Plex Sans";color:var(--ink2)}
+.results h2{margin:0;font:900 48px/1 "Archivo"}
+.results .foot{font:600 15px/1.4 "IBM Plex Mono";letter-spacing:.08em;color:var(--dim);text-align:center}
+.legend{position:absolute;right:36px;bottom:34px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;gap:6px;font:600 12px/1 "IBM Plex Mono";color:var(--ink2)}
+.legend .g{width:220px;height:10px;border-radius:5px;background:linear-gradient(90deg,#3d8bff,#d8d8d2 25%,#ffb347 60%,#ff3b30)}
+.legend .t{display:flex;justify-content:space-between}
+#chart{position:absolute;right:36px;bottom:40px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.note{position:absolute;right:36px;bottom:14px;font:500 11px/1 "IBM Plex Mono";color:var(--dim)}
+</style></head>
+<body>
+<div id="stage">
+  <canvas id="gl" width="1280" height="720"></canvas>
+  <div class="ov" id="labels"></div>
+  <div class="ov" id="ui">
+    <div class="title" id="title"><div class="by">Poly Citra · Project Rebrick</div><h1>Cool<span>Brick</span></h1><p>Bricks made from Styrofoam and orange peel<br>that help keep data centres cool</p></div>
+    <div class="chip" id="chip"></div>
+    <div class="cap" id="cap"><h2 id="capH"></h2><p id="capP"></p></div>
+    <div class="clock" id="clock"><small id="clockL">TIME OF DAY</small><span id="clockT">12:00</span></div>
+    <div class="hud" id="hudA"></div>
+    <div class="hud" id="hudB"></div>
+    <div class="banner" id="banner">COOLING FAILS</div>
+    <div class="legend" id="legend"><span>Temperature °C</span><div class="g"></div><div class="t"><span>15</span><span>25</span><span>40</span><span>55</span></div></div>
+    <canvas id="chart" width="520" height="230"></canvas>
+    <div class="results" id="results">
+      <h2>What the simulation shows</h2>
+      <div class="cards">
+        <div class="card"><b id="r1">74%</b><span>less heat through the walls and roof of a data-centre shelter than with clay bricks</span></div>
+        <div class="card"><b id="r2">1,200 kWh</b><span>of cooling electricity saved per shelter every year</span></div>
+        <div class="card"><b id="r3">9.5 h</b><span>before the room hits 35 °C when cooling fails, vs 1.3 h with clay</span></div>
+      </div>
+      <div class="foot">WASTE IN · COOL DATA CENTRES OUT<br>RIAN SIKKA &amp; DAIWIK ABROO · GRADE 9 IGCSE · SCOTTISH HIGH INTERNATIONAL SCHOOL</div>
+    </div>
+    <div class="note" id="note">Computer model with assumed material values · not lab measurements</div>
+  </div>
+</div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+/* ================= SIMULATION (same model as CoolBrick Lab) ================= */
+const SIG=5.670e-8,H_OUT=15,H_IN=8,T_ROOM=25,DT=10,N=47,L=0.23,DX=L/(N-1);
+const MATS={clay:{alpha:0.70,eps:0.90,layer:x=>({k:0.81,rho:1800,c:840,pcm:0})},
+  cool:{alpha:0.05,eps:0.94,layer:x=>x>0.20-1e-9?{k:0.18,rho:850,c:1800,pcm:0.5}:{k:0.15,rho:600,c:1300,pcm:0}}};
+const PCM={Tm:27,sd:0.7,Lh:110e3};
+const OR={roof:{area:9,fsky:1},east:{area:9,fsky:.5},west:{area:9,fsky:.5},shade:{area:18,fsky:.5}};
+const tOut=h=>34+7*Math.cos(2*Math.PI*(h-15)/24);
+const dayS=h=>Math.max(0,Math.sin(Math.PI*(h-6)/13));
+function solar(o,h){const s=dayS(h);if(o==='roof')return 950*Math.pow(s,1.2);
+  if(o==='east')return 90*s+(h>6&&h<12?600*Math.pow(Math.sin(Math.PI*(h-6)/6),1.5):0);
+  if(o==='west')return 90*s+(h>12.5&&h<19?620*Math.pow(Math.sin(Math.PI*(h-12.5)/6.5),1.5):0);return 110*s;}
+function makeWall(mk){const m=MATS[mk],P=[];for(let i=0;i<N;i++)P.push(m.layer(i*DX));const kf=new Float64Array(N-1);
+  for(let i=0;i<N-1;i++)kf[i]=2*P[i].k*P[i+1].k/(P[i].k+P[i+1].k);return{m,P,kf,T:new Float64Array(N).fill(30),q:new Float64Array(N)};}
+function cap(p,T){let c=p.rho*p.c;if(p.pcm>0){const z=(T-PCM.Tm)/PCM.sd;c+=p.rho*p.pcm*PCM.Lh*Math.exp(-.5*z*z)/(PCM.sd*2.5066283);}return c;}
+function stepWall(w,o,h,Tr){const{P,kf,T,q,m}=w,Ta=tOut(h),Tsky=Ta-18,I=solar(o,h),f=OR[o].fsky;
+  for(let i=0;i<N-1;i++)q[i]=kf[i]*(T[i]-T[i+1])/DX;const T0k=T[0]+273.15;
+  const rad=m.eps*SIG*(f*(Math.pow(Tsky+273.15,4)-Math.pow(T0k,4))+(1-f)*(Math.pow(Ta+273.15,4)-Math.pow(T0k,4)));
+  const qo=m.alpha*I+H_OUT*(Ta-T[0])+rad,qi=H_IN*(T[N-1]-Tr),t0=T[0];
+  T[0]+=DT*(qo-q[0])/(cap(P[0],t0)*DX/2);for(let i=1;i<N-1;i++)T[i]+=DT*(q[i-1]-q[i])/(cap(P[i],T[i])*DX);
+  T[N-1]+=DT*(q[N-2]-qi)/(cap(P[N-1],T[N-1])*DX/2);return qi;}
+function runDay(mk,o){const w=makeWall(mk),out={Tso:[],q:[],prof:[],melt:[]},st=3*86400/DT,PER=60;
+  for(let s=0;s<st;s++){const h=(s*DT/3600)%24,qi=stepWall(w,o,h,T_ROOM);
+    if(s>=2*86400/DT&&(s-2*86400/DT)%PER===0){out.Tso.push(w.T[0]);out.q.push(qi);out.prof.push(Float32Array.from(w.T));
+      let mf=0,n=0;for(let i=0;i<N;i++)if(w.P[i].pcm>0){mf+=0.5*(1+erf((w.T[i]-PCM.Tm)/(PCM.sd*Math.SQRT2)));n++;}out.melt.push(n?mf/n:0);}}
+  return out;}
+function erf(x){const t=1/(1+0.3275911*Math.abs(x));const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);return x>=0?y:-y;}
+function ride(mk,it){const ws=Object.keys(OR).map(o=>({o,w:makeWall(mk)})),C=1.2*27*1005+200e3,fail=62;let Tr=T_ROOM;const pts=[];
+  for(let s=0;s<(fail+12)*3600/DT;s++){const tt=s*DT/3600,h=tt%24;let g=0;for(const{o,w}of ws)g+=OR[o].area*stepWall(w,o,h,tt<fail?T_ROOM:Tr);
+    if(tt>=fail){Tr+=DT*(it*1000+g)/C;if(s%30===0)pts.push(Tr);}}return pts;}
+const SIM={};for(const mk of['clay','cool']){SIM[mk]={};for(const o of Object.keys(OR))SIM[mk][o]=runDay(mk,o);}
+const RT={clay:ride('clay',1.5),cool:ride('cool',1.5)};
+const sampleAt=(arr,h)=>{const f=Math.max(0,Math.min(143.999,h*6)),i=Math.floor(f),u=f-i;return arr[i]*(1-u)+arr[Math.min(143,i+1)]*u;};
+const profAt=(arr,h)=>{const f=Math.max(0,Math.min(143.999,h*6)),i=Math.floor(f),u=f-i,a=arr[i],b=arr[Math.min(143,i+1)],o=new Float32Array(N);for(let k=0;k<N;k++)o[k]=a[k]*(1-u)+b[k]*u;return o;};
+const gainAt=(mk,h)=>Object.keys(OR).reduce((a,o)=>a+OR[o].area*sampleAt(SIM[mk][o].q,h),0);
+const cumGain=(mk,h0,h1)=>{let s=0;for(let h=h0;h<h1;h+=1/6)s+=gainAt(mk,h)*600;return s/3.6e6;};
+const t35=pts=>{const i=pts.findIndex(v=>v>=35);return i<0?null:i*300/3600;};
+const DAY={clay:Object.keys(OR).reduce((a,o)=>a+OR[o].area*SIM.clay[o].q.reduce((x,y)=>x+y,0)*600/3.6e6,0),
+           cool:Object.keys(OR).reduce((a,o)=>a+OR[o].area*SIM.cool[o].q.reduce((x,y)=>x+y,0)*600/3.6e6,0)};
+const T35={clay:t35(RT.clay),cool:t35(RT.cool)};
+document.getElementById('r1').textContent=Math.round((1-DAY.cool/DAY.clay)*100)+'%';
+document.getElementById('r2').textContent=(Math.round((DAY.clay-DAY.cool)/3*200/100)*100).toLocaleString('en-IN')+' kWh';
+document.getElementById('r3').textContent=T35.cool==null?'12+ h':T35.cool.toFixed(1)+' h';
+
+/* ================= HELPERS ================= */
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const seg=(t,a,b)=>clamp((t-a)/(b-a));
+const ease=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const lerp=(a,b,u)=>a+(b-a)*u;
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return(seed-1)/2147483646;};
+function tcol(T){const stops=[[15,[61,139,255]],[25,[216,216,210]],[37,[255,179,71]],[55,[255,59,48]]];
+  if(T<=stops[0][0])return new THREE.Color(...stops[0][1].map(v=>v/255));
+  for(let i=0;i<stops.length-1;i++){const[a,ca]=stops[i],[b,cb]=stops[i+1];if(T<=b){const u=(T-a)/(b-a);return new THREE.Color(...ca.map((v,k)=>lerp(v,cb[k],u)/255));}}
+  return new THREE.Color(...stops[3][1].map(v=>v/255));}
+const hh=h=>String(Math.floor(h)%24).padStart(2,'0')+':'+String(Math.floor((h%1)*60)).padStart(2,'0');
+
+/* ================= RENDERER ================= */
+const canvas=document.getElementById('gl');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});renderer.setSize(1280,720,false);renderer.setPixelRatio(1);
+renderer.shadowMap.enabled=true;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+const labelR=new CSS2DRenderer({element:document.getElementById('labels')});labelR.setSize(1280,720);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x0d1310);scene.fog=new THREE.Fog(0x0d1310,220,520);
+const camera=new THREE.PerspectiveCamera(36,1280/720,0.5,2000);
+const hemi=new THREE.HemisphereLight(0xdfe8ff,0x283028,0.7);scene.add(hemi);
+const key=new THREE.DirectionalLight(0xfff0d8,1.8);key.castShadow=true;key.shadow.mapSize.set(2048,2048);
+Object.assign(key.shadow.camera,{left:-90,right:90,top:90,bottom:-90,near:1,far:400});scene.add(key);scene.add(key.target);
+const floor=new THREE.Mesh(new THREE.CircleGeometry(400,96),new THREE.MeshStandardMaterial({color:0x1a221d,roughness:1}));
+floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+const LBL=[];function tag(text,parent,pos,cls=''){const d=document.createElement('div');d.className='tag3d '+cls;d.innerHTML=text;const o=new CSS2DObject(d);o.position.copy(pos);parent.add(o);LBL.push(o);return o;}
+
+/* ================= COOLBRICK MODEL (cm) ================= */
+const BX=23,BY=7.5,BZ=11;
+function dot(){const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');const gr=g.createRadialGradient(32,32,0,32,32,32);
+  gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.45,'rgba(255,255,255,.85)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,64,64);return new THREE.CanvasTexture(c);}
+const DOT=dot();
+function makeCool(){
+  const g=new THREE.Group();
+  const shellM=new THREE.MeshPhysicalMaterial({color:0xd8c08a,roughness:.55,transparent:true,opacity:.28,depthWrite:false,side:THREE.DoubleSide});
+  const shell=new THREE.Mesh(new THREE.BoxGeometry(BX,BY,BZ),shellM);g.add(shell);
+  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(BX,BY,BZ)),new THREE.LineBasicMaterial({color:0xe6c27a,transparent:true}));g.add(edges);
+  const coatM=new THREE.MeshStandardMaterial({color:0xfbfbf6,roughness:.3,emissive:0x000000,transparent:true});
+  const coat=new THREE.Mesh(new THREE.BoxGeometry(.7,BY,BZ),coatM);coat.position.x=-BX/2-.35;coat.castShadow=true;g.add(coat);
+  const airM=new THREE.MeshPhysicalMaterial({color:0x8fd0ff,roughness:.05,transparent:true,opacity:.55,emissive:0x000000});
+  const airs=[];for(const x0 of[-8.3,-2.4])for(const z0 of[-2.6,2.6]){const m=new THREE.Mesh(new THREE.BoxGeometry(5,6.2,4.2),airM);m.position.set(x0,0,z0);g.add(m);airs.push(m);}
+  const pcmM=new THREE.MeshStandardMaterial({color:0xa25bd1,roughness:.35,transparent:true,opacity:.92,emissive:0x000000});
+  const pcms=[];for(const z0 of[-2.6,2.6]){const m=new THREE.Mesh(new THREE.BoxGeometry(4,6.2,4.2),pcmM);m.position.set(7.2,0,z0);g.add(m);pcms.push(m);}
+  const spM=new THREE.MeshStandardMaterial({color:0x222222,roughness:.8,transparent:true});
+  const specks=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.2,0),spM,260);const mm=new THREE.Matrix4();
+  for(let i=0;i<260;i++){mm.setPosition((rnd()-.5)*(BX-.6),(rnd()-.5)*(BY-.4),(rnd()-.5)*(BZ-.4));specks.setMatrixAt(i,mm);}g.add(specks);
+  const keyM=new THREE.MeshStandardMaterial({color:0xd8c08a,roughness:.6,transparent:true,emissive:0x000000});
+  const keys=[];for(const z0 of[-2.6,2.6]){const k=new THREE.Mesh(new THREE.CylinderGeometry(1.15,1.15,.9,32),keyM);k.position.set(3.5,BY/2+.45,z0);g.add(k);keys.push(k);}
+  return{g,shell,shellM,edges,coat,coatM,airs,airM,pcms,pcmM,specks,spM,keys,keyM};
+}
+function makeClay(){const g=new THREE.Group();const m=new THREE.MeshStandardMaterial({color:0xa9502c,roughness:.95,transparent:true});
+  const b=new THREE.Mesh(new THREE.BoxGeometry(BX,BY,BZ),m);b.castShadow=true;g.add(b);return{g,m,b};}
+function sliceTex(){const c=document.createElement('canvas');c.width=256;c.height=8;const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return{c,t};}
+function paint(sl,prof){const g=sl.c.getContext('2d');for(let px=0;px<256;px++){const f=px/255*(N-1),i=Math.floor(f),u=f-i;g.fillStyle='#'+tcol(prof[i]*(1-u)+prof[Math.min(N-1,i+1)]*u).getHexString();g.fillRect(px,0,1,8);}sl.t.needsUpdate=true;}
+
+// ---- main hero CoolBrick (used in intro, anatomy, results)
+const hero=makeCool();scene.add(hero.g);
+const heroParts=[ // part, exploded offset
+  ...[[hero.coat,V(-12,0,0)]],
+  ...hero.airs.map((m,i)=>[m,V(0,10+(i%2)*0,0)]),
+  ...hero.pcms.map(m=>[m,V(11,0,0)]),
+  ...hero.keys.map(m=>[m,V(0,16,0)])];
+heroParts.forEach(([m])=>m.userData.home=m.position.clone());
+const heroTags={coat:tag('1 · White cool-face coat',hero.coat,V(0,BY/2+2.2,0),'big'),air:tag('2 · Air cells',hero.airs[0],V(0,4.6,0),'big'),
+  pcm:tag('3 · Coconut-oil PCM',hero.pcms[0],V(0,4.6,0),'big'),body:tag('4 · Foam + orange-peel biochar body',hero.g,V(0,-BY/2-2.6,BZ/2),'big'),
+  key:tag('5 · Interlocking keys',hero.keys[0],V(0,2.4,0),'big')};
+
+// ---- making scene
+const make=new THREE.Group();scene.add(make);
+const loader=new THREE.TextureLoader();
+function photo(url,w,h){const t=loader.load(url);t.colorSpace=THREE.SRGBColorSpace;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:t,transparent:true,toneMapped:false}));
+  const fr=new THREE.Mesh(new THREE.PlaneGeometry(w+1,h+1),new THREE.MeshBasicMaterial({color:0xf3f1ea,transparent:true}));fr.position.z=-.05;m.add(fr);return m;}
+const pFoam=photo('img/styrofoam.jpg',19,13),pPeel=photo('img/peels.jpg',19,13);pFoam.position.set(-27,16,0);pPeel.position.set(27,16,0);make.add(pFoam,pPeel);
+const tagFoam=tag('Styrofoam packaging',pFoam,V(0,-8.5,0)),tagPeel=tag('Orange peels → limonene',pPeel,V(0,-8.5,0));
+const bowl=new THREE.Mesh(new THREE.CylinderGeometry(10,8,9,48,1,true),new THREE.MeshPhysicalMaterial({color:0xcfe9ff,transparent:true,opacity:.22,roughness:.05,side:THREE.DoubleSide,depthWrite:false}));
+bowl.position.set(0,4.5,0);make.add(bowl);
+const liquid=new THREE.Mesh(new THREE.CylinderGeometry(9.4,8,1,48),new THREE.MeshStandardMaterial({color:0xf2a23a,roughness:.25,transparent:true,opacity:.85,emissive:0x3a1d00}));make.add(liquid);
+const foams=[];for(let i=0;i<10;i++){const s=2.2+rnd()*1.6;const m=new THREE.Mesh(new THREE.BoxGeometry(s,s*.8,s*1.1),new THREE.MeshStandardMaterial({color:0xffffff,roughness:.9}));
+  m.userData={x:(rnd()-.5)*12,z:(rnd()-.5)*8,y0:24+rnd()*10,d:rnd()*1.2,r:rnd()*3};m.castShadow=true;make.add(m);foams.push(m);}
+const gelBrick=new THREE.Mesh(new THREE.BoxGeometry(BX,BY,BZ),new THREE.MeshStandardMaterial({color:0xe7b45a,roughness:.4,transparent:true}));make.add(gelBrick);
+
+// ---- sun test scene
+const test=new THREE.Group();scene.add(test);
+const tClay=makeClay(),tCool=makeCool();tClay.g.position.set(0,7.5,0);tCool.g.position.set(0,-7.5,0);test.position.set(-8,5,0);test.add(tClay.g,tCool.g);
+const slClay=sliceTex(),slCool=sliceTex();
+const fClay=new THREE.Mesh(new THREE.PlaneGeometry(BX,BY),new THREE.MeshBasicMaterial({map:slClay.t,toneMapped:false}));fClay.position.z=BZ/2+.02;tClay.g.add(fClay);
+const fCool=new THREE.Mesh(new THREE.PlaneGeometry(BX,BY),new THREE.MeshBasicMaterial({map:slCool.t,toneMapped:false,transparent:true,opacity:.9}));fCool.position.z=BZ/2+.02;tCool.g.add(fCool);
+tag('Fired clay brick',tClay.g,V(-BX/2-1,BY/2+1.8,0),'clay big');tag('CoolBrick',tCool.g,V(-BX/2-1,-BY/2-2.2,0),'cool big');
+tag('OUTSIDE',test,V(-BX/2-6,0,0));tag('INSIDE · ROOM',test,V(BX/2+7,0,0));
+const sunT=new THREE.Mesh(new THREE.SphereGeometry(3.2,32,32),new THREE.MeshBasicMaterial({color:0xffd166,toneMapped:false}));sunT.position.set(-42,24,6);test.add(sunT);
+const glowT=new THREE.Sprite(new THREE.SpriteMaterial({map:DOT,color:0xffb347,transparent:true,opacity:.55,depthWrite:false}));glowT.scale.set(22,22,1);sunT.add(glowT);
+function pts(n,color,size){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(n*3),3));
+  const m=new THREE.PointsMaterial({color,size,map:DOT,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false});const p=new THREE.Points(g,m);p.frustumCulled=false;return p;}
+const NR=90,NH=110;
+const raysClay=pts(NR,0xffd166,1.5),raysCool=pts(NR,0xffd166,1.5),heatClay=pts(NH,0xff5a3c,1.9),heatCool=pts(NH,0xff5a3c,1.9);test.add(raysClay,raysCool,heatClay,heatCool);
+const RJ=[...Array(NR)].map(()=>({y:(rnd()-.5)*(BY-1),z:(rnd()-.5)*(BZ-1),o:rnd()})),HJ=[...Array(NH)].map(()=>({y:(rnd()-.5)*(BY-1.2),z:(rnd()-.5)*(BZ-1.2),o:rnd(),w:rnd()}));
+const tHud={};
+
+// ---- shelters (1 m = 4 units)
+const SH=new THREE.Group();scene.add(SH);
+function brickTex(base,mortar){const c=document.createElement('canvas');c.width=c.height=512;const g=c.getContext('2d');g.fillStyle=mortar;g.fillRect(0,0,512,512);
+  const rows=10,bh=512/rows,bw=512/4;for(let r=0;r<rows;r++){const off=(r%2)*bw/2;for(let i=-1;i<5;i++){const col=new THREE.Color(base).multiplyScalar(.88+rnd()*.24);
+  g.fillStyle='#'+col.getHexString();g.fillRect(i*bw+off+3,r*bh+3,bw-6,bh-6);}}const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(2,2);return t;}
+function makeShelter(kind){
+  const g=new THREE.Group(),W=12,H=12,T=1;const tex=kind==='clay'?brickTex('#a9502c','#cdbca2'):brickTex('#f4f2ea','#d6d6cc');
+  const mat=()=>new THREE.MeshStandardMaterial({map:tex,roughness:.9,emissive:0xff2a10,emissiveIntensity:0});
+  const walls={west:new THREE.Mesh(new THREE.BoxGeometry(T,H,W),mat()),east:new THREE.Mesh(new THREE.BoxGeometry(T,H,W),mat()),
+    north:new THREE.Mesh(new THREE.BoxGeometry(W+T,H,T),mat()),south:new THREE.Mesh(new THREE.BoxGeometry(W+T,H*.32,T),mat())};
+  walls.west.position.set(-W/2,H/2,0);walls.east.position.set(W/2,H/2,0);walls.north.position.set(0,H/2,-W/2);walls.south.position.set(0,H*.16,W/2);
+  for(const k in walls){walls[k].castShadow=walls[k].receiveShadow=true;g.add(walls[k]);}
+  const roofM=new THREE.MeshStandardMaterial({color:kind==='clay'?0x7d7d78:0xfafaf5,roughness:.6,emissive:0xff2a10,emissiveIntensity:0});
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(W+T+.6,.7,W+T+.6),roofM);roof.position.y=H+.35;roof.castShadow=true;g.add(roof);
+  const leds=[];for(const x0 of[-2.4,2.4]){const r=new THREE.Mesh(new THREE.BoxGeometry(2.6,8,3.6),new THREE.MeshStandardMaterial({color:0x22272c,roughness:.5}));r.position.set(x0,4,-2);r.castShadow=true;g.add(r);
+    for(let i=0;i<8;i++){const l=new THREE.Mesh(new THREE.BoxGeometry(.3,.14,.05),new THREE.MeshBasicMaterial({color:i%3?0x46d36b:0x3aa0ff,toneMapped:false}));l.position.set(x0-.8+(i%2)*1.6,1.4+Math.floor(i/2)*1.8,-.17);g.add(l);leds.push(l);}}
+  const ac=new THREE.Mesh(new THREE.BoxGeometry(1.4,3,4.4),new THREE.MeshStandardMaterial({color:0xe3e6e2,roughness:.5}));ac.position.set(W/2+T/2+.75,6,2.5);g.add(ac);
+  const fan=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,.12,6),new THREE.MeshStandardMaterial({color:0x7b8a96}));fan.rotation.z=Math.PI/2;fan.position.set(W/2+T/2+1.5,6,2.5);g.add(fan);
+  const inLight=new THREE.PointLight(0xff3020,0,40,1.5);inLight.position.set(0,8,0);g.add(inLight);
+  const coolLight=new THREE.PointLight(0x7fc8ff,0,30,1.5);coolLight.position.set(3,7,1);g.add(coolLight);
+  // thermometer
+  const thermo=new THREE.Group();thermo.position.set(0,H+7,0);g.add(thermo);
+  const tube=new THREE.Mesh(new THREE.CylinderGeometry(.75,.75,10,24,1,true),new THREE.MeshPhysicalMaterial({color:0xffffff,transparent:true,opacity:.25,depthWrite:false}));thermo.add(tube);
+  const fillM=new THREE.MeshBasicMaterial({color:0xff4b3a,toneMapped:false});const fill=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,1,24),fillM);thermo.add(fill);
+  const line35=new THREE.Mesh(new THREE.BoxGeometry(2.6,.08,.08),new THREE.MeshBasicMaterial({color:0xffffff}));line35.position.y=-5+10*(35-20)/25;thermo.add(line35);
+  const thermoTag=tag('25.0 °C',thermo,V(2.6,0,0),kind);
+  const arrows=[];const mk=(o,org,dir)=>{const a=new THREE.ArrowHelper(dir,org,3,0xff4b3a,1.1,.8);a.userData={o,org:org.clone(),dir:dir.clone()};g.add(a);arrows.push(a);};
+  for(const z0 of[-3.5,0,3.5])mk('roof',V(z0,H+6,z0*.4),V(0,-1,0));for(const z0 of[-3.5,0,3.5])mk('west',V(-W/2-5,H*.55+z0*.25,z0),V(1,0,0));
+  for(const z0 of[-3.5,0,3.5])mk('east',V(W/2+5,H*.7+z0*.25,z0),V(-1,0,0));
+  return{g,walls,roofM,leds,fan,inLight,coolLight,thermo,fill,thermoTag,arrows,kind};
+}
+const shClay=makeShelter('clay'),shCool=makeShelter('cool');shClay.g.position.set(-17,0,0);shCool.g.position.set(17,0,0);SH.add(shClay.g,shCool.g);
+const nmClay=tag('Clay-brick shelter',shClay.g,V(0,-2.2,8.5),'clay big'),nmCool=tag('CoolBrick shelter',shCool.g,V(0,-2.2,8.5),'cool big');
+const sunS=new THREE.Mesh(new THREE.SphereGeometry(4,32,32),new THREE.MeshBasicMaterial({color:0xffd166,toneMapped:false}));SH.add(sunS);
+const glowS=new THREE.Sprite(new THREE.SpriteMaterial({map:DOT,color:0xffb347,transparent:true,opacity:.6,depthWrite:false}));glowS.scale.set(30,30,1);sunS.add(glowS);
+
+/* ================= TIMELINE ================= */
+const DUR=86;window.DURATION=DUR;
+const $=id=>document.getElementById(id);
+function show(id,on,op=1){const e=$(id);e.style.display=on?'':'none';if(on)e.style.opacity=op;}
+function caption(chip,h,p,op=1){$('chip').textContent=chip;$('capH').innerHTML=h;$('capP').innerHTML=p;show('chip',!!chip,op);show('cap',!!h,op);}
+function camTo(p,tg){camera.position.copy(p);camera.lookAt(tg);}
+function partOpacity(c,dimAll,hi){const set=(m,o)=>{m.opacity=o;};
+  const D=.12;set(c.coatM,hi==='coat'||!dimAll?1:D);set(c.airM,hi==='air'||!dimAll?.55:.08);set(c.pcmM,hi==='pcm'||!dimAll?.92:D);
+  set(c.shellM,hi==='body'||!dimAll?.28:.06);c.edges.material.opacity=hi==='body'||!dimAll?1:.15;set(c.spM,hi==='body'||!dimAll?1:.1);set(c.keyM,hi==='key'||!dimAll?1:D);}
+
+function renderAt(t){
+  // visibility of groups
+  const S1=t<4.2,S2=t>=3.8&&t<12.4,S3=t>=12&&t<30.2,S4=t>=30&&t<46.2,S5=t>=46&&t<74.2,S7=t>=74;
+  hero.g.visible=S1||S3||S7;make.visible=S2;test.visible=S4;SH.visible=S5;
+  for(const l of LBL){let vis=true;for(let p=l.parent;p;p=p.parent){if(!p.visible){vis=false;break;}}l.visible=vis;}
+  for(const k in heroTags)heroTags[k].visible=false;
+  ['title','clock','hudA','hudB','banner','legend','chart','results'].forEach(id=>show(id,false));show('note',t>30&&t<74);
+  caption('','','');
+  scene.fog.near=220;key.intensity=1.8;hemi.intensity=.7;floor.visible=true;
+
+  /* ---- S1 title ---- */
+  if(S1){const u=t/4;show('title',true,clamp(1-seg(t,3.2,4)));
+    hero.g.position.set(0,5,0);hero.g.rotation.set(0,-.6+u*.5,0);partOpacity(hero,false);heroParts.forEach(([m])=>m.position.copy(m.userData.home));
+    camTo(V(0,26,64-u*6),V(0,17,0));key.position.set(-30,50,30);key.target.position.set(0,0,0);
+    $('title').style.transform=`translateY(${-120}px)`;}
+
+  /* ---- S2 making ---- */
+  if(S2){const a=seg(t,4,12),fi=seg(t,3.8,4.6)*clamp(1-seg(t,11.6,12.4));
+    camTo(V(0,30-a*6,78-a*10),V(0,8,0));key.position.set(-30,60,40);
+    pFoam.position.y=16+Math.sin(t)*.3;pPeel.position.y=16+Math.cos(t)*.3;
+    pFoam.material.opacity=pPeel.material.opacity=fi;pFoam.children[0].material.opacity=pPeel.children[0].material.opacity=fi;
+    const fall=seg(t,5,7.4),diss=seg(t,6.6,9.4),mould=seg(t,9.2,11.4);
+    const lh=lerp(1.2,4.2,seg(t,4.5,6.5))*(1-mould);liquid.scale.y=Math.max(.01,lh);liquid.position.set(0,lh/2+.3,0);
+    liquid.material.color.setHex(diss>.5?0xe9a94a:0xf2a23a);liquid.visible=mould<.98;bowl.visible=mould<.9;bowl.material.opacity=.22*(1-mould);
+    foams.forEach((m,i)=>{const u=clamp((fall-m.userData.d*.25)/0.75);const y=lerp(m.userData.y0,3,ease(u));const sc=Math.max(.001,1-clamp((diss-i*.04)*1.4));
+      m.position.set(m.userData.x*(1-.3*u),y,m.userData.z);m.rotation.set(t*.6+m.userData.r,m.userData.r,0);m.scale.setScalar(sc);m.visible=sc>.01;});
+    gelBrick.visible=mould>0;gelBrick.scale.setScalar(Math.max(.01,ease(mould)));gelBrick.position.set(0,lerp(2,6,ease(mould)),0);gelBrick.rotation.y=mould*.6;
+    gelBrick.material.color.lerpColors(new THREE.Color(0xe7b45a),new THREE.Color(0xd8c08a),mould);
+    if(t<6.6)caption('01 · Made from waste','Two wastes go in','Styrofoam packaging (data centres throw away tons of it) and orange peels from juice shops',fi);
+    else if(t<9.2)caption('01 · Made from waste','Limonene from the peel <span class="num">dissolves</span> the foam','The foam is 98% air, so it shrinks into a thick polystyrene gel',fi);
+    else caption('01 · Made from waste','The gel is moulded into a brick','Then we upgrade it to keep heat out. Here is what is inside.',fi);}
+
+  /* ---- S3 anatomy ---- */
+  if(S3){const steps=[['coat',12,15.6],['air',15.6,19.2],['pcm',19.2,22.8],['body',22.8,26.2],['key',26.2,29.6]];
+    const asm=ease(seg(t,27.4,29.8)),ex=ease(seg(t,12,13.4))*(1-asm);
+    hero.g.position.set(0,6,0);hero.g.rotation.set(0,-.55+Math.sin(t*.25)*.12+seg(t,12,30)*.5,0);
+    heroParts.forEach(([m,off])=>m.position.copy(m.userData.home).addScaledVector(off,ex));
+    const cur=steps.find(s=>t>=s[1]&&t<s[2]);const hi=cur?cur[0]:null;partOpacity(hero,!!hi&&asm<.5,hi);
+    if(hi&&asm<.5)heroTags[hi].visible=true;
+    const pulse=.35+.35*Math.sin(t*5);hero.coatM.emissive.setHex(hi==='coat'?0x555544:0);hero.coatM.emissiveIntensity=pulse;
+    hero.pcmM.emissive.setHex(hi==='pcm'?0x6a2b99:0);hero.pcmM.emissiveIntensity=pulse;hero.airM.emissive.setHex(hi==='air'?0x1d5b8c:0);hero.airM.emissiveIntensity=pulse;
+    hero.keyM.emissive.setHex(hi==='key'?0x6b5524:0);hero.keyM.emissiveIntensity=pulse;
+    camTo(V(lerp(24,17,seg(t,12,30)),lerp(25,20,seg(t,12,30)),lerp(42,37,seg(t,12,30))),V(1,3,0));key.position.set(-40,60,30);
+    const fi=seg(t,12,12.6)*clamp(1-seg(t,29.6,30.2));
+    const C={coat:['White cool-face coat','A calcium-carbonate coat bounces back about <span class="num">95%</span> of sunlight and radiates heat to the sky'],
+      air:['Air cells','Still air is one of the worst heat conductors there is, so hollow cells slow the heat down'],
+      pcm:['Coconut-oil PCM pockets','On the room side. It melts at about <span class="num">27 °C</span> and soaks up heat like a sponge, then refreezes at night'],
+      body:['Recycled foam + orange-peel biochar','The strong, waterproof body. Charred peel adds tiny air pockets and helps resist fire'],
+      key:['Interlocking keys','Bricks lock together with less mortar, which would otherwise leak heat']};
+    if(asm>=.5)caption('02 · Inside the CoolBrick','Five layers, one brick','Each part tackles a different way heat gets in',fi);
+    else if(hi)caption('02 · Inside the CoolBrick',`<span class="num">${steps.findIndex(s=>s[0]===hi)+1}</span> · ${C[hi][0]}`,C[hi][1],fi);}
+
+  /* ---- S4 sun test ---- */
+  if(S4){const day=lerp(6,20,seg(t,31,45)),fi=seg(t,30,30.6)*clamp(1-seg(t,45.6,46.2));
+    camTo(V(lerp(-2,-6,seg(t,30,46)),lerp(12,9,seg(t,30,46)),lerp(74,68,seg(t,30,46))),V(-6,3,0));key.position.set(-40,40,40);floor.visible=false;
+    show('clock',true,fi);$('clockL').textContent='WEST WALL · TIME';$('clockT').textContent=hh(day);show('legend',true,fi);
+    const W=SIM.clay.west,WC=SIM.cool.west;paint(slClay,profAt(W.prof,day));paint(slCool,profAt(WC.prof,day));
+    tCool.shellM.opacity=.2;tCool.airM.opacity=.35;
+    const I=solar('west',day)/620,qC=sampleAt(W.q,day),qK=sampleAt(WC.q,day),melt=sampleAt(WC.melt,day);
+    tCool.pcmM.emissive.setHex(0x8a3cc2);tCool.pcmM.emissiveIntensity=.2+melt*1.2;
+    sunT.position.set(-34,lerp(4,20,dayS(day)),6);sunT.visible=dayS(day)>0.02;
+    const doRays=(p,by,cool)=>{const a=p.geometry.attributes.position.array;const nVis=Math.round(NR*Math.min(1,I*1.1));
+      for(let i=0;i<NR;i++){const r=RJ[i],ph=(t*.55+r.o)%1;const S=sunT.position.clone().add(test.position),H=V(-BX/2-(cool?.7:0),by+r.y,r.z).add(test.position);let P;
+        if(i>=nVis){a[i*3+1]=1e5;continue;}
+        if(ph<.6)P=S.clone().lerp(H,ph/.6);else if(cool&&i%20!==0){const d=H.clone().sub(S).normalize();d.x=-d.x;P=H.clone().addScaledVector(d,(ph-.6)/.4*34);}else{a[i*3+1]=1e5;continue;}
+        a[i*3]=P.x-test.position.x;a[i*3+1]=P.y-test.position.y;a[i*3+2]=P.z-test.position.z;}p.geometry.attributes.position.needsUpdate=true;};
+    doRays(raysClay,7.5,false);doRays(raysCool,-7.5,true);
+    const doHeat=(p,by,q,cool)=>{const a=p.geometry.attributes.position.array;const nVis=Math.round(NH*clamp(q/42));
+      for(let i=0;i<NH;i++){const h=HJ[i],ph=(t*.32+h.o)%1;if(i>=nVis){a[i*3+1]=1e5;continue;}
+        let x=-BX/2+ph*(BX+8);if(cool&&x>6&&h.w>.25&&melt<.98){a[i*3+1]=1e5;continue;}
+        a[i*3]=x;a[i*3+1]=by+h.y;a[i*3+2]=BZ/2+.5+h.w*.8;}p.geometry.attributes.position.needsUpdate=true;};
+    doHeat(heatClay,7.5,qC,false);doHeat(heatCool,-7.5,Math.max(qK,0)*1.6,true);
+    const hud=(id,name,cls,Ts,q,extra)=>{$(id).innerHTML=`<div class="h" style="color:var(--${cls})">${name}</div><div class="row">Outer surface <b>${Ts.toFixed(1)} °C</b></div><div class="row">Heat into room <b>${q.toFixed(1)} W/m²</b></div>${extra||''}`;};
+    show('hudA',true,fi);show('hudB',true,fi);
+    $('hudA').style.cssText+=';left:auto;right:36px;top:112px;bottom:auto';$('hudB').style.cssText+=';left:auto;right:36px;top:262px;bottom:auto';
+    hud('hudA','Fired clay','clay',sampleAt(W.Tso,day),qC);
+    hud('hudB','CoolBrick','cool',sampleAt(WC.Tso,day),qK,`<div class="row">PCM melted <b>${Math.round(melt*100)}%</b></div>`);
+    caption('03 · Sun test, west wall',day<12.5?'Morning: both walls are calm':'Afternoon sun hits the west wall',
+      day<12.5?'Yellow = sunlight. Red = heat moving through the brick to the room.':'Clay soaks up the sun and passes heat inside. The white coat bounces it back, and the PCM catches what gets through.',fi);}
+
+  /* ---- S5 & S6 shelters ---- */
+  if(S5){const fail=t>=62;const day=fail?14:lerp(6,20,seg(t,47,60.5));const fi=seg(t,46,46.6)*clamp(1-seg(t,73.4,74.2));
+    const orb=seg(t,46,74),fs=ease(seg(t,62,63.5));camTo(V(Math.sin(-.35+orb*.7)*92+fs*14,lerp(46,38,orb),Math.cos(-.35+orb*.7)*92),V(fs*14,8-fs*7,0));
+    const th=Math.PI*(day-6)/13,up=day>6&&day<19;sunS.position.set(110*Math.cos(th),110*Math.max(.05,Math.sin(th)),-30);sunS.visible=up&&!fail;
+    key.position.copy(sunS.position);key.target.position.set(0,0,0);key.intensity=fail?0.9:(up?.5+1.6*Math.sin(th):.05);hemi.intensity=fail?.45:(up?.6:.3);
+    const RTi=fail?seg(t,63,73)*12:0;
+    for(const sh of[shClay,shCool]){const mk=sh.kind;
+      for(const k in sh.walls){const o=k==='north'||k==='south'?'shade':k;const Ts=sampleAt(SIM[mk][o].Tso,day);sh.walls[k].material.emissiveIntensity=clamp((Ts-36)/22)*.55;}
+      sh.roofM.emissiveIntensity=clamp((sampleAt(SIM[mk].roof.Tso,day)-36)/22)*.55;
+      for(const a of sh.arrows){const q=sampleAt(SIM[mk][a.userData.o].q,day);const len=clamp(Math.abs(q)*.14,0,7);a.visible=!fail&&Math.abs(q)>1;
+        a.setColor(q>0?0xff4b3a:0x3d8bff);a.setDirection(a.userData.dir.clone().multiplyScalar(q>0?1:-1));
+        a.position.copy(q>0?a.userData.org:a.userData.org.clone().addScaledVector(a.userData.dir,3));a.setLength(len+1.4,Math.min(1.1,len*.4+.6),.8);}
+      sh.fan.rotation.x=fail?0:t*14;sh.coolLight.intensity=fail?0:12;
+      const pts=RT[mk],Tr=fail?pts[Math.min(pts.length-1,Math.floor(RTi*12))]:25;
+      sh.inLight.intensity=fail?clamp((Tr-26)/12)*70:0;sh.thermo.visible=fail;
+      const fr=clamp((Tr-20)/25);sh.fill.scale.y=Math.max(.01,fr*10);sh.fill.position.y=-5+fr*5;sh.fill.material.color.setHex(Tr>=35?0xff2a1a:0xffa040);
+      sh.thermoTag.element.textContent=(mk==='clay'?'Clay ':'CoolBrick ')+Tr.toFixed(1)+' °C';sh.thermoTag.visible=fail;
+      sh.leds.forEach((l,i)=>l.visible=!fail||Math.sin(t*9+i)>-.2);}
+    show('clock',true,fi);$('clockL').textContent=fail?'TIME SINCE COOLING FAILED':'TIME OF DAY';$('clockT').textContent=fail?hh(RTi):hh(day);
+    if(!fail){const gc=cumGain('clay',6,day),gk=cumGain('cool',6,day);
+      $('hudA').innerHTML=`<div class="h" style="color:var(--clay)">Clay shelter</div><div class="row">Heat soaking in now <b>${Math.round(gainAt('clay',day))} W</b></div><div class="row">Heat gained since 6 am <b>${gc.toFixed(1)} kWh</b></div>`;
+      $('hudB').innerHTML=`<div class="h" style="color:var(--cool)">CoolBrick shelter</div><div class="row">Heat soaking in now <b>${Math.round(gainAt('cool',day))} W</b></div><div class="row">Heat gained since 6 am <b>${gk.toFixed(1)} kWh</b></div>`;
+      show('hudA',true,fi);show('hudB',true,fi);$('hudA').style.cssText+=';left:36px;right:auto;top:96px;bottom:auto';$('hudB').style.cssText+=';left:auto;right:36px;top:118px;bottom:auto';
+      caption('04 · Edge data-centre shelter','Same shelter, same sun, same servers',`Over a hot day the clay shelter takes in <span class="num">${DAY.clay.toFixed(0)} kWh</span> of heat. The CoolBrick shelter takes in <span class="num">${DAY.cool.toFixed(0)} kWh</span>.`,fi);}
+    else{show('banner',t<66,clamp(seg(t,62,62.3))*clamp(1-seg(t,65.5,66)));
+      const ch=$('chart');show('chart',true,fi);drawChart(ch,RTi);
+      const cc=T35.clay,ck=T35.cool;
+      caption('05 · The cooling fails at 14:00','Which room stays safe longer?',
+        RTi<cc?'The servers keep running and heating the room…':(ck==null||RTi<ck?`Clay hit <span class="num">35 °C</span> after ${cc.toFixed(1)} h. The CoolBrick's PCM is still soaking up heat.`:`Clay: ${cc.toFixed(1)} h. CoolBrick: <span class="num">${ck.toFixed(1)} h</span> before reaching 35 °C.`),fi);
+      nmClay.visible=nmCool.visible=false;}
+    if(!fail)$('cap').style.bottom='34px';}
+  else $('cap').style.bottom='34px';
+
+  /* ---- S7 results ---- */
+  if(S7){const u=seg(t,74,86);show('results',true,seg(t,74,75));hero.g.position.set(0,6,0);hero.g.rotation.set(.1,u*2.4,0);partOpacity(hero,false);
+    heroParts.forEach(([m])=>m.position.copy(m.userData.home));camTo(V(0,16,58),V(0,4,0));key.position.set(-30,50,30);}
+
+  key.target.updateMatrixWorld();
+  renderer.render(scene,camera);labelR.render(scene,camera);
+}
+function drawChart(c,e){const g=c.getContext('2d'),W=c.width,H=c.height,l=52,r=W-16,tp=34,b=H-30;g.clearRect(0,0,W,H);
+  const X=h=>l+(r-l)*h/12,Y=T=>b-(b-tp)*(T-24)/24;g.font='600 12px IBM Plex Mono';g.fillStyle='#c9cfc6';g.fillText('Room temperature after cooling fails',l,20);
+  g.strokeStyle='rgba(255,255,255,.12)';g.lineWidth=1;for(const T of[25,30,35,40,45]){g.beginPath();g.moveTo(l,Y(T));g.lineTo(r,Y(T));g.stroke();g.fillStyle='#8d978f';g.fillText(T+'°',l-34,Y(T)+4);}
+  for(const h of[0,3,6,9,12]){g.fillText(h+'h',X(h)-8,b+18);}
+  g.setLineDash([5,5]);g.strokeStyle='#ffffff';g.beginPath();g.moveTo(l,Y(35));g.lineTo(r,Y(35));g.stroke();g.setLineDash([]);
+  for(const[mk,col]of[['clay','#6fb0ff'],['cool','#ffb070']]){const p=RT[mk];g.strokeStyle=col;g.lineWidth=3;g.beginPath();
+    for(let i=0;i<p.length;i++){const h=i/12;if(h>e)break;const y=Y(Math.min(48,p[i]));i?g.lineTo(X(h),y):g.moveTo(X(h),y);}g.stroke();
+    const i=Math.min(p.length-1,Math.floor(e*12));g.fillStyle=col;g.beginPath();g.arc(X(Math.min(e,(p.length-1)/12)),Y(Math.min(48,p[i])),5,0,7);g.fill();}
+  g.fillStyle='#6fb0ff';g.fillText('Clay',r-110,tp+4);g.fillStyle='#ffb070';g.fillText('CoolBrick',r-70,tp+4);}
+window.renderAt=renderAt;
+window.ready=document.fonts.ready.then(()=>new Promise(r=>setTimeout(r,800))).then(()=>{renderAt(0);return {DAY,T35};});
+</script>
+</body></html>
