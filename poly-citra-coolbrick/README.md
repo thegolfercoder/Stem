@@ -1,6 +1,6 @@
 # Poly Citra CoolBrick (Project Rebrick v2)
 
-A LaTeX Beamer version of the LGIC'26 APAC India "Poly Citra Bricks" deck. It keeps all of the original content and adds a passive-cooling research track aimed at **data centres**: edge and telecom shelters, roofs and sun-facing walls, UPS and battery rooms, and thermal ride-through when cooling fails. Server Styrofoam packaging becomes a raw material, closing the loop.
+A LaTeX version of the LGIC'26 APAC India "Poly Citra Bricks" project. The A4 report (`poly_citra_coolbrick_a4.*`) now presents the CoolBrick as a passive-cooling system for buildings and classrooms, organised around the UN SDGs, with a classroom heat simulation and a cost and funding plan for government schools. The slides, the CoolBrick Lab page and the simulation film still use the earlier data-centre framing.
 
 - `poly_citra_coolbrick.tex`: the deck source (16:9 Beamer, metropolis theme)
 - `poly_citra_coolbrick.pdf`: the compiled deck

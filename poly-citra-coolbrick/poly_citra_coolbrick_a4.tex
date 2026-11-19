@@ -1,7 +1,7 @@
 % =====================================================================
 %  Poly Citra CoolBrick — A4 report
-%  Version 2: CoolBrick kennels for dogs. Structured to the competition entry
-%  requirements (Summary ... Bibliography) with a cost price analysis.
+%  Version 2: CoolBrick for cooler buildings and classrooms, SDG-focused,
+%  with a cost and funding plan for government schools.
 %
 %  Compile:  pdflatex poly_citra_coolbrick_a4.tex   (run twice)
 %  Red [ ... ] marks a placeholder the team must fill in or verify.
@@ -35,6 +35,7 @@
 \usepackage{needspace}
 \usepackage[hidelinks]{hyperref}
 \providecommand{\rupee}{Rs\,}
+\newcommand{\sdg}[2]{\tikz[baseline=-0.7ex]\node[fill=#2,text=white,font=\scriptsize\bfseries,rounded corners=2pt,inner sep=2.5pt]{SDG #1};}
 
 \graphicspath{{img/}}
 
@@ -45,6 +46,9 @@
 \definecolor{plum}{HTML}{8E2A8E}
 \definecolor{ink}{HTML}{1F2A36}
 \definecolor{heat}{HTML}{C62828}
+\definecolor{sdgthree}{HTML}{4C9F38}\definecolor{sdgfour}{HTML}{C5192D}\definecolor{sdgseven}{HTML}{E5A800}
+\definecolor{sdgnine}{HTML}{F36D25}\definecolor{sdgeleven}{HTML}{F99D26}\definecolor{sdgtwelve}{HTML}{BF8B2E}
+\definecolor{sdgthirteen}{HTML}{3F7E44}\definecolor{sdgseventeen}{HTML}{19486A}
 
 \color{ink}
 \setlength{\parindent}{0pt}
@@ -91,10 +95,6 @@
 
 
 \begin{document}
-
-% =====================================================================
-%  COVER
-% =====================================================================
 \begin{titlepage}
 \thispagestyle{empty}
 \vspace*{0.4cm}
@@ -106,9 +106,11 @@
 \vspace{2pt}
 {\large Innovative Eco-Friendly Construction Solutions\par}
 \vspace{4pt}
-{\large\color{sky}\bfseries Version 2: \textcolor{citrus}{CoolBrick} kennels that protect dogs from India's heat\par}
+{\large\color{sky}\bfseries Version 2: \textcolor{citrus}{CoolBrick} --- cooler buildings and classrooms that every government school can afford\par}
+\vspace{6pt}
+\sdg{3}{sdgthree} \sdg{4}{sdgfour} \sdg{7}{sdgseven} \sdg{9}{sdgnine} \sdg{11}{sdgeleven} \sdg{12}{sdgtwelve} \sdg{13}{sdgthirteen} \sdg{17}{sdgseventeen}
 
-\vspace{1cm}
+\vspace{0.8cm}
 \begin{center}
 \begin{minipage}{0.49\textwidth}
   \includegraphics[width=\linewidth,height=4.2cm,keepaspectratio=false]{styrofoam.jpg}
@@ -116,7 +118,7 @@
 \begin{minipage}{0.49\textwidth}
   \includegraphics[width=\linewidth,height=4.2cm,keepaspectratio=false]{peels.jpg}
 \end{minipage}\\[6pt]
-\includegraphics[width=\textwidth,height=7.6cm,keepaspectratio=false]{prototype.jpg}
+\includegraphics[width=\textwidth,height=7.2cm,keepaspectratio=false]{prototype.jpg}
 \end{center}
 
 \vfill
@@ -128,54 +130,56 @@
 \end{tabular}
 \end{titlepage}
 
-% =====================================================================
 \setcounter{tocdepth}{1}
 \tableofcontents
 
 
-% =====================================================================
 \section{Summary}
 
 Every year India throws away large amounts of \textbf{Styrofoam} (expanded
-polystyrene, EPS) packaging and \textbf{orange peel}. Both usually end up in
-landfill or are burned. Our project, \textbf{Poly Citra Bricks}, turns these
-two wastes into building bricks. We extract \textbf{D-limonene}, a natural
-solvent, from orange peel by steam distillation. Limonene dissolves Styrofoam
-into a thick polystyrene gel, which we mould and cure into a light,
-waterproof brick. This first version has already been built, tested and
-recognised at national-level competitions \todo{list awards}.
+polystyrene, EPS) packaging and \textbf{orange peel}. Our project,
+\textbf{Poly Citra Bricks}, turns these two wastes into building bricks. We
+extract \textbf{D-limonene}, a natural solvent, from orange peel by steam
+distillation. Limonene dissolves Styrofoam into a thick polystyrene gel,
+which we mould and cure into a light, waterproof brick. This first version
+has already been built, tested and recognised at national-level
+competitions \todo{list awards}.
 
-In this edition we use the brick to protect \textbf{dogs from heat}. India
-has crores of street dogs and many more pet, shelter and working dogs. Dogs
-cannot sweat like us; they cool down mainly by panting, which works less well
-as the air gets hotter. Kennels made of plastic, tin or plain brick heat up in
-the sun and can become hotter than the air outside. The \textbf{CoolBrick}
-adds five passive-cooling features: hollow air cells, pockets of a
+In this edition we turn it into a \textbf{CoolBrick system} that keeps
+\textbf{buildings cool without electricity}: hollow air cells, a
 coconut-oil phase-change material (PCM), a white calcium-carbonate
-``cool-face'' coating, a filler of biochar made from the leftover peel, and
-perforated \emph{jaali} vent blocks. No electricity is needed.
+``cool-face'' coating, orange-peel biochar and perforated \emph{jaali}
+screens. We focus on \textbf{classrooms}. India has about 10 lakh
+government schools, most of them without air-conditioning, and research
+shows that hot classrooms reduce learning.
 
-We wrote a computer heat-flow simulation of a dog kennel
-(\SI{1.0}{m} $\times$ \SI{0.8}{m} $\times$ \SI{0.8}{m}) with a resting dog
-inside on a hot day (air 27--\SI{41}{\celsius}). We also worked out what the
-bricks and the kennel cost to make.
+Our computer simulation of a standard 7 m $\times$ 6 m classroom with 40
+students on a hot day (outdoor air 27--\SI{41}{\celsius}) shows that the
+cheapest step, a CoolBrick cool coat on the roof, cuts the hottest
+temperature students feel during school hours from 39.8 to
+36.8\,\si{\celsius}. In a tin-roofed classroom it falls from
+47.1 to 38.7\,\si{\celsius}. We designed a three-level plan that a
+government school can pay for from its own annual grant, CSR funds or local
+development funds.
 
 \begin{keybox}{citrus}
 \centering
 \begin{tabular}{ccc}
-{\LARGE\bfseries\color{citrus} 40.0\,°C} & {\LARGE\bfseries\color{leaf} 4.7\,°C cooler} & {\LARGE\bfseries\color{sky} \rupee3/day}\\[2pt]
-\small hottest it feels inside the & \small walls next to the dog, & \small cost of a CoolBrick kennel\\
-\small CoolBrick kennel (clay 43.8\,°C, & \small compared with a clay & \small over a 10-year life\\
-\small plastic 45.3\,°C, outdoor air 41\,°C) & \small kennel at peak & \small (\rupee11,059 per kennel)
+{\LARGE\bfseries\color{citrus} $-$3.4\,°C} & {\LARGE\bfseries\color{leaf} $-$8.4\,°C} & {\LARGE\bfseries\color{sky} \rupee122}\\[2pt]
+\small hottest felt temperature in a & \small in a tin-roofed classroom & \small per student to cool-coat\\
+\small typical classroom (Levels 1+2) & \small after a cool coat & \small a classroom roof (Level 1)
 \end{tabular}
 \end{keybox}
 
-These are model predictions using assumed material values and price
-estimates. Our next step is to build model kennels and test them with a
-heated ``dog dummy'' (Section~4). No animals are used in our experiments.
+\begin{center}
+\sdg{4}{sdgfour} \sdg{3}{sdgthree} \sdg{7}{sdgseven} \sdg{9}{sdgnine} \sdg{11}{sdgeleven} \sdg{12}{sdgtwelve} \sdg{13}{sdgthirteen} \sdg{17}{sdgseventeen}
+\end{center}
+The project contributes to eight UN Sustainable Development Goals
+(Section~2.4). All results are model predictions using assumed material
+values and price estimates. Our next step is to measure two real classrooms
+in our own school (Section~4).
 
 
-% =====================================================================
 \section{Significance and Uniqueness of the Project}
 
 \subsection{The problem: two wastes}
@@ -200,70 +204,66 @@ heated ``dog dummy'' (Section~4). No animals are used in our experiments.
 {\footnotesize\color{gray}Plastic and Styrofoam waste in landfill}
 \end{minipage}
 
-\subsection{The problem: dogs in India's heat}
+\subsection{The problem: classrooms that are too hot to learn in}
 \begin{itemize}
-  \item India's 2019 Livestock Census counted about \textbf{1.5 crore street
-        dogs}; other surveys estimate as many as \textbf{6 crore}. Millions
-        more are pets, guard dogs, shelter dogs and working dogs.
-  \item Dogs \textbf{cannot sweat} through their skin; they sweat a little
-        through their paw pads and lose heat mainly by \textbf{panting}.
-        Panting works less well as the air gets hotter and more humid.
-  \item A dog's normal body temperature is about \SI{38.5}{\celsius}. Above
-        about \SI{40}{\celsius} it is heat-stressed, and about
-        \SI{41}{\celsius} or more is heatstroke, which can kill.
-  \item Indian summers bring long heatwaves above \SI{40}{\celsius}. Many
-        shelters and street-dog feeders use plastic, tin or plain-brick
-        kennels. In the sun, these heat up and radiate heat onto the dog.
-  \item Animal shelters and street-dog projects usually cannot pay for fans,
-        coolers or air-conditioning, or the electricity to run them.
+  \item India has about \textbf{14.7 lakh schools}, of which about
+        \textbf{10.2 lakh are government schools} (UDISE+ 2023--24). Most
+        government classrooms have no air-conditioning, and fans stop during
+        power cuts.
+  \item Many classrooms have bare concrete roofs, and some have tin-sheet
+        roofs. In the sun these heat up and radiate heat down onto students.
+  \item A US study of 10 million students found that each extra
+        \SI{1}{\degree F} (about \SI{0.56}{\celsius}) of school-year heat cut
+        a year's learning by about \textbf{1\%} in schools without
+        air-conditioning, with the biggest losses for students from poorer
+        families.
+  \item In a 2026 survey of over 3,000 Indian children, nearly \textbf{7 in
+        10} said they had missed school or normal activities because of heat,
+        and \textbf{76\%} said heat hurt their concentration.
 \end{itemize}
 
 \begin{card}{citrus}
-\textbf{The insight:} a dog in a kennel feels the heat of the walls and roof
-as well as the air. If the kennel stays cool, the dog can rest safely through
-the hottest hours, with no electricity.
+\textbf{The insight:} the hottest surface in most classrooms is the roof. A
+cheap white coat that reflects sunlight and radiates heat to the sky, made
+from our CoolBrick system, can make a big difference with no electricity.
 \end{card}
 
 \subsection{What makes this project unique}
 \begin{itemize}
-  \item \textbf{Two wastes, one product.} Styrofoam and orange peel both
-        become part of the brick. No clay is mined and no kiln is fired.
+  \item \textbf{Two wastes, one product.} Styrofoam and orange peel become
+        building materials. No clay is mined and no kiln is fired.
   \item \textbf{The whole orange is used.} The peel gives the solvent
-        (limonene), and what is left after distillation becomes the biochar
-        filler. The limonene is recovered and reused.
-  \item \textbf{Five cooling methods in one brick.} Most kennels use none.
-        The CoolBrick combines reflection, sky radiation, trapped air, heat
-        storage and ventilation.
-  \item \textbf{Built for dogs, with no running cost.} No electricity, no
-        moving parts, easy to clean, and cheap to keep over many years.
-  \item \textbf{A costed plan.} We worked out the cost price of each brick and
-        each kennel, and compared it with plastic and clay kennels
-        (Section~7).
+        (limonene) and, after distillation, the biochar filler. The limonene
+        is recovered and reused.
+  \item \textbf{A step-by-step plan schools can afford.} Level 1 costs about
+        \rupee4,875 per classroom and fits inside a government school's yearly grant.
+  \item \textbf{Students can help make it.} The coat and jaali blocks are
+        simple enough for school eco-clubs to make from waste they collect.
+  \item \textbf{Honest science.} Our simulation showed that insulation alone
+        can trap heat in a crowded classroom. We changed the design to fix
+        this (Section~5).
 \end{itemize}
 
-\subsection{Benefits and the UN Sustainable Development Goals}
-\begin{minipage}[t]{0.49\textwidth}
-\begin{card}{citrus}\textbf{Minimises} landfill waste and microplastic contamination.\end{card}
-\begin{card}{sky}\textbf{Reduces reliance} on natural resources like clay.\end{card}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.49\textwidth}
-\begin{card}{leaf}\textbf{Protects animals} from heat with no electricity.\end{card}
-\begin{card}{plum}\textbf{Promotes} circular-economy principles.\end{card}
-\end{minipage}
-
+\subsection{How the project serves the UN Sustainable Development Goals}
 \begin{center}
 \small
-\begin{tabularx}{\textwidth}{@{}>{\bfseries}l X@{}}
+\begin{tabularx}{\textwidth}{@{}l l X X@{}}
 \toprule
-\textcolor{citrus}{SDG 11} & Sustainable Cities and Communities --- safer, kinder cities for the people and animals who share them. \\
-\textcolor{citrus}{SDG 12} & Responsible Consumption and Production --- reducing waste and repurposing materials. \\
-\textcolor{citrus}{SDG 13} & Climate Action --- adapting to heatwaves without using more electricity; no kiln emissions. \\
+\textbf{Goal} & \textbf{Target} & \textbf{How CoolBrick contributes} & \textbf{What we measure} \\
+\midrule
+\sdg{4}{sdgfour} & 4.a & Upgrades school buildings into safe, effective learning environments: cooler classrooms help students concentrate and learn. & Classroom temperature and hours above \SI{35}{\celsius} in school hours. \\
+\sdg{3}{sdgthree} & 3.d & Reduces heat-stress risk for children and teachers during heatwaves. & Hottest ``felt'' temperature. \\
+\sdg{7}{sdgseven} & 7.3 & Passive cooling with no electricity; fewer fans and coolers needed. & Heat kept out without any power. \\
+\sdg{9}{sdgnine} & 9.4 & Retrofits existing infrastructure to be sustainable and resource-efficient. & Classrooms upgraded. \\
+\sdg{11}{sdgeleven} & 11.6, 11.c & Better management of city waste; sustainable buildings from local materials. & kg of Styrofoam and peel reused. \\
+\sdg{12}{sdgtwelve} & 12.5 & Cuts waste through recycling and reuse; solvent recovered and reused. & Waste diverted from landfill. \\
+\sdg{13}{sdgthirteen} & 13.1, 13.3 & Helps schools adapt to heatwaves; students learn about climate by making the materials. & Students involved; schools adapted. \\
+\sdg{17}{sdgseventeen} & 17.17 & Partnerships between government schools, companies (CSR) and communities. & Partners and funds raised. \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
 
-% =====================================================================
 \section{Concept: The Science Behind the CoolBrick}
 
 \subsection{Dissolving polystyrene with D-limonene}
@@ -276,8 +276,7 @@ makes up over 90\% of orange-peel oil and is extracted by \textbf{steam
 distillation}: steam carries the oil out of the peel, and the oil separates
 from the water when it condenses. Fresh peel gives roughly 0.6--1\% oil by
 mass. When the gel dries, the limonene evaporates and the polystyrene
-hardens again into a solid brick. The limonene vapour can be condensed and
-reused.
+hardens again. The limonene vapour can be condensed and reused.
 
 \begin{figure}[H]
 \centering
@@ -304,18 +303,7 @@ D-limonene is a natural, bio-based solvent (Sony piloted the same idea for
 recycling packaging foam), and no kiln firing is needed.
 \end{card}
 
-\subsection{How a dog loses heat}
-A resting dog makes about \SIrange{40}{60}{W} of body heat. It must lose that
-heat to its surroundings in three ways: \textbf{panting} (evaporating water
-from the tongue and airways), \textbf{contact} with cooler surfaces (lying on a
-cool floor or against a cool wall), and \textbf{radiation} to cooler surfaces
-around it. A hot roof or wall does the opposite: it radiates heat
-\emph{onto} the dog. So the temperature a dog ``feels'' in a kennel is roughly
-the average of the air temperature and the temperature of the surfaces
-around it. The cooler the walls and roof, the easier it is for the dog to stay
-safe.
-
-\subsection{How heat gets into a kennel}
+\subsection{How heat gets into a building}
 \begin{minipage}[c]{0.46\textwidth}
 \centering
 \begin{tikzpicture}[scale=0.95]
@@ -333,7 +321,7 @@ safe.
   \draw[-{Stealth},sky,line width=1.5pt] (3.2,0.8)--(4.6,0.8)
      node[pos=0.95,right,font=\scriptsize,text=sky,align=left]{3 stored heat\\released at night};
 \end{tikzpicture}
-\captionof{figure}{Three ways heat reaches the inside of a kennel.}
+\captionof{figure}{Three ways heat reaches the inside of a building.}
 \end{minipage}\hfill
 \begin{minipage}[c]{0.5\textwidth}
 Steady heat flow through a wall:
@@ -349,6 +337,15 @@ $R_{si}=0.13$, $R_{so}=0.04$~\si{m^2K/W} are the surface resistances.}
 A CoolBrick must beat all three paths: reflect sunlight and radiate heat to
 the sky; have a low $k$; and buffer peaks with stored ``coolth''.
 \end{minipage}
+
+\subsection{How people feel heat indoors}
+How hot a room feels depends on both the \textbf{air temperature} and the
+temperature of the \textbf{surfaces around you}. A hot roof radiates heat
+down onto everyone below it even when the air is the same. A simple
+measure is the ``felt'' (operative) temperature: roughly the average of the
+air temperature and the average surface temperature. Each student also gives
+off about \SI{60}{W} of body heat, so 40 students heat a classroom like a
+\SI{2.4}{kW} heater.
 
 \subsection{Key insight: put the air back}
 \begin{minipage}[c]{0.52\textwidth}
@@ -476,8 +473,9 @@ Example: $U_\text{clay} = 1/(0.13 + 0.23/0.81 + 0.04) = \SI{2.20}{W/m^2K}$.
         \SIrange{26}{28}{\celsius} for Indian comfort.
   \item Sealed in polystyrene cavities, which are water-proof.
         \todo{verify oil--PS compatibility}
-  \item In a kennel, the PCM sits on the room side, so the wall next to the
-        dog stays close to its melting point through the hottest hours.
+  \item For crowded classrooms the PCM should melt at about
+        \SI{31}{\celsius}, so that it can refreeze when the building cools at
+        night. Our simulation showed that \SI{27}{\celsius} was too low.
   \item Published PCM-brick studies report \textbf{lower peaks (from about
         3 up to about \SI{11}{\celsius}) and time delays of about 2 hours},
         depending on the set-up.
@@ -497,9 +495,9 @@ Example: $U_\text{clay} = 1/(0.13 + 0.23/0.81 + 0.04) = \SI{2.20}{W/m^2K}$.
 \addplot[heat,thick,dashed] {34+8*sin(deg((x-9)*pi/12))};
 \addlegendentry{Outdoor}
 \addplot[ink!60,thick] {32.5+5.5*sin(deg((x-11)*pi/12))};
-\addlegendentry{Clay-brick kennel}
+\addlegendentry{Clay-brick room}
 \addplot[citrus,very thick] {30.5+2.2*sin(deg((x-13)*pi/12))};
-\addlegendentry{CoolBrick kennel}
+\addlegendentry{CoolBrick room}
 \end{axis}
 \end{tikzpicture}
 \captionof{figure}{Idea of the PCM effect (illustrative only; see Section~5 for simulation results).}
@@ -519,8 +517,9 @@ Example: $U_\text{clay} = 1/(0.13 + 0.23/0.81 + 0.04) = \SI{2.20}{W/m^2K}$.
   \item In field tests the surface stayed \textbf{1.7\,\si{\celsius} below
         air temperature at noon} and \SI{10}{\celsius} below at night.
   \item CaCO$_3$ is cheap and can come from \textbf{waste eggshells or marble
-        slurry}, giving a third waste stream. A kennel roof gets the
-        strongest sun of the day, so it gets this coat first. The coat also shields
+        slurry}, giving a third waste stream. School roofs are large, flat
+        and in full sun, so this coat gives the biggest benefit of all the
+        upgrades (Section~5). The coat also shields
         polystyrene from UV damage.
 \end{itemize}
 \end{minipage}\hfill
@@ -586,10 +585,11 @@ After steam distillation, the peel residue is still waste. We
   \item Traditional Indian \textbf{jaali} screens shade walls and windows
         while letting breezes through, giving cooling with zero energy.
   \item The gel can be moulded, so the same process can cast
-        \textbf{perforated CoolBrick screens} as vent blocks high in the kennel
-        wall, so hot air can escape while the dog stays shaded.
-  \item In our simulation, good ventilation was essential: without it, the
-        dog's own body heat builds up inside a well-insulated kennel.
+        \textbf{perforated CoolBrick screens} as sun-screens in front of east-
+        and west-facing classroom windows, and as vent blocks that can stay
+        open at night without letting anyone in.
+  \item Our simulation showed that night ventilation matters: it lets the
+        building cool down before the next school day.
   \item For hot-dry regions, \textbf{terracotta-clad} panels are an option:
         wet clay surfaces add evaporative cooling.
 \end{itemize}
@@ -609,74 +609,68 @@ After steam distillation, the peel residue is still waste. We
 \captionof{figure}{CoolBrick jaali module (concept).}
 \end{minipage}
 
-\subsection{The CoolBrick kennel}
+\subsection{The CoolBrick classroom}
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[scale=1.15]
-  % ground
-  \fill[ink!8] (-1.2,-0.15) rectangle (8.4,0);
-  % sun
-  \fill[citrus!90] (-0.6,4.3) circle (0.35);
-  \foreach \a in {0,45,...,315}{\draw[citrus,line width=0.8pt] ($(-0.6,4.3)+(\a:0.45)$)--($(-0.6,4.3)+(\a:0.65)$);}
-  \draw[-{Stealth},citrus,line width=1.2pt] (-0.2,4.0)--(1.2,3.35); \draw[-{Stealth},citrus!60,line width=1.2pt,dashed] (1.25,3.35)--(0.2,4.4);
-  \node[font=\scriptsize,text=citrus!80!black,align=center] at (-0.6,5.25) {sunlight bounced\\off the white coat};
-  % raised floor
-  \fill[ink!25] (1.0,0) rectangle (7.0,0.25);
-  % walls (CoolBrick)
-  \fill[leaf!25] (1.0,0.25) rectangle (1.45,3.0); \fill[leaf!25] (6.55,1.65) rectangle (7.0,3.0); \node[font=\scriptsize,text=ink!60] at (6.78,0.95) {door};
-  \fill[white] (0.9,0.25) rectangle (1.0,3.0); \draw[ink!50] (0.9,0.25) rectangle (1.0,3.0);
-  \foreach \y in {0.5,1.2,1.9}{\fill[sky!25] (1.08,\y) rectangle ++(0.18,0.45); \fill[plum!40] (1.3,\y) rectangle ++(0.1,0.45);}
-  % roof
-  \fill[leaf!25] (0.8,3.0) rectangle (7.2,3.35); \fill[white] (0.8,3.35) rectangle (7.2,3.45); \draw[ink!50] (0.8,3.0) rectangle (7.2,3.45);
-  % jaali vents
-  \foreach \x in {6.62,6.82}{\foreach \y in {2.35,2.65}{\fill[white] (\x,\y) circle (0.06);}}
-  \draw[-{Stealth},sky,line width=1.2pt] (8.0,0.9)--(5.6,0.9); \node[font=\scriptsize,text=sky,align=center] at (7.8,0.55) {cooler air in\\through the door};
-  \draw[-{Stealth},sky!70,line width=1.2pt] (6.0,2.5)--(8.0,2.8); \node[font=\scriptsize,text=sky,align=left] at (8.15,3.15) {warm air out\\through jaali vents};
-  % dog (simple shapes)
-  \fill[ink!65] (3.0,0.45) ellipse (0.95 and 0.38);
-  \fill[ink!65] (4.05,0.85) circle (0.3);
-  \fill[ink!65] (4.25,0.95) ellipse (0.22 and 0.12);
-  \fill[ink!65] (3.9,1.08) -- (4.0,1.32) -- (4.12,1.05) -- cycle;
-  \draw[ink!65,line width=2pt,rounded corners] (2.1,0.55) -- (1.75,0.75) -- (1.7,0.95);
-  \node[font=\scriptsize,align=center] at (3.2,1.6) {dog rests against\\cool walls};
-  % labels
-  \draw[ink!50] (0.95,2.75)--(-0.4,2.75) node[left,font=\scriptsize,align=right]{white CaCO\textsubscript{3}\\cool-face coat};
-  \draw[ink!50] (1.17,1.4)--(-0.4,1.4) node[left,font=\scriptsize]{air cells};
-  \draw[ink!50] (1.35,0.7)--(-0.4,0.7) node[left,font=\scriptsize,align=right]{coconut-oil PCM\\(room side)};
-  \draw[ink!50] (4.0,3.2)--(4.0,3.9) node[above,font=\scriptsize]{CoolBrick roof with white coat};
+\begin{tikzpicture}[scale=0.95]
+  \fill[ink!8] (-1.6,-0.15) rectangle (10.4,0);
+  % sun + sky
+  \fill[citrus!90] (-0.9,5.2) circle (0.35);
+  \foreach \a in {0,45,...,315}{\draw[citrus,line width=0.8pt] ($(-0.9,5.2)+(\a:0.45)$)--($(-0.9,5.2)+(\a:0.65)$);}
+  \draw[-{Stealth},citrus,line width=1.2pt] (-0.5,4.9)--(1.4,4.15); \draw[-{Stealth},citrus!60,line width=1.2pt,dashed] (1.45,4.15)--(0.0,5.4);
+  \node[font=\scriptsize,text=citrus!80!black,align=center] at (-0.9,6.35) {sunlight bounced\\off the cool roof};
+  \draw[-{Stealth},sky!80,line width=1.2pt,decorate,decoration={snake,amplitude=1.2pt,segment length=6pt}] (7.4,4.3)--(8.0,5.6);
+  \node[font=\scriptsize,text=sky,align=left,anchor=west] at (8.2,5.5) {heat radiated\\to the cold sky};
+  % walls
+  \fill[citrus!25] (1.0,0) rectangle (1.4,3.9); \fill[citrus!25] (8.6,0) rectangle (9.0,3.9);
+  % windows
+  \fill[sky!20] (1.0,1.5) rectangle (1.4,2.8); \fill[sky!20] (8.6,1.5) rectangle (9.0,2.8);
+  % vents
+  \foreach \y in {3.35,3.6}{\fill[white] (8.8,\y) circle (0.06); \fill[white] (1.2,\y) circle (0.06);}
+  % roof + coat
+  \fill[ink!30] (0.8,3.9) rectangle (9.2,4.15); \fill[white] (0.8,4.15) rectangle (9.2,4.25); \draw[ink!50] (0.8,3.9) rectangle (9.2,4.25);
+  % jaali screen on west
+  \foreach \y in {0.6,1.0,...,3.0}{\fill[leaf!35] (0.2,\y) rectangle (0.45,\y+0.28);}
+  \node[font=\scriptsize,align=right] at (-0.8,1.7) {CoolBrick\\jaali screen\\(shades the\\west wall)};
+  % fan
+  \draw[ink!60,line width=1pt] (5.0,3.9)--(5.0,3.5); \draw[ink!60,line width=1.5pt] (4.4,3.5)--(5.6,3.5);
+  % students
+  \foreach \x in {2.6,3.9,5.2,6.5,7.6}{\fill[ink!60] (\x,1.15) circle (0.17); \fill[ink!60] (\x-0.2,0.45) rectangle (\x+0.2,0.98); \fill[citrus!50] (\x+0.25,0.75) rectangle (\x+0.85,0.82);}
+  % airflow
+  \draw[-{Stealth},sky,line width=1.2pt] (10.6,2.15)--(7.9,2.15); \node[font=\scriptsize,text=sky,align=left,anchor=west] at (9.3,1.65) {air in through\\windows};
+  \draw[-{Stealth},sky!70,line width=1.2pt] (8.2,3.45)--(10.4,3.45); \node[font=\scriptsize,text=sky,align=left,anchor=west] at (9.3,3.0) {night vents stay\\open to cool the room};
+  \node[font=\scriptsize] at (5.0,1.75) {40 students $\approx$ 2.4 kW of body heat};
+  \draw[ink!50] (3.6,4.2)--(3.6,4.6) node[above,font=\scriptsize,align=center]{white CaCO\textsubscript{3} cool coat\\on the concrete roof};
 \end{tikzpicture}
-\caption{How a CoolBrick kennel keeps a dog cool (concept, side view, not to scale).}
+\caption{A CoolBrick classroom upgrade (concept, cross-section, not to scale).}
 \end{figure}
 
 \begin{card}{leaf}
-\textbf{Design rule from our simulation:} insulation and ventilation must go
-together. A sealed, well-insulated kennel traps the dog's own body heat at
-night. Jaali vent blocks high in the walls let warm air out while the door
-lets cooler air in.
+\textbf{Design rule from our simulation:} in a crowded classroom without AC,
+reflecting sunlight and letting heat escape (cool roof, shading, night
+ventilation) matters more than insulation. Insulation on its own can trap
+the students' body heat.
 \end{card}
 
 
-% =====================================================================
 \section{Methodology \& Experimental Design}
 
-\subsection{Making the brick}
+\subsection{Making the brick and the cool coat}
 \begin{enumerate}
-  \item \textbf{Collect} clean Styrofoam packaging and orange peels.
-  \item \textbf{Extract D-limonene} from the peels by steam distillation and
-        separate the oil from the water.
-  \item \textbf{Dissolve} broken Styrofoam in the limonene until it forms a
-        thick polystyrene gel \todo{ratio of foam to limonene used}.
+  \item \textbf{Collect} clean Styrofoam packaging and orange peels (school
+        eco-club drives can do this).
+  \item \textbf{Extract D-limonene} from the peels by steam distillation.
+  \item \textbf{Dissolve} broken Styrofoam in the limonene to form a thick
+        polystyrene gel \todo{ratio of foam to limonene used}.
   \item \textbf{Mix} in sand or fly ash and the orange-peel biochar
         \todo{mix proportions}.
-  \item \textbf{Mould} the gel into brick moulds that form the hollow air
-        cells and the PCM pockets. Fill the pockets with the coconut-oil
-        blend and seal them.
-  \item \textbf{Cure} the bricks under a cover with a simple condenser to
-        recover the limonene \todo{curing time and temperature}. Bricks must
-        be fully cured so that no citrus solvent is left: concentrated citrus
-        oils can irritate dogs.
-  \item \textbf{Coat} the outside face with the calcium-carbonate cool-face
-        paint, and plaster or seal the inside face.
+  \item \textbf{Mould} bricks with hollow air cells and PCM pockets, or
+        perforated jaali blocks. Fill and seal the PCM pockets.
+  \item \textbf{Cure} under a cover with a condenser to recover the limonene
+        \todo{curing time and temperature}, until no solvent smell remains.
+  \item \textbf{Cool coat:} mix calcium carbonate powder (or ground eggshell)
+        into a water-based acrylic binder, about 60\% filler by weight, and
+        apply two coats on a clean roof.
 \end{enumerate}
 
 \begin{figure}[htbp]
@@ -705,34 +699,36 @@ lowers cost, odour and VOC emissions.
 \end{card}
 
 
-\subsection{Experimental design}
-\textbf{Aim:} to find out whether a CoolBrick kennel stays cooler inside than a
-clay-brick kennel and a plastic kennel on a hot, sunny day.
+\subsection{Experimental design: two real classrooms}
+\textbf{Aim:} to find out how much a CoolBrick cool coat on the roof (Level 1)
+and jaali screens (Level 2) lower the temperature that students feel during
+school hours.
 
-\textbf{Hypothesis:} the inside of the CoolBrick kennel will stay at or below
-the outdoor air temperature, at least \SI{3}{\celsius} cooler at peak than
-the clay and plastic kennels.
+\textbf{Hypothesis:} the coated classroom will be at least \SI{3}{\celsius}
+cooler at its hottest point during school hours than an identical uncoated
+classroom.
 
-\textbf{Ethics:} no animals are used in our tests. A ``dog dummy'' gives off
-the same heat as a resting dog. Only after the design is proven would we
-place kennels at an animal shelter, where dogs can choose freely whether to
-use them, with shelter staff and a vet watching.
+\textbf{Method:} with the principal's permission, we choose two classrooms
+on the top floor of our school that face the same way and have the same
+size, windows and number of students. One gets the cool coat on the roof
+above it; the other is left as it is. Sensors log temperatures every 5
+minutes for 30 school days.
 
 \begin{center}
 \small
 \begin{tabularx}{\textwidth}{@{}>{\bfseries}l X@{}}
 \toprule
-Independent variable & Kennel material: fired clay brick, plastic kennel, CoolBrick. \\
-Dependent variables & Air temperature inside; inner wall and roof surface temperatures; ``felt'' (black-globe) temperature next to the dummy; number of hours above \SI{35}{\celsius}. \\
-Control variables & Kennel size (\SI{1.0}{m} $\times$ \SI{0.8}{m} $\times$ \SI{0.8}{m}), door and vent sizes, position and direction in the sun, the same dog dummy, same sensors and logging interval, same days. \\
-Dog dummy & A \SI{50}{W} heater inside a water-filled container wrapped in an old blanket, about the size and heat output of a resting medium-sized dog. \\
-Equipment & Three model kennels, three dog dummies, Arduino with DS18B20 temperature sensors, black-globe thermometers, IR thermometer. \\
-Repeats & 30 summer days; each brick test on at least 5 bricks. \\
+Independent variable & Roof finish: bare concrete vs CoolBrick cool coat (then jaali screens added). \\
+Dependent variables & Air temperature; ceiling surface temperature; ``felt'' (black-globe) temperature at desk height; hours above \SI{35}{\celsius} in school hours. \\
+Control variables & Same floor, direction, size, windows, fans, timetable and number of students; same sensors and positions; same days. \\
+Equipment & Arduino with DS18B20 sensors, black-globe thermometers, IR thermometer, roof-surface sensors. \\
+Repeats & 30 school days; then swap which classroom is coated if possible. \\
+Safety and ethics & Sensors are placed out of students' reach; no change to lessons; the coat is water-based and applied when the school is closed. \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
-\subsection{Tests on the brick}
+\subsection{Tests on the brick and the coat}
 \begin{center}
 \small
 \begin{tabularx}{\textwidth}{@{}l X l l@{}}
@@ -743,41 +739,45 @@ Compressive strength & Universal testing machine, 5 samples per mix & IS 3495 (P
 Water absorption     & 24 h immersion, weigh before and after & IS 3495 (Pt 2) & $<$ 5\% \\
 Thermal conductivity & Guarded hot plate (or DIY hot-box) & IS 3346 & $k \leq$ \SI{0.15}{W/mK} \\
 Fire behaviour       & Bunsen-flame burn test: char length, dripping & UL-94 (adapted) & V-1 or better \\
-PCM performance      & DSC (melting point, latent heat) at a partner lab & --- & about \SI{27}{\celsius} \\
-Surface temperature  & IR thermometer, coated vs.\ uncoated at noon & --- & $\leq$ air temp. \\
-Leftover solvent     & Weigh during curing until steady; smell test & --- & no citrus smell \\
+PCM melting point    & DSC at a partner lab & --- & about \SI{31}{\celsius} \\
+Coat reflectance     & Roof surface vs air temperature at noon (IR thermometer) & --- & surface $\leq$ air \\
+Coat durability      & Re-measure after 3 and 6 months of sun and dust & --- & $<$ 20\% loss \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
 \subsection{Computer simulation}
-Before building, we tested the kennel with a computer model that we wrote
-in JavaScript. Each wall is split into thin slices. Every 5 seconds of
-simulated time the program calculates how much heat moves between
-neighbouring slices using Fourier's law, $q = k\,\Delta T/\Delta x$. On the
-outside, each wall and the roof absorb sunlight ($\alpha I$), exchange heat
-with the air ($h_o = \SI{15}{W/m^2K}$) and radiate heat to a sky about
-\SI{18}{\celsius} colder than the air (Stefan--Boltzmann law). Inside, the
-air gains \SI{50}{W} from the resting dog and heat from the walls
-($h_i = \SI{8}{W/m^2K}$), and swaps air with outside through the door and
-jaali vents (100 air changes per hour). The ``felt'' temperature is the
-average of the inside air and the inside wall surfaces. The weather is a hot
-north-Indian day (air 27--\SI{41}{\celsius}, strong sun), run for three days
-with the third day reported.
+Before testing on real classrooms we wrote a heat-flow model in JavaScript.
+Each wall and the roof are split into thin slices about 5 mm thick. Every 8
+seconds of simulated time the program works out the heat moving between
+slices with Fourier's law, $q = k\,\Delta T/\Delta x$. Outside, surfaces
+absorb sunlight ($\alpha I$), exchange heat with the air
+($h_o = \SI{15}{W/m^2K}$) and radiate heat to a sky about \SI{18}{\celsius}
+colder than the air (Stefan--Boltzmann law). Inside, the room air gains heat
+from the walls and roof ($h_i = \SI{8}{W/m^2K}$), from 40 students
+(\SI{60}{W} each) and lights and fans (\SI{300}{W}) from 8:00 to 14:00, and
+swaps air with outside (10 air changes per hour in school hours, 6 at night
+through vents). The classroom is 7 m $\times$ 6 m $\times$ 3.2 m with a
+concrete roof. The weather is a hot north-Indian day (air
+27--\SI{41}{\celsius}, strong sun), run for three days with the third
+reported.
 
 \begin{center}
 \small
-\begin{tabular}{@{}lccccc@{}}
+\begin{tabularx}{\textwidth}{@{}l X X@{}}
 \toprule
-Kennel & Wall & $k$ (W/mK) & $U$ (W/m\textsuperscript{2}K) & Sun absorbed & PCM \\
+Version & Walls & Roof \\
 \midrule
-Clay brick & 110 mm fired clay & 0.81 & 3.27 & 70\% & none \\
-Plastic & 5 mm polyethylene & 0.40 & 5.48 & 60\% & none \\
-CoolBrick & 110 mm CoolBrick & 0.15 / 0.18 & 1.15 & 5\% & 30 mm, melts \SI{27}{\celsius} \\
+Typical & 230 mm clay brick ($U$ = 2.12) & 150 mm bare concrete ($U$ = 3.60), absorbs 70\% of sun \\
+Tin roof & 230 mm clay brick & 0.5 mm metal sheet, absorbs 60\% \\
+Tin roof, coated & 230 mm clay brick & metal sheet with cool coat, absorbs 10\% \\
+Level 1 & 230 mm clay brick & concrete with cool coat, absorbs 10\% \\
+Level 2 & clay brick + jaali screens on east and west & as Level 1 \\
+Level 3 & 230 mm CoolBrick, PCM at \SI{31}{\celsius} ($U$ = 0.59) + jaali & as Level 1 \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{center}
-{\footnotesize\color{gray} CoolBrick values are design targets to be measured. Each kennel uses the same material for walls and roof.}
+{\footnotesize\color{gray} We assume the coat absorbs 10\% of sunlight (not 5\%) to allow for dust. CoolBrick values are design targets.}
 
 \subsection{Safety and risks}
 \begin{center}
@@ -786,19 +786,18 @@ CoolBrick & 110 mm CoolBrick & 0.15 / 0.18 & 1.15 & 5\% & 30 mm, melts \SI{27}{\
 \toprule
 Risk & Why it matters & Our mitigation \\
 \midrule
-Leftover limonene & Concentrated citrus oils can irritate dogs. & Cure fully until weight is steady; plaster or seal the inside face; smell test before use. \\
-Chewing & Dogs chew things. & PCM pockets are sealed inside the brick; inside face plastered; coconut oil is non-toxic. \\
-Fire & Polystyrene burns and drips. & Biochar filler (V-1 in literature); mineral coat and plaster; burn tests; keep away from cooking fires. \\
-UV ageing & Polystyrene yellows and turns brittle in the sun. & CaCO\textsubscript{3} coat or plaster blocks UV on exposed faces. \\
-Trapped heat & A sealed, insulated kennel traps the dog's own heat. & Jaali vents high up plus an open door; tested in the simulation. \\
-Hygiene & Kennels must be cleaned often. & Waterproof surfaces; raised floor so water drains. \\
-Cost & Must be affordable for shelters. & Full cost price analysis and cost-cutting plan (Section~7). \\
+Fire & Schools need high fire safety; polystyrene burns. & Cool coat is mineral and water-based; CoolBricks used only as plastered infill or outdoor screens; biochar filler; burn tests before use. \\
+Solvent fumes & Limonene vapour in a classroom is unpleasant. & Bricks and blocks fully cured off-site; the roof coat uses no limonene. \\
+Jaali safety & Screens near children must not fall. & Fixed into a steel or concrete frame; tested for load. \\
+Dust on the coat & Dirt lowers reflectance. & Model already allows for dust; wash or re-coat every 2--3 years. \\
+Trapped heat & Insulation can trap body heat. & Design rule: cool roof + shading + night vents first. \\
+Strength & Walls must be safe. & Level 3 only after strength tests to IS 3495. \\
+Cost & Schools have small budgets. & Three levels; Level 1 is cheap (Section~7). \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
 
-% =====================================================================
 \section{Results So Far and Explanation of Results}
 
 \subsection{Prototype results (version 1)}
@@ -818,110 +817,120 @@ little water absorption, keep their shape when heated and hold a load
 \todo{add the measured values: mass, density, water absorption, load held,
 heat test temperature}.
 
-\subsection{Simulation results: the CoolBrick kennel}
+\subsection{Simulation results: the classroom}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=0.98\textwidth,height=7cm,xmin=0,xmax=23,ymin=24,ymax=50,xtick={0,2,4,6,8,10,12,14,16,18,20,22},
+  xlabel={Hour of day},ylabel={Temperature students feel (\si{\celsius})},label style={font=\small},tick label style={font=\scriptsize},
+  legend style={font=\scriptsize,at={(0.01,0.99)},anchor=north west,draw=none,fill=white,fill opacity=0.85},legend columns=2,grid=major,grid style={gray!20},axis lines*=left]
+\fill[citrus!10] (axis cs:8,24) rectangle (axis cs:14,50);
+\node[font=\scriptsize,text=citrus!80!black] at (axis cs:11,25.6) {school hours};
+\addplot[gray,thick,densely dotted] coordinates {(0,29.1) (1,27.9) (2,27.2) (3,27) (4,27.2) (5,27.9) (6,29.1) (7,30.5) (8,32.2) (9,34) (10,35.8) (11,37.5) (12,38.9) (13,40.1) (14,40.8) (15,41) (16,40.8) (17,40.1) (18,38.9) (19,37.5) (20,35.8) (21,34) (22,32.2) (23,30.5)};
+\addlegendentry{Outdoor air (shade)}
+\addplot[ink!70,very thick] coordinates {(0,36.5) (1,35.5) (2,34.5) (3,33.6) (4,32.8) (5,32.2) (6,31.7) (7,31.4) (8,31.4) (9,33.4) (10,34.4) (11,35.7) (12,37.2) (13,38.7) (14,40) (15,39.6) (16,40.3) (17,40.8) (18,41) (19,40.9) (20,40.3) (21,39.6) (22,38.6) (23,37.6)};
+\addlegendentry{Typical (concrete roof)}
+\addplot[heat!75,very thick] coordinates {(0,33.5) (1,32.5) (2,31.7) (3,31) (4,30.6) (5,30.4) (6,30.5) (7,32.1) (8,34.4) (9,38.4) (10,41.2) (11,43.5) (12,45.4) (13,46.7) (14,47.2) (15,45.7) (16,44.6) (17,42.9) (18,40.8) (19,38.7) (20,37.7) (21,36.7) (22,35.6) (23,34.6)};
+\addlegendentry{Tin roof}
+\addplot[sky,very thick] coordinates {(0,34.3) (1,33.5) (2,32.7) (3,32) (4,31.4) (5,30.9) (6,30.6) (7,30.4) (8,30.4) (9,32.4) (10,33.2) (11,34.1) (12,35.1) (13,36) (14,36.9) (15,35.8) (16,36.1) (17,36.5) (18,36.7) (19,36.7) (20,36.6) (21,36.2) (22,35.7) (23,35)};
+\addlegendentry{Level 1: cool roof}
+\addplot[citrus,very thick] coordinates {(0,33.7) (1,33) (2,32.3) (3,31.6) (4,31.1) (5,30.6) (6,30.3) (7,30.1) (8,30.2) (9,32.2) (10,33) (11,33.8) (12,34.8) (13,35.7) (14,36.6) (15,35.4) (16,35.7) (17,36) (18,36.2) (19,36.2) (20,36) (21,35.6) (22,35.1) (23,34.5)};
+\addlegendentry{Level 2: + jaali}
+\end{axis}
+\end{tikzpicture}
+\caption{Simulated ``felt'' temperature in a 40-student classroom on a hot day.}
+\end{figure}
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}
-\begin{axis}[width=0.62\textwidth,height=6.6cm,xmin=0,xmax=23,ymin=24,ymax=48,xtick={0,3,6,9,12,15,18,21},
-  xlabel={Hour of day},ylabel={Temperature felt by the dog (\si{\celsius})},label style={font=\small},tick label style={font=\scriptsize},
-  legend style={font=\scriptsize,at={(0.02,0.98)},anchor=north west,draw=none,fill=white,fill opacity=0.85},grid=major,grid style={gray!20},axis lines*=left]
-\addplot[gray,thick,densely dotted] coordinates {(0,29.1) (1,27.9) (2,27.2) (3,27) (4,27.2) (5,27.9) (6,29.1) (7,30.5) (8,32.2) (9,34) (10,35.8) (11,37.5) (12,38.9) (13,40.1) (14,40.8) (15,41) (16,40.8) (17,40.1) (18,38.9) (19,37.5) (20,35.8) (21,34) (22,32.2) (23,30.5)};
-\addlegendentry{Outdoor air (shade)}
-\addplot[heat!75,very thick] coordinates {(0,33.5) (1,32) (2,30.7) (3,29.6) (4,29) (5,28.7) (6,28.7) (7,29.2) (8,30.3) (9,32) (10,34.1) (11,36.4) (12,38.4) (13,40) (14,41.5) (15,42.7) (16,43.5) (17,43.8) (18,43.4) (19,42.3) (20,40.7) (21,38.8) (22,37) (23,35.2)};
-\addlegendentry{Clay-brick kennel}
-\addplot[sky,very thick,dashed] coordinates {(0,29.2) (1,28) (2,27.2) (3,26.9) (4,27) (5,27.6) (6,28.7) (7,31) (8,34.3) (9,37.3) (10,39.7) (11,41.3) (12,42.5) (13,43.7) (14,44.8) (15,45.3) (16,44.8) (17,43.1) (18,40.6) (19,37.8) (20,35.9) (21,34.2) (22,32.4) (23,30.7)};
-\addlegendentry{Plastic kennel}
-\addplot[citrus,very thick] coordinates {(0,34.1) (1,32.9) (2,31.9) (3,31.2) (4,30.7) (5,30.5) (6,30.6) (7,31) (8,31.8) (9,32.7) (10,33.9) (11,35.1) (12,36.4) (13,37.5) (14,38.5) (15,39.3) (16,39.8) (17,40) (18,39.9) (19,39.4) (20,38.7) (21,37.7) (22,36.6) (23,35.3)};
-\addlegendentry{CoolBrick kennel}
-\end{axis}
-\end{tikzpicture}\hfill
-\begin{tikzpicture}
-\begin{axis}[ybar,width=0.38\textwidth,height=6.6cm,bar width=13pt,ymin=30,ymax=48,
-  symbolic x coords={Outdoor air,Clay,Plastic,CoolBrick},xtick=data,x tick label style={font=\scriptsize,rotate=25,anchor=north east},
-  nodes near coords,nodes near coords style={font=\scriptsize},
-  ylabel={Peak (\si{\celsius})},label style={font=\small},tick label style={font=\scriptsize},axis lines*=left,enlarge x limits=0.18]
-\addplot[fill=citrus!80,draw=none] coordinates {(Outdoor air,41.0) (Clay,43.8) (Plastic,45.3) (CoolBrick,40.0)};
+\begin{axis}[xbar,width=0.8\textwidth,height=6.2cm,bar width=10pt,xmin=30,xmax=50,
+  symbolic y coords={A,B,C,D,E,F},ytick=data,
+  yticklabels={Tin roof,Typical concrete roof,Tin roof + cool coat,Level 1: cool roof,Level 3: CoolBrick walls + cool roof,Level 2: cool roof + jaali},
+  yticklabel style={font=\small},xticklabel style={font=\scriptsize},nodes near coords,nodes near coords style={font=\scriptsize},
+  xlabel={Hottest felt temperature in school hours (\si{\celsius})},label style={font=\small},axis lines*=left,enlarge y limits=0.12]
+\addplot[fill=citrus!80,draw=none] coordinates {(47.1,A) (39.8,B) (38.7,C) (36.8,D) (36.8,E) (36.4,F)};
 \end{axis}
 \end{tikzpicture}
-\caption{Simulated temperature felt by a resting dog inside each kennel on a hot day. Left: through the day. Right: the hottest point.}
+\caption{Hottest temperature students feel between 8:00 and 14:00 (simulation).}
 \end{figure}
 
 \begin{center}
 \small
 \begin{tabular}{@{}lccc@{}}
 \toprule
-Simulation result & Clay brick & Plastic & CoolBrick \\
+Classroom version & Hottest felt (\si{\celsius}) & Average felt (\si{\celsius}) & Hours above \SI{35}{\celsius} \\
+& \multicolumn{3}{c}{(during school hours, 8:00--14:00)} \\
 \midrule
-Wall U-value (W/m\textsuperscript{2}K) & 3.27 & 5.48 & 1.15 \\
-Hottest ``felt'' temperature (\si{\celsius}) & 43.8 & 45.3 & 40.0 \\
-Hottest inside air (\si{\celsius}) & 43.5 & 45.3 & 40.8 \\
-Hottest inside wall surface (\si{\celsius}) & 44.2 & 45.4 & 39.5 \\
-Hours above \SI{35}{\celsius} (``felt'') & 12.7 & 12.3 & 12.3 \\
+Tin roof & 47.1 & 42.6 & 5.8 \\
+Tin roof + cool coat & 38.7 & 35.5 & 3.5 \\
+Typical concrete roof & 39.8 & 35.8 & 3.5 \\
+Level 1: cool roof & 36.8 & 34.1 & 2.0 \\
+Level 2: cool roof + jaali & 36.4 & 33.8 & 1.7 \\
+Level 3: CoolBrick walls + cool roof + jaali & 36.8 & 34.1 & 2.0 \\
 \bottomrule
 \end{tabular}
 \end{center}
-{\footnotesize\color{gray} For comparison, the outdoor air in the shade peaks at \SI{41}{\celsius} and is above \SI{35}{\celsius} for 10.8 hours.}
+{\footnotesize\color{gray} For comparison, the outdoor air in the shade averages 37.0 \si{\celsius} during school hours and peaks at \SI{41}{\celsius}.}
 
 \subsection{Explanation of the results}
 \begin{itemize}
-  \item \textbf{Clay and plastic kennels get hotter than the air outside.}
-        They absorb most of the sunlight, so their walls and roof heat up
-        and radiate that heat onto the dog. At the hottest point the dog
-        feels about 43.8 and 45.3 \si{\celsius}, which is
-        2.8--4.3 \si{\celsius} hotter than resting in
-        the shade.
-  \item \textbf{The CoolBrick kennel stays below the outdoor air.} The white
-        coat reflects about 95\% of sunlight, the air cells slow the heat
-        that does get in, and the PCM soaks up the rest. The inside walls
-        peak at about 39.5 \si{\celsius}, about
-        4.7 \si{\celsius} cooler than the clay kennel's walls.
-  \item \textbf{Ventilation matters as much as insulation.} When we first ran
-        the model with less ventilation, the well-insulated CoolBrick kennel
-        trapped the dog's own heat at night. Adding jaali vents (about 100
-        air changes per hour) fixed this. This is now a design rule.
-  \item \textbf{Limits.} No kennel can be cooler than the outside air for
-        long without a power source, so on a \SI{41}{\celsius} day all three
-        stay hot for many hours. The CoolBrick's job is to stop the kennel
-        from making things \emph{worse} than the shade. These are model
-        results with assumed values; real kennels will have mortar joints
-        and imperfections. The dog-dummy experiment will test this.
+  \item \textbf{The roof is the main problem.} A bare concrete roof absorbs
+        most of the sunlight and its ceiling reaches about
+        42.5 \si{\celsius} during school hours, radiating heat onto the
+        students. A tin roof is far worse: its ceiling side reaches about
+        64.3 \si{\celsius}.
+  \item \textbf{The cool coat gives the biggest, cheapest gain.} It
+        reflects most of the sunlight and radiates heat to the sky, so the
+        ceiling stays near the air temperature. The hottest felt temperature
+        drops by 3.0 \si{\celsius} in a concrete-roofed classroom and by
+        8.4 \si{\celsius} in a tin-roofed one, and hours above \SI{35}{\celsius} fall
+        from 3.5 to 2.0.
+  \item \textbf{Shading adds a little more.} Jaali screens on the east and
+        west walls bring the peak down to 36.4 \si{\celsius}.
+  \item \textbf{Insulation is not always better.} When we insulated the roof
+        under the coat, the classroom got \emph{warmer}, because the 40
+        students' body heat could no longer escape through the roof, and the
+        coated roof had been cooling the room. CoolBrick walls perform as
+        well as Level 1 only when the PCM melts at about \SI{31}{\celsius} and
+        the room is ventilated at night. So for classrooms we recommend the
+        cool roof and shading first, and CoolBrick walls mainly for new
+        buildings where they also reuse waste.
+  \item \textbf{Limits.} These are model results with assumed values and one
+        hot day. Real classrooms have windows, doors and shading from trees.
+        Our two-classroom experiment will test the results.
 \end{itemize}
 
 \subsection{Measured results (to be completed) \todo{fill in}}
 \begin{center}
 \small
-\begin{tabular}{@{}lccc@{}}
+\begin{tabular}{@{}lcc@{}}
 \toprule
- & Clay brick & Plastic & CoolBrick \\
+ & Uncoated classroom & Coated classroom \\
 \midrule
-Mass per brick (kg)                       & \todo{} & --- & \todo{} \\
-Compressive strength (MPa)                & \todo{} & --- & \todo{} \\
-Water absorption (\%)                     & \todo{} & --- & \todo{} \\
-Outer surface temperature at noon (\si{\celsius}) & \todo{} & \todo{} & \todo{} \\
-Peak ``felt'' temperature in kennel (\si{\celsius}) & \todo{} & \todo{} & \todo{} \\
-Hours above \SI{35}{\celsius}            & \todo{} & \todo{} & \todo{} \\
+Roof surface at noon (\si{\celsius})             & \todo{} & \todo{} \\
+Ceiling surface, hottest (\si{\celsius})         & \todo{} & \todo{} \\
+Hottest felt temperature, school hours (\si{\celsius}) & \todo{} & \todo{} \\
+Hours above \SI{35}{\celsius}, school hours      & \todo{} & \todo{} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 
-% =====================================================================
 \section{Conclusion}
 
 Poly Citra Bricks show that two common wastes, Styrofoam and orange peel, can
-be turned into a light, waterproof building brick without mining clay or
-firing a kiln. By redesigning the brick to ``put the air back'' and adding a
-reflective coat, a coconut-oil PCM and peel biochar, the CoolBrick becomes a
-\textbf{passive cooling material}. Our simulation of a dog kennel on a
-\SI{41}{\celsius} day predicts that a resting dog would feel about
-40.0 \si{\celsius} at the hottest point in a CoolBrick kennel, compared
-with 43.8 \si{\celsius} in a clay-brick kennel and 45.3 \si{\celsius} in a plastic one,
-with the walls next to the dog about 4.7 \si{\celsius} cooler than clay. This
-supports our hypothesis. We also learned that good ventilation is essential.
-A CoolBrick kennel costs about \rupee11,059 to make at scale, close to a
-plastic kennel, or about \rupee3 per day over a 10-year life. The next
-step is to measure the real bricks and run the dog-dummy experiment.
+become building materials without mining clay or firing a kiln. The
+CoolBrick system adds a reflective cool coat, air cells, a coconut-oil PCM,
+peel biochar and jaali screens. In our simulation of a 40-student classroom
+on a \SI{41}{\celsius} day, the cool roof alone lowers the hottest felt
+temperature in school hours from 39.8 to 36.8 \si{\celsius}, and from
+47.1 to 38.7 \si{\celsius} under a tin roof. This supports our
+hypothesis. We also learned that, in crowded classrooms, letting heat escape
+matters as much as keeping it out. Level 1 costs about \rupee4,875 per classroom,
+which a government school can pay from its own yearly grant. The project
+supports SDGs 3, 4, 7, 9, 11, 12, 13 and 17. Next we will measure two real
+classrooms.
 
 \begin{center}
 \small
@@ -929,29 +938,25 @@ step is to measure the real bricks and run the dog-dummy experiment.
 \toprule
  & Poly Citra Bricks (v1) & Poly Citra CoolBrick (v2) \\
 \midrule
-Goal & Turn two wastes into a brick & \ldots{} that also \textbf{keeps dogs cool} \\
-Audience & NGOs, housing, government & \textbf{Animal shelters}, street-dog carers, pet owners, dog units \\
-Inputs & EPS + orange-peel limonene & + peel biochar, coconut-oil PCM, CaCO\textsubscript{3} coat \\
-Structure & Solid moulded brick & Hollow air cells, sealed PCM pockets, interlocking key, jaali vent blocks \\
-Thermal & Not measured & Kennel stays below outdoor air in simulation; \\
- & & walls \textasciitilde 4.7 \si{\celsius} cooler than clay \\
-Cost & Not worked out & \rupee67 per brick, \rupee11,059 per kennel at scale \\
-Fire safety & Not addressed & Biochar flame retardance, mineral coat, burn testing \\
-Solvent & Single use & Recovered by condensation and reused \\
-Evidence & Prototype & Standard tests + 30-day dog-dummy kennel experiment \\
+Goal & Turn two wastes into a brick & \ldots{} and \textbf{cool buildings and classrooms} without power \\
+Audience & NGOs, housing, government & \textbf{Government schools}, anganwadis, clinics, low-cost housing \\
+Inputs & EPS + orange-peel limonene & + peel biochar, coconut-oil PCM, CaCO\textsubscript{3} cool coat \\
+Products & Solid brick & CoolBrick, Lite brick, jaali screens, cool-roof coat \\
+Thermal & Not measured & Classroom peak \textasciitilde 3.4 \si{\celsius} cooler (simulation) \\
+Cost & Not worked out & Level 1 \rupee4,875 per classroom; \rupee122 per student \\
+SDGs & 11, 12, 13 & 3, 4, 7, 9, 11, 12, 13, 17 \\
+Evidence & Prototype & Standard tests + 30-day two-classroom experiment \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
 
-% =====================================================================
 \section{Future Potential of the Project}
 
 \subsection{Cost price analysis}
 All prices are 2025--26 Indian market estimates from supplier listings and
 are rounded. They will change with location and quantity, so we will get
-quotes before building. ``Pilot'' means making about 25 bricks a day by
-hand; ``scale'' means about 150 bricks a day per worker with more moulds.
+quotes before building.
 
 \subsubsection*{A. Cost price of one CoolBrick (23 $\times$ 11 $\times$ 7.5 cm)}
 \begin{center}
@@ -971,8 +976,7 @@ Energy & distilling, curing and solvent recovery & 4.0 \\
 Mould wear & reusable moulds over about 500 uses & 1.0 \\
 \midrule
 \textbf{Materials and energy} & & \textbf{63.1} \\
-Labour, pilot & 25 bricks a day at \rupee600/day & 24.0 \\
-Labour, at scale & 150 bricks a day at \rupee600/day & 4.0 \\
+Labour, pilot / at scale & 25 or 150 bricks a day at \rupee600/day & 24 / 4 \\
 \midrule
 \textbf{Cost price, pilot / at scale} & & \textbf{87 / 67} \\
 \textbf{``Lite'' brick (no PCM), pilot / at scale} & & \textbf{52 / 32} \\
@@ -980,112 +984,79 @@ Fired clay brick, for comparison & market price & 5--12 \\
 \bottomrule
 \end{tabularx}
 \end{center}
+The coconut-oil PCM is about half the cost of a CoolBrick. The limonene
+top-up depends on how much solvent we recover (\rupee33, 17 or 4 per brick
+at 60\%, 80\% or 95\% recovery), and falls to mainly fuel if we distil our
+own limonene from free peel.
 
-\begin{minipage}[t]{0.54\textwidth}
-\vspace{0pt}
-\textbf{What drives the cost.} The coconut-oil PCM is about half the cost of
-a CoolBrick. The limonene top-up is the next biggest, and it depends on how
-much solvent we recover:
-
+\subsubsection*{B. Cost of cooling one classroom (7 m $\times$ 6 m, 40 students)}
 \begin{center}
 \small
-\begin{tabular}{@{}lccc@{}}
+\begin{tabularx}{\textwidth}{@{}l X r r@{}}
 \toprule
-Limonene recovered & 60\% & 80\% & 95\% \\
+\textbf{Level} & \textbf{What is done} & \textbf{Cost} & \textbf{Per student} \\
 \midrule
-Limonene cost per brick (\rupee) & 33 & 17 & 4 \\
+Level 1 & Clean and prime the roof (\rupee20/m\textsuperscript{2}), two coats of CaCO\textsubscript{3} cool coat (\rupee55/m\textsuperscript{2}) on 45 m\textsuperscript{2}, one day's labour & \rupee4,875 & \rupee122 \\
+Level 2 & Level 1 + about 24 m\textsuperscript{2} of CoolBrick jaali screens on east and west windows (\rupee1,050/m\textsuperscript{2} with frame) & \rupee30,075 & \rupee752 \\
+Level 3 & New classroom: about 6,204 Lite bricks instead of clay bricks for 66 m\textsuperscript{2} of 230 mm wall & +\rupee135,123 extra & --- \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{center}
-If we distil all our own limonene from free orange peel, this cost becomes
-mainly fuel. About 4.7 kg of peel replaces the 28 g lost per brick.
-\end{minipage}\hfill
-\begin{minipage}[t]{0.42\textwidth}
-\vspace{0pt}
-\begin{card}{citrus}\textbf{A CoolBrick costs more than a clay brick} (about
-\rupee67 vs \rupee5--12). It does much more: it insulates,
-reflects sun and stores heat. So we use full CoolBricks only where they
-matter most (the roof and the sunny west wall) and cheaper ``Lite'' bricks
-elsewhere.\end{card}
-\end{minipage}
-
-\subsubsection*{B. Cost of one CoolBrick dog kennel (1.0 $\times$ 0.8 $\times$ 0.8 m)}
-The kennel needs about 189 bricks: 140 for the walls (with 5\% spare)
-and 49 for the roof. In our ``smart mix'', 82 full CoolBricks go in the
-roof and the west wall and 107 Lite bricks go in the other walls.
-
-\begin{center}
-\small
-\begin{tabular}{@{}lr@{}}
-\toprule
-\textbf{Item} & \textbf{Cost} \\
-\midrule
-82 full CoolBricks at \rupee67 (scale) & \rupee5,499 \\
-107 Lite bricks at \rupee32 (scale) & \rupee3,400 \\
-Fibre-cement sheet to support the roof & \rupee450 \\
-Mortar (cement and sand) & \rupee350 \\
-Raised floor tiles & \rupee300 \\
-Four jaali vent blocks (moulded) & \rupee160 \\
-Mason, one day & \rupee900 \\
-\midrule
-\textbf{Cost price of a CoolBrick kennel, at scale} & \textbf{\rupee11,059} \\
-Same kennel at pilot scale & \rupee14,839 \\
-All full CoolBricks (no Lite bricks), at scale & \rupee14,834 \\
-\bottomrule
-\end{tabular}
-\end{center}
+{\footnotesize\color{gray} Level 3 extra cost compares Lite bricks (\rupee32) with clay bricks (\rupee10). Using full CoolBricks with PCM would add about \rupee354,000. The cool coat may need washing or re-coating every 2--3 years (about \rupee2,475 each time).}
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}
-\begin{axis}[xbar,width=0.86\textwidth,height=5.6cm,bar width=11pt,xmin=0,xmax=17000,
-  symbolic y coords={A,B,C,D},
-  ytick=data,yticklabels={Clay-brick kennel,Plastic/FRP kennel (with GST),CoolBrick kennel (smart mix),CoolBrick kennel (all full bricks)},yticklabel style={font=\small},xticklabel style={font=\scriptsize,/pgf/number format/fixed},
-  nodes near coords,nodes near coords style={font=\scriptsize,/pgf/number format/fixed},xlabel={Cost to make or buy (\rupee)},label style={font=\small},axis lines*=left,enlarge y limits=0.18]
-\addplot[fill=citrus!80,draw=none] coordinates {(4050,A) (11505,B) (11059,C) (14834,D)};
+\begin{axis}[ybar,width=0.75\textwidth,height=5.6cm,bar width=26pt,ymin=0,ymax=1000,
+  symbolic x coords={Level 1,Level 2},xtick=data,nodes near coords,nodes near coords style={font=\small},
+  ylabel={Cost per student (\rupee)},label style={font=\small},tick label style={font=\small},axis lines*=left,enlarge x limits=0.5]
+\addplot[fill=citrus!80,draw=none] coordinates {(Level 1,122) (Level 2,752)};
 \end{axis}
 \end{tikzpicture}
-\caption{Cost of a dog kennel of the same size. The plastic price is one Indian listing for an FRP kennel (\rupee9,750 + 18\% GST, before delivery). The clay kennel uses the same extras as the CoolBrick kennel.}
+\caption{One-time cost per student to cool a 40-student classroom.}
 \end{figure}
 
-\subsubsection*{C. Selling price, profit and break-even}
-\begin{center}
-\small
-\begin{tabular}{@{}lr@{}}
-\toprule
-Cost price of a CoolBrick kennel (smart mix, at scale) & \rupee11,059 \\
-Selling price to shelters and pet owners & \rupee13,500 \\
-\textbf{Profit per kennel} & \textbf{\rupee2,441 (22\% of cost)} \\
-\midrule
-Steam-distillation still and condenser & \rupee12,000 \\
-Ten brick moulds & \rupee8,000 \\
-Limonene working stock (7 kg) & \rupee4,130 \\
-Scale, thermometers, mixing tools & \rupee5,000 \\
-\textbf{One-time set-up cost} & \textbf{\rupee29,130} \\
-\midrule
-\textbf{Break-even} & \textbf{after about 12 kennels} \\
-Cost per dog per day over a 10-year life & \rupee3.0 \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\textbf{How we will bring the cost down:} distil our own limonene from free
-peel; buy coconut oil in bulk or test cheaper plant fats for the PCM; make
-CaCO\textsubscript{3} coat from waste eggshells; and ask companies to sponsor
-kennels for shelters through CSR, so shelters pay little or nothing.
+\subsection{How a government school can afford it}
+\begin{minipage}[t]{0.56\textwidth}
+\vspace{0pt}
+\begin{enumerate}
+  \item \textbf{Its own yearly grant.} Under Samagra Shiksha, every
+        government school gets a \textbf{composite school grant} of
+        \rupee25,000 to \rupee1,00,000 a year, depending on enrolment, for
+        repairs and upkeep. Coating one or two classroom roofs a year
+        (Level 1) fits inside it.
+  \item \textbf{CSR funds.} Companies must spend part of their profits on
+        social projects; education and environment both qualify. A company
+        can sponsor ``Cool Classrooms'' across a district.
+  \item \textbf{Local development funds.} MP and MLA local area development
+        funds can pay for school building work, such as Level 2 screens.
+  \item \textbf{School programmes.} Model schools such as PM SHRI schools
+        aim to be green schools, and Level 3 fits new buildings there.
+  \item \textbf{Students and community.} Eco-clubs collect waste and help
+        make jaali blocks, and the School Management Committee organises
+        volunteers, cutting labour costs.
+\end{enumerate}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.4\textwidth}
+\vspace{0pt}
+\begin{card}{citrus}\textbf{Example: a 300-student school with 8
+classrooms.} Its composite grant is in the \rupee25,000--\rupee1,00,000
+range. Coating all 8 roofs costs about \rupee39,000. It can
+do this over one or two years, or in one go with a small CSR grant.\end{card}
+\begin{card}{leaf}\textbf{At national scale:} cooling 1 lakh of the hottest
+classrooms at Level 1 would cost about \rupee49 crore, or roughly
+\rupee122 per student, and needs no electricity afterwards.\end{card}
+\end{minipage}
 
 \subsection{Who will use it}
 \begin{minipage}[c]{0.62\textwidth}
 \begin{itemize}
-  \item \textbf{Animal shelters and rescue NGOs}, which house many dogs and
-        cannot afford cooling.
-  \item \textbf{Municipal Animal Birth Control (ABC) centres}, where dogs
-        recover after surgery.
-  \item \textbf{Street-dog feeders and resident welfare associations} who
-        look after community dogs.
-  \item \textbf{Pet owners} whose dogs live outdoors, and farms with guard
-        dogs.
-  \item \textbf{Police, army and security dog units} with outdoor kennels.
+  \item \textbf{Government schools} first, especially those with tin or bare
+        concrete roofs in hot districts.
+  \item \textbf{Anganwadi centres} for young children.
+  \item \textbf{Primary health centres} and hostels.
+  \item \textbf{Low-cost housing} and community buildings.
+  \item Education departments, CSR teams and NGOs that fund them.
 \end{itemize}
 \end{minipage}\hfill
 \begin{minipage}[c]{0.33\textwidth}
@@ -1094,14 +1065,14 @@ kennels for shelters through CSR, so shelters pay little or nothing.
 
 \subsection{Business model}
 \begin{minipage}[c]{0.68\textwidth}
-\begin{card}{citrus}\textbf{Kennel kits.} Sell CoolBrick kennel kits and
-built kennels to shelters, pet owners and dog units.\end{card}
-\begin{card}{leaf}\textbf{Sponsor a CoolKennel.} Companies and donors pay for
-kennels placed at shelters through CSR, with a plaque and photos.\end{card}
+\begin{card}{citrus}\textbf{Cool Classroom kits.} Cool-coat material, jaali
+blocks and instructions sold at cost-plus prices to schools.\end{card}
+\begin{card}{leaf}\textbf{Sponsor a Cool Classroom.} Companies fund
+classrooms through CSR and receive temperature data and photos.\end{card}
 \begin{card}{sky}\textbf{Partnerships.} Collect Styrofoam from shops and
 packaging companies, and peels from juice vendors.\end{card}
-\begin{card}{plum}\textbf{Original market.} CoolBricks and Lite bricks for
-eco-shelters and housing projects continue alongside.\end{card}
+\begin{card}{plum}\textbf{Building market.} CoolBricks and Lite bricks for
+eco-buildings and low-cost housing.\end{card}
 \end{minipage}\hfill
 \begin{minipage}[c]{0.28\textwidth}
 \centering\includegraphics[width=\linewidth]{revenue.png}
@@ -1110,14 +1081,15 @@ eco-shelters and housing projects continue alongside.\end{card}
 \subsection{Spreading the idea}
 \begin{minipage}[c]{0.62\textwidth}
 \begin{enumerate}[label=\textcolor{citrus}{\textbf{\arabic*.}}]
-  \item \textbf{Kennel demo at a shelter} --- two kennels side by side with
-        live temperature displays.
-  \item \textbf{Thermal-camera photos} of a CoolBrick kennel vs a plastic one
-        at 2\,pm.
-  \item \textbf{Social-media stories} of rescued dogs and their cool kennels.
-  \item \textbf{Vet and NGO partners} to share heat-safety advice for dogs.
-  \item \textbf{Student Ambassador Program} --- youth lead peel and Styrofoam
-        collection drives.
+  \item \textbf{Pilot in our own school}, sharing the 30-day results with
+        the district education office.
+  \item \textbf{Thermal-camera photos} of a coated vs uncoated roof.
+  \item \textbf{Eco-club network} --- students in other schools make jaali
+        blocks from waste they collect.
+  \item \textbf{Social-media storytelling} of waste becoming cooler
+        classrooms.
+  \item \textbf{NGO and CSR partners} to reach government schools in the
+        hottest districts.
 \end{enumerate}
 \end{minipage}\hfill
 \begin{minipage}[c]{0.34\textwidth}
@@ -1129,62 +1101,52 @@ eco-shelters and housing projects continue alongside.\end{card}
 \subsection{Roadmap}
 \begin{center}
 \begin{tikzpicture}[
-  ph/.style={rectangle,rounded corners=3pt,minimum width=3.8cm,minimum height=2.8cm,
-             text width=3.5cm,align=left,font=\small,anchor=north},
-  hd/.style={rectangle,rounded corners=3pt,minimum width=3.8cm,minimum height=0.8cm,
-             font=\bfseries,text=white,anchor=south}]
+  ph/.style={rectangle,rounded corners=3pt,minimum width=3.8cm,minimum height=2.8cm,text width=3.5cm,align=left,font=\small,anchor=north},
+  hd/.style={rectangle,rounded corners=3pt,minimum width=3.8cm,minimum height=0.8cm,font=\bfseries,text=white,anchor=south}]
 \foreach \i/\c/\t/\b in {
-  0/plum/{Now}/{\textbullet\ Brick tests\\\textbullet\ Measure $k$ and strength\\\textbullet\ Check no solvent is left},
-  1/sky/{Next 3 months}/{\textbullet\ 30-day dog-dummy kennel trial\\\textbullet\ Tune the PCM blend\\\textbullet\ Coat from eggshells},
-  2/leaf/{6 months}/{\textbullet\ 3 pilot kennels at an animal shelter\\\textbullet\ Real cost per kennel},
-  3/citrus/{12 months+}/{\textbullet\ Kennel kits\\\textbullet\ CSR sponsors\\\textbullet\ Designs for cats, goats and poultry}}{
+  0/plum/{Now}/{\textbullet\ Brick and coat tests\\\textbullet\ Measure $k$, strength\\\textbullet\ Coat recipe},
+  1/sky/{Next 3 months}/{\textbullet\ Two-classroom trial in our school\\\textbullet\ PCM at \SI{31}{\celsius}},
+  2/leaf/{6 months}/{\textbullet\ Pilot in 3 government schools\\\textbullet\ Real cost per classroom},
+  3/citrus/{12 months+}/{\textbullet\ CSR partners\\\textbullet\ District roll-out\\\textbullet\ Anganwadis and clinics}}{
   \node[hd,fill=\c] at (\i*4.1,0) {\t};
   \node[ph,fill=\c!10] at (\i*4.1,0) {\b};}
 \end{tikzpicture}
 \end{center}
 
 
-% =====================================================================
 \section{Bibliography, References and Acknowledgements}
 
 \subsection*{References}
 \small
 \begin{enumerate}[label={[\arabic*]},leftmargin=*]
-\item Department of Animal Husbandry and Dairying (2019). \emph{20th Livestock Census}. Government of India.
-\item O'Neill, D.\,G., et al.\ (2020). Heat-related illness in dogs in the UK (VetCompass study). \emph{Scientific Reports}. \todo{complete citation}
-\item PetMD (2024). \emph{How Hot Is Too Hot for Dogs?} petmd.com.
-\item Li, X., Peoples, J., Huang, Z., Zhao, Z., Qiu, J., \& Ruan, X. (2020).
-      Full daytime sub-ambient radiative cooling in commercial-like paints
-      with high figure of merit. \emph{Cell Reports Physical Science}, 1(10).
-\item Vitale, M., \& Cascone, S. (2022). Orange peels as a potential
-      ecological thermal insulation material for building application.
-      \emph{TeMA --- Technologies, Engineering, Materials, Architecture}, 8(2).
-\item Enhanced biodegradability and thermal insulation capability of
-      poly(lactic acid) reinforced with calcium-crosslinked orange-peel
-      biochar. Chung-Ang University. \todo{complete citation}
-\item Sony Corporation (c.\ 2001). Limonene-based expanded-polystyrene
-      recycling system. \todo{complete citation}
+\item United Nations (2015). \emph{Transforming our world: the 2030 Agenda for Sustainable Development} (SDG targets 3.d, 4.a, 7.3, 9.4, 11.6, 11.c, 12.5, 13.1, 13.3, 17.17).
+\item Park, R.\,J., Goodman, J., Hurwitz, M., \& Smith, J.\ (2020). Heat and Learning. \emph{American Economic Journal: Economic Policy}, 12(2), 306--339.
+\item Ministry of Education (2024). \emph{UDISE+ 2023--24}. Government of India.
+\item CRY --- Child Rights and You (2026). \emph{Feeling the Heat} (survey of children on heat and schooling).
+\item Ministry of Education. \emph{Samagra Shiksha: Framework for Implementation} (composite school grant).
+\item Li, X., Peoples, J., Huang, Z., Zhao, Z., Qiu, J., \& Ruan, X. (2020). Full daytime sub-ambient radiative cooling in commercial-like paints with high figure of merit. \emph{Cell Reports Physical Science}, 1(10).
+\item Vitale, M., \& Cascone, S. (2022). Orange peels as a potential ecological thermal insulation material for building application. \emph{TeMA}, 8(2).
+\item Enhanced biodegradability and thermal insulation capability of poly(lactic acid) reinforced with calcium-crosslinked orange-peel biochar. Chung-Ang University. \todo{complete citation}
+\item Sony Corporation (c.\ 2001). Limonene-based expanded-polystyrene recycling system. \todo{complete citation}
 \item Florida Chemical Company. D-limonene as a solvent for expanded polystyrene (300--400 kg EPS per 100 kg limonene). Via cleanersolutions.org.
 \item Studies of orange-peel oil yield by steam distillation (about 0.6--2\%, limonene over 90\%). \todo{choose and complete one citation}
-\item Computational and experimental analysis of PCM-infused brick for
-      sustainable heat regulation. \todo{complete citation}
-\item Bureau of Indian Standards: IS 1077 (common burnt clay building
-      bricks), IS 3495 Parts 1--4 (methods of test of burnt clay bricks),
-      IS 3346 (thermal conductivity by guarded hot plate).
+\item Computational and experimental analysis of PCM-infused brick for sustainable heat regulation. \todo{complete citation}
+\item Bureau of Indian Standards: IS 1077, IS 3495 Parts 1--4, IS 3346.
 \item UL 94: Standard for Safety of Flammability of Plastic Materials.
-\item Price sources (2025--26): InfraLens city brick prices; IndiaMART and TradeIndia listings for coconut oil, calcium carbonate and D-limonene; Fibre Crafts India FRP dog kennel listing.
+\item Price sources (2025--26): InfraLens brick prices; IndiaMART and TradeIndia listings for coconut oil, calcium carbonate and D-limonene.
 \end{enumerate}
 
 \subsection*{Acknowledgements}
+\normalsize
 We thank \todo{teacher / mentor names} and Scottish High International
 School for their guidance and for the use of the science laboratory, and our
-families for their support. \todo{add anyone else who helped, e.g.\ an
-animal shelter or vet}
+families for their support. \todo{add anyone else who helped}
 
 \vfill
 \begin{center}
 {\Huge\bfseries\color{citrus}Thank you!}\\[4pt]
-{\large Waste in. Cool kennels out.}\\[6pt]
+{\large Waste in. Cooler classrooms out.}\\[6pt]
+\sdg{3}{sdgthree} \sdg{4}{sdgfour} \sdg{7}{sdgseven} \sdg{9}{sdgnine} \sdg{11}{sdgeleven} \sdg{12}{sdgtwelve} \sdg{13}{sdgthirteen} \sdg{17}{sdgseventeen}\\[6pt]
 {\small Rian Sikka \& Daiwik Abroo \textbullet\ Grade 9 (IGCSE) \textbullet\ Scottish High International School}
 \end{center}
 
