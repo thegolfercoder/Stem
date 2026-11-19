@@ -80,9 +80,9 @@ svg text{font-family:"IBM Plex Sans",sans-serif}
     <rect width="360" height="560" rx="22" fill="#18251e" stroke="#E8731A" stroke-width="3"/>
     <g transform="translate(55,90)"><path d="M0,40 L130,0 L230,30 L100,72 Z" fill="#e2c48a"/><path d="M0,40 L100,72 L100,140 L0,108 Z" fill="#c9a96b"/><path d="M100,72 L230,30 L230,98 L100,140 Z" fill="#b8955c"/><path d="M0,40 L0,108 L-10,104 L-10,36 Z" fill="#fff"/></g>
     <text x="40" y="285" font-size="32" fill="#f4f2ec" font-weight="700">CoolBrick</text>
-    <text x="40" y="330" font-size="24" fill="#c9d1c7">air cells</text>
-    <text x="40" y="365" font-size="24" fill="#c9d1c7">coconut-oil PCM pockets</text>
-    <text x="40" y="400" font-size="24" fill="#c9d1c7">orange-peel biochar</text>
+    <text x="40" y="330" font-size="24" fill="#c9d1c7">air pockets</text>
+    <text x="40" y="365" font-size="24" fill="#c9d1c7">coconut-oil pockets</text>
+    <text x="40" y="400" font-size="24" fill="#c9d1c7">orange-peel charcoal</text>
     <text x="40" y="435" font-size="24" fill="#c9d1c7">white heat-reflecting face</text>
   </g>
   <g id="arrows3" stroke="#E8731A" stroke-width="6" marker-end="url(#ah)">
@@ -105,7 +105,7 @@ svg text{font-family:"IBM Plex Sans",sans-serif}
     <g fill="#4c6f9a"><circle cx="700" cy="380" r="20"/><rect x="678" y="402" width="44" height="60" rx="10"/></g>
     <text x="230" y="505" font-size="26" fill="#c9d1c7" text-anchor="middle">Wall surface</text>
     <text id="tL" x="230" y="555" font-size="54" font-weight="900" fill="#ff7a4a" text-anchor="middle" font-family="Archivo">30 °C</text>
-    <text x="680" y="190" font-size="26" fill="#c9d1c7" text-anchor="middle">Heat into room</text>
+    <text x="680" y="190" font-size="26" fill="#c9d1c7" text-anchor="middle">Heat getting in</text>
     <text id="qL" x="680" y="240" font-size="50" font-weight="900" fill="#ff7a4a" text-anchor="middle" font-family="Archivo">0 W/m²</text>
   </g>
   <g id="R" transform="translate(980,300)">
@@ -120,11 +120,11 @@ svg text{font-family:"IBM Plex Sans",sans-serif}
     <g fill="#4c6f9a"><circle cx="700" cy="380" r="20"/><rect x="678" y="402" width="44" height="60" rx="10"/></g>
     <text x="230" y="505" font-size="26" fill="#c9d1c7" text-anchor="middle">Wall surface</text>
     <text id="tR" x="230" y="555" font-size="54" font-weight="900" fill="#5ab8ff" text-anchor="middle" font-family="Archivo">30 °C</text>
-    <text x="680" y="190" font-size="26" fill="#c9d1c7" text-anchor="middle">Heat into room</text>
+    <text x="680" y="190" font-size="26" fill="#c9d1c7" text-anchor="middle">Heat getting in</text>
     <text id="qR" x="680" y="240" font-size="50" font-weight="900" fill="#5ab8ff" text-anchor="middle" font-family="Archivo">0 W/m²</text>
-    <text x="410" y="105" font-size="20" fill="#c9d1c7" text-anchor="middle">white face · air cells · PCM</text>
+    <text x="410" y="105" font-size="20" fill="#c9d1c7" text-anchor="middle">white face · air pockets · coconut oil</text>
   </g>
-  <text id="n4" x="960" y="985" font-size="26" fill="#8e998f" text-anchor="middle">Sun-facing wall, peak values over a 41 °C day (computer simulation)</text>
+  <text id="n4" x="960" y="985" font-size="26" fill="#8e998f" text-anchor="middle">Sunny wall on a 41 °C day, clay brick = 100% (computer simulation)</text>
 </svg></div>
 
 <!-- ===== Scene 5b: result chart (2D overlay) ===== -->
@@ -218,13 +218,13 @@ const reflR=RY.map(()=>mk('line',{stroke:'#ffd36b','stroke-width':6,'marker-end'
 const hL2=[0,1,2,3].map(()=>mk('line',{stroke:'#ff5a3a','stroke-width':8,'marker-end':'url(#ahr)'},$('heatL')));
 const hR2=[0].map(()=>mk('line',{stroke:'#ff5a3a','stroke-width':5,'marker-end':'url(#ahr)'},$('heatR')));
 // scene 5 chart
-const C5=$('chart5');const bars=[['Clay brick',24.4,'#b5532f'],['Poly Citra v1',7.7,'#2E7D32'],['CoolBrick',6.4,'#1E88C8']];
+const C5=$('chart5');const bars=[['Clay brick',100,'#b5532f'],['Poly Citra v1',32,'#2E7D32'],['CoolBrick',26,'#1E88C8']];
 el('text',{x:160,y:330,'font-size':40,'font-weight':800,fill:'#f4f2ec','font-family':'Archivo'},C5).textContent='Heat that gets into a small building in one hot day';
-el('text',{x:160,y:378,'font-size':28,fill:'#c9d1c7'},C5).textContent='Walls and roof of a 3 m building, outdoor air up to 41 °C (computer simulation)';
+el('text',{x:160,y:378,'font-size':28,fill:'#c9d1c7'},C5).textContent='Clay brick = 100%. Small building, outdoor air up to 41 °C (computer simulation)';
 const barEls=bars.map((b,i)=>{const y=470+i*140;el('text',{x:160,y:y+50,'font-size':32,fill:'#f4f2ec'},C5).textContent=b[0];
   const r=el('rect',{x:640,y:y+8,height:62,rx:8,fill:b[2],width:0},C5);const v=el('text',{y:y+52,'font-size':36,'font-weight':800,fill:'#f4f2ec','font-family':'Archivo'},C5);return{r,v,val:b[1]};});
 // scene 6 cost cards
-const C6=$('cost6');const cards=[['74%','less heat gets in','than through clay brick walls (simulation)'],['0','electricity needed','the cooling is built into the wall'],['2 wastes','turned into bricks','Styrofoam and orange peel, no kiln, no topsoil'],['₹67','per brick','estimated cost when made in bulk']];
+const C6=$('cost6');const cards=[['¾ less','heat gets in','than through clay brick walls (computer test)'],['0','electricity needed','the cooling is built into the wall'],['2 wastes','turned into bricks','Styrofoam and orange peel, no kiln, no topsoil'],['₹67','per brick','estimated cost when made in bulk']];
 const cardEls=cards.map((c,i)=>{const x=110+(i%2)*870,y=290+Math.floor(i/2)*265;const g=el('g',{transform:`translate(${x},${y+30})`},C6);
   el('rect',{width:830,height:235,rx:22,fill:'#18251e',stroke:i===0?'#E8731A':'rgba(255,255,255,.14)','stroke-width':i===0?3:2},g);
   el('text',{x:40,y:105,'font-size':84,'font-weight':900,fill:'#E8731A','font-family':'Archivo'},g).textContent=c[0];
@@ -288,7 +288,7 @@ function renderAt(t){
     show('p4',true,1);
     const u=ease(seg(t,38,44));
     $('tL').textContent=lerp(32,51.9,u).toFixed(1)+' °C';$('tR').textContent=lerp(32,39.1,u).toFixed(1)+' °C';
-    $('qL').textContent=lerp(0,40.6,u).toFixed(1)+' W/m²';$('qR').textContent=lerp(0,7.0,u).toFixed(1)+' W/m²';
+    $('qL').textContent=Math.round(lerp(0,100,u))+'%';$('qR').textContent=Math.round(lerp(0,17,u))+'%';
     $('wallL').setAttribute('fill',`rgb(${Math.round(lerp(169,230,u))},${Math.round(lerp(80,70,u))},${Math.round(lerp(44,30,u))})`);
     const ph=(t*.8)%1,op=seg(t,37.5,38.3);
     const ray=(ln,i,xEnd)=>{const y2=RY[i];const p=clamp(((ph+i*.17)%1)*1.6);ln.setAttribute('x1',120);ln.setAttribute('y1',170);ln.setAttribute('x2',lerp(120,xEnd,Math.min(1,p)));ln.setAttribute('y2',lerp(170,y2,Math.min(1,p)));ln.setAttribute('opacity',op);return p;};
@@ -296,7 +296,7 @@ function renderAt(t){
     raysR.forEach((ln,i)=>{const p=ray(ln,i,364);const q=clamp((p-1)/0.6);const rl=reflR[i];rl.setAttribute('x1',364);rl.setAttribute('y1',RY[i]);rl.setAttribute('x2',364-q*170);rl.setAttribute('y2',RY[i]-q*90);rl.setAttribute('opacity',q>0?op:0);});
     hL2.forEach((ln,i)=>{const o=((t*.9+i*.25)%1);const y=180+i*110;ln.setAttribute('x1',420+o*60);ln.setAttribute('y1',y);ln.setAttribute('x2',500+o*60);ln.setAttribute('y2',y);ln.setAttribute('opacity',u*(1-o*.4));});
     hR2.forEach((ln,i)=>{const o=((t*.6)%1);ln.setAttribute('x1',500+o*40);ln.setAttribute('y1',330);ln.setAttribute('x2',540+o*40);ln.setAttribute('y2',330);ln.setAttribute('opacity',u*.6*(1-o*.5));});
-    head('Step 2 · How the <b>CoolBrick</b> keeps heat out','The white face reflects the sun, the air cells slow the heat, and the PCM soaks up the rest.',ft(37.3,51));}
+    head('Step 2 · How the <b>CoolBrick</b> keeps heat out','The white face reflects the sun, air pockets slow the heat, and coconut oil soaks up the rest.',ft(37.3,51));}
 
   if(S===4){ // result
     const sw=ease(seg(t,52,56));
@@ -306,8 +306,8 @@ function renderAt(t){
     sunArrows.forEach(a=>a.visible=true);downArrows.forEach((a,i)=>{a.visible=sw<.85;a.setLength(Math.max(.5,4*(1-sw)),1.4*(1-sw*.6),1);a.position.x=-W/2+.6+((t*1.2+i*.3)%1)*1.2;});
     if(t<59)head('Step 3 · Build the walls with <b>CoolBricks</b>','Same classroom, same sun.',ft(51.3,59.2));
     show('note',true,.9);
-    if(t>=59){show('p5',true,seg(t,59,59.5));barEls.forEach((b,i)=>{const w=ease(seg(t,59.3+i*.3,60.3+i*.3))*b.val*40;b.r.setAttribute('width',w);b.v.setAttribute('x',650+w+16);b.v.textContent=w>5?b.val.toFixed(1)+' kWh':'';});
-      head('Result: about <b>74% less heat</b> gets in','',seg(t,59.2,59.7)*clamp(1-seg(t,63.5,64)));}}
+    if(t>=59){show('p5',true,seg(t,59,59.5));barEls.forEach((b,i)=>{const w=ease(seg(t,59.3+i*.3,60.3+i*.3))*b.val*9.5;b.r.setAttribute('width',w);b.v.setAttribute('x',650+w+16);b.v.textContent=w>5?b.val+'%':'';});
+      head('Result: about <b>three-quarters less heat</b> gets in','',seg(t,59.2,59.7)*clamp(1-seg(t,63.5,64)));}}
 
   if(S===5){ // cost
     show('p6',true,1);cardEls.forEach((g,i)=>{g.style.opacity=seg(t,64.8+i*1.2,65.4+i*1.2);});$('cost6').lastChild.previousSibling;
