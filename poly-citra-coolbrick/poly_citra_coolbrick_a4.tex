@@ -1,7 +1,7 @@
 % =====================================================================
 %  Poly Citra CoolBrick — A4 report
-%  Content and pictures from the LGIC'26 APAC India "Project Rebrick"
-%  deck, laid out as an A4 document, followed by the cooling extension.
+%  Structured to the competition entry requirements: Summary, Significance,
+%  Concept, Methodology, Results, Conclusion, Future Potential, References.
 %
 %  Compile:  pdflatex poly_citra_coolbrick_a4.tex   (run twice)
 %  Red [ ... ] marks a placeholder the team must fill in or verify.
@@ -58,7 +58,7 @@
 \titleformat{\subsection}{\large\bfseries\color{leaf}}{\thesubsection}{0.6em}{}
 \titlespacing*{\section}{0pt}{14pt}{8pt}
 \let\origsection\section
-\renewcommand{\section}{\needspace{9\baselineskip}\origsection}
+\renewcommand{\section}{\clearpage\origsection}
 \titleformat{\part}[block]{\Huge\bfseries\color{leaf}}{}{0pt}{}
 \renewcommand{\contentsname}{\color{ink}Contents}
 \titlespacing*{\subsection}{0pt}{10pt}{4pt}
@@ -130,23 +130,50 @@
 \setcounter{tocdepth}{1}
 \tableofcontents
 
-\begin{keybox}{leaf}
-\textbf{Summary.} Poly Citra Bricks turn two waste streams --- Styrofoam
-packaging and orange peels --- into lightweight building bricks. D-limonene
-distilled from the peels dissolves the Styrofoam into a polystyrene gel,
-which is moulded and cured. The original project has been recognised at
-national-level competitions \todo{list awards}. This edition adds
-\textbf{passive cooling for data centres}: five design upgrades that aim
-to cut heat entering through walls by up to about 70\% compared with fired
-clay. The bricks can be made partly from the Styrofoam packaging that data
-centres already throw away. The report ends with a plan for testing them.
-\end{keybox}
 
 % =====================================================================
-\part*{Part I --- Poly Citra Bricks}
+\section{Summary}
 
-\section{Problem Statement}
+Every year India throws away large amounts of \textbf{Styrofoam} (expanded
+polystyrene, EPS) packaging and \textbf{orange peel}. Both usually end up in
+landfill or are burned. Our project, \textbf{Poly Citra Bricks}, turns these
+two wastes into building bricks. We extract \textbf{D-limonene}, a natural
+solvent, from orange peel by steam distillation. Limonene dissolves Styrofoam
+into a thick polystyrene gel, which we mould and cure into a light,
+waterproof brick. This first version has already been built, tested and
+recognised at national-level competitions \todo{list awards}.
 
+In this new edition we answer the question our first project left open: how
+to make the brick \textbf{keep heat out}. The \textbf{CoolBrick} adds five
+passive-cooling features: hollow air cells, pockets of a coconut-oil
+phase-change material (PCM), a white calcium-carbonate ``cool-face'' coating,
+a filler of biochar made from the leftover peel, and a perforated
+\emph{jaali} version for shade. We aim it at \textbf{data centres}, which are
+growing fast in India and spend a large share of their electricity on
+cooling. Data centres also throw away large amounts of Styrofoam server
+packaging, which we can turn into their own walls.
+
+We built a computer heat-flow simulation and a 3D model to test the design
+before building it. For a small edge data-centre shelter on a hot day, the
+simulation predicts:
+
+\begin{keybox}{citrus}
+\centering
+\begin{tabular}{ccc}
+{\LARGE\bfseries\color{citrus} 74\%} & {\LARGE\bfseries\color{leaf} $\sim$1,200 kWh} & {\LARGE\bfseries\color{sky} 9.5 h vs 1.3 h}\\[2pt]
+\small less heat through walls \& roof & \small cooling electricity saved & \small to reach \SI{35}{\celsius} if cooling fails\\
+\small than with clay bricks & \small per shelter per year & \small (CoolBrick vs clay)
+\end{tabular}
+\end{keybox}
+
+These are model predictions using assumed material values. Our next step is
+to confirm them with a mini data-centre experiment (Section~4).
+
+
+% =====================================================================
+\section{Significance and Uniqueness of the Project}
+
+\subsection{The problem: two wastes}
 \begin{minipage}[t]{0.52\textwidth}
 \vspace{0pt}
 \begin{itemize}
@@ -168,173 +195,7 @@ centres already throw away. The report ends with a plan for testing them.
 {\footnotesize\color{gray}Plastic and Styrofoam waste in landfill}
 \end{minipage}
 
-% =====================================================================
-\section{Solution: Poly Citra Bricks}
-
-Combining \textbf{Styrofoam} with \textbf{D-limonene} extracted from
-\textcolor{citrus}{\textbf{orange peels}} to create durable and lightweight
-bricks.
-
-\begin{figure}[H]
-\centering
-\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{dissolving.jpg}\caption{Styrofoam dissolving}\end{subfigure}\hfill
-\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{brick-sample.jpg}\caption{Cured brick sample}\end{subfigure}\hfill
-\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{brickwall.jpg}\caption{Compared with a clay wall}\end{subfigure}\\[6pt]
-\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{water-test.jpg}\caption{Water test}\end{subfigure}\hfill
-\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{heat-test.jpg}\caption{Heat test}\end{subfigure}\hfill
-\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{load-test.jpg}\caption{Load test}\end{subfigure}
-\caption{Making and testing the Poly Citra Brick prototype.}
-\end{figure}
-
-\subsection{Alignment with the UN Sustainable Development Goals}
-The project aligns with the following SDGs and, if scaled, can create a
-global impact in reversing climate change.
-
-\begin{center}
-\small
-\begin{tabularx}{\textwidth}{@{}>{\bfseries}l X@{}}
-\toprule
-\textcolor{citrus}{SDG 11} & Sustainable Cities and Communities --- promoting eco-friendly construction. \\
-\textcolor{citrus}{SDG 12} & Responsible Consumption and Production --- reducing waste and repurposing materials. \\
-\textcolor{citrus}{SDG 13} & Climate Action --- lowering carbon emissions from conventional brick production. \\
-\textcolor{leaf}{SDG 7} \new & Affordable and Clean Energy --- less electricity used for data-centre cooling. \\
-\textcolor{leaf}{SDG 9} \new & Industry, Innovation and Infrastructure --- greener digital infrastructure. \\
-\bottomrule
-\end{tabularx}
-\end{center}
-
-% =====================================================================
-\section{How It Works}
-
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}[
-  stp/.style={rectangle,rounded corners=3pt,minimum width=2.75cm,minimum height=2.3cm,
-              text width=2.55cm,align=center,font=\footnotesize,text=white},
-  arr/.style={-{Stealth[length=3mm]},line width=1.2pt,color=ink!60}]
-\node[stp,fill=citrus] (a) {\textbf{Collection}\\[2pt]Styrofoam waste is gathered.};
-\node[stp,fill=leaf,right=0.5cm of a] (b) {\textbf{Processing}\\[2pt]D-limonene is extracted from orange peel by steam distillation, and dissolves Styrofoam into polystyrene gel.};
-\node[stp,fill=sky,right=0.5cm of b] (c) {\textbf{Moulding}\\[2pt]The gel is shaped into bricks.};
-\node[stp,fill=plum,below=0.7cm of b,xshift=-1.6cm] (d) {\textbf{Curing}\\[2pt]Bricks are dried and solidified.};
-\node[stp,fill=leaf!70!lime!80!black,right=0.5cm of d] (e) {\textbf{Usage}\\[2pt]Bricks are ready for construction.};
-\draw[arr] (a)--(b); \draw[arr] (b)--(c);
-\draw[arr] (c.south) |- ++(0,-0.35) -| (d.north);
-\draw[arr] (d)--(e);
-\end{tikzpicture}
-\caption{The Poly Citra Brick process.}
-\end{figure}
-
-\begin{card}{leaf}
-\textbf{Why it works.} Styrofoam is about 98\% air, so dissolving it shrinks
-its volume dramatically and a large amount of waste fits into one brick.
-D-limonene is a natural, bio-based solvent (Sony piloted the same idea for
-recycling packaging foam), and no kiln firing is needed.
-\end{card}
-
-% =====================================================================
-\section{Benefits of Poly Citra Bricks}
-
-\begin{minipage}[t]{0.49\textwidth}
-\begin{card}{citrus}\textbf{Minimises} landfill waste and microplastic contamination.\end{card}
-\begin{card}{sky}\textbf{Reduces reliance} on natural resources like clay.\end{card}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.49\textwidth}
-\begin{card}{leaf}\textbf{Offers} an affordable and sustainable alternative to conventional bricks.\end{card}
-\begin{card}{plum}\textbf{Promotes} circular-economy principles.\end{card}
-\end{minipage}
-\begin{card}{heat}\new\ \textbf{Helps keep data centres cooler} --- the passive-cooling upgrades in Part II.\end{card}
-
-% =====================================================================
-\section{Target Audience: Data Centres}
-
-\begin{minipage}[c]{0.62\textwidth}
-\textbf{Primary customers}
-\begin{itemize}
-  \item \textbf{Edge data-centre and telecom-tower companies} --- thousands
-        of small shelters standing in full sun.
-  \item \textbf{Colocation and hyperscale data-centre operators} --- roofs,
-        sun-facing walls, UPS and battery rooms, and their sustainability
-        (ESG) targets.
-  \item \textbf{Modular data-centre builders and EPC contractors} who design
-        and build these sites.
-\end{itemize}
-\textbf{Also} (the original Poly Citra audience): NGOs, government bodies,
-educators, architects and environmental start-ups working on affordable
-housing.
-\end{minipage}\hfill
-\begin{minipage}[c]{0.33\textwidth}
-\centering\includegraphics[width=\linewidth]{audience.png}
-\end{minipage}
-
-\begin{card}{leaf}
-\textbf{Why data centres will listen.} Cooling is one of a data centre's
-biggest running costs, and large operators publish carbon and waste targets.
-CoolBricks cut cooling energy \emph{and} recycle the operator's own server
-packaging.
-\end{card}
-
-% =====================================================================
-\section{Revenue Model \& Adaptation Strategy}
-
-\begin{minipage}[c]{0.68\textwidth}
-\begin{card}{citrus}\textbf{B2B supply.} Sell CoolBricks, jaali sun-screens and cool-face coating to data-centre builders and edge/telecom operators.\end{card}
-\begin{card}{leaf}\textbf{Packaging take-back.} Collect server Styrofoam from data centres (a waste they pay to remove) and peels from juice vendors.\end{card}
-\begin{card}{sky}\textbf{Shelter retrofit kits.} CoolBrick panels plus cool-face coat for existing hot telecom and edge shelters.\end{card}
-\begin{card}{heat}\textbf{Pilot, then scale.} A paid pilot at one edge site with sensors; its data becomes our sales case.\end{card}
-\begin{card}{plum}\textbf{ESG reporting.} Give operators figures for waste recycled and CO$_2$ avoided for their sustainability reports.\end{card}
-\begin{card}{ink}\textbf{Original market.} Direct sales and eco-shelters for NGOs, builders and CSR projects continue alongside.\end{card}
-\end{minipage}\hfill
-\begin{minipage}[c]{0.28\textwidth}
-\centering\includegraphics[width=\linewidth]{revenue.png}
-\end{minipage}
-
-% =====================================================================
-\section{Marketing \& Messaging Strategies}
-
-\begin{minipage}[c]{0.62\textwidth}
-\begin{enumerate}[label=\textcolor{citrus}{\textbf{\arabic*.}}]
-  \item \new\ \textbf{Mini data-centre demo} --- two model shelters side by
-        side with live temperature and energy readings.
-  \item \new\ \textbf{Data-centre industry events} --- pitch the
-        packaging-to-brick closed loop to sustainability teams.
-  \item \new\ \textbf{Open data} --- publish our test logs so engineers can
-        check the numbers; the way to win a cautious industry.
-  \item \textbf{Social Media Storytelling} --- videos showing waste
-        transformed into eco-bricks: ``your server box became your wall''.
-  \item \textbf{Live Demonstrations} and \textbf{NGO Collaborations} ---
-        hands-on events and pilot projects to build trust.
-  \item \textbf{Student Ambassador Program} --- empower youth to lead
-        sustainability drives and workshops.
-\end{enumerate}
-\end{minipage}\hfill
-\begin{minipage}[c]{0.34\textwidth}
-\centering
-\includegraphics[width=0.48\linewidth,height=3.6cm,keepaspectratio=false]{social-media.png}\hfill
-\includegraphics[width=0.48\linewidth]{ngo.png}
-\end{minipage}
-
-% =====================================================================
-\section{Future Plans}
-
-\begin{center}
-\begin{tikzpicture}[
-  hd/.style={rectangle,minimum width=5.2cm,minimum height=0.9cm,font=\large\bfseries,text=white,anchor=south},
-  bd/.style={rectangle,minimum width=5.2cm,minimum height=2.4cm,text width=4.8cm,align=left,anchor=north,font=\small}]
-\foreach \i/\c/\h/\b in {
-  0/plum/Scale/{Scale production of Poly Citra Bricks for wider adoption in construction.},
-  1/sky/Conduct/{Conduct further research to improve thermal insulation \textbf{(answered in Part II)}.},
-  2/leaf/Collaborate/{Collaborate with local builders to pilot Poly Citra Bricks.}}{
-  \node[hd,fill=\c] at (\i*5.5,0) {\h};
-  \node[bd,fill=\c!10] at (\i*5.5,0) {\b};}
-\end{tikzpicture}
-\end{center}
-
-% =====================================================================
-\clearpage
-\part*{Part II --- The CoolBrick: Passive Cooling Extension}
-
-\section{Why Data Centres? The Cooling Challenge}
-
+\subsection{The cooling problem in data centres}
 \begin{minipage}[t]{0.54\textwidth}
 \vspace{0pt}
 \begin{itemize}
@@ -378,51 +239,87 @@ packaging.
 out is a watt its chillers don't have to remove --- 24 hours a day, all year.
 \end{card}
 
-\section{Where CoolBricks Fit in a Data Centre}
+\subsection{What makes this project unique}
+\begin{itemize}
+  \item \textbf{Two wastes, one product.} Styrofoam and orange peel both
+        become part of the brick. No clay is mined and no kiln is fired.
+  \item \textbf{The whole orange is used.} The peel gives the solvent
+        (limonene), and what is left after distillation becomes the biochar
+        filler. The limonene is recovered and reused.
+  \item \textbf{A closed loop with the customer.} Data centres throw away
+        Styrofoam from server deliveries. We can collect it and turn it into
+        bricks and sun-screens for their own buildings.
+  \item \textbf{Five cooling methods in one brick.} Most cool-wall products
+        use only one idea (insulation \emph{or} reflective paint \emph{or}
+        PCM). The CoolBrick combines reflection, sky radiation, trapped air,
+        heat storage and shading.
+  \item \textbf{Safety time if cooling fails.} The PCM layer absorbs heat
+        for hours, which buys time for repairs in a server room.
+\end{itemize}
 
-\begin{minipage}[c]{0.54\textwidth}
-\textbf{Being honest about the physics.} In a large data hall, most of the
-heat comes from the servers, not through the walls. So CoolBricks target the
-places where the \textbf{building envelope matters most}:
-\begin{enumerate}
-  \item \textbf{Edge data centres and telecom shelters:} small boxes in full
-        sun, where heat through the walls and roof is a large share of the
-        cooling load.
-  \item \textbf{Roofs and sun-facing walls} of large sites: a cool-face
-        coating and jaali sun-screens cut solar heat gain.
-  \item \textbf{UPS, battery and generator rooms:} batteries age faster when
-        hot.
-  \item \textbf{Ride-through:} PCM walls soak up heat for a while if the
-        cooling fails.
-\end{enumerate}
+\subsection{Benefits and the UN Sustainable Development Goals}
+\begin{minipage}[t]{0.49\textwidth}
+\begin{card}{citrus}\textbf{Minimises} landfill waste and microplastic contamination.\end{card}
+\begin{card}{sky}\textbf{Reduces reliance} on natural resources like clay.\end{card}
 \end{minipage}\hfill
-\begin{minipage}[c]{0.42\textwidth}
-\centering
-\begin{tikzpicture}[scale=0.95]
-  \fill[ink!8] (0,0) rectangle (5.2,3.4);
-  \draw[ink,thick] (0,0) rectangle (5.2,3.4);
-  \foreach \x in {0.5,1.5,2.5,3.5}{\fill[ink!60] (\x,0.2) rectangle ++(0.6,2.0);
-     \foreach \y in {0.4,0.8,...,2.0}{\fill[leaf!70] (\x+0.08,\y) rectangle ++(0.1,0.08);}}
-  \node[font=\scriptsize,text=ink] at (2.4,2.65) {servers: \textbf{most} of the heat};
-  \fill[white] (0,3.4) rectangle (5.2,3.6); \draw[ink] (0,3.4) rectangle (5.2,3.6);
-  \fill[citrus!40] (-0.25,0) rectangle (0,3.4); \fill[citrus!40] (5.2,0) rectangle (5.45,3.4);
-  \fill[citrus!90] (5.4,4.5) circle (0.32);
-  \draw[-{Stealth},heat,thick,decorate,decoration={snake,amplitude=1pt,segment length=5pt}] (5.1,4.3)--(4.3,3.7);
-  \draw[-{Stealth},heat,thick,decorate,decoration={snake,amplitude=1pt,segment length=5pt}] (5.6,4.1)--(5.5,2.6);
-  \node[font=\scriptsize,text=citrus!80!black] at (2.6,-0.35) {CoolBrick walls + cool-face roof};
-\end{tikzpicture}
-\captionof{figure}{In a data centre, CoolBricks tackle the heat coming from outside.}
+\begin{minipage}[t]{0.49\textwidth}
+\begin{card}{leaf}\textbf{Offers} an affordable and sustainable alternative to conventional bricks.\end{card}
+\begin{card}{plum}\textbf{Promotes} circular-economy principles.\end{card}
 \end{minipage}
 
-\begin{card}{leaf}
-\textbf{Closed loop:} data centres throw away Styrofoam from server
-packaging. We collect it and turn it into bricks and screens for their own
-buildings.
-\end{card}
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}l X@{}}
+\toprule
+\textcolor{citrus}{SDG 11} & Sustainable Cities and Communities --- promoting eco-friendly construction. \\
+\textcolor{citrus}{SDG 12} & Responsible Consumption and Production --- reducing waste and repurposing materials. \\
+\textcolor{citrus}{SDG 13} & Climate Action --- lowering carbon emissions from conventional brick production. \\
+\textcolor{leaf}{SDG 7} \new & Affordable and Clean Energy --- less electricity used for data-centre cooling. \\
+\textcolor{leaf}{SDG 9} \new & Industry, Innovation and Infrastructure --- greener digital infrastructure. \\
+\bottomrule
+\end{tabularx}
+\end{center}
 
 % =====================================================================
-\section{How Heat Gets Into a Building}
+\section{Concept: The Science Behind the CoolBrick}
 
+\subsection{Dissolving polystyrene with D-limonene}
+Polystyrene and D-limonene are both \textbf{non-polar} hydrocarbons. Following
+the rule ``like dissolves like'', limonene molecules slip between the long
+polystyrene chains and separate them, so the solid foam turns into a sticky
+gel. Styrofoam is about 98\% air, so this also shrinks its volume
+enormously. D-limonene makes up most of orange-peel oil and is extracted by
+\textbf{steam distillation}: steam carries the oil out of the peel, and the
+oil separates from the water when it condenses. When the gel dries, the
+limonene evaporates and the polystyrene hardens again into a solid brick.
+The limonene vapour can be condensed and reused.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  stp/.style={rectangle,rounded corners=3pt,minimum width=2.75cm,minimum height=2.3cm,
+              text width=2.55cm,align=center,font=\footnotesize,text=white},
+  arr/.style={-{Stealth[length=3mm]},line width=1.2pt,color=ink!60}]
+\node[stp,fill=citrus] (a) {\textbf{Collection}\\[2pt]Styrofoam waste is gathered.};
+\node[stp,fill=leaf,right=0.5cm of a] (b) {\textbf{Processing}\\[2pt]D-limonene is extracted from orange peel by steam distillation, and dissolves Styrofoam into polystyrene gel.};
+\node[stp,fill=sky,right=0.5cm of b] (c) {\textbf{Moulding}\\[2pt]The gel is shaped into bricks.};
+\node[stp,fill=plum,below=0.7cm of b,xshift=-1.6cm] (d) {\textbf{Curing}\\[2pt]Bricks are dried and solidified.};
+\node[stp,fill=leaf!70!lime!80!black,right=0.5cm of d] (e) {\textbf{Usage}\\[2pt]Bricks are ready for construction.};
+\draw[arr] (a)--(b); \draw[arr] (b)--(c);
+\draw[arr] (c.south) |- ++(0,-0.35) -| (d.north);
+\draw[arr] (d)--(e);
+\end{tikzpicture}
+\caption{The Poly Citra Brick process.}
+\end{figure}
+
+\begin{card}{leaf}
+\textbf{Why it works.} Styrofoam is about 98\% air, so dissolving it shrinks
+its volume dramatically and a large amount of waste fits into one brick.
+D-limonene is a natural, bio-based solvent (Sony piloted the same idea for
+recycling packaging foam), and no kiln firing is needed.
+\end{card}
+
+\subsection{How heat gets into a building}
 \begin{minipage}[c]{0.46\textwidth}
 \centering
 \begin{tikzpicture}[scale=0.95]
@@ -457,9 +354,7 @@ A CoolBrick must beat all three paths: reflect sunlight and radiate heat to
 the sky; have a low $k$; and buffer peaks with stored ``coolth''.
 \end{minipage}
 
-% =====================================================================
-\section{Key Insight: Put the Air Back}
-
+\subsection{Key insight: put the air back}
 \begin{minipage}[c]{0.52\textwidth}
 Styrofoam insulates because it is about \textbf{98\% trapped air}
 ($k \approx \SI{0.035}{W/mK}$). When limonene dissolves it, the air escapes.
@@ -488,7 +383,6 @@ engineered cavities, porous bio-fillers and a controlled foaming step.
 \captionof{figure}{Thermal conductivity of wall materials (typical values).}
 \end{minipage}
 
-% =====================================================================
 The CoolBrick puts that principle into one block. Figure~\ref{fig:xsec} shows the layers from the sunny outside face to the room side.
 
 \begin{figure}[H]
@@ -514,8 +408,7 @@ The CoolBrick puts that principle into one block. Figure~\ref{fig:xsec} shows th
 \caption{Cross-section concept of a CoolBrick, from outside (left) to inside (right).}\label{fig:xsec}
 \end{figure}
 
-\section{The CoolBrick: Five Cooling Upgrades}
-
+\subsection{The five cooling upgrades}
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[
@@ -532,9 +425,7 @@ The CoolBrick puts that principle into one block. Figure~\ref{fig:xsec} shows th
 \caption{Overview of the five upgrades.}
 \end{figure}
 
-
-
-\subsection{Upgrade 1 --- Air-cell core}
+\subsubsection*{Upgrade 1 --- Air-cell core}
 
 \begin{minipage}[c]{0.54\textwidth}
 \small
@@ -576,7 +467,7 @@ Example: $U_\text{clay} = 1/(0.13 + 0.23/0.81 + 0.04) = \SI{2.20}{W/m^2K}$.
 \captionof{figure}{U-value of a one-brick wall.}
 \end{minipage}
 
-\subsection{Upgrade 2 --- Bio-PCM pockets: a thermal battery}
+\subsubsection*{Upgrade 2 --- Bio-PCM pockets: a thermal battery}
 
 \begin{minipage}[c]{0.5\textwidth}
 \small
@@ -619,7 +510,7 @@ Example: $U_\text{clay} = 1/(0.13 + 0.23/0.81 + 0.04) = \SI{2.20}{W/m^2K}$.
 \captionof{figure}{Expected effect (illustrative --- to be replaced with model-hut data).}
 \end{minipage}
 
-\subsection{Upgrade 3 --- The cool face: radiative cooling}
+\subsubsection*{Upgrade 3 --- The cool face: radiative cooling}
 
 \begin{minipage}[c]{0.56\textwidth}
 \small
@@ -655,7 +546,7 @@ Example: $U_\text{clay} = 1/(0.13 + 0.23/0.81 + 0.04) = \SI{2.20}{W/m^2K}$.
 \captionof{figure}{Solar reflectance of wall finishes (typical values).}
 \end{minipage}
 
-\subsection{Upgrade 4 --- Peel biochar: using the whole orange}
+\subsubsection*{Upgrade 4 --- Peel biochar: using the whole orange}
 
 \begin{minipage}[c]{0.54\textwidth}
 \small
@@ -692,7 +583,7 @@ After steam distillation, the peel residue is still waste. We
 \captionof{figure}{Zero-waste use of the orange.}
 \end{minipage}
 
-\subsection{Upgrade 5 --- Breeze-block (jaali) CoolBricks}
+\subsubsection*{Upgrade 5 --- Breeze-block (jaali) CoolBricks}
 
 \begin{minipage}[c]{0.56\textwidth}
 \small
@@ -723,8 +614,68 @@ After steam distillation, the peel residue is still waste. We
 \captionof{figure}{CoolBrick jaali module (concept).}
 \end{minipage}
 
+\subsection{Where CoolBricks fit in a data centre}
+\begin{minipage}[c]{0.54\textwidth}
+\textbf{Being honest about the physics.} In a large data hall, most of the
+heat comes from the servers, not through the walls. So CoolBricks target the
+places where the \textbf{building envelope matters most}:
+\begin{enumerate}
+  \item \textbf{Edge data centres and telecom shelters:} small boxes in full
+        sun, where heat through the walls and roof is a large share of the
+        cooling load.
+  \item \textbf{Roofs and sun-facing walls} of large sites: a cool-face
+        coating and jaali sun-screens cut solar heat gain.
+  \item \textbf{UPS, battery and generator rooms:} batteries age faster when
+        hot.
+  \item \textbf{Ride-through:} PCM walls soak up heat for a while if the
+        cooling fails.
+\end{enumerate}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.42\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.95]
+  \fill[ink!8] (0,0) rectangle (5.2,3.4);
+  \draw[ink,thick] (0,0) rectangle (5.2,3.4);
+  \foreach \x in {0.5,1.5,2.5,3.5}{\fill[ink!60] (\x,0.2) rectangle ++(0.6,2.0);
+     \foreach \y in {0.4,0.8,...,2.0}{\fill[leaf!70] (\x+0.08,\y) rectangle ++(0.1,0.08);}}
+  \node[font=\scriptsize,text=ink] at (2.4,2.65) {servers: \textbf{most} of the heat};
+  \fill[white] (0,3.4) rectangle (5.2,3.6); \draw[ink] (0,3.4) rectangle (5.2,3.6);
+  \fill[citrus!40] (-0.25,0) rectangle (0,3.4); \fill[citrus!40] (5.2,0) rectangle (5.45,3.4);
+  \fill[citrus!90] (5.4,4.5) circle (0.32);
+  \draw[-{Stealth},heat,thick,decorate,decoration={snake,amplitude=1pt,segment length=5pt}] (5.1,4.3)--(4.3,3.7);
+  \draw[-{Stealth},heat,thick,decorate,decoration={snake,amplitude=1pt,segment length=5pt}] (5.6,4.1)--(5.5,2.6);
+  \node[font=\scriptsize,text=citrus!80!black] at (2.6,-0.35) {CoolBrick walls + cool-face roof};
+\end{tikzpicture}
+\captionof{figure}{In a data centre, CoolBricks tackle the heat coming from outside.}
+\end{minipage}
+
+\begin{card}{leaf}
+\textbf{Closed loop:} data centres throw away Styrofoam from server
+packaging. We collect it and turn it into bricks and screens for their own
+buildings.
+\end{card}
+
+
 % =====================================================================
-\section{Updated Process (Version 2)}
+\section{Methodology \& Experimental Design}
+
+\subsection{Making the brick}
+\begin{enumerate}
+  \item \textbf{Collect} clean Styrofoam packaging and orange peels.
+  \item \textbf{Extract D-limonene} from the peels by steam distillation and
+        separate the oil from the water.
+  \item \textbf{Dissolve} broken Styrofoam in the limonene until it forms a
+        thick polystyrene gel \todo{ratio of foam to limonene used}.
+  \item \textbf{Mix} in sand or other fillers and, for version 2, the
+        orange-peel biochar \todo{mix proportions}.
+  \item \textbf{Mould} the gel into brick moulds. For the CoolBrick, the
+        moulds form the hollow air cells and the PCM pockets, which are
+        filled with the coconut-oil blend and sealed.
+  \item \textbf{Cure} the bricks under a cover with a simple condenser to
+        recover the limonene \todo{curing time and temperature}.
+  \item \textbf{Coat} the sun-facing side with the calcium-carbonate
+        cool-face paint.
+\end{enumerate}
 
 \begin{figure}[htbp]
 \centering
@@ -751,9 +702,30 @@ condenser recovers the limonene vapour instead of releasing it, which
 lowers cost, odour and VOC emissions.
 \end{card}
 
-% =====================================================================
-\section{Test Plan}
 
+\subsection{Experimental design}
+\textbf{Aim:} to find out whether a CoolBrick wall lets less heat into a
+cooled room than a fired-clay wall, and whether it keeps the room safe for
+longer if the cooling fails.
+
+\textbf{Hypothesis:} the CoolBrick will cut heat entering the room by more
+than half and at least double the time before the room reaches
+\SI{35}{\celsius}.
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}l X@{}}
+\toprule
+Independent variable & Wall material: fired clay, Poly Citra v1, CoolBrick. \\
+Dependent variables & Outer and inner surface temperature (\si{\celsius}); heat flowing into the room (W/m\textsuperscript{2}); cooling energy used (kWh); time for the room to reach \SI{35}{\celsius} after the cooling stops. \\
+Control variables & Shelter size (\SI{0.6}{m} cube), wall thickness, location and orientation on the roof, the same \SI{100}{W} heater as ``servers'', the same cooler and thermostat setting, same sensors and logging interval, same days. \\
+Equipment & Two model shelters, \SI{100}{W} heaters, small coolers, plug-in energy meters, Arduino with DS18B20 temperature sensors, IR thermometer. \\
+Repeats & 30 summer days; each material test on at least 5 bricks. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Tests on the brick}
 \begin{center}
 \small
 \begin{tabularx}{\textwidth}{@{}l X l l@{}}
@@ -782,26 +754,36 @@ peak temperature, and how long each stays below \SI{35}{\celsius} when the
 cooling is switched off.
 \end{card}
 
-\subsection{Results \todo{fill in}}
+\subsection{Computer simulation}
+Before building, we tested the design with a computer model that we wrote
+in JavaScript. Each wall is split into 47 thin slices. Every 10 seconds of
+simulated time the program calculates how much heat moves between
+neighbouring slices using Fourier's law, $q = k\,\Delta T/\Delta x$. On the
+outside, the wall absorbs sunlight ($\alpha I$), exchanges heat with the air
+($h_o = \SI{15}{W/m^2K}$) and radiates heat to a sky about
+\SI{18}{\celsius} colder than the air (Stefan--Boltzmann law). On the
+inside, it meets \SI{25}{\celsius} room air ($h_i = \SI{8}{W/m^2K}$). The PCM
+layer is modelled with extra heat capacity around its melting point. The
+weather is a hot north-Indian day (air 27--\SI{41}{\celsius}, strong sun).
+The model runs three days and reports the third, so the starting guess does
+not matter. For the failure test, the cooling stops at 14:00 while
+\SI{1.5}{kW} of servers keep heating the room.
+
 \begin{center}
 \small
-\begin{tabular}{@{}lccc@{}}
+\begin{tabular}{@{}lccccc@{}}
 \toprule
- & Clay & Poly Citra v1 & CoolBrick \\
+Material & $k$ (W/mK) & Density (kg/m\textsuperscript{3}) & $U$, 230 mm (W/m\textsuperscript{2}K) & Sun absorbed & PCM \\
 \midrule
-Mass per brick (kg)                    & \todo{} & \todo{} & \todo{} \\
-Compressive strength (MPa)             & \todo{} & \todo{} & \todo{} \\
-Water absorption (\%)                  & \todo{} & \todo{} & \todo{} \\
-Surface temperature at noon (\si{\celsius}) & \todo{} & \todo{} & \todo{} \\
-Cooling energy over 30 days (kWh)      & \todo{} & \todo{} & \todo{} \\
-Ride-through to \SI{35}{\celsius} (min) & \todo{} & \todo{} & \todo{} \\
+Fired clay & 0.81 & 1800 & 2.20 & 70\% & none \\
+Poly Citra v1 & 0.20 & 1050 & 0.76 & 55\% & none \\
+CoolBrick & 0.15 / 0.18 & 600 / 850 & 0.60 & 5\% & 30 mm, melts \SI{27}{\celsius} \\
 \bottomrule
 \end{tabular}
 \end{center}
+{\footnotesize\color{gray} CoolBrick values are design targets to be measured. The PCM layer is a 50\% coconut-oil blend with latent heat 110 kJ/kg.}
 
-% =====================================================================
-\section{Risks and Mitigation}
-
+\subsection{Safety and risks}
 \begin{center}
 \small
 \begin{tabularx}{\textwidth}{@{}>{\bfseries}l X X@{}}
@@ -820,9 +802,181 @@ Cost & Must compete with standard blocks. & Free waste inputs; solvent recovery;
 \end{center}
 
 % =====================================================================
-\section{Impact Estimate for One Edge Data-Centre Shelter}
+\section{Results So Far and Explanation of Results}
+
+\subsection{Prototype results (version 1)}
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{dissolving.jpg}\caption{Styrofoam dissolving}\end{subfigure}\hfill
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{brick-sample.jpg}\caption{Cured brick sample}\end{subfigure}\hfill
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{brickwall.jpg}\caption{Compared with a clay wall}\end{subfigure}\\[6pt]
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{water-test.jpg}\caption{Water test}\end{subfigure}\hfill
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{heat-test.jpg}\caption{Heat test}\end{subfigure}\hfill
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{load-test.jpg}\caption{Load test}\end{subfigure}
+\caption{Making and testing the Poly Citra Brick prototype.}
+\end{figure}
+
+We have made and tested Poly Citra v1 bricks. They float in water, show
+little water absorption, keep their shape when heated and hold a load
+\todo{add the measured values: mass, density, water absorption, load held,
+heat test temperature}.
+
+\subsection{Simulation results (version 2)}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=0.49\textwidth,height=6.2cm,xmin=0,xmax=23,ymin=20,ymax=56,xtick={0,3,6,9,12,15,18,21},
+  xlabel={Hour of day},ylabel={Outer surface temperature (\si{\celsius})},label style={font=\small},tick label style={font=\scriptsize},
+  legend style={font=\scriptsize,at={(0.02,0.98)},anchor=north west,draw=none,fill=white,fill opacity=0.85},grid=major,grid style={gray!20},axis lines*=left]
+\addplot[gray,thick,densely dotted] coordinates {(0,29.1) (1,27.9) (2,27.2) (3,27) (4,27.2) (5,27.9) (6,29.1) (7,30.5) (8,32.2) (9,34) (10,35.8) (11,37.5) (12,38.9) (13,40.1) (14,40.8) (15,41) (16,40.8) (17,40.1) (18,38.9) (19,37.5) (20,35.8) (21,34) (22,32.2) (23,30.5)};
+\addlegendentry{Outdoor air}
+\addplot[heat!75,very thick] coordinates {(0,29.3) (1,28.1) (2,27.2) (3,26.6) (4,26.4) (5,26.5) (6,27) (7,28.1) (8,29.6) (9,31.2) (10,32.9) (11,34.5) (12,35.9) (13,37.9) (14,43.4) (15,49.2) (16,51.9) (17,50.1) (18,44.6) (19,38.4) (20,35.8) (21,33.9) (22,32.2) (23,30.7)};
+\addlegendentry{Clay}
+\addplot[leaf,very thick,dashed] coordinates {(0,28.2) (1,27.1) (2,26.3) (3,25.8) (4,25.8) (5,26.2) (6,26.9) (7,28.4) (8,30.1) (9,32) (10,33.9) (11,35.7) (12,37.2) (13,39.3) (14,45) (15,50.3) (16,52.1) (17,49.4) (18,43.2) (19,37) (20,34.8) (21,33) (22,31.2) (23,29.6)};
+\addlegendentry{Poly Citra v1}
+\addplot[citrus,very thick] coordinates {(0,27.5) (1,26.4) (2,25.6) (3,25.2) (4,25.3) (5,25.8) (6,26.6) (7,27.9) (8,29.4) (9,31) (10,32.7) (11,34.2) (12,35.6) (13,36.9) (14,38.1) (15,38.9) (16,39) (17,38.2) (18,36.8) (19,35.1) (20,33.6) (21,32) (22,30.4) (23,28.8)};
+\addlegendentry{CoolBrick}
+\end{axis}
+\end{tikzpicture}\hfill
+\begin{tikzpicture}
+\begin{axis}[width=0.49\textwidth,height=6.2cm,xmin=0,xmax=23,ymin=0,ymax=45,xtick={0,3,6,9,12,15,18,21},
+  xlabel={Hour of day},ylabel={Heat into room (W/m\textsuperscript{2})},label style={font=\small},tick label style={font=\scriptsize},
+  legend style={font=\scriptsize,at={(0.02,0.98)},anchor=north west,draw=none,fill=white,fill opacity=0.85},grid=major,grid style={gray!20},axis lines*=left]
+\addplot[heat!75,very thick] coordinates {(0,34.5) (1,31.4) (2,28.2) (3,25) (4,21.8) (5,18.9) (6,16.3) (7,14.1) (8,12.3) (9,11.2) (10,10.8) (11,11) (12,11.9) (13,13.4) (14,15.2) (15,17.6) (16,21.1) (17,26.1) (18,31.7) (19,36.8) (20,39.9) (21,40.6) (22,39.4) (23,37.2)};
+\addlegendentry{Clay}
+\addplot[leaf,very thick,dashed] coordinates {(0,8.7) (1,9) (2,9.1) (3,9.2) (4,9.1) (5,8.9) (6,8.7) (7,8.4) (8,8) (9,7.6) (10,7.2) (11,6.8) (12,6.5) (13,6.2) (14,6) (15,5.8) (16,5.8) (17,5.8) (18,6) (19,6.2) (20,6.7) (21,7.2) (22,7.8) (23,8.3)};
+\addlegendentry{Poly Citra v1}
+\addplot[citrus,very thick] coordinates {(0,7) (1,6.9) (2,6.9) (3,6.9) (4,6.8) (5,6.8) (6,6.8) (7,6.7) (8,6.7) (9,6.6) (10,6.5) (11,6.4) (12,6.3) (13,6.2) (14,6) (15,5.9) (16,5.8) (17,5.7) (18,5.6) (19,5.5) (20,5.4) (21,5.4) (22,5.4) (23,5.4)};
+\addlegendentry{CoolBrick}
+\end{axis}
+\end{tikzpicture}
+\caption{West wall on a hot day (simulation). Left: how hot the outside face gets. Right: heat flowing into the cooled room.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[ybar,width=0.44\textwidth,height=6.2cm,bar width=24pt,ymin=0,ymax=28,
+  symbolic x coords={Clay,Poly Citra v1,CoolBrick},xtick=data,nodes near coords,nodes near coords style={font=\small},
+  ylabel={Heat gained per day (kWh)},label style={font=\small},tick label style={font=\scriptsize},axis lines*=left,enlarge x limits=0.25]
+\addplot[fill=citrus!80,draw=none] coordinates {(Clay,24.4) (Poly Citra v1,7.7) (CoolBrick,6.4)};
+\end{axis}
+\end{tikzpicture}\hfill
+\begin{tikzpicture}
+\begin{axis}[width=0.52\textwidth,height=6.2cm,xmin=0,xmax=12,ymin=24,ymax=48,xtick={0,2,4,6,8,10,12},
+  xlabel={Hours after cooling fails},ylabel={Room temperature (\si{\celsius})},label style={font=\small},tick label style={font=\scriptsize},
+  legend style={font=\scriptsize,at={(0.98,0.02)},anchor=south east,draw=none,fill=white,fill opacity=0.85},grid=major,grid style={gray!20},axis lines*=left]
+\addplot[heat!75,very thick] coordinates {(0,25.1) (0.5,32.6) (1,34.5) (1.5,35.7) (2,36.7) (2.5,37.7) (3,38.5) (3.5,39.4) (4,40.1) (4.5,40.9) (5,41.6) (5.5,42.2) (6,42.8) (6.5,43.3) (7,43.7) (7.5,44) (8,44.3) (8.5,44.6) (9,44.8) (9.5,44.9) (10,45) (10.5,45.1) (11,45.1) (11.5,45.1)};
+\addlegendentry{Clay}
+\addplot[leaf,very thick,dashed] coordinates {(0,25.1) (0.5,31.1) (1,33.2) (1.5,34.6) (2,35.6) (2.5,36.6) (3,37.4) (3.5,38.2) (4,38.9) (4.5,39.6) (5,40.2) (5.5,40.9) (6,41.5) (6.5,42.1) (7,42.6) (7.5,43.2) (8,43.7) (8.5,44.3) (9,44.8) (9.5,45.3) (10,45.8) (10.5,46.2) (11,46.7) (11.5,47.1)};
+\addlegendentry{Poly Citra v1}
+\addplot[citrus,very thick] coordinates {(0,25.1) (0.5,30.1) (1,30.9) (1.5,31.3) (2,31.5) (2.5,31.8) (3,32) (3.5,32.2) (4,32.4) (4.5,32.6) (5,32.9) (5.5,33.1) (6,33.3) (6.5,33.5) (7,33.7) (7.5,34) (8,34.2) (8.5,34.5) (9,34.7) (9.5,35) (10,35.3) (10.5,35.6) (11,35.9) (11.5,36.3)};
+\addlegendentry{CoolBrick}
+\addplot[black,thin,dashed] coordinates {(0,35) (12,35)};
+\addlegendentry{\SI{35}{\celsius} limit}
+\end{axis}
+\end{tikzpicture}
+\caption{Whole \SI{3}{m} shelter (simulation). Left: heat gained through walls and roof in one day. Right: room temperature after the cooling fails at 14:00 with \SI{1.5}{kW} of servers running.}
+\end{figure}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Simulation result & Clay & Poly Citra v1 & CoolBrick \\
+\midrule
+Wall U-value (W/m\textsuperscript{2}K) & 2.20 & 0.76 & 0.60 \\
+Hottest outer surface, west wall (\si{\celsius}) & 51.9 & 52.1 & 39.1 \\
+Peak heat into room, west wall (W/m\textsuperscript{2}) & 40.6 & 9.2 & 7 \\
+Heat gained by shelter per day (kWh) & 24.4 & 7.7 & 6.4 \\
+Time to reach \SI{35}{\celsius} after cooling fails (h) & 1.3 & 1.8 & 9.5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Explanation of the results}
+\begin{itemize}
+  \item \textbf{The white coat keeps the surface cool.} Clay and v1 absorb
+        most of the sunlight, so their west faces reach about
+        \SI{52}{\celsius} in the afternoon. The CoolBrick coat reflects
+        about 95\% of sunlight and radiates heat to the sky, so its surface
+        stays just below the air temperature.
+  \item \textbf{Low conductivity cuts heat flow.} Clay conducts heat about
+        five times better than the CoolBrick body, so it lets in about
+        four times as much heat over the day (24.4 vs 6.4 kWh).
+        Clay is also heavy, so it stores heat and keeps releasing it into
+        the room well into the night (the evening peak in the right-hand
+        chart above).
+  \item \textbf{Insulation alone is not enough when cooling fails.} v1
+        lets in almost as little heat as the CoolBrick, but it reaches
+        \SI{35}{\celsius} almost as fast as clay. It is light and has
+        nothing to soak up the servers' heat. The CoolBrick's PCM melts at
+        \SI{27}{\celsius} and absorbs that heat, which keeps the room safe
+        for about 9.5 hours instead of about
+        1.3 hours.
+  \item \textbf{Limits.} These are model results using assumed values for
+        the new materials. Real bricks will have joints, mortar and
+        imperfections, so we expect smaller savings in practice. The
+        mini data-centre experiment will test this.
+\end{itemize}
+
+\subsection{Measured results (to be completed) \todo{fill in}}
+\begin{center}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+ & Clay & Poly Citra v1 & CoolBrick \\
+\midrule
+Mass per brick (kg)                    & \todo{} & \todo{} & \todo{} \\
+Compressive strength (MPa)             & \todo{} & \todo{} & \todo{} \\
+Water absorption (\%)                  & \todo{} & \todo{} & \todo{} \\
+Surface temperature at noon (\si{\celsius}) & \todo{} & \todo{} & \todo{} \\
+Cooling energy over 30 days (kWh)      & \todo{} & \todo{} & \todo{} \\
+Ride-through to \SI{35}{\celsius} (min) & \todo{} & \todo{} & \todo{} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% =====================================================================
+\section{Conclusion}
+
+Poly Citra Bricks show that two common wastes, Styrofoam and orange peel, can
+be turned into a light, waterproof building brick without mining clay or
+firing a kiln. By redesigning the brick to ``put the air back'' and adding a
+reflective coat, a coconut-oil PCM and peel biochar, the CoolBrick becomes a
+\textbf{passive cooling system}. Our simulation of a small edge data-centre
+shelter predicts about 74\% less heat through the walls and roof
+than clay, about 1,200 kWh of cooling electricity saved per shelter per year,
+and 9.5 hours instead of 1.3 before the room overheats if the
+cooling fails. The results support our hypothesis, but they are model
+predictions. The next step is to measure the real bricks and run the
+mini data-centre experiment.
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}l X X@{}}
+\toprule
+ & Poly Citra Bricks (v1) & Poly Citra CoolBrick (v2) \\
+\midrule
+Goal & Turn two wastes into a brick & \ldots{} that also \textbf{cuts data-centre cooling energy} \\
+Audience & NGOs, housing, government & \textbf{Data centres}, edge and telecom sites (plus housing) \\
+Inputs & EPS + orange-peel limonene & + peel biochar, bio-PCM, CaCO$_3$ from eggshell or marble waste \\
+Structure & Solid moulded brick & Hollow air cells, sealed PCM pockets, interlocking key, jaali variant \\
+Thermal & Not measured & Target $U \approx \SI{0.6}{W/m^2K}$ vs.\ 2.2 for clay; delayed peaks \\
+Fire safety & Not addressed & Biochar flame retardance, mineral coat, burn testing \\
+Solvent & Single use & Recovered by condensation and reused \\
+Evidence & Prototype & Standard tests + 30-day mini data-centre experiment \\
+SDGs & 11, 12, 13 & 7, 9, 11, 12, 13 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% =====================================================================
+\section{Future Potential of the Project}
 
 \begin{minipage}[c]{0.58\textwidth}
+\subsection{Impact at scale}
 \textbf{Assumptions:} a \SI{3}{m}\,$\times$\,\SI{3}{m}\,$\times$\,\SI{3}{m}
 shelter with \SI{36}{m^2} of walls. The sun-heated outer wall surface
 averages \SI{12}{K} above the \SI{25}{\celsius} inside, 24 hours a day on 200
@@ -856,9 +1010,72 @@ cooling through better building envelopes, and large data-centre operators
 are setting their own energy and carbon targets.
 \end{card}
 
-% =====================================================================
-\section{Roadmap}
 
+\subsection{Who will use it}
+\begin{minipage}[c]{0.62\textwidth}
+\textbf{Primary customers}
+\begin{itemize}
+  \item \textbf{Edge data-centre and telecom-tower companies} --- thousands
+        of small shelters standing in full sun.
+  \item \textbf{Colocation and hyperscale data-centre operators} --- roofs,
+        sun-facing walls, UPS and battery rooms, and their sustainability
+        (ESG) targets.
+  \item \textbf{Modular data-centre builders and EPC contractors} who design
+        and build these sites.
+\end{itemize}
+\textbf{Also} (the original Poly Citra audience): NGOs, government bodies,
+educators, architects and environmental start-ups working on affordable
+housing.
+\end{minipage}\hfill
+\begin{minipage}[c]{0.33\textwidth}
+\centering\includegraphics[width=\linewidth]{audience.png}
+\end{minipage}
+
+\begin{card}{leaf}
+\textbf{Why data centres will listen.} Cooling is one of a data centre's
+biggest running costs, and large operators publish carbon and waste targets.
+CoolBricks cut cooling energy \emph{and} recycle the operator's own server
+packaging.
+\end{card}
+
+
+\subsection{Business model}
+\begin{minipage}[c]{0.68\textwidth}
+\begin{card}{citrus}\textbf{B2B supply.} Sell CoolBricks, jaali sun-screens and cool-face coating to data-centre builders and edge/telecom operators.\end{card}
+\begin{card}{leaf}\textbf{Packaging take-back.} Collect server Styrofoam from data centres (a waste they pay to remove) and peels from juice vendors.\end{card}
+\begin{card}{sky}\textbf{Shelter retrofit kits.} CoolBrick panels plus cool-face coat for existing hot telecom and edge shelters.\end{card}
+\begin{card}{heat}\textbf{Pilot, then scale.} A paid pilot at one edge site with sensors; its data becomes our sales case.\end{card}
+\begin{card}{plum}\textbf{ESG reporting.} Give operators figures for waste recycled and CO$_2$ avoided for their sustainability reports.\end{card}
+\begin{card}{ink}\textbf{Original market.} Direct sales and eco-shelters for NGOs, builders and CSR projects continue alongside.\end{card}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.28\textwidth}
+\centering\includegraphics[width=\linewidth]{revenue.png}
+\end{minipage}
+
+\subsection{Spreading the idea}
+\begin{minipage}[c]{0.62\textwidth}
+\begin{enumerate}[label=\textcolor{citrus}{\textbf{\arabic*.}}]
+  \item \new\ \textbf{Mini data-centre demo} --- two model shelters side by
+        side with live temperature and energy readings.
+  \item \new\ \textbf{Data-centre industry events} --- pitch the
+        packaging-to-brick closed loop to sustainability teams.
+  \item \new\ \textbf{Open data} --- publish our test logs so engineers can
+        check the numbers; the way to win a cautious industry.
+  \item \textbf{Social Media Storytelling} --- videos showing waste
+        transformed into eco-bricks: ``your server box became your wall''.
+  \item \textbf{Live Demonstrations} and \textbf{NGO Collaborations} ---
+        hands-on events and pilot projects to build trust.
+  \item \textbf{Student Ambassador Program} --- empower youth to lead
+        sustainability drives and workshops.
+\end{enumerate}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.34\textwidth}
+\centering
+\includegraphics[width=0.48\linewidth,height=3.6cm,keepaspectratio=false]{social-media.png}\hfill
+\includegraphics[width=0.48\linewidth]{ngo.png}
+\end{minipage}
+
+\subsection{Roadmap}
 \begin{center}
 \begin{tikzpicture}[
   ph/.style={rectangle,rounded corners=3pt,minimum width=3.8cm,minimum height=2.8cm,
@@ -876,30 +1093,9 @@ are setting their own energy and carbon targets.
 \end{center}
 
 % =====================================================================
-\section{What Changed from Version 1 to Version 2}
+\section{Bibliography, References and Acknowledgements}
 
-\begin{center}
-\small
-\begin{tabularx}{\textwidth}{@{}>{\bfseries}l X X@{}}
-\toprule
- & Poly Citra Bricks (v1) & Poly Citra CoolBrick (v2) \\
-\midrule
-Goal & Turn two wastes into a brick & \ldots{} that also \textbf{cuts data-centre cooling energy} \\
-Audience & NGOs, housing, government & \textbf{Data centres}, edge and telecom sites (plus housing) \\
-Inputs & EPS + orange-peel limonene & + peel biochar, bio-PCM, CaCO$_3$ from eggshell or marble waste \\
-Structure & Solid moulded brick & Hollow air cells, sealed PCM pockets, interlocking key, jaali variant \\
-Thermal & Not measured & Target $U \approx \SI{0.6}{W/m^2K}$ vs.\ 2.2 for clay; delayed peaks \\
-Fire safety & Not addressed & Biochar flame retardance, mineral coat, burn testing \\
-Solvent & Single use & Recovered by condensation and reused \\
-Evidence & Prototype & Standard tests + 30-day mini data-centre experiment \\
-SDGs & 11, 12, 13 & 7, 9, 11, 12, 13 \\
-\bottomrule
-\end{tabularx}
-\end{center}
-
-% =====================================================================
-\section*{References}
-\addcontentsline{toc}{section}{References}
+\subsection*{References}
 \small
 \begin{enumerate}[label={[\arabic*]},leftmargin=*]
 \item Ministry of Environment, Forest \& Climate Change (2019).
@@ -924,6 +1120,7 @@ SDGs & 11, 12, 13 & 7, 9, 11, 12, 13 \\
       bricks), IS 3495 Parts 1--4 (methods of test of burnt clay bricks),
       IS 3346 (thermal conductivity by guarded hot plate).
 \item UL 94: Standard for Safety of Flammability of Plastic Materials.
+\item CareEdge Ratings and Redseer Strategy Consultants (2025--26). Forecasts of India data-centre capacity to 2030.
 \item International Energy Agency (2025). \emph{Energy and AI}: Energy demand from AI.
 \item Wood Mackenzie (2026). India data centre capacity to reach 12 GW by 2030.
 \item Skach, M.\ et al.\ (2015). Thermal time shifting: leveraging phase change
@@ -931,10 +1128,16 @@ SDGs & 11, 12, 13 & 7, 9, 11, 12, 13 \\
       \emph{ISCA 2015}.
 \end{enumerate}
 
+\subsection*{Acknowledgements}
+We thank \todo{teacher / mentor names} and Scottish High International
+School for their guidance and for the use of the science laboratory, and our
+families for their support. \todo{add anyone else who helped}
+
 \vfill
 \begin{center}
 {\Huge\bfseries\color{citrus}Thank you!}\\[4pt]
-{\large Waste in. Cool data centres out.}
+{\large Waste in. Cool data centres out.}\\[6pt]
+{\small Rian Sikka \& Daiwik Abroo \textbullet\ Grade 9 (IGCSE) \textbullet\ Scottish High International School}
 \end{center}
 
 \end{document}
