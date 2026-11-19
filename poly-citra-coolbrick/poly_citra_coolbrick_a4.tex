@@ -91,7 +91,7 @@ at national-level competitions \toadd{awards}.
 
 In this edition we redesign it as the \textbf{CoolBrick}, a brick that keeps
 heat out of buildings. Inside each brick are hollow air pockets and sealed
-pockets of coconut oil that soak up heat. The brick also contains charcoal
+pockets of a cheap salt (Glauber's salt) that soaks up heat. The brick also contains charcoal
 made from the leftover peel, and the outside face has a white
 coat that reflects sunlight. India's buildings, especially classrooms, get
 very hot in summer, and most cannot afford air-conditioning.
@@ -105,14 +105,16 @@ gets through different walls on a hot day (up to \SI{41}{\celsius}):
  & Clay brick & Poly Citra v1 & \textbf{CoolBrick} \\
 \midrule
 Hottest temperature of the outside of the wall & \SI{52}{\celsius} & \SI{52}{\celsius} & \textbf{\SI{39}{\celsius}} \\
-Heat let into a small building in one day & 100\% & 32\% & \textbf{26\%} \\
+Heat let into a small building in one day & 100\% & 32\% & \textbf{17\%} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-A CoolBrick building lets in about \textbf{three-quarters less heat} than a
-clay-brick one. These are computer results; our next step is to test real
-bricks.
+A CoolBrick building lets in about \textbf{80\% less heat} than a
+clay-brick one. We also replaced the expensive coconut oil used in our first
+design with Glauber's salt, which cuts the cost of a brick about in half. These
+are computer results; our next step is to test real bricks, including how
+strong they are.
 
 \begin{usp}
 \Large\bfseries A brick that keeps rooms cool without electricity, made from
@@ -228,7 +230,7 @@ back in.
   \draw[soft] (-0.12,3) -- (-0.12,3.3) node[above,font=\scriptsize]{1 white coat};
   \draw[soft] (1.2,2.55) -- (1.2,3.75) node[above,font=\scriptsize]{2 air pockets};
   \draw[soft] (3.3,2.9) -- (3.3,3.3) node[above,font=\scriptsize]{3 plastic + peel charcoal};
-  \draw[soft] (4.8,2.55) -- (4.8,3.75) node[above,font=\scriptsize]{4 coconut oil};
+  \draw[soft] (4.8,2.55) -- (4.8,3.75) node[above,font=\scriptsize]{4 salt pockets};
   \draw[soft] (5.7,0) -- (5.7,-0.3) node[below,font=\scriptsize]{5 interlocking shape};
 \end{tikzpicture}
 \caption{Cross-section of a CoolBrick, from the outside face (left) to the room side (right).}
@@ -242,9 +244,10 @@ back in.
   \item \textbf{Body.} The hardened plastic gel makes the brick strong and
         waterproof. Charcoal from the leftover peel adds tiny air spaces and
         helps the brick resist fire.
-  \item \textbf{Coconut-oil pockets.} Coconut oil melts at about
-        \SI{27}{\celsius}. As it melts it soaks up heat, like ice in a cold
-        drink, and it sets again at night.
+  \item \textbf{Salt pockets.} Sealed pockets of Glauber's salt (sodium
+        sulfate), which melts at about \SI{32}{\celsius}. As it melts it soaks
+        up heat, like ice in a cold drink, and it sets again at night.
+        Section~5.4 explains why we chose it instead of coconut oil.
   \item \textbf{Interlocking shape.} Bricks lock together, so less cement is
         needed between them.
 \end{enumerate}
@@ -258,8 +261,9 @@ back in.
   \item Extract D-limonene from the peel by steam distillation.
   \item Dissolve broken Styrofoam in the limonene to form a gel \toadd{ratio used}.
   \item Mix in sand and charcoal made from the peel \toadd{proportions}.
-  \item Pour into moulds that leave air pockets and oil pockets; fill the oil
-        pockets with coconut oil and seal them.
+  \item Press the mix into moulds that leave air pockets and salt pockets;
+        fill the salt pockets with Glauber's salt mixed with a little borax and
+        a thickener, and seal them.
   \item Cure under a cover, collecting the limonene vapour for reuse
         \toadd{curing time}.
   \item Paint the outside face with the white coat.
@@ -294,13 +298,58 @@ Equipment & Digital thermometers with a data logger \\
 \toprule
 Test & How we do it \\
 \midrule
-Strength & Press bricks until they crack and compare with clay bricks \\
+Strength & Crush bricks in a testing machine (see Section~4.4) \\
 Water & Soak a brick for 24 hours and weigh it before and after \\
 Heat & Shine a heat lamp on one side and measure the other side \\
 Fire & Hold a flame to a sample and check it does not keep burning \\
 \bottomrule
 \end{tabularx}
 \end{center}
+
+\clearpage
+\subsection{Will the brick be strong enough?}
+A brick in a wall has to carry weight without cracking. Strength is measured
+by crushing a brick: \textbf{strength = force $\div$ area}, in N/mm\textsuperscript{2}.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}X c@{}}
+\toprule
+What we found & Strength (N/mm\textsuperscript{2}) \\
+\midrule
+Indian standard for clay bricks, lowest class (IS 1077) & at least 3.5 \\
+Sand held together by dissolved Styrofoam (5--17\% foam) [11] & about 4--12 \\
+Sand held together by melted waste plastic [13, 14] & about 9--33 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+So bricks made from dissolved Styrofoam \emph{and sand} can pass the
+standard. But research also shows some risks for our design:
+\begin{itemize}
+  \item \textbf{More foam or air makes a brick weaker}. Our air and salt
+        pockets will reduce strength, so the walls between pockets must stay
+        thick enough.
+  \item \textbf{Leftover limonene keeps the plastic soft.} We will dry each
+        brick until its weight stops dropping.
+  \item \textbf{Pressing the mix into the mould makes it stronger} [12], so
+        we will press, not just pour.
+  \item \textbf{Fire.} Plastic bricks can drip and keep burning, and one study
+        found they lost up to a third of their strength after a fire [15].
+        Adding sand and clay reduced the burning a lot [14], so our mix uses
+        sand and peel charcoal, and the wall is plastered on both sides.
+  \item \textbf{Sunlight} makes polystyrene brittle over time; the white coat
+        covers it. Polystyrene softens only near \SI{95}{\celsius}, far above
+        the \SI{39}{\celsius} the CoolBrick's outside reaches.
+\end{itemize}
+
+\textbf{Our strength test.} We will make three mixes with different amounts of
+foam gel and sand \toadd{ratios}, five bricks of each, and crush them at a
+local cement-testing lab \toadd{lab name}. A brick face of
+190\,mm $\times$ 90\,mm must hold about \SI{60}{kN} (about 6 tonnes) to reach
+3.5 N/mm\textsuperscript{2}. We will also check water soaking (the standard
+allows at most 20\% of the brick's weight). If the CoolBrick is not strong
+enough for load-bearing walls, it can still be used for the filling walls of
+concrete-frame buildings, which carry only their own weight.
 
 \subsection{Computer simulation}
 Before building, we wrote a computer program that works out, minute by
@@ -336,7 +385,7 @@ and hold a load \toadd{measured values}.
 \addplot[soft,densely dotted,thick] coordinates {(0,29.1)(1,27.9)(2,27.2)(3,27)(4,27.2)(5,27.9)(6,29.1)(7,30.5)(8,32.2)(9,34)(10,35.8)(11,37.5)(12,38.9)(13,40.1)(14,40.8)(15,41)(16,40.8)(17,40.1)(18,38.9)(19,37.5)(20,35.8)(21,34)(22,32.2)(23,30.5)};\addlegendentry{Outdoor air}
 \addplot[clay,very thick] coordinates {(0,29.3)(1,28.1)(2,27.2)(3,26.6)(4,26.4)(5,26.5)(6,27)(7,28.1)(8,29.6)(9,31.2)(10,32.9)(11,34.5)(12,35.9)(13,37.9)(14,43.4)(15,49.2)(16,51.9)(17,50.1)(18,44.6)(19,38.4)(20,35.8)(21,33.9)(22,32.2)(23,30.7)};\addlegendentry{Clay}
 \addplot[vone,very thick,dashed] coordinates {(0,28.2)(1,27.1)(2,26.3)(3,25.8)(4,25.8)(5,26.2)(6,26.9)(7,28.4)(8,30.1)(9,32)(10,33.9)(11,35.7)(12,37.2)(13,39.3)(14,45)(15,50.3)(16,52.1)(17,49.4)(18,43.2)(19,37)(20,34.8)(21,33)(22,31.2)(23,29.6)};\addlegendentry{Poly Citra v1}
-\addplot[cool,very thick] coordinates {(0,27.5)(1,26.4)(2,25.6)(3,25.2)(4,25.3)(5,25.8)(6,26.6)(7,27.9)(8,29.4)(9,31)(10,32.7)(11,34.2)(12,35.6)(13,36.9)(14,38.1)(15,38.9)(16,39)(17,38.2)(18,36.8)(19,35.1)(20,33.6)(21,32)(22,30.4)(23,28.8)};\addlegendentry{CoolBrick}
+\addplot[cool,very thick] coordinates {(0,27.4)(1,26.3)(2,25.6)(3,25.2)(4,25.3)(5,25.8)(6,26.6)(7,27.9)(8,29.3)(9,31)(10,32.6)(11,34.2)(12,35.6)(13,36.8)(14,38.1)(15,38.9)(16,39)(17,38.2)(18,36.8)(19,35.1)(20,33.6)(21,32)(22,30.4)(23,28.8)};\addlegendentry{CoolBrick}
 \end{axis}
 \end{tikzpicture}\hfill
 \begin{tikzpicture}
@@ -344,8 +393,8 @@ and hold a load \toadd{measured values}.
   xlabel={Hour of day},ylabel={Heat getting into the room},label style={font=\small},tick label style={font=\small},
   legend style={font=\scriptsize,at={(0.02,0.98)},anchor=north west,draw=none},axis lines*=left]
 \addplot[clay,very thick] coordinates {(0,34.5)(1,31.4)(2,28.2)(3,25)(4,21.8)(5,18.9)(6,16.3)(7,14.1)(8,12.3)(9,11.2)(10,10.8)(11,11)(12,11.9)(13,13.4)(14,15.2)(15,17.6)(16,21.1)(17,26.1)(18,31.7)(19,36.8)(20,39.9)(21,40.6)(22,39.4)(23,37.2)};\addlegendentry{Clay}
-\addplot[vone,very thick,dashed] coordinates {(0,8.7)(1,9)(2,9.1)(3,9.2)(4,9.1)(5,8.9)(6,8.7)(7,8.4)(8,8)(9,7.6)(10,7.2)(11,6.8)(12,6.5)(13,6.2)(14,6)(15,5.8)(16,5.8)(17,5.8)(18,6)(19,6.2)(20,6.7)(21,7.2)(22,7.8)(23,8.3)};\addlegendentry{Poly Citra v1}
-\addplot[cool,very thick] coordinates {(0,7)(1,6.9)(2,6.9)(3,6.9)(4,6.8)(5,6.8)(6,6.8)(7,6.7)(8,6.7)(9,6.6)(10,6.5)(11,6.4)(12,6.3)(13,6.2)(14,6)(15,5.9)(16,5.8)(17,5.7)(18,5.6)(19,5.5)(20,5.4)(21,5.4)(22,5.4)(23,5.4)};\addlegendentry{CoolBrick}
+\addplot[vone,very thick,dashed] coordinates {(0,8.7)(1,9)(2,9.2)(3,9.2)(4,9.1)(5,9)(6,8.7)(7,8.4)(8,8)(9,7.6)(10,7.2)(11,6.8)(12,6.5)(13,6.2)(14,6)(15,5.8)(16,5.8)(17,5.8)(18,6)(19,6.3)(20,6.7)(21,7.2)(22,7.8)(23,8.3)};\addlegendentry{Poly Citra v1}
+\addplot[cool,very thick] coordinates {(0,5.2)(1,5.3)(2,5.4)(3,5.3)(4,5.2)(5,4.9)(6,4.7)(7,4.4)(8,4.1)(9,3.8)(10,3.5)(11,3.2)(12,3)(13,2.9)(14,2.9)(15,3)(16,3.1)(17,3.3)(18,3.5)(19,3.8)(20,4.2)(21,4.5)(22,4.8)(23,5.1)};\addlegendentry{CoolBrick}
 \end{axis}
 \end{tikzpicture}
 \caption{A sunny wall over one hot day (computer results). Left: how hot the outside of the wall gets. Right: how much heat gets into the room (higher means a hotter room).}
@@ -357,7 +406,7 @@ and hold a load \toadd{measured values}.
  & Clay & Poly Citra v1 & CoolBrick \\
 \midrule
 Hottest temperature of the outside of the wall & \SI{52}{\celsius} & \SI{52}{\celsius} & \SI{39}{\celsius} \\
-Heat let into a small building in one day & 100\% & 32\% & 26\% \\
+Heat let into a small building in one day & 100\% & 32\% & 17\% \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -369,23 +418,57 @@ Heat let into a small building in one day & 100\% & 32\% & 26\% \\
   \item \textbf{Version 1 already blocks most heat}, because the plastic
         lets heat through slowly. But its outside still gets as hot as clay.
   \item \textbf{The CoolBrick does both.} The white coat keeps the outside
-        about \SI{13}{\celsius} cooler, and the air and oil pockets slow the
-        heat down. It lets in about three-quarters less heat than clay.
+        about \SI{13}{\celsius} cooler, and the air pockets slow the heat
+        down. It lets in about 80\% less heat than clay.
   \item \textbf{Limits.} These are computer results. Real bricks may do a
         little worse, so we need to test them. Rooms full of people also need
         good airflow.
 \end{itemize}
+
+\subsection{Replacing coconut oil}
+Coconut oil made up about half the cost of our first CoolBrick design, so we
+used the computer program to test cheaper fillers. We found something
+surprising: \textbf{coconut oil was hardly helping}. It melts at about
+\SI{27}{\celsius}, but on a hot day the inside of a classroom without AC
+stays above that even at night, so the oil stays liquid and stops soaking up
+heat. (Our first results were slightly wrong for this reason: the program had
+not run long enough to settle. The corrected numbers are the ones in this
+report.)
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}X c c c@{}}
+\toprule
+Filler & Melts at & Heat it can store & Cost per brick \\
+\midrule
+Coconut oil & \SI{24}{\celsius}--\SI{27}{\celsius} & 1$\times$ & \rupee\,35--50 \\
+Calcium chloride salt & \SI{29}{\celsius} & about 3$\times$ & \rupee\,3--8 \\
+\textbf{Glauber's salt (sodium sulfate)} & \textbf{\SI{32}{\celsius}} & \textbf{nearly 4$\times$} & \textbf{\rupee\,3} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+We chose \textbf{Glauber's salt}. It is one of the cheapest heat-storing
+materials there is [16], it does not burn, it is safe to handle, and it melts
+at a temperature a hot classroom actually reaches, so it can still melt and
+set again each day. It does have two known problems: it can stay liquid
+below its melting point, and it can separate into layers. Adding a little
+borax and a thickener fixes both [17], and it must be sealed so it cannot
+leak out of the brick. The salt pockets are a small extra; most of the
+cooling comes from the air pockets and the white coat. We will test how much
+the salt really helps in the model rooms.
 
 % ------------------------------------------------------------------ 6
 \section{Conclusion}
 
 Poly Citra Bricks show that Styrofoam and orange peel can replace clay in a
 building brick, with no kiln and no topsoil. By adding air pockets,
-coconut-oil pockets, peel charcoal and a white outside coat, the CoolBrick
+salt pockets, peel charcoal and a white outside coat, the CoolBrick
 also keeps buildings cool. In our computer tests it lets in about
-three-quarters less heat than a clay brick wall, and its outside stays about
-\SI{13}{\celsius} cooler. This supports our hypothesis. Next, we will measure real CoolBricks
-and test them in two model rooms.
+80\% less heat than a clay brick wall, and its outside stays about
+\SI{13}{\celsius} cooler. This supports our hypothesis. Replacing coconut oil with Glauber's salt
+halves the cost. Research shows bricks of sand and dissolved Styrofoam can
+meet the Indian strength standard, so our next step is to crush-test real
+CoolBricks and test them in two model rooms.
 
 \begin{center}
 \begin{tabularx}{\textwidth}{@{}l X X@{}}
@@ -393,9 +476,9 @@ and test them in two model rooms.
  & Version 1 & CoolBrick (version 2) \\
 \midrule
 Purpose & Turn two wastes into a brick & Also keep buildings cool \\
-Inside the brick & Solid & Air pockets, coconut-oil pockets, peel charcoal \\
+Inside the brick & Solid & Air pockets, salt pockets, peel charcoal \\
 Outside face & Plain & White coat that reflects sunlight \\
-Heat let in (clay = 100\%) & 32\% & 26\% \\
+Heat let in (clay = 100\%) & 32\% & 17\% \\
 Solvent & Used once & Recovered and reused \\
 \bottomrule
 \end{tabularx}
@@ -414,21 +497,22 @@ any building in a hot region where air-conditioning is too expensive.
 \toprule
 Brick & Estimated cost per brick \\
 \midrule
-CoolBrick (made in bulk) & \rupee\,67 \\
-CoolBrick without coconut oil & \rupee\,32 \\
+First design, with coconut oil & \rupee\,67 \\
+\textbf{CoolBrick, with Glauber's salt} & \textbf{\rupee\,35} \\
 Fired clay brick (market price) & \rupee\,5--12 \\
 \bottomrule
 \end{tabular}
 \end{center}
-About half the cost of a CoolBrick is the coconut oil, so we will try cheaper
-oils. Because a CoolBrick costs more than a
+Switching from coconut oil to Glauber's salt brings the cost down from
+\rupee\,67 to about \rupee\,35 per brick. Because a CoolBrick still costs more than a
 clay brick, it makes most sense on the sunniest walls. For government
 schools, it could be paid for through the yearly school grant (Samagra
 Shiksha), company CSR funds, or state heat action plans.
 
 \subsection{Next steps}
 \begin{enumerate}
-  \item Test strength, water, heat and fire safety.
+  \item Crush-test three mixes, and test water, heat and fire safety.
+  \item Make and seal the salt pockets and check they do not leak.
   \item Build the two model rooms and log temperatures for 30 days.
   \item Build a test wall at a government school with the school's permission.
   \item Work with local builders and NGOs to make bricks at a larger scale.
@@ -438,6 +522,7 @@ Shiksha), company CSR funds, or state heat action plans.
 \section{Bibliography, References and Acknowledgements}
 
 \subsection*{References}
+\sloppy
 \small
 \begin{enumerate}[label={[\arabic*]},leftmargin=*]
 \item Park, R.\,J., Goodman, J., Hurwitz, M., \& Smith, J.\ (2020). Heat and Learning. \emph{American Economic Journal: Economic Policy}, 12(2), 306--339.
@@ -450,6 +535,13 @@ Shiksha), company CSR funds, or state heat action plans.
 \item Studies of bricks with phase-change materials and of orange-peel biochar composites.
 \item Bureau of Indian Standards: IS 1077, IS 3495, IS 3346.
 \item United Nations (2015). \emph{The 2030 Agenda for Sustainable Development}.
+\item Assessing the feasibility of using EPS mortar as a construction material for mitigating foam waste. \emph{TNI Journal of Engineering and Technology} (ThaiJO).
+\item Mortar using expanded polystyrene diluted in gasoline as binder. \emph{Journal of Materials in Civil Engineering} (ASCE), doi:10.1061/JMCEE7.MTENG-18010.
+\item Plastic-sand and plastic-clay bricks. \emph{Journal of University of Babylon for Engineering Sciences}.
+\item Waste HDPE and sand bricks with kaolin clay. Durban University of Technology thesis (ir.dut.ac.za/handle/10321/5486).
+\item Behaviour of masonry systems incorporating waste plastic subjected to fire. Stellenbosch University (scholar.sun.ac.za/handle/10019.1/124748).
+\item Oak Ridge National Laboratory. Review of low-cost organic and inorganic phase change materials.
+\item Influence of carboxymethyl cellulose as a thickening agent for Glauber's salt-based PCM (2024). \emph{Materials}, 17(10), 2442.
 \end{enumerate}
 
 \normalsize
