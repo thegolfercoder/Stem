@@ -60,7 +60,7 @@ body{{background:var(--bg);color:var(--fg)}}
 {style}
 </style>
 <div class="page">
-  <div class="top"><h1>Cool<span>Brick</span> simulation</h1><p>Drag to rotate · scroll to zoom · Rian Sikka &amp; Daiwik Abroo</p></div>
+  <div class="top"><h1>Cool<span>Brick</span> simulation</h1><p>Drag to rotate · scroll to zoom · Rian Sikka &amp; Daiwik Abrol</p></div>
   <div id="frame" aria-label="3D simulation of the CoolBrick. Drag to rotate, scroll to zoom.">
 {stage}
   </div>
