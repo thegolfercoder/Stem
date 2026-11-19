@@ -1,7 +1,7 @@
 % =====================================================================
 %  Poly Citra CoolBrick — A4 report
-%  Structured to the competition entry requirements: Summary, Significance,
-%  Concept, Methodology, Results, Conclusion, Future Potential, References.
+%  Version 2: CoolBrick kennels for dogs. Structured to the competition entry
+%  requirements (Summary ... Bibliography) with a cost price analysis.
 %
 %  Compile:  pdflatex poly_citra_coolbrick_a4.tex   (run twice)
 %  Red [ ... ] marks a placeholder the team must fill in or verify.
@@ -34,6 +34,7 @@
 \usepackage{fancyhdr}
 \usepackage{needspace}
 \usepackage[hidelinks]{hyperref}
+\providecommand{\rupee}{Rs\,}
 
 \graphicspath{{img/}}
 
@@ -88,6 +89,7 @@
 \newtcolorbox{keybox}[1]{enhanced,colback=#1!8,colframe=#1,boxrule=0.8pt,arc=3pt,
   left=8pt,right=8pt,top=6pt,bottom=6pt,before skip=8pt,after skip=8pt}
 
+
 \begin{document}
 
 % =====================================================================
@@ -104,7 +106,7 @@
 \vspace{2pt}
 {\large Innovative Eco-Friendly Construction Solutions\par}
 \vspace{4pt}
-{\large\color{sky}\bfseries Version 2: the \textcolor{citrus}{CoolBrick} --- bricks that help keep data centres cool\par}
+{\large\color{sky}\bfseries Version 2: \textcolor{citrus}{CoolBrick} kennels that protect dogs from India's heat\par}
 
 \vspace{1cm}
 \begin{center}
@@ -143,31 +145,34 @@ into a thick polystyrene gel, which we mould and cure into a light,
 waterproof brick. This first version has already been built, tested and
 recognised at national-level competitions \todo{list awards}.
 
-In this new edition we answer the question our first project left open: how
-to make the brick \textbf{keep heat out}. The \textbf{CoolBrick} adds five
-passive-cooling features: hollow air cells, pockets of a coconut-oil
-phase-change material (PCM), a white calcium-carbonate ``cool-face'' coating,
-a filler of biochar made from the leftover peel, and a perforated
-\emph{jaali} version for shade. We aim it at \textbf{data centres}, which are
-growing fast in India and spend a large share of their electricity on
-cooling. Data centres also throw away large amounts of Styrofoam server
-packaging, which we can turn into their own walls.
+In this edition we use the brick to protect \textbf{dogs from heat}. India
+has crores of street dogs and many more pet, shelter and working dogs. Dogs
+cannot sweat like us; they cool down mainly by panting, which works less well
+as the air gets hotter. Kennels made of plastic, tin or plain brick heat up in
+the sun and can become hotter than the air outside. The \textbf{CoolBrick}
+adds five passive-cooling features: hollow air cells, pockets of a
+coconut-oil phase-change material (PCM), a white calcium-carbonate
+``cool-face'' coating, a filler of biochar made from the leftover peel, and
+perforated \emph{jaali} vent blocks. No electricity is needed.
 
-We built a computer heat-flow simulation and a 3D model to test the design
-before building it. For a small edge data-centre shelter on a hot day, the
-simulation predicts:
+We wrote a computer heat-flow simulation of a dog kennel
+(\SI{1.0}{m} $\times$ \SI{0.8}{m} $\times$ \SI{0.8}{m}) with a resting dog
+inside on a hot day (air 27--\SI{41}{\celsius}). We also worked out what the
+bricks and the kennel cost to make.
 
 \begin{keybox}{citrus}
 \centering
 \begin{tabular}{ccc}
-{\LARGE\bfseries\color{citrus} 74\%} & {\LARGE\bfseries\color{leaf} $\sim$1,200 kWh} & {\LARGE\bfseries\color{sky} 9.5 h vs 1.3 h}\\[2pt]
-\small less heat through walls \& roof & \small cooling electricity saved & \small to reach \SI{35}{\celsius} if cooling fails\\
-\small than with clay bricks & \small per shelter per year & \small (CoolBrick vs clay)
+{\LARGE\bfseries\color{citrus} 40.0\,°C} & {\LARGE\bfseries\color{leaf} 4.7\,°C cooler} & {\LARGE\bfseries\color{sky} \rupee3/day}\\[2pt]
+\small hottest it feels inside the & \small walls next to the dog, & \small cost of a CoolBrick kennel\\
+\small CoolBrick kennel (clay 43.8\,°C, & \small compared with a clay & \small over a 10-year life\\
+\small plastic 45.3\,°C, outdoor air 41\,°C) & \small kennel at peak & \small (\rupee11,059 per kennel)
 \end{tabular}
 \end{keybox}
 
-These are model predictions using assumed material values. Our next step is
-to confirm them with a mini data-centre experiment (Section~4).
+These are model predictions using assumed material values and price
+estimates. Our next step is to build model kennels and test them with a
+heated ``dog dummy'' (Section~4). No animals are used in our experiments.
 
 
 % =====================================================================
@@ -195,48 +200,28 @@ to confirm them with a mini data-centre experiment (Section~4).
 {\footnotesize\color{gray}Plastic and Styrofoam waste in landfill}
 \end{minipage}
 
-\subsection{The cooling problem in data centres}
-\begin{minipage}[t]{0.54\textwidth}
-\vspace{0pt}
+\subsection{The problem: dogs in India's heat}
 \begin{itemize}
-  \item India's data-centre capacity was about \textbf{1.5--2.2 GW} in 2025.
-        Forecasts for 2030 range from \textbf{4 GW to 12 GW}, driven by AI
-        and cloud computing.
-  \item Every watt a server uses turns into heat that has to be removed.
-        The IEA estimates that \textbf{cooling uses about 7\% of a data
-        centre's electricity in efficient hyperscale sites, and over 30\% in
-        less efficient ones}.
-  \item India is hot. Outdoor air above \SI{40}{\celsius} and strong sun
-        push extra heat through walls and roofs, especially in small
-        \textbf{edge sites and telecom shelters}.
-  \item Server deliveries bring large amounts of \textbf{Styrofoam
-        packaging} --- one of our two raw materials.
-  \item The \textbf{India Cooling Action Plan} calls for cutting cooling
-        energy by 25--40\% by 2037--38, largely through better building
-        envelopes.
+  \item India's 2019 Livestock Census counted about \textbf{1.5 crore street
+        dogs}; other surveys estimate as many as \textbf{6 crore}. Millions
+        more are pets, guard dogs, shelter dogs and working dogs.
+  \item Dogs \textbf{cannot sweat} through their skin; they sweat a little
+        through their paw pads and lose heat mainly by \textbf{panting}.
+        Panting works less well as the air gets hotter and more humid.
+  \item A dog's normal body temperature is about \SI{38.5}{\celsius}. Above
+        about \SI{40}{\celsius} it is heat-stressed, and about
+        \SI{41}{\celsius} or more is heatstroke, which can kill.
+  \item Indian summers bring long heatwaves above \SI{40}{\celsius}. Many
+        shelters and street-dog feeders use plastic, tin or plain-brick
+        kennels. In the sun, these heat up and radiate heat onto the dog.
+  \item Animal shelters and street-dog projects usually cannot pay for fans,
+        coolers or air-conditioning, or the electricity to run them.
 \end{itemize}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.42\textwidth}
-\vspace{0pt}
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-  ybar, width=\linewidth, height=5.6cm, bar width=20pt,
-  ymin=0, ymax=14, ylabel={India data-centre capacity (GW)},
-  symbolic x coords={2025,2030 low,2030 high},
-  xtick=data, x tick label style={font=\scriptsize},
-  ylabel style={font=\scriptsize}, yticklabel style={font=\scriptsize},
-  nodes near coords, nodes near coords style={font=\scriptsize},
-  axis lines*=left, enlarge x limits=0.25]
-\addplot[fill=sky!80,draw=none] coordinates {(2025,2.2) (2030 low,4) (2030 high,12)};
-\end{axis}
-\end{tikzpicture}
-\captionof{figure}{India's data-centre capacity: 2025 and the range of 2030 forecasts (Wood Mackenzie, CareEdge, Redseer).}
-\end{minipage}
 
 \begin{card}{citrus}
-\textbf{The insight:} every watt of heat a data centre's walls and roof keep
-out is a watt its chillers don't have to remove --- 24 hours a day, all year.
+\textbf{The insight:} a dog in a kennel feels the heat of the walls and roof
+as well as the air. If the kennel stays cool, the dog can rest safely through
+the hottest hours, with no electricity.
 \end{card}
 
 \subsection{What makes this project unique}
@@ -246,15 +231,14 @@ out is a watt its chillers don't have to remove --- 24 hours a day, all year.
   \item \textbf{The whole orange is used.} The peel gives the solvent
         (limonene), and what is left after distillation becomes the biochar
         filler. The limonene is recovered and reused.
-  \item \textbf{A closed loop with the customer.} Data centres throw away
-        Styrofoam from server deliveries. We can collect it and turn it into
-        bricks and sun-screens for their own buildings.
-  \item \textbf{Five cooling methods in one brick.} Most cool-wall products
-        use only one idea (insulation \emph{or} reflective paint \emph{or}
-        PCM). The CoolBrick combines reflection, sky radiation, trapped air,
-        heat storage and shading.
-  \item \textbf{Safety time if cooling fails.} The PCM layer absorbs heat
-        for hours, which buys time for repairs in a server room.
+  \item \textbf{Five cooling methods in one brick.} Most kennels use none.
+        The CoolBrick combines reflection, sky radiation, trapped air, heat
+        storage and ventilation.
+  \item \textbf{Built for dogs, with no running cost.} No electricity, no
+        moving parts, easy to clean, and cheap to keep over many years.
+  \item \textbf{A costed plan.} We worked out the cost price of each brick and
+        each kennel, and compared it with plastic and clay kennels
+        (Section~7).
 \end{itemize}
 
 \subsection{Benefits and the UN Sustainable Development Goals}
@@ -263,7 +247,7 @@ out is a watt its chillers don't have to remove --- 24 hours a day, all year.
 \begin{card}{sky}\textbf{Reduces reliance} on natural resources like clay.\end{card}
 \end{minipage}\hfill
 \begin{minipage}[t]{0.49\textwidth}
-\begin{card}{leaf}\textbf{Offers} an affordable and sustainable alternative to conventional bricks.\end{card}
+\begin{card}{leaf}\textbf{Protects animals} from heat with no electricity.\end{card}
 \begin{card}{plum}\textbf{Promotes} circular-economy principles.\end{card}
 \end{minipage}
 
@@ -271,14 +255,13 @@ out is a watt its chillers don't have to remove --- 24 hours a day, all year.
 \small
 \begin{tabularx}{\textwidth}{@{}>{\bfseries}l X@{}}
 \toprule
-\textcolor{citrus}{SDG 11} & Sustainable Cities and Communities --- promoting eco-friendly construction. \\
+\textcolor{citrus}{SDG 11} & Sustainable Cities and Communities --- safer, kinder cities for the people and animals who share them. \\
 \textcolor{citrus}{SDG 12} & Responsible Consumption and Production --- reducing waste and repurposing materials. \\
-\textcolor{citrus}{SDG 13} & Climate Action --- lowering carbon emissions from conventional brick production. \\
-\textcolor{leaf}{SDG 7} \new & Affordable and Clean Energy --- less electricity used for data-centre cooling. \\
-\textcolor{leaf}{SDG 9} \new & Industry, Innovation and Infrastructure --- greener digital infrastructure. \\
+\textcolor{citrus}{SDG 13} & Climate Action --- adapting to heatwaves without using more electricity; no kiln emissions. \\
 \bottomrule
 \end{tabularx}
 \end{center}
+
 
 % =====================================================================
 \section{Concept: The Science Behind the CoolBrick}
@@ -287,12 +270,14 @@ out is a watt its chillers don't have to remove --- 24 hours a day, all year.
 Polystyrene and D-limonene are both \textbf{non-polar} hydrocarbons. Following
 the rule ``like dissolves like'', limonene molecules slip between the long
 polystyrene chains and separate them, so the solid foam turns into a sticky
-gel. Styrofoam is about 98\% air, so this also shrinks its volume
-enormously. D-limonene makes up most of orange-peel oil and is extracted by
-\textbf{steam distillation}: steam carries the oil out of the peel, and the
-oil separates from the water when it condenses. When the gel dries, the
-limonene evaporates and the polystyrene hardens again into a solid brick.
-The limonene vapour can be condensed and reused.
+gel. One kilogram of limonene can dissolve about 3--4 kg of Styrofoam, and
+because the foam is about 98\% air its volume shrinks enormously. D-limonene
+makes up over 90\% of orange-peel oil and is extracted by \textbf{steam
+distillation}: steam carries the oil out of the peel, and the oil separates
+from the water when it condenses. Fresh peel gives roughly 0.6--1\% oil by
+mass. When the gel dries, the limonene evaporates and the polystyrene
+hardens again into a solid brick. The limonene vapour can be condensed and
+reused.
 
 \begin{figure}[H]
 \centering
@@ -319,7 +304,18 @@ D-limonene is a natural, bio-based solvent (Sony piloted the same idea for
 recycling packaging foam), and no kiln firing is needed.
 \end{card}
 
-\subsection{How heat gets into a building}
+\subsection{How a dog loses heat}
+A resting dog makes about \SIrange{40}{60}{W} of body heat. It must lose that
+heat to its surroundings in three ways: \textbf{panting} (evaporating water
+from the tongue and airways), \textbf{contact} with cooler surfaces (lying on a
+cool floor or against a cool wall), and \textbf{radiation} to cooler surfaces
+around it. A hot roof or wall does the opposite: it radiates heat
+\emph{onto} the dog. So the temperature a dog ``feels'' in a kennel is roughly
+the average of the air temperature and the temperature of the surfaces
+around it. The cooler the walls and roof, the easier it is for the dog to stay
+safe.
+
+\subsection{How heat gets into a kennel}
 \begin{minipage}[c]{0.46\textwidth}
 \centering
 \begin{tikzpicture}[scale=0.95]
@@ -337,7 +333,7 @@ recycling packaging foam), and no kiln firing is needed.
   \draw[-{Stealth},sky,line width=1.5pt] (3.2,0.8)--(4.6,0.8)
      node[pos=0.95,right,font=\scriptsize,text=sky,align=left]{3 stored heat\\released at night};
 \end{tikzpicture}
-\captionof{figure}{Three ways heat reaches the inside of a building.}
+\captionof{figure}{Three ways heat reaches the inside of a kennel.}
 \end{minipage}\hfill
 \begin{minipage}[c]{0.5\textwidth}
 Steady heat flow through a wall:
@@ -480,9 +476,8 @@ Example: $U_\text{clay} = 1/(0.13 + 0.23/0.81 + 0.04) = \SI{2.20}{W/m^2K}$.
         \SIrange{26}{28}{\celsius} for Indian comfort.
   \item Sealed in polystyrene cavities, which are water-proof.
         \todo{verify oil--PS compatibility}
-  \item \new\ \textbf{Data-centre bonus:} PCM research on servers reports
-        that thermal limits can be delayed by \textbf{over 3 hours}, which
-        buys time if a chiller fails.
+  \item In a kennel, the PCM sits on the room side, so the wall next to the
+        dog stays close to its melting point through the hottest hours.
   \item Published PCM-brick studies report \textbf{lower peaks (from about
         3 up to about \SI{11}{\celsius}) and time delays of about 2 hours},
         depending on the set-up.
@@ -502,12 +497,12 @@ Example: $U_\text{clay} = 1/(0.13 + 0.23/0.81 + 0.04) = \SI{2.20}{W/m^2K}$.
 \addplot[heat,thick,dashed] {34+8*sin(deg((x-9)*pi/12))};
 \addlegendentry{Outdoor}
 \addplot[ink!60,thick] {32.5+5.5*sin(deg((x-11)*pi/12))};
-\addlegendentry{Clay-brick room}
+\addlegendentry{Clay-brick kennel}
 \addplot[citrus,very thick] {30.5+2.2*sin(deg((x-13)*pi/12))};
-\addlegendentry{CoolBrick room}
+\addlegendentry{CoolBrick kennel}
 \end{axis}
 \end{tikzpicture}
-\captionof{figure}{Expected effect (illustrative --- to be replaced with model-hut data).}
+\captionof{figure}{Idea of the PCM effect (illustrative only; see Section~5 for simulation results).}
 \end{minipage}
 
 \subsubsection*{Upgrade 3 --- The cool face: radiative cooling}
@@ -524,8 +519,8 @@ Example: $U_\text{clay} = 1/(0.13 + 0.23/0.81 + 0.04) = \SI{2.20}{W/m^2K}$.
   \item In field tests the surface stayed \textbf{1.7\,\si{\celsius} below
         air temperature at noon} and \SI{10}{\celsius} below at night.
   \item CaCO$_3$ is cheap and can come from \textbf{waste eggshells or marble
-        slurry}, giving a third waste stream. Data-centre roofs are often
-        huge, flat and in full sun, which makes them ideal for this coat. The coat also shields
+        slurry}, giving a third waste stream. A kennel roof gets the
+        strongest sun of the day, so it gets this coat first. The coat also shields
         polystyrene from UV damage.
 \end{itemize}
 \end{minipage}\hfill
@@ -591,10 +586,10 @@ After steam distillation, the peel residue is still waste. We
   \item Traditional Indian \textbf{jaali} screens shade walls and windows
         while letting breezes through, giving cooling with zero energy.
   \item The gel can be moulded, so the same process can cast
-        \textbf{perforated CoolBrick screens} as a sun-shading ``second skin''
-        on data-centre facades, generator yards and rooftop plant areas.
-  \item The screens are light and water-proof, so they suit upper floors and
-        rooftop shading frames.
+        \textbf{perforated CoolBrick screens} as vent blocks high in the kennel
+        wall, so hot air can escape while the dog stays shaded.
+  \item In our simulation, good ventilation was essential: without it, the
+        dog's own body heat builds up inside a well-insulated kennel.
   \item For hot-dry regions, \textbf{terracotta-clad} panels are an option:
         wet clay surfaces add evaporative cooling.
 \end{itemize}
@@ -614,45 +609,50 @@ After steam distillation, the peel residue is still waste. We
 \captionof{figure}{CoolBrick jaali module (concept).}
 \end{minipage}
 
-\subsection{Where CoolBricks fit in a data centre}
-\begin{minipage}[c]{0.54\textwidth}
-\textbf{Being honest about the physics.} In a large data hall, most of the
-heat comes from the servers, not through the walls. So CoolBricks target the
-places where the \textbf{building envelope matters most}:
-\begin{enumerate}
-  \item \textbf{Edge data centres and telecom shelters:} small boxes in full
-        sun, where heat through the walls and roof is a large share of the
-        cooling load.
-  \item \textbf{Roofs and sun-facing walls} of large sites: a cool-face
-        coating and jaali sun-screens cut solar heat gain.
-  \item \textbf{UPS, battery and generator rooms:} batteries age faster when
-        hot.
-  \item \textbf{Ride-through:} PCM walls soak up heat for a while if the
-        cooling fails.
-\end{enumerate}
-\end{minipage}\hfill
-\begin{minipage}[c]{0.42\textwidth}
+\subsection{The CoolBrick kennel}
+\begin{figure}[H]
 \centering
-\begin{tikzpicture}[scale=0.95]
-  \fill[ink!8] (0,0) rectangle (5.2,3.4);
-  \draw[ink,thick] (0,0) rectangle (5.2,3.4);
-  \foreach \x in {0.5,1.5,2.5,3.5}{\fill[ink!60] (\x,0.2) rectangle ++(0.6,2.0);
-     \foreach \y in {0.4,0.8,...,2.0}{\fill[leaf!70] (\x+0.08,\y) rectangle ++(0.1,0.08);}}
-  \node[font=\scriptsize,text=ink] at (2.4,2.65) {servers: \textbf{most} of the heat};
-  \fill[white] (0,3.4) rectangle (5.2,3.6); \draw[ink] (0,3.4) rectangle (5.2,3.6);
-  \fill[citrus!40] (-0.25,0) rectangle (0,3.4); \fill[citrus!40] (5.2,0) rectangle (5.45,3.4);
-  \fill[citrus!90] (5.4,4.5) circle (0.32);
-  \draw[-{Stealth},heat,thick,decorate,decoration={snake,amplitude=1pt,segment length=5pt}] (5.1,4.3)--(4.3,3.7);
-  \draw[-{Stealth},heat,thick,decorate,decoration={snake,amplitude=1pt,segment length=5pt}] (5.6,4.1)--(5.5,2.6);
-  \node[font=\scriptsize,text=citrus!80!black] at (2.6,-0.35) {CoolBrick walls + cool-face roof};
+\begin{tikzpicture}[scale=1.15]
+  % ground
+  \fill[ink!8] (-1.2,-0.15) rectangle (8.4,0);
+  % sun
+  \fill[citrus!90] (-0.6,4.3) circle (0.35);
+  \foreach \a in {0,45,...,315}{\draw[citrus,line width=0.8pt] ($(-0.6,4.3)+(\a:0.45)$)--($(-0.6,4.3)+(\a:0.65)$);}
+  \draw[-{Stealth},citrus,line width=1.2pt] (-0.2,4.0)--(1.2,3.35); \draw[-{Stealth},citrus!60,line width=1.2pt,dashed] (1.25,3.35)--(0.2,4.4);
+  \node[font=\scriptsize,text=citrus!80!black,align=center] at (-0.6,5.25) {sunlight bounced\\off the white coat};
+  % raised floor
+  \fill[ink!25] (1.0,0) rectangle (7.0,0.25);
+  % walls (CoolBrick)
+  \fill[leaf!25] (1.0,0.25) rectangle (1.45,3.0); \fill[leaf!25] (6.55,1.65) rectangle (7.0,3.0); \node[font=\scriptsize,text=ink!60] at (6.78,0.95) {door};
+  \fill[white] (0.9,0.25) rectangle (1.0,3.0); \draw[ink!50] (0.9,0.25) rectangle (1.0,3.0);
+  \foreach \y in {0.5,1.2,1.9}{\fill[sky!25] (1.08,\y) rectangle ++(0.18,0.45); \fill[plum!40] (1.3,\y) rectangle ++(0.1,0.45);}
+  % roof
+  \fill[leaf!25] (0.8,3.0) rectangle (7.2,3.35); \fill[white] (0.8,3.35) rectangle (7.2,3.45); \draw[ink!50] (0.8,3.0) rectangle (7.2,3.45);
+  % jaali vents
+  \foreach \x in {6.62,6.82}{\foreach \y in {2.35,2.65}{\fill[white] (\x,\y) circle (0.06);}}
+  \draw[-{Stealth},sky,line width=1.2pt] (8.0,0.9)--(5.6,0.9); \node[font=\scriptsize,text=sky,align=center] at (7.8,0.55) {cooler air in\\through the door};
+  \draw[-{Stealth},sky!70,line width=1.2pt] (6.0,2.5)--(8.0,2.8); \node[font=\scriptsize,text=sky,align=left] at (8.15,3.15) {warm air out\\through jaali vents};
+  % dog (simple shapes)
+  \fill[ink!65] (3.0,0.45) ellipse (0.95 and 0.38);
+  \fill[ink!65] (4.05,0.85) circle (0.3);
+  \fill[ink!65] (4.25,0.95) ellipse (0.22 and 0.12);
+  \fill[ink!65] (3.9,1.08) -- (4.0,1.32) -- (4.12,1.05) -- cycle;
+  \draw[ink!65,line width=2pt,rounded corners] (2.1,0.55) -- (1.75,0.75) -- (1.7,0.95);
+  \node[font=\scriptsize,align=center] at (3.2,1.6) {dog rests against\\cool walls};
+  % labels
+  \draw[ink!50] (0.95,2.75)--(-0.4,2.75) node[left,font=\scriptsize,align=right]{white CaCO\textsubscript{3}\\cool-face coat};
+  \draw[ink!50] (1.17,1.4)--(-0.4,1.4) node[left,font=\scriptsize]{air cells};
+  \draw[ink!50] (1.35,0.7)--(-0.4,0.7) node[left,font=\scriptsize,align=right]{coconut-oil PCM\\(room side)};
+  \draw[ink!50] (4.0,3.2)--(4.0,3.9) node[above,font=\scriptsize]{CoolBrick roof with white coat};
 \end{tikzpicture}
-\captionof{figure}{In a data centre, CoolBricks tackle the heat coming from outside.}
-\end{minipage}
+\caption{How a CoolBrick kennel keeps a dog cool (concept, side view, not to scale).}
+\end{figure}
 
 \begin{card}{leaf}
-\textbf{Closed loop:} data centres throw away Styrofoam from server
-packaging. We collect it and turn it into bricks and screens for their own
-buildings.
+\textbf{Design rule from our simulation:} insulation and ventilation must go
+together. A sealed, well-insulated kennel traps the dog's own body heat at
+night. Jaali vent blocks high in the walls let warm air out while the door
+lets cooler air in.
 \end{card}
 
 
@@ -666,15 +666,17 @@ buildings.
         separate the oil from the water.
   \item \textbf{Dissolve} broken Styrofoam in the limonene until it forms a
         thick polystyrene gel \todo{ratio of foam to limonene used}.
-  \item \textbf{Mix} in sand or other fillers and, for version 2, the
-        orange-peel biochar \todo{mix proportions}.
-  \item \textbf{Mould} the gel into brick moulds. For the CoolBrick, the
-        moulds form the hollow air cells and the PCM pockets, which are
-        filled with the coconut-oil blend and sealed.
+  \item \textbf{Mix} in sand or fly ash and the orange-peel biochar
+        \todo{mix proportions}.
+  \item \textbf{Mould} the gel into brick moulds that form the hollow air
+        cells and the PCM pockets. Fill the pockets with the coconut-oil
+        blend and seal them.
   \item \textbf{Cure} the bricks under a cover with a simple condenser to
-        recover the limonene \todo{curing time and temperature}.
-  \item \textbf{Coat} the sun-facing side with the calcium-carbonate
-        cool-face paint.
+        recover the limonene \todo{curing time and temperature}. Bricks must
+        be fully cured so that no citrus solvent is left: concentrated citrus
+        oils can irritate dogs.
+  \item \textbf{Coat} the outside face with the calcium-carbonate cool-face
+        paint, and plaster or seal the inside face.
 \end{enumerate}
 
 \begin{figure}[htbp]
@@ -704,23 +706,28 @@ lowers cost, odour and VOC emissions.
 
 
 \subsection{Experimental design}
-\textbf{Aim:} to find out whether a CoolBrick wall lets less heat into a
-cooled room than a fired-clay wall, and whether it keeps the room safe for
-longer if the cooling fails.
+\textbf{Aim:} to find out whether a CoolBrick kennel stays cooler inside than a
+clay-brick kennel and a plastic kennel on a hot, sunny day.
 
-\textbf{Hypothesis:} the CoolBrick will cut heat entering the room by more
-than half and at least double the time before the room reaches
-\SI{35}{\celsius}.
+\textbf{Hypothesis:} the inside of the CoolBrick kennel will stay at or below
+the outdoor air temperature, at least \SI{3}{\celsius} cooler at peak than
+the clay and plastic kennels.
+
+\textbf{Ethics:} no animals are used in our tests. A ``dog dummy'' gives off
+the same heat as a resting dog. Only after the design is proven would we
+place kennels at an animal shelter, where dogs can choose freely whether to
+use them, with shelter staff and a vet watching.
 
 \begin{center}
 \small
 \begin{tabularx}{\textwidth}{@{}>{\bfseries}l X@{}}
 \toprule
-Independent variable & Wall material: fired clay, Poly Citra v1, CoolBrick. \\
-Dependent variables & Outer and inner surface temperature (\si{\celsius}); heat flowing into the room (W/m\textsuperscript{2}); cooling energy used (kWh); time for the room to reach \SI{35}{\celsius} after the cooling stops. \\
-Control variables & Shelter size (\SI{0.6}{m} cube), wall thickness, location and orientation on the roof, the same \SI{100}{W} heater as ``servers'', the same cooler and thermostat setting, same sensors and logging interval, same days. \\
-Equipment & Two model shelters, \SI{100}{W} heaters, small coolers, plug-in energy meters, Arduino with DS18B20 temperature sensors, IR thermometer. \\
-Repeats & 30 summer days; each material test on at least 5 bricks. \\
+Independent variable & Kennel material: fired clay brick, plastic kennel, CoolBrick. \\
+Dependent variables & Air temperature inside; inner wall and roof surface temperatures; ``felt'' (black-globe) temperature next to the dummy; number of hours above \SI{35}{\celsius}. \\
+Control variables & Kennel size (\SI{1.0}{m} $\times$ \SI{0.8}{m} $\times$ \SI{0.8}{m}), door and vent sizes, position and direction in the sun, the same dog dummy, same sensors and logging interval, same days. \\
+Dog dummy & A \SI{50}{W} heater inside a water-filled container wrapped in an old blanket, about the size and heat output of a resting medium-sized dog. \\
+Equipment & Three model kennels, three dog dummies, Arduino with DS18B20 temperature sensors, black-globe thermometers, IR thermometer. \\
+Repeats & 30 summer days; each brick test on at least 5 bricks. \\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -736,52 +743,41 @@ Compressive strength & Universal testing machine, 5 samples per mix & IS 3495 (P
 Water absorption     & 24 h immersion, weigh before and after & IS 3495 (Pt 2) & $<$ 5\% \\
 Thermal conductivity & Guarded hot plate (or DIY hot-box) & IS 3346 & $k \leq$ \SI{0.15}{W/mK} \\
 Fire behaviour       & Bunsen-flame burn test: char length, dripping & UL-94 (adapted) & V-1 or better \\
-PCM performance      & DSC (melting point, latent heat) at a partner lab & --- & \SIrange{26}{28}{\celsius} \\
+PCM performance      & DSC (melting point, latent heat) at a partner lab & --- & about \SI{27}{\celsius} \\
 Surface temperature  & IR thermometer, coated vs.\ uncoated at noon & --- & $\leq$ air temp. \\
-\textbf{Mini data centre} & \textbf{Two model shelters, each with a \SI{100}{W} heater as ``servers'' and a small cooler on an energy meter; 30 days} & --- & \textbf{$-$20\% cooling energy} \\
-\textbf{Ride-through} & \textbf{Switch cooling off; time until the inside reaches \SI{35}{\celsius}} & --- & \textbf{2$\times$ longer} \\
+Leftover solvent     & Weigh during curing until steady; smell test & --- & no citrus smell \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
-\begin{card}{citrus}
-\textbf{Mini data-centre experiment.} Build two \SI{0.6}{m} shelters on
-the school roof, one from fired clay and one from CoolBricks. Put the same
-\SI{100}{W} heater inside each to act like servers, and run each one's
-cooling through a plug-in energy meter. Log temperatures every 5 minutes
-with an Arduino and DS18B20 sensors. Compare the cooling energy used, the
-peak temperature, and how long each stays below \SI{35}{\celsius} when the
-cooling is switched off.
-\end{card}
-
 \subsection{Computer simulation}
-Before building, we tested the design with a computer model that we wrote
-in JavaScript. Each wall is split into 47 thin slices. Every 10 seconds of
+Before building, we tested the kennel with a computer model that we wrote
+in JavaScript. Each wall is split into thin slices. Every 5 seconds of
 simulated time the program calculates how much heat moves between
 neighbouring slices using Fourier's law, $q = k\,\Delta T/\Delta x$. On the
-outside, the wall absorbs sunlight ($\alpha I$), exchanges heat with the air
-($h_o = \SI{15}{W/m^2K}$) and radiates heat to a sky about
-\SI{18}{\celsius} colder than the air (Stefan--Boltzmann law). On the
-inside, it meets \SI{25}{\celsius} room air ($h_i = \SI{8}{W/m^2K}$). The PCM
-layer is modelled with extra heat capacity around its melting point. The
-weather is a hot north-Indian day (air 27--\SI{41}{\celsius}, strong sun).
-The model runs three days and reports the third, so the starting guess does
-not matter. For the failure test, the cooling stops at 14:00 while
-\SI{1.5}{kW} of servers keep heating the room.
+outside, each wall and the roof absorb sunlight ($\alpha I$), exchange heat
+with the air ($h_o = \SI{15}{W/m^2K}$) and radiate heat to a sky about
+\SI{18}{\celsius} colder than the air (Stefan--Boltzmann law). Inside, the
+air gains \SI{50}{W} from the resting dog and heat from the walls
+($h_i = \SI{8}{W/m^2K}$), and swaps air with outside through the door and
+jaali vents (100 air changes per hour). The ``felt'' temperature is the
+average of the inside air and the inside wall surfaces. The weather is a hot
+north-Indian day (air 27--\SI{41}{\celsius}, strong sun), run for three days
+with the third day reported.
 
 \begin{center}
 \small
 \begin{tabular}{@{}lccccc@{}}
 \toprule
-Material & $k$ (W/mK) & Density (kg/m\textsuperscript{3}) & $U$, 230 mm (W/m\textsuperscript{2}K) & Sun absorbed & PCM \\
+Kennel & Wall & $k$ (W/mK) & $U$ (W/m\textsuperscript{2}K) & Sun absorbed & PCM \\
 \midrule
-Fired clay & 0.81 & 1800 & 2.20 & 70\% & none \\
-Poly Citra v1 & 0.20 & 1050 & 0.76 & 55\% & none \\
-CoolBrick & 0.15 / 0.18 & 600 / 850 & 0.60 & 5\% & 30 mm, melts \SI{27}{\celsius} \\
+Clay brick & 110 mm fired clay & 0.81 & 3.27 & 70\% & none \\
+Plastic & 5 mm polyethylene & 0.40 & 5.48 & 60\% & none \\
+CoolBrick & 110 mm CoolBrick & 0.15 / 0.18 & 1.15 & 5\% & 30 mm, melts \SI{27}{\celsius} \\
 \bottomrule
 \end{tabular}
 \end{center}
-{\footnotesize\color{gray} CoolBrick values are design targets to be measured. The PCM layer is a 50\% coconut-oil blend with latent heat 110 kJ/kg.}
+{\footnotesize\color{gray} CoolBrick values are design targets to be measured. Each kennel uses the same material for walls and roof.}
 
 \subsection{Safety and risks}
 \begin{center}
@@ -790,16 +786,17 @@ CoolBrick & 0.15 / 0.18 & 600 / 850 & 0.60 & 5\% & 30 mm, melts \SI{27}{\celsius
 \toprule
 Risk & Why it matters & Our mitigation \\
 \midrule
-Fire & Polystyrene burns and drips, and data centres have very strict fire rules. & Biochar filler (V-1 in literature); mineral coat; plastered infill only; never inside fire-rated server halls without certification; burn tests. \\
-UV ageing & Polystyrene yellows and turns brittle in the sun. & CaCO$_3$ coat or plaster blocks UV on exposed faces. \\
-Limonene vapour & Flammable during processing; strong odour. & Small batches, ventilation, no open flame; condense and reuse; full cure before use. \\
-Strength & Must carry loads in low-rise walls. & Optimise sand, fly-ash and biochar ratios by testing; interlocking geometry. \\
-PCM leakage & Oil could seep out or go rancid. & Fully sealed pockets; blends with antioxidant; compatibility trials. \\
-Adoption & Data-centre operators are cautious and need proof. & Start with edge shelters and non-critical rooms; publish open test data. \\
-Cost & Must compete with standard blocks. & Free waste inputs; solvent recovery; no kiln fuel. \todo{cost per brick} \\
+Leftover limonene & Concentrated citrus oils can irritate dogs. & Cure fully until weight is steady; plaster or seal the inside face; smell test before use. \\
+Chewing & Dogs chew things. & PCM pockets are sealed inside the brick; inside face plastered; coconut oil is non-toxic. \\
+Fire & Polystyrene burns and drips. & Biochar filler (V-1 in literature); mineral coat and plaster; burn tests; keep away from cooking fires. \\
+UV ageing & Polystyrene yellows and turns brittle in the sun. & CaCO\textsubscript{3} coat or plaster blocks UV on exposed faces. \\
+Trapped heat & A sealed, insulated kennel traps the dog's own heat. & Jaali vents high up plus an open door; tested in the simulation. \\
+Hygiene & Kennels must be cleaned often. & Waterproof surfaces; raised floor so water drains. \\
+Cost & Must be affordable for shelters. & Full cost price analysis and cost-cutting plan (Section~7). \\
 \bottomrule
 \end{tabularx}
 \end{center}
+
 
 % =====================================================================
 \section{Results So Far and Explanation of Results}
@@ -821,104 +818,74 @@ little water absorption, keep their shape when heated and hold a load
 \todo{add the measured values: mass, density, water absorption, load held,
 heat test temperature}.
 
-\subsection{Simulation results (version 2)}
+\subsection{Simulation results: the CoolBrick kennel}
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}
-\begin{axis}[width=0.49\textwidth,height=6.2cm,xmin=0,xmax=23,ymin=20,ymax=56,xtick={0,3,6,9,12,15,18,21},
-  xlabel={Hour of day},ylabel={Outer surface temperature (\si{\celsius})},label style={font=\small},tick label style={font=\scriptsize},
+\begin{axis}[width=0.62\textwidth,height=6.6cm,xmin=0,xmax=23,ymin=24,ymax=48,xtick={0,3,6,9,12,15,18,21},
+  xlabel={Hour of day},ylabel={Temperature felt by the dog (\si{\celsius})},label style={font=\small},tick label style={font=\scriptsize},
   legend style={font=\scriptsize,at={(0.02,0.98)},anchor=north west,draw=none,fill=white,fill opacity=0.85},grid=major,grid style={gray!20},axis lines*=left]
 \addplot[gray,thick,densely dotted] coordinates {(0,29.1) (1,27.9) (2,27.2) (3,27) (4,27.2) (5,27.9) (6,29.1) (7,30.5) (8,32.2) (9,34) (10,35.8) (11,37.5) (12,38.9) (13,40.1) (14,40.8) (15,41) (16,40.8) (17,40.1) (18,38.9) (19,37.5) (20,35.8) (21,34) (22,32.2) (23,30.5)};
-\addlegendentry{Outdoor air}
-\addplot[heat!75,very thick] coordinates {(0,29.3) (1,28.1) (2,27.2) (3,26.6) (4,26.4) (5,26.5) (6,27) (7,28.1) (8,29.6) (9,31.2) (10,32.9) (11,34.5) (12,35.9) (13,37.9) (14,43.4) (15,49.2) (16,51.9) (17,50.1) (18,44.6) (19,38.4) (20,35.8) (21,33.9) (22,32.2) (23,30.7)};
-\addlegendentry{Clay}
-\addplot[leaf,very thick,dashed] coordinates {(0,28.2) (1,27.1) (2,26.3) (3,25.8) (4,25.8) (5,26.2) (6,26.9) (7,28.4) (8,30.1) (9,32) (10,33.9) (11,35.7) (12,37.2) (13,39.3) (14,45) (15,50.3) (16,52.1) (17,49.4) (18,43.2) (19,37) (20,34.8) (21,33) (22,31.2) (23,29.6)};
-\addlegendentry{Poly Citra v1}
-\addplot[citrus,very thick] coordinates {(0,27.5) (1,26.4) (2,25.6) (3,25.2) (4,25.3) (5,25.8) (6,26.6) (7,27.9) (8,29.4) (9,31) (10,32.7) (11,34.2) (12,35.6) (13,36.9) (14,38.1) (15,38.9) (16,39) (17,38.2) (18,36.8) (19,35.1) (20,33.6) (21,32) (22,30.4) (23,28.8)};
-\addlegendentry{CoolBrick}
+\addlegendentry{Outdoor air (shade)}
+\addplot[heat!75,very thick] coordinates {(0,33.5) (1,32) (2,30.7) (3,29.6) (4,29) (5,28.7) (6,28.7) (7,29.2) (8,30.3) (9,32) (10,34.1) (11,36.4) (12,38.4) (13,40) (14,41.5) (15,42.7) (16,43.5) (17,43.8) (18,43.4) (19,42.3) (20,40.7) (21,38.8) (22,37) (23,35.2)};
+\addlegendentry{Clay-brick kennel}
+\addplot[sky,very thick,dashed] coordinates {(0,29.2) (1,28) (2,27.2) (3,26.9) (4,27) (5,27.6) (6,28.7) (7,31) (8,34.3) (9,37.3) (10,39.7) (11,41.3) (12,42.5) (13,43.7) (14,44.8) (15,45.3) (16,44.8) (17,43.1) (18,40.6) (19,37.8) (20,35.9) (21,34.2) (22,32.4) (23,30.7)};
+\addlegendentry{Plastic kennel}
+\addplot[citrus,very thick] coordinates {(0,34.1) (1,32.9) (2,31.9) (3,31.2) (4,30.7) (5,30.5) (6,30.6) (7,31) (8,31.8) (9,32.7) (10,33.9) (11,35.1) (12,36.4) (13,37.5) (14,38.5) (15,39.3) (16,39.8) (17,40) (18,39.9) (19,39.4) (20,38.7) (21,37.7) (22,36.6) (23,35.3)};
+\addlegendentry{CoolBrick kennel}
 \end{axis}
 \end{tikzpicture}\hfill
 \begin{tikzpicture}
-\begin{axis}[width=0.49\textwidth,height=6.2cm,xmin=0,xmax=23,ymin=0,ymax=45,xtick={0,3,6,9,12,15,18,21},
-  xlabel={Hour of day},ylabel={Heat into room (W/m\textsuperscript{2})},label style={font=\small},tick label style={font=\scriptsize},
-  legend style={font=\scriptsize,at={(0.02,0.98)},anchor=north west,draw=none,fill=white,fill opacity=0.85},grid=major,grid style={gray!20},axis lines*=left]
-\addplot[heat!75,very thick] coordinates {(0,34.5) (1,31.4) (2,28.2) (3,25) (4,21.8) (5,18.9) (6,16.3) (7,14.1) (8,12.3) (9,11.2) (10,10.8) (11,11) (12,11.9) (13,13.4) (14,15.2) (15,17.6) (16,21.1) (17,26.1) (18,31.7) (19,36.8) (20,39.9) (21,40.6) (22,39.4) (23,37.2)};
-\addlegendentry{Clay}
-\addplot[leaf,very thick,dashed] coordinates {(0,8.7) (1,9) (2,9.1) (3,9.2) (4,9.1) (5,8.9) (6,8.7) (7,8.4) (8,8) (9,7.6) (10,7.2) (11,6.8) (12,6.5) (13,6.2) (14,6) (15,5.8) (16,5.8) (17,5.8) (18,6) (19,6.2) (20,6.7) (21,7.2) (22,7.8) (23,8.3)};
-\addlegendentry{Poly Citra v1}
-\addplot[citrus,very thick] coordinates {(0,7) (1,6.9) (2,6.9) (3,6.9) (4,6.8) (5,6.8) (6,6.8) (7,6.7) (8,6.7) (9,6.6) (10,6.5) (11,6.4) (12,6.3) (13,6.2) (14,6) (15,5.9) (16,5.8) (17,5.7) (18,5.6) (19,5.5) (20,5.4) (21,5.4) (22,5.4) (23,5.4)};
-\addlegendentry{CoolBrick}
+\begin{axis}[ybar,width=0.38\textwidth,height=6.6cm,bar width=13pt,ymin=30,ymax=48,
+  symbolic x coords={Outdoor air,Clay,Plastic,CoolBrick},xtick=data,x tick label style={font=\scriptsize,rotate=25,anchor=north east},
+  nodes near coords,nodes near coords style={font=\scriptsize},
+  ylabel={Peak (\si{\celsius})},label style={font=\small},tick label style={font=\scriptsize},axis lines*=left,enlarge x limits=0.18]
+\addplot[fill=citrus!80,draw=none] coordinates {(Outdoor air,41.0) (Clay,43.8) (Plastic,45.3) (CoolBrick,40.0)};
 \end{axis}
 \end{tikzpicture}
-\caption{West wall on a hot day (simulation). Left: how hot the outside face gets. Right: heat flowing into the cooled room.}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}
-\begin{axis}[ybar,width=0.44\textwidth,height=6.2cm,bar width=24pt,ymin=0,ymax=28,
-  symbolic x coords={Clay,Poly Citra v1,CoolBrick},xtick=data,nodes near coords,nodes near coords style={font=\small},
-  ylabel={Heat gained per day (kWh)},label style={font=\small},tick label style={font=\scriptsize},axis lines*=left,enlarge x limits=0.25]
-\addplot[fill=citrus!80,draw=none] coordinates {(Clay,24.4) (Poly Citra v1,7.7) (CoolBrick,6.4)};
-\end{axis}
-\end{tikzpicture}\hfill
-\begin{tikzpicture}
-\begin{axis}[width=0.52\textwidth,height=6.2cm,xmin=0,xmax=12,ymin=24,ymax=48,xtick={0,2,4,6,8,10,12},
-  xlabel={Hours after cooling fails},ylabel={Room temperature (\si{\celsius})},label style={font=\small},tick label style={font=\scriptsize},
-  legend style={font=\scriptsize,at={(0.98,0.02)},anchor=south east,draw=none,fill=white,fill opacity=0.85},grid=major,grid style={gray!20},axis lines*=left]
-\addplot[heat!75,very thick] coordinates {(0,25.1) (0.5,32.6) (1,34.5) (1.5,35.7) (2,36.7) (2.5,37.7) (3,38.5) (3.5,39.4) (4,40.1) (4.5,40.9) (5,41.6) (5.5,42.2) (6,42.8) (6.5,43.3) (7,43.7) (7.5,44) (8,44.3) (8.5,44.6) (9,44.8) (9.5,44.9) (10,45) (10.5,45.1) (11,45.1) (11.5,45.1)};
-\addlegendentry{Clay}
-\addplot[leaf,very thick,dashed] coordinates {(0,25.1) (0.5,31.1) (1,33.2) (1.5,34.6) (2,35.6) (2.5,36.6) (3,37.4) (3.5,38.2) (4,38.9) (4.5,39.6) (5,40.2) (5.5,40.9) (6,41.5) (6.5,42.1) (7,42.6) (7.5,43.2) (8,43.7) (8.5,44.3) (9,44.8) (9.5,45.3) (10,45.8) (10.5,46.2) (11,46.7) (11.5,47.1)};
-\addlegendentry{Poly Citra v1}
-\addplot[citrus,very thick] coordinates {(0,25.1) (0.5,30.1) (1,30.9) (1.5,31.3) (2,31.5) (2.5,31.8) (3,32) (3.5,32.2) (4,32.4) (4.5,32.6) (5,32.9) (5.5,33.1) (6,33.3) (6.5,33.5) (7,33.7) (7.5,34) (8,34.2) (8.5,34.5) (9,34.7) (9.5,35) (10,35.3) (10.5,35.6) (11,35.9) (11.5,36.3)};
-\addlegendentry{CoolBrick}
-\addplot[black,thin,dashed] coordinates {(0,35) (12,35)};
-\addlegendentry{\SI{35}{\celsius} limit}
-\end{axis}
-\end{tikzpicture}
-\caption{Whole \SI{3}{m} shelter (simulation). Left: heat gained through walls and roof in one day. Right: room temperature after the cooling fails at 14:00 with \SI{1.5}{kW} of servers running.}
+\caption{Simulated temperature felt by a resting dog inside each kennel on a hot day. Left: through the day. Right: the hottest point.}
 \end{figure}
 
 \begin{center}
 \small
 \begin{tabular}{@{}lccc@{}}
 \toprule
-Simulation result & Clay & Poly Citra v1 & CoolBrick \\
+Simulation result & Clay brick & Plastic & CoolBrick \\
 \midrule
-Wall U-value (W/m\textsuperscript{2}K) & 2.20 & 0.76 & 0.60 \\
-Hottest outer surface, west wall (\si{\celsius}) & 51.9 & 52.1 & 39.1 \\
-Peak heat into room, west wall (W/m\textsuperscript{2}) & 40.6 & 9.2 & 7 \\
-Heat gained by shelter per day (kWh) & 24.4 & 7.7 & 6.4 \\
-Time to reach \SI{35}{\celsius} after cooling fails (h) & 1.3 & 1.8 & 9.5 \\
+Wall U-value (W/m\textsuperscript{2}K) & 3.27 & 5.48 & 1.15 \\
+Hottest ``felt'' temperature (\si{\celsius}) & 43.8 & 45.3 & 40.0 \\
+Hottest inside air (\si{\celsius}) & 43.5 & 45.3 & 40.8 \\
+Hottest inside wall surface (\si{\celsius}) & 44.2 & 45.4 & 39.5 \\
+Hours above \SI{35}{\celsius} (``felt'') & 12.7 & 12.3 & 12.3 \\
 \bottomrule
 \end{tabular}
 \end{center}
+{\footnotesize\color{gray} For comparison, the outdoor air in the shade peaks at \SI{41}{\celsius} and is above \SI{35}{\celsius} for 10.8 hours.}
 
 \subsection{Explanation of the results}
 \begin{itemize}
-  \item \textbf{The white coat keeps the surface cool.} Clay and v1 absorb
-        most of the sunlight, so their west faces reach about
-        \SI{52}{\celsius} in the afternoon. The CoolBrick coat reflects
-        about 95\% of sunlight and radiates heat to the sky, so its surface
-        stays just below the air temperature.
-  \item \textbf{Low conductivity cuts heat flow.} Clay conducts heat about
-        five times better than the CoolBrick body, so it lets in about
-        four times as much heat over the day (24.4 vs 6.4 kWh).
-        Clay is also heavy, so it stores heat and keeps releasing it into
-        the room well into the night (the evening peak in the right-hand
-        chart above).
-  \item \textbf{Insulation alone is not enough when cooling fails.} v1
-        lets in almost as little heat as the CoolBrick, but it reaches
-        \SI{35}{\celsius} almost as fast as clay. It is light and has
-        nothing to soak up the servers' heat. The CoolBrick's PCM melts at
-        \SI{27}{\celsius} and absorbs that heat, which keeps the room safe
-        for about 9.5 hours instead of about
-        1.3 hours.
-  \item \textbf{Limits.} These are model results using assumed values for
-        the new materials. Real bricks will have joints, mortar and
-        imperfections, so we expect smaller savings in practice. The
-        mini data-centre experiment will test this.
+  \item \textbf{Clay and plastic kennels get hotter than the air outside.}
+        They absorb most of the sunlight, so their walls and roof heat up
+        and radiate that heat onto the dog. At the hottest point the dog
+        feels about 43.8 and 45.3 \si{\celsius}, which is
+        2.8--4.3 \si{\celsius} hotter than resting in
+        the shade.
+  \item \textbf{The CoolBrick kennel stays below the outdoor air.} The white
+        coat reflects about 95\% of sunlight, the air cells slow the heat
+        that does get in, and the PCM soaks up the rest. The inside walls
+        peak at about 39.5 \si{\celsius}, about
+        4.7 \si{\celsius} cooler than the clay kennel's walls.
+  \item \textbf{Ventilation matters as much as insulation.} When we first ran
+        the model with less ventilation, the well-insulated CoolBrick kennel
+        trapped the dog's own heat at night. Adding jaali vents (about 100
+        air changes per hour) fixed this. This is now a design rule.
+  \item \textbf{Limits.} No kennel can be cooler than the outside air for
+        long without a power source, so on a \SI{41}{\celsius} day all three
+        stay hot for many hours. The CoolBrick's job is to stop the kennel
+        from making things \emph{worse} than the shade. These are model
+        results with assumed values; real kennels will have mortar joints
+        and imperfections. The dog-dummy experiment will test this.
 \end{itemize}
 
 \subsection{Measured results (to be completed) \todo{fill in}}
@@ -926,17 +893,18 @@ Time to reach \SI{35}{\celsius} after cooling fails (h) & 1.3 & 1.8 & 9.5 \\
 \small
 \begin{tabular}{@{}lccc@{}}
 \toprule
- & Clay & Poly Citra v1 & CoolBrick \\
+ & Clay brick & Plastic & CoolBrick \\
 \midrule
-Mass per brick (kg)                    & \todo{} & \todo{} & \todo{} \\
-Compressive strength (MPa)             & \todo{} & \todo{} & \todo{} \\
-Water absorption (\%)                  & \todo{} & \todo{} & \todo{} \\
-Surface temperature at noon (\si{\celsius}) & \todo{} & \todo{} & \todo{} \\
-Cooling energy over 30 days (kWh)      & \todo{} & \todo{} & \todo{} \\
-Ride-through to \SI{35}{\celsius} (min) & \todo{} & \todo{} & \todo{} \\
+Mass per brick (kg)                       & \todo{} & --- & \todo{} \\
+Compressive strength (MPa)                & \todo{} & --- & \todo{} \\
+Water absorption (\%)                     & \todo{} & --- & \todo{} \\
+Outer surface temperature at noon (\si{\celsius}) & \todo{} & \todo{} & \todo{} \\
+Peak ``felt'' temperature in kennel (\si{\celsius}) & \todo{} & \todo{} & \todo{} \\
+Hours above \SI{35}{\celsius}            & \todo{} & \todo{} & \todo{} \\
 \bottomrule
 \end{tabular}
 \end{center}
+
 
 % =====================================================================
 \section{Conclusion}
@@ -945,13 +913,15 @@ Poly Citra Bricks show that two common wastes, Styrofoam and orange peel, can
 be turned into a light, waterproof building brick without mining clay or
 firing a kiln. By redesigning the brick to ``put the air back'' and adding a
 reflective coat, a coconut-oil PCM and peel biochar, the CoolBrick becomes a
-\textbf{passive cooling system}. Our simulation of a small edge data-centre
-shelter predicts about 74\% less heat through the walls and roof
-than clay, about 1,200 kWh of cooling electricity saved per shelter per year,
-and 9.5 hours instead of 1.3 before the room overheats if the
-cooling fails. The results support our hypothesis, but they are model
-predictions. The next step is to measure the real bricks and run the
-mini data-centre experiment.
+\textbf{passive cooling material}. Our simulation of a dog kennel on a
+\SI{41}{\celsius} day predicts that a resting dog would feel about
+40.0 \si{\celsius} at the hottest point in a CoolBrick kennel, compared
+with 43.8 \si{\celsius} in a clay-brick kennel and 45.3 \si{\celsius} in a plastic one,
+with the walls next to the dog about 4.7 \si{\celsius} cooler than clay. This
+supports our hypothesis. We also learned that good ventilation is essential.
+A CoolBrick kennel costs about \rupee11,059 to make at scale, close to a
+plastic kennel, or about \rupee3 per day over a 10-year life. The next
+step is to measure the real bricks and run the dog-dummy experiment.
 
 \begin{center}
 \small
@@ -959,94 +929,179 @@ mini data-centre experiment.
 \toprule
  & Poly Citra Bricks (v1) & Poly Citra CoolBrick (v2) \\
 \midrule
-Goal & Turn two wastes into a brick & \ldots{} that also \textbf{cuts data-centre cooling energy} \\
-Audience & NGOs, housing, government & \textbf{Data centres}, edge and telecom sites (plus housing) \\
-Inputs & EPS + orange-peel limonene & + peel biochar, bio-PCM, CaCO$_3$ from eggshell or marble waste \\
-Structure & Solid moulded brick & Hollow air cells, sealed PCM pockets, interlocking key, jaali variant \\
-Thermal & Not measured & Target $U \approx \SI{0.6}{W/m^2K}$ vs.\ 2.2 for clay; delayed peaks \\
+Goal & Turn two wastes into a brick & \ldots{} that also \textbf{keeps dogs cool} \\
+Audience & NGOs, housing, government & \textbf{Animal shelters}, street-dog carers, pet owners, dog units \\
+Inputs & EPS + orange-peel limonene & + peel biochar, coconut-oil PCM, CaCO\textsubscript{3} coat \\
+Structure & Solid moulded brick & Hollow air cells, sealed PCM pockets, interlocking key, jaali vent blocks \\
+Thermal & Not measured & Kennel stays below outdoor air in simulation; \\
+ & & walls \textasciitilde 4.7 \si{\celsius} cooler than clay \\
+Cost & Not worked out & \rupee67 per brick, \rupee11,059 per kennel at scale \\
 Fire safety & Not addressed & Biochar flame retardance, mineral coat, burn testing \\
 Solvent & Single use & Recovered by condensation and reused \\
-Evidence & Prototype & Standard tests + 30-day mini data-centre experiment \\
-SDGs & 11, 12, 13 & 7, 9, 11, 12, 13 \\
+Evidence & Prototype & Standard tests + 30-day dog-dummy kennel experiment \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
+
 % =====================================================================
 \section{Future Potential of the Project}
 
-\begin{minipage}[c]{0.58\textwidth}
-\subsection{Impact at scale}
-\textbf{Assumptions:} a \SI{3}{m}\,$\times$\,\SI{3}{m}\,$\times$\,\SI{3}{m}
-shelter with \SI{36}{m^2} of walls. The sun-heated outer wall surface
-averages \SI{12}{K} above the \SI{25}{\celsius} inside, 24 hours a day on 200
-hot days a year. Cooling has a coefficient of performance (COP) of 3;
-commercial electricity costs Rs\,8/kWh; and the grid emits
-\SI{0.71}{kg\,CO_2/kWh}.
-\[
-\Delta Q = (2.20 - 0.59)\times 36 \times 12 \approx \SI{695}{W}
-\]
-That is about \SI{230}{W} less cooling power, day and night, or about
-\SI{5.6}{kWh} saved per day.
+\subsection{Cost price analysis}
+All prices are 2025--26 Indian market estimates from supplier listings and
+are rounded. They will change with location and quantity, so we will get
+quotes before building. ``Pilot'' means making about 25 bricks a day by
+hand; ``scale'' means about 150 bricks a day per worker with more moulds.
 
-{\footnotesize\color{gray}Walls only; the roof and cool-face coat would add
-more. This is a first-order steady-state estimate, to be validated against
-the mini data-centre experiment.}
+\subsubsection*{A. Cost price of one CoolBrick (23 $\times$ 11 $\times$ 7.5 cm)}
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l X r@{}}
+\toprule
+\textbf{Item} & \textbf{Basis} & \textbf{\rupee per brick} \\
+\midrule
+Styrofoam (EPS) waste & about 0.49 kg, donated; collection and cleaning & 3.0 \\
+D-limonene top-up & 140 g used per brick, 80\% recovered; 28 g lost at \rupee590/kg & 16.5 \\
+Sand / fly-ash filler & 0.84 kg at \rupee1.5/kg & 1.3 \\
+Orange-peel biochar & 50 g from free peel; fuel for charring & 1.0 \\
+Coconut-oil PCM blend & 0.21 L at \rupee160/L (industrial grade) & 33.3 \\
+Sealing the PCM pockets & gel caps and tape & 2.0 \\
+CaCO\textsubscript{3} cool-face coat & 0.017 m\textsuperscript{2} at about \rupee55/m\textsuperscript{2} & 1.0 \\
+Energy & distilling, curing and solvent recovery & 4.0 \\
+Mould wear & reusable moulds over about 500 uses & 1.0 \\
+\midrule
+\textbf{Materials and energy} & & \textbf{63.1} \\
+Labour, pilot & 25 bricks a day at \rupee600/day & 24.0 \\
+Labour, at scale & 150 bricks a day at \rupee600/day & 4.0 \\
+\midrule
+\textbf{Cost price, pilot / at scale} & & \textbf{87 / 67} \\
+\textbf{``Lite'' brick (no PCM), pilot / at scale} & & \textbf{52 / 32} \\
+Fired clay brick, for comparison & market price & 5--12 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{minipage}[t]{0.54\textwidth}
+\vspace{0pt}
+\textbf{What drives the cost.} The coconut-oil PCM is about half the cost of
+a CoolBrick. The limonene top-up is the next biggest, and it depends on how
+much solvent we recover:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Limonene recovered & 60\% & 80\% & 95\% \\
+\midrule
+Limonene cost per brick (\rupee) & 33 & 17 & 4 \\
+\bottomrule
+\end{tabular}
+\end{center}
+If we distil all our own limonene from free orange peel, this cost becomes
+mainly fuel. About 4.7 kg of peel replaces the 28 g lost per brick.
 \end{minipage}\hfill
-\begin{minipage}[c]{0.36\textwidth}
-\begin{tcolorbox}[colback=citrus!8,colframe=citrus,arc=3pt,boxrule=0.8pt,halign=center]
-{\LARGE\bfseries\color{citrus} $\sim$\SI{1100}{kWh}}\\{\scriptsize electricity saved per shelter per year}\\[6pt]
-{\LARGE\bfseries\color{leaf} $\sim$\SI{790}{kg}}\\{\scriptsize CO$_2$ avoided per shelter per year}\\[6pt]
-{\LARGE\bfseries\color{sky} $\sim$Rs\,8,900}\\{\scriptsize saved per shelter per year}
-\end{tcolorbox}
+\begin{minipage}[t]{0.42\textwidth}
+\vspace{0pt}
+\begin{card}{citrus}\textbf{A CoolBrick costs more than a clay brick} (about
+\rupee67 vs \rupee5--12). It does much more: it insulates,
+reflects sun and stores heat. So we use full CoolBricks only where they
+matter most (the roof and the sunny west wall) and cheaper ``Lite'' bricks
+elsewhere.\end{card}
 \end{minipage}
 
-India has lakhs of telecom and edge sites, so even a small share adds up to
-millions of kWh a year.
+\subsubsection*{B. Cost of one CoolBrick dog kennel (1.0 $\times$ 0.8 $\times$ 0.8 m)}
+The kennel needs about 189 bricks: 140 for the walls (with 5\% spare)
+and 49 for the roof. In our ``smart mix'', 82 full CoolBricks go in the
+roof and the west wall and 107 Lite bricks go in the other walls.
 
-\begin{card}{leaf}
-\textbf{Policy fit.} The India Cooling Action Plan calls for passive
-cooling through better building envelopes, and large data-centre operators
-are setting their own energy and carbon targets.
-\end{card}
+\begin{center}
+\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Item} & \textbf{Cost} \\
+\midrule
+82 full CoolBricks at \rupee67 (scale) & \rupee5,499 \\
+107 Lite bricks at \rupee32 (scale) & \rupee3,400 \\
+Fibre-cement sheet to support the roof & \rupee450 \\
+Mortar (cement and sand) & \rupee350 \\
+Raised floor tiles & \rupee300 \\
+Four jaali vent blocks (moulded) & \rupee160 \\
+Mason, one day & \rupee900 \\
+\midrule
+\textbf{Cost price of a CoolBrick kennel, at scale} & \textbf{\rupee11,059} \\
+Same kennel at pilot scale & \rupee14,839 \\
+All full CoolBricks (no Lite bricks), at scale & \rupee14,834 \\
+\bottomrule
+\end{tabular}
+\end{center}
 
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[xbar,width=0.86\textwidth,height=5.6cm,bar width=11pt,xmin=0,xmax=17000,
+  symbolic y coords={A,B,C,D},
+  ytick=data,yticklabels={Clay-brick kennel,Plastic/FRP kennel (with GST),CoolBrick kennel (smart mix),CoolBrick kennel (all full bricks)},yticklabel style={font=\small},xticklabel style={font=\scriptsize,/pgf/number format/fixed},
+  nodes near coords,nodes near coords style={font=\scriptsize,/pgf/number format/fixed},xlabel={Cost to make or buy (\rupee)},label style={font=\small},axis lines*=left,enlarge y limits=0.18]
+\addplot[fill=citrus!80,draw=none] coordinates {(4050,A) (11505,B) (11059,C) (14834,D)};
+\end{axis}
+\end{tikzpicture}
+\caption{Cost of a dog kennel of the same size. The plastic price is one Indian listing for an FRP kennel (\rupee9,750 + 18\% GST, before delivery). The clay kennel uses the same extras as the CoolBrick kennel.}
+\end{figure}
+
+\subsubsection*{C. Selling price, profit and break-even}
+\begin{center}
+\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+Cost price of a CoolBrick kennel (smart mix, at scale) & \rupee11,059 \\
+Selling price to shelters and pet owners & \rupee13,500 \\
+\textbf{Profit per kennel} & \textbf{\rupee2,441 (22\% of cost)} \\
+\midrule
+Steam-distillation still and condenser & \rupee12,000 \\
+Ten brick moulds & \rupee8,000 \\
+Limonene working stock (7 kg) & \rupee4,130 \\
+Scale, thermometers, mixing tools & \rupee5,000 \\
+\textbf{One-time set-up cost} & \textbf{\rupee29,130} \\
+\midrule
+\textbf{Break-even} & \textbf{after about 12 kennels} \\
+Cost per dog per day over a 10-year life & \rupee3.0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{How we will bring the cost down:} distil our own limonene from free
+peel; buy coconut oil in bulk or test cheaper plant fats for the PCM; make
+CaCO\textsubscript{3} coat from waste eggshells; and ask companies to sponsor
+kennels for shelters through CSR, so shelters pay little or nothing.
 
 \subsection{Who will use it}
 \begin{minipage}[c]{0.62\textwidth}
-\textbf{Primary customers}
 \begin{itemize}
-  \item \textbf{Edge data-centre and telecom-tower companies} --- thousands
-        of small shelters standing in full sun.
-  \item \textbf{Colocation and hyperscale data-centre operators} --- roofs,
-        sun-facing walls, UPS and battery rooms, and their sustainability
-        (ESG) targets.
-  \item \textbf{Modular data-centre builders and EPC contractors} who design
-        and build these sites.
+  \item \textbf{Animal shelters and rescue NGOs}, which house many dogs and
+        cannot afford cooling.
+  \item \textbf{Municipal Animal Birth Control (ABC) centres}, where dogs
+        recover after surgery.
+  \item \textbf{Street-dog feeders and resident welfare associations} who
+        look after community dogs.
+  \item \textbf{Pet owners} whose dogs live outdoors, and farms with guard
+        dogs.
+  \item \textbf{Police, army and security dog units} with outdoor kennels.
 \end{itemize}
-\textbf{Also} (the original Poly Citra audience): NGOs, government bodies,
-educators, architects and environmental start-ups working on affordable
-housing.
 \end{minipage}\hfill
 \begin{minipage}[c]{0.33\textwidth}
 \centering\includegraphics[width=\linewidth]{audience.png}
 \end{minipage}
 
-\begin{card}{leaf}
-\textbf{Why data centres will listen.} Cooling is one of a data centre's
-biggest running costs, and large operators publish carbon and waste targets.
-CoolBricks cut cooling energy \emph{and} recycle the operator's own server
-packaging.
-\end{card}
-
-
 \subsection{Business model}
 \begin{minipage}[c]{0.68\textwidth}
-\begin{card}{citrus}\textbf{B2B supply.} Sell CoolBricks, jaali sun-screens and cool-face coating to data-centre builders and edge/telecom operators.\end{card}
-\begin{card}{leaf}\textbf{Packaging take-back.} Collect server Styrofoam from data centres (a waste they pay to remove) and peels from juice vendors.\end{card}
-\begin{card}{sky}\textbf{Shelter retrofit kits.} CoolBrick panels plus cool-face coat for existing hot telecom and edge shelters.\end{card}
-\begin{card}{heat}\textbf{Pilot, then scale.} A paid pilot at one edge site with sensors; its data becomes our sales case.\end{card}
-\begin{card}{plum}\textbf{ESG reporting.} Give operators figures for waste recycled and CO$_2$ avoided for their sustainability reports.\end{card}
-\begin{card}{ink}\textbf{Original market.} Direct sales and eco-shelters for NGOs, builders and CSR projects continue alongside.\end{card}
+\begin{card}{citrus}\textbf{Kennel kits.} Sell CoolBrick kennel kits and
+built kennels to shelters, pet owners and dog units.\end{card}
+\begin{card}{leaf}\textbf{Sponsor a CoolKennel.} Companies and donors pay for
+kennels placed at shelters through CSR, with a plaque and photos.\end{card}
+\begin{card}{sky}\textbf{Partnerships.} Collect Styrofoam from shops and
+packaging companies, and peels from juice vendors.\end{card}
+\begin{card}{plum}\textbf{Original market.} CoolBricks and Lite bricks for
+eco-shelters and housing projects continue alongside.\end{card}
 \end{minipage}\hfill
 \begin{minipage}[c]{0.28\textwidth}
 \centering\includegraphics[width=\linewidth]{revenue.png}
@@ -1055,18 +1110,14 @@ packaging.
 \subsection{Spreading the idea}
 \begin{minipage}[c]{0.62\textwidth}
 \begin{enumerate}[label=\textcolor{citrus}{\textbf{\arabic*.}}]
-  \item \new\ \textbf{Mini data-centre demo} --- two model shelters side by
-        side with live temperature and energy readings.
-  \item \new\ \textbf{Data-centre industry events} --- pitch the
-        packaging-to-brick closed loop to sustainability teams.
-  \item \new\ \textbf{Open data} --- publish our test logs so engineers can
-        check the numbers; the way to win a cautious industry.
-  \item \textbf{Social Media Storytelling} --- videos showing waste
-        transformed into eco-bricks: ``your server box became your wall''.
-  \item \textbf{Live Demonstrations} and \textbf{NGO Collaborations} ---
-        hands-on events and pilot projects to build trust.
-  \item \textbf{Student Ambassador Program} --- empower youth to lead
-        sustainability drives and workshops.
+  \item \textbf{Kennel demo at a shelter} --- two kennels side by side with
+        live temperature displays.
+  \item \textbf{Thermal-camera photos} of a CoolBrick kennel vs a plastic one
+        at 2\,pm.
+  \item \textbf{Social-media stories} of rescued dogs and their cool kennels.
+  \item \textbf{Vet and NGO partners} to share heat-safety advice for dogs.
+  \item \textbf{Student Ambassador Program} --- youth lead peel and Styrofoam
+        collection drives.
 \end{enumerate}
 \end{minipage}\hfill
 \begin{minipage}[c]{0.34\textwidth}
@@ -1083,14 +1134,15 @@ packaging.
   hd/.style={rectangle,rounded corners=3pt,minimum width=3.8cm,minimum height=0.8cm,
              font=\bfseries,text=white,anchor=south}]
 \foreach \i/\c/\t/\b in {
-  0/plum/{Now}/{\textbullet\ Cavity and biochar mixes\\\textbullet\ Measure $k$ and strength\\\textbullet\ Burn and water tests},
-  1/sky/{Next 3 months}/{\textbullet\ 30-day mini data-centre trial\\\textbullet\ Tune the bio-PCM blend\\\textbullet\ CaCO$_3$ coat from eggshells},
-  2/leaf/{6 months}/{\textbullet\ Pilot at one edge or telecom shelter\\\textbullet\ Cost per brick vs.\ clay},
-  3/citrus/{12 months+}/{\textbullet\ Scale production\\\textbullet\ Partner with data-centre builders\\\textbullet\ Fire and lab certification}}{
+  0/plum/{Now}/{\textbullet\ Brick tests\\\textbullet\ Measure $k$ and strength\\\textbullet\ Check no solvent is left},
+  1/sky/{Next 3 months}/{\textbullet\ 30-day dog-dummy kennel trial\\\textbullet\ Tune the PCM blend\\\textbullet\ Coat from eggshells},
+  2/leaf/{6 months}/{\textbullet\ 3 pilot kennels at an animal shelter\\\textbullet\ Real cost per kennel},
+  3/citrus/{12 months+}/{\textbullet\ Kennel kits\\\textbullet\ CSR sponsors\\\textbullet\ Designs for cats, goats and poultry}}{
   \node[hd,fill=\c] at (\i*4.1,0) {\t};
   \node[ph,fill=\c!10] at (\i*4.1,0) {\b};}
 \end{tikzpicture}
 \end{center}
+
 
 % =====================================================================
 \section{Bibliography, References and Acknowledgements}
@@ -1098,11 +1150,9 @@ packaging.
 \subsection*{References}
 \small
 \begin{enumerate}[label={[\arabic*]},leftmargin=*]
-\item Ministry of Environment, Forest \& Climate Change (2019).
-      \emph{India Cooling Action Plan}. Government of India.
-\item Bureau of Energy Efficiency (2018). \emph{Eco Niwas Samhita 2018
-      (Energy Conservation Building Code for Residential Buildings), Part I:
-      Building Envelope}.
+\item Department of Animal Husbandry and Dairying (2019). \emph{20th Livestock Census}. Government of India.
+\item O'Neill, D.\,G., et al.\ (2020). Heat-related illness in dogs in the UK (VetCompass study). \emph{Scientific Reports}. \todo{complete citation}
+\item PetMD (2024). \emph{How Hot Is Too Hot for Dogs?} petmd.com.
 \item Li, X., Peoples, J., Huang, Z., Zhao, Z., Qiu, J., \& Ruan, X. (2020).
       Full daytime sub-ambient radiative cooling in commercial-like paints
       with high figure of merit. \emph{Cell Reports Physical Science}, 1(10).
@@ -1114,29 +1164,27 @@ packaging.
       biochar. Chung-Ang University. \todo{complete citation}
 \item Sony Corporation (c.\ 2001). Limonene-based expanded-polystyrene
       recycling system. \todo{complete citation}
+\item Florida Chemical Company. D-limonene as a solvent for expanded polystyrene (300--400 kg EPS per 100 kg limonene). Via cleanersolutions.org.
+\item Studies of orange-peel oil yield by steam distillation (about 0.6--2\%, limonene over 90\%). \todo{choose and complete one citation}
 \item Computational and experimental analysis of PCM-infused brick for
       sustainable heat regulation. \todo{complete citation}
 \item Bureau of Indian Standards: IS 1077 (common burnt clay building
       bricks), IS 3495 Parts 1--4 (methods of test of burnt clay bricks),
       IS 3346 (thermal conductivity by guarded hot plate).
 \item UL 94: Standard for Safety of Flammability of Plastic Materials.
-\item CareEdge Ratings and Redseer Strategy Consultants (2025--26). Forecasts of India data-centre capacity to 2030.
-\item International Energy Agency (2025). \emph{Energy and AI}: Energy demand from AI.
-\item Wood Mackenzie (2026). India data centre capacity to reach 12 GW by 2030.
-\item Skach, M.\ et al.\ (2015). Thermal time shifting: leveraging phase change
-      materials to reduce cooling costs in warehouse-scale computers.
-      \emph{ISCA 2015}.
+\item Price sources (2025--26): InfraLens city brick prices; IndiaMART and TradeIndia listings for coconut oil, calcium carbonate and D-limonene; Fibre Crafts India FRP dog kennel listing.
 \end{enumerate}
 
 \subsection*{Acknowledgements}
 We thank \todo{teacher / mentor names} and Scottish High International
 School for their guidance and for the use of the science laboratory, and our
-families for their support. \todo{add anyone else who helped}
+families for their support. \todo{add anyone else who helped, e.g.\ an
+animal shelter or vet}
 
 \vfill
 \begin{center}
 {\Huge\bfseries\color{citrus}Thank you!}\\[4pt]
-{\large Waste in. Cool data centres out.}\\[6pt]
+{\large Waste in. Cool kennels out.}\\[6pt]
 {\small Rian Sikka \& Daiwik Abroo \textbullet\ Grade 9 (IGCSE) \textbullet\ Scottish High International School}
 \end{center}
 
