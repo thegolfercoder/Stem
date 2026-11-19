@@ -87,9 +87,7 @@
 % ---------- helpers ----------
 \newcommand{\todo}[1]{\textcolor{heat}{\textbf{[#1]}}}
 \newcommand{\new}{\tikz[baseline=-0.6ex]\node[fill=citrus,text=white,font=\tiny\bfseries,rounded corners=2pt,inner sep=2pt]{NEW};}
-\newtcolorbox{card}[2][]{enhanced,colback=#2!6,colframe=#2,boxrule=0pt,
-  leftrule=3pt,arc=2pt,left=6pt,right=6pt,top=4pt,bottom=4pt,fontupper=\small,
-  before skip=6pt,after skip=6pt,#1}
+\newenvironment{card}[2][]{\par\smallskip}{\par\smallskip}
 \newtcolorbox{keybox}[1]{enhanced,colback=#1!8,colframe=#1,boxrule=0.8pt,arc=3pt,
   left=8pt,right=8pt,top=6pt,bottom=6pt,before skip=8pt,after skip=8pt}
 
@@ -106,7 +104,7 @@
 \vspace{2pt}
 {\large Innovative Eco-Friendly Construction Solutions\par}
 \vspace{4pt}
-{\large\color{sky}\bfseries Version 2: \textcolor{citrus}{CoolBrick} --- cooler buildings and classrooms that every government school can afford\par}
+{\large\color{sky}\bfseries Version 2: \textcolor{citrus}{CoolBrick}: cooler classrooms that government schools can afford\par}
 \vspace{6pt}
 \sdg{4}{sdgfour} \sdg{11}{sdgeleven} \sdg{12}{sdgtwelve} \sdg{13}{sdgthirteen}
 
@@ -164,6 +162,9 @@ governments can cool \textbf{public spaces} (schools, anganwadis, health
 centres, bus shelters, offices) at about \rupee108 per square metre of roof,
 about a third of the \rupee300/m\textsuperscript{2} that Telangana's Cool Roof
 Policy budgets.
+
+\textbf{Our USP:} CoolBrick cools classrooms without electricity, using
+materials made from two wastes, for about \rupee122 per student.
 
 \begin{keybox}{citrus}
 \centering
@@ -225,27 +226,32 @@ in our own school (Section~4).
         and \textbf{76\%} said heat hurt their concentration.
 \end{itemize}
 
-\begin{card}{citrus}
-\textbf{The insight:} the hottest surface in most classrooms is the roof. A
-cheap white coat that reflects sunlight and radiates heat to the sky, made
-from our CoolBrick system, can make a big difference with no electricity.
-\end{card}
+The hottest surface in most classrooms is the roof. A cheap white coat that
+reflects sunlight, made with our CoolBrick system, can cool the room without
+electricity.
 
-\subsection{What makes this project unique}
-\begin{itemize}
-  \item \textbf{Two wastes, one product.} Styrofoam and orange peel become
-        building materials. No clay is mined and no kiln is fired.
-  \item \textbf{The whole orange is used.} The peel gives the solvent
-        (limonene) and, after distillation, the biochar filler. The limonene
-        is recovered and reused.
-  \item \textbf{A step-by-step plan schools can afford.} Level 1 costs about
-        \rupee4,875 per classroom and fits inside a government school's yearly grant.
-  \item \textbf{Students can help make it.} The coat and jaali blocks are
-        simple enough for school eco-clubs to make from waste they collect.
-  \item \textbf{Honest science.} Our simulation showed that insulation alone
-        can trap heat in a crowded classroom. We changed the design to fix
-        this (Section~5).
-\end{itemize}
+\needspace{22\baselineskip}
+\subsection{Our USP (unique selling point)}
+\begin{keybox}{citrus}
+\large\textbf{CoolBrick cools classrooms without electricity, using building
+materials made from two wastes (Styrofoam and orange peel), for about
+\rupee122 per student.}
+\end{keybox}
+What makes it different from other ways of cooling a classroom:
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l X X@{}}
+\toprule
+ & \textbf{Usual options} & \textbf{CoolBrick} \\
+\midrule
+Running cost & AC and coolers need electricity every day & No electricity at all \\
+Materials & New paint, clay bricks or foam, made from fresh resources & Made from Styrofoam and orange-peel waste \\
+Cost & AC: tens of thousands of rupees per room, plus bills & About \rupee4,875 per classroom (\rupee122 per student) \\
+Who can make it & Factories and contractors & Local groups and school eco-clubs \\
+Waste & Creates waste & Removes waste; the solvent is recovered and reused \\
+\bottomrule
+\end{tabularx}
+\end{center}
 
 \subsection{How the project serves the UN Sustainable Development Goals}
 We focus on the four goals our project changes directly: better school
@@ -358,7 +364,7 @@ Solid polystyrene has $k \approx 0.10$--\SI{0.17}{W/mK}: still far better
 than fired clay ($\approx\SI{0.8}{W/mK}$), but 3--5 times worse than the
 foam.
 
-\textbf{Design principle for version 2:} put the air back, using
+So in version 2 we put the air back, using
 engineered cavities, porous bio-fillers and a controlled foaming step.
 \end{minipage}\hfill
 \begin{minipage}[c]{0.44\textwidth}
@@ -421,7 +427,7 @@ The CoolBrick puts that principle into one block. Figure~\ref{fig:xsec} shows th
 \caption{Overview of the five upgrades.}
 \end{figure}
 
-\subsubsection*{Upgrade 1 --- Air-cell core}
+\subsubsection*{Upgrade 1: Air-cell core}
 
 \begin{minipage}[c]{0.54\textwidth}
 \small
@@ -463,7 +469,7 @@ Example: $U_\text{clay} = 1/(0.13 + 0.23/0.81 + 0.04) = \SI{2.20}{W/m^2K}$.
 \captionof{figure}{U-value of a one-brick wall.}
 \end{minipage}
 
-\subsubsection*{Upgrade 2 --- Bio-PCM pockets: a thermal battery}
+\subsubsection*{Upgrade 2: Bio-PCM pockets: a thermal battery}
 
 \begin{minipage}[c]{0.5\textwidth}
 \small
@@ -506,7 +512,7 @@ Example: $U_\text{clay} = 1/(0.13 + 0.23/0.81 + 0.04) = \SI{2.20}{W/m^2K}$.
 \captionof{figure}{Idea of the PCM effect (illustrative only; see Section~5 for simulation results).}
 \end{minipage}
 
-\subsubsection*{Upgrade 3 --- The cool face: radiative cooling}
+\subsubsection*{Upgrade 3: The cool face: radiative cooling}
 
 \begin{minipage}[c]{0.56\textwidth}
 \small
@@ -543,7 +549,7 @@ Example: $U_\text{clay} = 1/(0.13 + 0.23/0.81 + 0.04) = \SI{2.20}{W/m^2K}$.
 \captionof{figure}{Solar reflectance of wall finishes (typical values).}
 \end{minipage}
 
-\subsubsection*{Upgrade 4 --- Peel biochar: using the whole orange}
+\subsubsection*{Upgrade 4: Peel biochar: using the whole orange}
 
 \begin{minipage}[c]{0.54\textwidth}
 \small
@@ -580,7 +586,7 @@ After steam distillation, the peel residue is still waste. We
 \captionof{figure}{Zero-waste use of the orange.}
 \end{minipage}
 
-\subsubsection*{Upgrade 5 --- Breeze-block (jaali) CoolBricks}
+\subsubsection*{Upgrade 5: Breeze-block (jaali) CoolBricks}
 
 \begin{minipage}[c]{0.56\textwidth}
 \small
@@ -648,12 +654,10 @@ After steam distillation, the peel residue is still waste. We
 \caption{A CoolBrick classroom upgrade (concept, cross-section, not to scale).}
 \end{figure}
 
-\begin{card}{leaf}
-\textbf{Design rule from our simulation:} in a crowded classroom without AC,
-reflecting sunlight and letting heat escape (cool roof, shading, night
-ventilation) matters more than insulation. Insulation on its own can trap
-the students' body heat.
-\end{card}
+Our simulation showed that in a crowded classroom without AC, reflecting
+sunlight and letting heat escape (cool roof, shading, night ventilation)
+matters more than insulation. Insulation on its own can trap the students'
+body heat.
 
 
 \section{Methodology \& Experimental Design}
@@ -931,9 +935,10 @@ temperature in school hours from 39.8 to 36.8 \si{\celsius}, and from
 47.1 to 38.7 \si{\celsius} under a tin roof. This supports our
 hypothesis. We also learned that, in crowded classrooms, letting heat escape
 matters as much as keeping it out. Level 1 costs about \rupee4,875 per classroom,
-which a government school can pay from its own yearly grant. The project
-supports SDGs 4, 11, 12 and 13. Next we will measure two real
-classrooms.
+which a government school can pay from its own yearly grant. That is our
+USP: cooler classrooms with no electricity, made from waste, at about
+\rupee122 per student. The project supports SDGs 4, 11, 12 and 13. Next we
+will measure two real classrooms.
 
 \begin{center}
 \small
@@ -1007,18 +1012,6 @@ Level 3 & New classroom: about 6,204 Lite bricks instead of clay bricks for 66 m
 \end{center}
 {\footnotesize\color{gray} Level 3 extra cost compares Lite bricks (\rupee32) with clay bricks (\rupee10). Using full CoolBricks with PCM would add about \rupee354,000. The cool coat may need washing or re-coating every 2--3 years (about \rupee2,475 each time).}
 
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}
-\begin{axis}[ybar,width=0.75\textwidth,height=5.6cm,bar width=26pt,ymin=0,ymax=1000,
-  symbolic x coords={Level 1,Level 2},xtick=data,nodes near coords,nodes near coords style={font=\small},
-  ylabel={Cost per student (\rupee)},label style={font=\small},tick label style={font=\small},axis lines*=left,enlarge x limits=0.5]
-\addplot[fill=citrus!80,draw=none] coordinates {(Level 1,122) (Level 2,752)};
-\end{axis}
-\end{tikzpicture}
-\caption{One-time cost per student to cool a 40-student classroom.}
-\end{figure}
-
 \subsection{How a government school can afford it}
 \begin{minipage}[t]{0.56\textwidth}
 \vspace{0pt}
@@ -1042,11 +1035,11 @@ Level 3 & New classroom: about 6,204 Lite bricks instead of clay bricks for 66 m
 \end{minipage}\hfill
 \begin{minipage}[t]{0.4\textwidth}
 \vspace{0pt}
-\begin{card}{citrus}\textbf{Example: a 300-student school with 8
-classrooms.} Its composite grant is in the \rupee25,000--\rupee1,00,000
+\begin{card}{citrus}\textbf{Example:} a 300-student school with 8
+classrooms. Its composite grant is in the \rupee25,000--\rupee1,00,000
 range. Coating all 8 roofs costs about \rupee39,000. It can
 do this over one or two years, or in one go with a small CSR grant.\end{card}
-\begin{card}{leaf}\textbf{At national scale:} cooling 1 lakh of the hottest
+\begin{card}{leaf}Cooling 1 lakh of the hottest
 classrooms at Level 1 would cost about \rupee49 crore, or roughly
 \rupee122 per student, and needs no electricity afterwards.\end{card}
 \end{minipage}
@@ -1089,27 +1082,7 @@ Government office block (with AC) & 1,000 & \rupee108,333 & \rupee300,000 & 8 / 
 \end{center}
 {\footnotesize\color{gray} Roof sizes are typical examples. Payback uses a field study in Hyderabad, which measured 20--22 kWh of air-conditioning saved per m\textsuperscript{2} of roof per year (14--26\% of AC energy) after whitening dark roofs, valued at \rupee8 per kWh. Plain concrete roofs will save somewhat less. Buildings without AC save no electricity; their benefit is cooler, safer rooms.}
 
-\subsubsection*{C. Example: a whole district}
-\begin{minipage}[t]{0.55\textwidth}
-\vspace{0pt}
-A district with about 1,500 government schools and 6 classrooms each has about
-405,000 m\textsuperscript{2} of classroom roof.
-\begin{itemize}
-  \item With the CoolBrick coat: about \rupee4.4 crore.
-  \item With a commercial cool roof: about \rupee12.2 crore.
-  \item Per student (40 per classroom): about \rupee122 once, then
-        about \rupee25 a year for re-coating.
-\end{itemize}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.41\textwidth}
-\vspace{0pt}
-\begin{card}{leaf}\textbf{Why it is affordable:} no electricity bill, no
-machines to maintain, and the materials come from waste. Local self-help
-groups and school eco-clubs can make the coat and jaali blocks, so most of
-the money stays in the community as wages.\end{card}
-\end{minipage}
-
-\subsubsection*{D. Where the money can come from}
+\subsubsection*{C. Where the money can come from}
 \begin{center}
 \small
 \begin{tabularx}{\textwidth}{@{}>{\bfseries}l X X@{}}
@@ -1127,7 +1100,7 @@ Municipal budgets & Bus shelters, markets, public toilets & Can be added to rout
 \end{tabularx}
 \end{center}
 
-\subsubsection*{E. A step-by-step government roll-out}
+\subsubsection*{D. A step-by-step government roll-out}
 \begin{center}
 \small
 \begin{tabularx}{\textwidth}{@{}l X X@{}}
@@ -1140,13 +1113,6 @@ Year 3+: state & Add cool roofs to the state's routine repair rules for public b
 \bottomrule
 \end{tabularx}
 \end{center}
-
-\begin{card}{citrus}
-\textbf{The case for government:} cooling public spaces with CoolBrick costs
-roughly \rupee108 per m\textsuperscript{2}, once, with no running cost. It protects
-children, patients and workers during heatwaves, cuts AC bills where AC
-exists, and turns two kinds of waste into local jobs.
-\end{card}
 
 \subsection{Who will use it}
 \begin{minipage}[c]{0.62\textwidth}
@@ -1185,7 +1151,7 @@ eco-buildings and low-cost housing.\end{card}
   \item \textbf{Pilot in our own school}, sharing the 30-day results with
         the district education office.
   \item \textbf{Thermal-camera photos} of a coated vs uncoated roof.
-  \item \textbf{Eco-club network} --- students in other schools make jaali
+  \item \textbf{Eco-club network:} students in other schools make jaali
         blocks from waste they collect.
   \item \textbf{Social-media storytelling} of waste becoming cooler
         classrooms.
@@ -1223,7 +1189,7 @@ eco-buildings and low-cost housing.\end{card}
 \item United Nations (2015). \emph{Transforming our world: the 2030 Agenda for Sustainable Development} (SDG targets 4.a, 11.6, 11.c, 12.5, 13.1, 13.3).
 \item Park, R.\,J., Goodman, J., Hurwitz, M., \& Smith, J.\ (2020). Heat and Learning. \emph{American Economic Journal: Economic Policy}, 12(2), 306--339.
 \item Ministry of Education (2024). \emph{UDISE+ 2023--24}. Government of India.
-\item CRY --- Child Rights and You (2026). \emph{Feeling the Heat} (survey of children on heat and schooling).
+\item CRY (Child Rights and You) (2026). \emph{Feeling the Heat} (survey of children on heat and schooling).
 \item Ministry of Education. \emph{Samagra Shiksha: Framework for Implementation} (composite school grant).
 \item Li, X., Peoples, J., Huang, Z., Zhao, Z., Qiu, J., \& Ruan, X. (2020). Full daytime sub-ambient radiative cooling in commercial-like paints with high figure of merit. \emph{Cell Reports Physical Science}, 1(10).
 \item Vitale, M., \& Cascone, S. (2022). Orange peels as a potential ecological thermal insulation material for building application. \emph{TeMA}, 8(2).
