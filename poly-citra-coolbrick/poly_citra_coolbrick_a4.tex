@@ -86,29 +86,29 @@ brick. This first version has been built and tested, and has been recognised
 at national-level competitions \toadd{awards}.
 
 In this edition we redesign it as the \textbf{CoolBrick}, a brick that keeps
-heat out of buildings. Inside each brick are hollow air cells and sealed
-pockets of a coconut-oil phase-change material (PCM). The body contains
-biochar made from the leftover peel, and the outside face has a white
-heat-reflecting coat. India's buildings, and especially its classrooms, get
-dangerously hot in summer, and most cannot afford air-conditioning.
+heat out of buildings. Inside each brick are hollow air pockets and sealed
+pockets of coconut oil that soak up heat. The brick also contains charcoal
+made from the leftover peel, and the outside face has a white
+coat that reflects sunlight. India's buildings, especially classrooms, get
+very hot in summer, and most cannot afford air-conditioning.
 
-We tested the design with a computer simulation of a wall on a hot day
-(outdoor air up to \SI{41}{\celsius}):
+We tested the design with a computer program that works out how much heat
+gets through different walls on a hot day (up to \SI{41}{\celsius}):
 
 \begin{center}
 \begin{tabular}{lccc}
 \toprule
  & Clay brick & Poly Citra v1 & \textbf{CoolBrick} \\
 \midrule
-Heat let through by a 230 mm wall ($U$, W/m\textsuperscript{2}K) & 2.20 & 0.76 & \textbf{0.60} \\
-Hottest outside surface (\si{\celsius}) & 51.9 & 52.1 & \textbf{39.1} \\
-Heat gained by a small building in one day (kWh) & 24.4 & 7.7 & \textbf{6.4} \\
+Hottest temperature of the outside of the wall & \SI{52}{\celsius} & \SI{52}{\celsius} & \textbf{\SI{39}{\celsius}} \\
+Heat let into a small building in one day & 100\% & 32\% & \textbf{26\%} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-A CoolBrick building takes in about \textbf{74\% less heat} than a clay-brick
-one. These are simulation results; our next step is to measure real bricks.
+A CoolBrick building lets in about \textbf{three-quarters less heat} than a
+clay-brick one. These are computer results; our next step is to test real
+bricks.
 
 \textbf{Our USP:} a brick that keeps rooms cool without electricity, made
 from two wastes instead of mined clay and a coal-fired kiln.
@@ -144,9 +144,9 @@ from two wastes instead of mined clay and a coal-fired kiln.}
         work together (Section~3); no fans, AC or power needed.
   \item \textbf{Two wastes, one product.} Styrofoam and orange peel replace
         clay. No kiln, no topsoil.
-  \item \textbf{The whole orange is used.} The peel gives the solvent
-        (limonene) and, after distillation, the biochar filler. The limonene
-        is recovered and reused.
+  \item \textbf{The whole orange peel is used.} It gives the limonene, and
+        what is left becomes charcoal for the brick. The limonene is collected
+        and reused.
   \item \textbf{Light and waterproof.} Easy to carry and build with, and it
         does not soak up rain.
 \end{itemize}
@@ -167,12 +167,12 @@ SDG 13: Climate action & No kiln emissions; buildings cope better with heatwaves
 \section{Concept}
 
 \subsection{Turning waste into a brick}
-Polystyrene and D-limonene are both non-polar hydrocarbons, so limonene
-dissolves polystyrene (``like dissolves like''). Styrofoam is about 98\% air,
-so it shrinks into a small amount of thick gel. One kilogram of limonene can
-dissolve about 3--4~kg of Styrofoam. Limonene makes up over 90\% of orange-peel
-oil and is extracted by steam distillation. When the gel dries, the limonene
-evaporates and the polystyrene sets hard.
+Limonene is the oil that gives orange peel its smell. We get it by steam
+distillation: steam carries the oil out of the peel, and the oil separates
+from the water when it cools. Limonene dissolves Styrofoam, just as water
+dissolves sugar. Styrofoam is about 98\% air, so a big pile of foam shrinks
+into a small amount of thick gel. When the gel dries, the limonene
+evaporates and the plastic sets hard.
 
 \begin{figure}[H]
 \centering
@@ -188,25 +188,23 @@ evaporates and the polystyrene sets hard.
 \caption{How the brick is made.}
 \end{figure}
 
-\subsection{How heat gets through a wall}
-Sunlight heats the outside of a wall. The heat then travels through the wall
-by conduction and enters the room. How much gets through is given by
-\[
-  Q = U \times A \times \Delta T, \qquad U = \frac{1}{R_{\text{in}} + \dfrac{d}{k} + R_{\text{out}}}
-\]
-where $k$ is how well the material conducts heat, $d$ is the wall thickness,
-$A$ is the area and $\Delta T$ is the temperature difference. A cooler outer
-surface and a lower $k$ both reduce the heat that reaches the room.
-
-Solid polystyrene conducts heat about five times less than fired clay ($k$
-about 0.15 against \SI{0.81}{W/mK}). But dissolving the foam lets out its
-trapped air, so in the CoolBrick we put air back in.
+\subsection{How heat gets into a room}
+The sun heats the outside of a wall. The heat then slowly moves through the
+wall and warms the room. Two things keep a room cooler:
+\begin{itemize}
+  \item a \textbf{light, shiny surface} that reflects sunlight, so the wall
+        does not get as hot;
+  \item a material that \textbf{lets heat through slowly}, such as trapped
+        air (this is why a flask keeps tea hot).
+\end{itemize}
+Dissolving the foam lets its trapped air out, so in the CoolBrick we put air
+back in.
 
 \subsection{The CoolBrick design}
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[scale=1.3]
+\begin{tikzpicture}[scale=1.05]
   \fill[orange!12] (0,0) rectangle (6,3);
   \draw[ink,line width=0.8pt] (0,0) rectangle (6,3);
   \fill[white] (-0.25,0) rectangle (0,3); \draw[ink] (-0.25,0) rectangle (0,3);
@@ -219,28 +217,27 @@ trapped air, so in the CoolBrick we put air back in.
   \node[font=\scriptsize,rotate=90] at (-0.6,1.5) {OUTSIDE (sun)};
   \node[font=\scriptsize,rotate=90] at (6.4,1.5) {INSIDE (room)};
   \draw[soft] (-0.12,3) -- (-0.12,3.3) node[above,font=\scriptsize]{1 white coat};
-  \draw[soft] (1.2,2.55) -- (1.2,3.75) node[above,font=\scriptsize]{2 air cells};
-  \draw[soft] (3.3,2.9) -- (3.3,3.3) node[above,font=\scriptsize]{3 gel + peel biochar};
-  \draw[soft] (4.8,2.55) -- (4.8,3.75) node[above,font=\scriptsize]{4 coconut-oil PCM};
-  \draw[soft] (5.7,0) -- (5.7,-0.3) node[below,font=\scriptsize]{5 interlocking key};
+  \draw[soft] (1.2,2.55) -- (1.2,3.75) node[above,font=\scriptsize]{2 air pockets};
+  \draw[soft] (3.3,2.9) -- (3.3,3.3) node[above,font=\scriptsize]{3 plastic + peel charcoal};
+  \draw[soft] (4.8,2.55) -- (4.8,3.75) node[above,font=\scriptsize]{4 coconut oil};
+  \draw[soft] (5.7,0) -- (5.7,-0.3) node[below,font=\scriptsize]{5 interlocking shape};
 \end{tikzpicture}
 \caption{Cross-section of a CoolBrick, from the outside face (left) to the room side (right).}
 \end{figure}
 
 \begin{enumerate}
-  \item \textbf{White coat.} A calcium-carbonate coat on the outside face
-        reflects most sunlight and gives off heat to the sky, so the wall
-        surface stays near air temperature.
-  \item \textbf{Air cells.} Hollow cells trap still air, which conducts heat
-        very poorly.
-  \item \textbf{Gel and peel biochar body.} The polystyrene gel makes a
-        strong, waterproof body. Biochar from the leftover peel adds tiny air
-        pockets and helps the brick resist fire.
-  \item \textbf{Coconut-oil PCM.} Sealed pockets on the room side melt at
-        about \SI{27}{\celsius} and soak up heat while melting, then release
-        it at night.
-  \item \textbf{Interlocking keys.} Bricks lock together, so less mortar is
-        needed. Mortar joints let heat through.
+  \item \textbf{White coat.} A white coat (chalk-like calcium carbonate) on
+        the outside reflects most sunlight.
+  \item \textbf{Air pockets.} Hollow spaces trap still air, which slows heat
+        down.
+  \item \textbf{Body.} The hardened plastic gel makes the brick strong and
+        waterproof. Charcoal from the leftover peel adds tiny air spaces and
+        helps the brick resist fire.
+  \item \textbf{Coconut-oil pockets.} Coconut oil melts at about
+        \SI{27}{\celsius}. As it melts it soaks up heat, like ice in a cold
+        drink, and it sets again at night.
+  \item \textbf{Interlocking shape.} Bricks lock together, so less cement is
+        needed between them.
 \end{enumerate}
 
 % ------------------------------------------------------------------ 4
@@ -251,12 +248,12 @@ trapped air, so in the CoolBrick we put air back in.
   \item Collect clean Styrofoam and orange peel.
   \item Extract D-limonene from the peel by steam distillation.
   \item Dissolve broken Styrofoam in the limonene to form a gel \toadd{ratio used}.
-  \item Mix in sand and orange-peel biochar \toadd{proportions}.
-  \item Pour into moulds that form the air cells and PCM pockets; fill and
-        seal the pockets with the coconut-oil blend.
+  \item Mix in sand and charcoal made from the peel \toadd{proportions}.
+  \item Pour into moulds that leave air pockets and oil pockets; fill the oil
+        pockets with coconut oil and seal them.
   \item Cure under a cover, collecting the limonene vapour for reuse
         \toadd{curing time}.
-  \item Paint the outside face with the white calcium-carbonate coat.
+  \item Paint the outside face with the white coat.
 \end{enumerate}
 
 \subsection{Experiment: two model rooms}
@@ -269,7 +266,7 @@ cooler inside at the hottest time of day.
 \textbf{Method:} build two small rooms (\SI{0.6}{m} cubes), one from clay
 bricks and one from CoolBricks, side by side in the sun on the school roof. A
 \SI{100}{W} heater inside each acts like people in the room. Temperature
-sensors log the air and wall surfaces every 5 minutes for 30 days.
+digital thermometers record the temperatures every 5 minutes for 30 days.
 
 \begin{center}
 \begin{tabularx}{\textwidth}{@{}l X@{}}
@@ -277,33 +274,31 @@ sensors log the air and wall surfaces every 5 minutes for 30 days.
 Independent variable & Brick type (clay or CoolBrick) \\
 Dependent variables & Inside air temperature, inner and outer wall temperature \\
 Control variables & Size, position, direction, heater, sensors, days \\
-Equipment & Arduino, DS18B20 temperature sensors, IR thermometer \\
+Equipment & Digital thermometers with a data logger \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
 \subsection{Tests on the brick}
 \begin{center}
-\begin{tabularx}{\textwidth}{@{}l X l@{}}
+\begin{tabularx}{\textwidth}{@{}l X@{}}
 \toprule
-Test & Method & Target \\
+Test & How we do it \\
 \midrule
-Strength & Compression test, 5 bricks (IS 3495) & at least \SI{3.5}{MPa} \\
-Water absorption & Soak 24 h, weigh before and after & under 5\% \\
-Heat conduction & Hot-box test (IS 3346) & $k$ under \SI{0.15}{W/mK} \\
-Fire & Flame test (UL-94 method) & does not drip or keep burning \\
+Strength & Press bricks until they crack and compare with clay bricks \\
+Water & Soak a brick for 24 hours and weigh it before and after \\
+Heat & Shine a heat lamp on one side and measure the other side \\
+Fire & Hold a flame to a sample and check it does not keep burning \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
 \subsection{Computer simulation}
-Before building, we simulated the walls with a program we wrote. The wall is
-split into thin layers, and every few seconds the program calculates how much
-heat flows from one layer to the next (Fourier's law). The outside face
-absorbs sunlight and loses heat to the air and the sky; the inside face meets
-a room kept at \SI{25}{\celsius}. The weather is a hot north-Indian summer day
-(air 27--\SI{41}{\celsius}). We compared a 230~mm wall of clay brick, Poly
-Citra v1 and CoolBrick, and a small \SI{3}{m} building built from each.
+Before building, we wrote a computer program that works out, minute by
+minute, how much heat gets through a wall on a hot summer day (up to
+\SI{41}{\celsius}). It includes the sunshine, the outside air and a room
+kept at \SI{25}{\celsius}. We compared walls made of clay brick, Poly Citra
+v1 and CoolBrick, and a small \SI{3}{m} building made from each.
 
 % ------------------------------------------------------------------ 5
 \section{Results So Far and Explanation of Results}
@@ -327,7 +322,7 @@ and hold a load \toadd{measured values}.
 \centering
 \begin{tikzpicture}
 \begin{axis}[width=0.5\textwidth,height=6cm,xmin=0,xmax=23,ymin=20,ymax=56,xtick={0,6,12,18},
-  xlabel={Hour of day},ylabel={Outside wall surface (\si{\celsius})},label style={font=\small},tick label style={font=\small},
+  xlabel={Hour of day},ylabel={Outside of the wall (\si{\celsius})},label style={font=\small},tick label style={font=\small},
   legend style={font=\scriptsize,at={(0.02,0.98)},anchor=north west,draw=none},axis lines*=left]
 \addplot[soft,densely dotted,thick] coordinates {(0,29.1)(1,27.9)(2,27.2)(3,27)(4,27.2)(5,27.9)(6,29.1)(7,30.5)(8,32.2)(9,34)(10,35.8)(11,37.5)(12,38.9)(13,40.1)(14,40.8)(15,41)(16,40.8)(17,40.1)(18,38.9)(19,37.5)(20,35.8)(21,34)(22,32.2)(23,30.5)};\addlegendentry{Outdoor air}
 \addplot[clay,very thick] coordinates {(0,29.3)(1,28.1)(2,27.2)(3,26.6)(4,26.4)(5,26.5)(6,27)(7,28.1)(8,29.6)(9,31.2)(10,32.9)(11,34.5)(12,35.9)(13,37.9)(14,43.4)(15,49.2)(16,51.9)(17,50.1)(18,44.6)(19,38.4)(20,35.8)(21,33.9)(22,32.2)(23,30.7)};\addlegendentry{Clay}
@@ -337,14 +332,14 @@ and hold a load \toadd{measured values}.
 \end{tikzpicture}\hfill
 \begin{tikzpicture}
 \begin{axis}[width=0.5\textwidth,height=6cm,xmin=0,xmax=23,ymin=0,ymax=45,xtick={0,6,12,18},
-  xlabel={Hour of day},ylabel={Heat into the room (W/m\textsuperscript{2})},label style={font=\small},tick label style={font=\small},
+  xlabel={Hour of day},ylabel={Heat getting into the room},label style={font=\small},tick label style={font=\small},
   legend style={font=\scriptsize,at={(0.02,0.98)},anchor=north west,draw=none},axis lines*=left]
 \addplot[clay,very thick] coordinates {(0,34.5)(1,31.4)(2,28.2)(3,25)(4,21.8)(5,18.9)(6,16.3)(7,14.1)(8,12.3)(9,11.2)(10,10.8)(11,11)(12,11.9)(13,13.4)(14,15.2)(15,17.6)(16,21.1)(17,26.1)(18,31.7)(19,36.8)(20,39.9)(21,40.6)(22,39.4)(23,37.2)};\addlegendentry{Clay}
 \addplot[vone,very thick,dashed] coordinates {(0,8.7)(1,9)(2,9.1)(3,9.2)(4,9.1)(5,8.9)(6,8.7)(7,8.4)(8,8)(9,7.6)(10,7.2)(11,6.8)(12,6.5)(13,6.2)(14,6)(15,5.8)(16,5.8)(17,5.8)(18,6)(19,6.2)(20,6.7)(21,7.2)(22,7.8)(23,8.3)};\addlegendentry{Poly Citra v1}
 \addplot[cool,very thick] coordinates {(0,7)(1,6.9)(2,6.9)(3,6.9)(4,6.8)(5,6.8)(6,6.8)(7,6.7)(8,6.7)(9,6.6)(10,6.5)(11,6.4)(12,6.3)(13,6.2)(14,6)(15,5.9)(16,5.8)(17,5.7)(18,5.6)(19,5.5)(20,5.4)(21,5.4)(22,5.4)(23,5.4)};\addlegendentry{CoolBrick}
 \end{axis}
 \end{tikzpicture}
-\caption{A sun-facing (west) wall over one hot day. Left: outside surface temperature. Right: heat entering a room kept at \SI{25}{\celsius}.}
+\caption{A sunny wall over one hot day (computer results). Left: how hot the outside of the wall gets. Right: how much heat gets into the room (higher means a hotter room).}
 \end{figure}
 
 \begin{center}
@@ -352,38 +347,35 @@ and hold a load \toadd{measured values}.
 \toprule
  & Clay & Poly Citra v1 & CoolBrick \\
 \midrule
-$U$-value (W/m\textsuperscript{2}K) & 2.20 & 0.76 & 0.60 \\
-Hottest outside surface (\si{\celsius}) & 51.9 & 52.1 & 39.1 \\
-Most heat into the room (W/m\textsuperscript{2}) & 40.6 & 9.2 & 7.0 \\
-Heat gained by a small building per day (kWh) & 24.4 & 7.7 & 6.4 \\
+Hottest temperature of the outside of the wall & \SI{52}{\celsius} & \SI{52}{\celsius} & \SI{39}{\celsius} \\
+Heat let into a small building in one day & 100\% & 32\% & 26\% \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \subsection{What the results mean}
 \begin{itemize}
-  \item \textbf{Clay lets in the most heat.} It conducts heat well and stores
-        it, so it keeps heating the room into the night.
-  \item \textbf{Version 1 already blocks most heat}, because polystyrene
-        conducts heat poorly. But its surface still gets as hot as clay.
-  \item \textbf{The CoolBrick does both:} its white coat keeps the surface
-        about \SI{13}{\celsius} cooler than clay, and its air cells and PCM
-        keep the heat flow low and steady. Overall it lets in about 74\% less
-        heat than clay.
-  \item \textbf{Limits.} These are simulation results using expected
-        material values. In rooms without AC and with many people, good
-        ventilation is also needed so that body heat can escape.
+  \item \textbf{Clay lets in the most heat.} Heat passes through it easily,
+        and it stays warm, so it keeps heating the room at night.
+  \item \textbf{Version 1 already blocks most heat}, because the plastic
+        lets heat through slowly. But its outside still gets as hot as clay.
+  \item \textbf{The CoolBrick does both.} The white coat keeps the outside
+        about \SI{13}{\celsius} cooler, and the air and oil pockets slow the
+        heat down. It lets in about three-quarters less heat than clay.
+  \item \textbf{Limits.} These are computer results. Real bricks may do a
+        little worse, so we need to test them. Rooms full of people also need
+        good airflow.
 \end{itemize}
 
 % ------------------------------------------------------------------ 6
 \section{Conclusion}
 
 Poly Citra Bricks show that Styrofoam and orange peel can replace clay in a
-building brick, with no kiln and no topsoil. By adding air cells, a
-coconut-oil PCM, peel biochar and a white outside coat, the CoolBrick also
-keeps buildings cool. In our simulation it lets in about 74\% less heat than a
-clay brick wall, and its outside surface stays about \SI{13}{\celsius}
-cooler. This supports our hypothesis. Next, we will measure real CoolBricks
+building brick, with no kiln and no topsoil. By adding air pockets,
+coconut-oil pockets, peel charcoal and a white outside coat, the CoolBrick
+also keeps buildings cool. In our computer tests it lets in about
+three-quarters less heat than a clay brick wall, and its outside stays about
+\SI{13}{\celsius} cooler. This supports our hypothesis. Next, we will measure real CoolBricks
 and test them in two model rooms.
 
 \begin{center}
@@ -392,9 +384,9 @@ and test them in two model rooms.
  & Version 1 & CoolBrick (version 2) \\
 \midrule
 Purpose & Turn two wastes into a brick & Also keep buildings cool \\
-Inside the brick & Solid gel & Air cells, PCM pockets, peel biochar \\
-Outside face & Plain & White heat-reflecting coat \\
-Heat through a wall ($U$) & 0.76 & 0.60 (clay: 2.20) \\
+Inside the brick & Solid & Air pockets, coconut-oil pockets, peel charcoal \\
+Outside face & Plain & White coat that reflects sunlight \\
+Heat let in (clay = 100\%) & 32\% & 26\% \\
 Solvent & Used once & Recovered and reused \\
 \bottomrule
 \end{tabularx}
@@ -414,20 +406,20 @@ any building in a hot region where air-conditioning is too expensive.
 Brick & Estimated cost per brick \\
 \midrule
 CoolBrick (made in bulk) & \rupee\,67 \\
-CoolBrick without PCM & \rupee\,32 \\
+CoolBrick without coconut oil & \rupee\,32 \\
 Fired clay brick (market price) & \rupee\,5--12 \\
 \bottomrule
 \end{tabular}
 \end{center}
-About half the cost of a CoolBrick is the coconut oil, so we will test cheaper
-plant fats and recover more limonene. Because a CoolBrick costs more than a
+About half the cost of a CoolBrick is the coconut oil, so we will try cheaper
+oils. Because a CoolBrick costs more than a
 clay brick, it makes most sense on the sunniest walls. For government
 schools, it could be paid for through the yearly school grant (Samagra
 Shiksha), company CSR funds, or state heat action plans.
 
 \subsection{Next steps}
 \begin{enumerate}
-  \item Test strength, water absorption, heat conduction and fire safety.
+  \item Test strength, water, heat and fire safety.
   \item Build the two model rooms and log temperatures for 30 days.
   \item Build a test wall at a government school with the school's permission.
   \item Work with local builders and NGOs to make bricks at a larger scale.
