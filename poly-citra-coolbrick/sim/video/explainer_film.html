@@ -1,0 +1,325 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>CoolBrick Explainer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{--ink:#f4f2ec;--ink2:#c9d1c7;--dim:#8e998f;--o:#E8731A;--g:#2E7D32;--b:#1E88C8;--bg:#0f1a15;--card:#18251e;--line:rgba(255,255,255,.14)}
+html,body{margin:0;background:var(--bg);overflow:hidden}
+#stage{position:relative;width:1920px;height:1080px;font-family:"IBM Plex Sans",sans-serif;color:var(--ink);overflow:hidden;background:var(--bg)}
+canvas#gl{position:absolute;inset:0}
+.ov{position:absolute;inset:0;pointer-events:none}
+.steps{position:absolute;top:34px;left:60px;right:60px;display:flex;gap:10px}
+.steps div{flex:1;height:54px;border-radius:12px;background:rgba(12,20,16,.7);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;gap:10px;font:600 22px/1 "IBM Plex Sans";color:var(--dim)}
+.steps div b{font:800 22px/1 "Archivo"}
+.steps div.on{border-color:var(--o);color:#fff;background:rgba(232,115,26,.25)}
+.steps div.done{color:var(--ink2)}
+.head{position:absolute;top:116px;left:60px;max-width:1800px;display:grid;gap:10px}
+.head h2{margin:0;font:800 62px/1.08 "Archivo",sans-serif;text-shadow:0 4px 28px rgba(0,0,0,.55)}
+.head h2 b{color:var(--o)}
+.head p{margin:0;font:500 32px/1.3 "IBM Plex Sans";color:var(--ink2);text-shadow:0 3px 18px rgba(0,0,0,.6)}
+.head .box{background:rgba(10,17,13,.62);padding:22px 30px;border-radius:18px;display:grid;gap:10px}
+.tag{font:700 26px/1.15 "Archivo",sans-serif;color:#10180f;background:var(--ink);padding:12px 16px;border-radius:10px;white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,.4)}
+.tag.o{background:var(--o);color:#fff}.tag.b{background:var(--b);color:#fff}
+.thermo{position:absolute;right:110px;top:300px;width:300px;height:640px}
+.thermo .tube{position:absolute;left:200px;top:0;width:50px;height:540px;border-radius:25px;background:rgba(255,255,255,.12);border:3px solid rgba(255,255,255,.6);overflow:hidden}
+.thermo .fill{position:absolute;left:0;right:0;bottom:0;background:var(--o)}
+.thermo .bulb{position:absolute;left:185px;top:520px;width:80px;height:80px;border-radius:50%;background:var(--o);border:3px solid rgba(255,255,255,.6)}
+.thermo .val{position:absolute;right:120px;top:200px;font:900 88px/1 "Archivo";white-space:nowrap;text-shadow:0 4px 24px rgba(0,0,0,.6);text-align:right}
+.thermo .lab{position:absolute;right:120px;top:300px;font:600 26px/1.2 "IBM Plex Sans";color:var(--ink2);text-align:right;white-space:nowrap}
+.panel{position:absolute;inset:0;background:var(--bg)}
+svg text{font-family:"IBM Plex Sans",sans-serif}
+.fade{position:absolute;inset:0;background:#000}
+.note{position:absolute;right:50px;bottom:26px;font:500 21px/1 "IBM Plex Mono";color:rgba(255,255,255,.55)}
+.credit{position:absolute;left:0;right:0;bottom:60px;text-align:center;font:600 30px/1.3 "IBM Plex Mono";letter-spacing:.06em;color:var(--ink2)}
+</style></head>
+<body>
+<div id="stage">
+<canvas id="gl" width="1920" height="1080"></canvas>
+<div class="ov" id="labels"></div>
+<div class="ov" id="ui">
+
+<!-- ===== Scene 3: making the material (2D) ===== -->
+<div class="panel" id="p3"><svg width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <marker id="ah" markerWidth="24" markerHeight="24" refX="18" refY="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,2 L22,12 L0,22 z" fill="#E8731A"/></marker>
+    <clipPath id="c1"><rect x="0" y="0" width="380" height="250" rx="14"/></clipPath>
+  </defs>
+  <g id="m1" transform="translate(90,330)">
+    <rect width="400" height="560" rx="22" fill="#18251e" stroke="rgba(255,255,255,.14)" stroke-width="2"/>
+    <image href="img/styrofoam.jpg" x="10" y="10" width="380" height="170" preserveAspectRatio="xMidYMid slice"/>
+    <image href="img/peels.jpg" x="10" y="190" width="380" height="170" preserveAspectRatio="xMidYMid slice"/>
+    <text x="30" y="420" font-size="38" font-weight="800" fill="#f4f2ec" font-family="Archivo">Two wastes</text>
+    <text x="30" y="465" font-size="27" fill="#c9d1c7">Styrofoam packaging</text>
+    <text x="30" y="502" font-size="27" fill="#c9d1c7">and orange peels</text>
+  </g>
+  <g id="m2" transform="translate(560,330)">
+    <rect width="400" height="560" rx="22" fill="#18251e" stroke="rgba(255,255,255,.14)" stroke-width="2"/>
+    <!-- still -->
+    <path d="M150,300 L150,160 L250,160 L250,300 Q320,330 300,380 L100,380 Q80,330 150,300 Z" fill="none" stroke="#c9d1c7" stroke-width="5"/>
+    <rect x="110" y="330" width="180" height="45" fill="#f0a63a" opacity=".85"/>
+    <path d="M250,190 L330,120" stroke="#c9d1c7" stroke-width="5"/>
+    <g id="drops"><circle cx="330" cy="140" r="9" fill="#f5b532"/><circle cx="330" cy="170" r="9" fill="#f5b532"/><circle cx="330" cy="200" r="9" fill="#f5b532"/></g>
+    <path d="M200,95 q-12,-20 0,-40 q12,-20 0,-40" stroke="#8fd0ff" stroke-width="4" fill="none" opacity=".8"/>
+    <text x="30" y="440" font-size="38" font-weight="800" fill="#f4f2ec" font-family="Archivo">Steam-distil</text>
+    <text x="30" y="485" font-size="27" fill="#c9d1c7">the peels to get</text>
+    <text x="30" y="522" font-size="27" fill="#c9d1c7"><tspan fill="#E8731A" font-weight="600">D-limonene</tspan>, a natural solvent</text>
+  </g>
+  <g id="m3" transform="translate(1030,330)">
+    <rect width="400" height="560" rx="22" fill="#18251e" stroke="rgba(255,255,255,.14)" stroke-width="2"/>
+    <ellipse cx="200" cy="300" rx="150" ry="40" fill="none" stroke="#c9d1c7" stroke-width="4"/>
+    <path d="M50,300 Q60,380 200,385 Q340,380 350,300" fill="none" stroke="#c9d1c7" stroke-width="4"/>
+    <ellipse id="gel" cx="200" cy="320" rx="120" ry="30" fill="#e2a03c"/>
+    <g id="foamcubes">
+      <rect class="fc" x="110" y="150" width="60" height="50" fill="#fff"/><rect class="fc" x="190" y="110" width="70" height="55" fill="#fff"/><rect class="fc" x="265" y="160" width="55" height="48" fill="#fff"/>
+    </g>
+    <text x="30" y="440" font-size="38" font-weight="800" fill="#f4f2ec" font-family="Archivo">Dissolve the foam</text>
+    <text x="30" y="485" font-size="27" fill="#c9d1c7">Foam is 98% air, so it shrinks</text>
+    <text x="30" y="522" font-size="27" fill="#c9d1c7">into a thick polystyrene gel</text>
+  </g>
+  <g id="m4" transform="translate(1500,330)">
+    <rect width="360" height="560" rx="22" fill="#18251e" stroke="#E8731A" stroke-width="3"/>
+    <g transform="translate(55,90)"><path d="M0,40 L130,0 L230,30 L100,72 Z" fill="#e2c48a"/><path d="M0,40 L100,72 L100,140 L0,108 Z" fill="#c9a96b"/><path d="M100,72 L230,30 L230,98 L100,140 Z" fill="#b8955c"/><path d="M0,40 L0,108 L-10,104 L-10,36 Z" fill="#fff"/></g>
+    <text x="40" y="285" font-size="32" fill="#f4f2ec" font-weight="700">CoolBrick</text>
+    <text x="40" y="330" font-size="24" fill="#c9d1c7">air pockets</text>
+    <text x="40" y="365" font-size="24" fill="#c9d1c7">salt pockets</text>
+    <text x="40" y="400" font-size="24" fill="#c9d1c7">orange-peel charcoal</text>
+    <text x="40" y="435" font-size="24" fill="#c9d1c7">white heat-reflecting face</text>
+  </g>
+  <g id="arrows3" stroke="#E8731A" stroke-width="6" marker-end="url(#ah)">
+    <line id="a31" x1="495" y1="610" x2="550" y2="610"/><line id="a32" x1="965" y1="610" x2="1020" y2="610"/><line id="a33" x1="1435" y1="610" x2="1490" y2="610"/>
+  </g>
+</svg></div>
+
+<!-- ===== Scene 4: how it works (2D) ===== -->
+<div class="panel" id="p4"><svg width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs><marker id="ah2" markerWidth="24" markerHeight="24" refX="18" refY="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,2 L22,12 L0,22 z" fill="#ffd36b"/></marker>
+        <marker id="ahr" markerWidth="24" markerHeight="24" refX="18" refY="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,2 L22,12 L0,22 z" fill="#ff5a3a"/></marker>
+        <marker id="ahb" markerWidth="24" markerHeight="24" refX="18" refY="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,2 L22,12 L0,22 z" fill="#5ab8ff"/></marker></defs>
+  <g id="L" transform="translate(80,300)">
+    <rect width="860" height="640" rx="22" fill="#18251e" stroke="rgba(255,255,255,.14)" stroke-width="2"/>
+    <text x="30" y="58" font-size="38" font-weight="800" fill="#f4f2ec" font-family="Archivo">Clay brick wall</text>
+    <circle cx="90" cy="150" r="34" fill="#ffd36b"/>
+    <text x="150" y="615" font-size="24" fill="#8e998f">outside</text><text x="650" y="615" font-size="24" fill="#8e998f">room</text>
+    <rect id="wallL" x="380" y="110" width="110" height="450" fill="#a9502c"/>
+    <g id="raysL"></g><g id="heatL"></g>
+    <g fill="#4c6f9a"><circle cx="700" cy="380" r="20"/><rect x="678" y="402" width="44" height="60" rx="10"/></g>
+    <text x="230" y="505" font-size="26" fill="#c9d1c7" text-anchor="middle">Wall surface</text>
+    <text id="tL" x="230" y="555" font-size="54" font-weight="900" fill="#ff7a4a" text-anchor="middle" font-family="Archivo">30 °C</text>
+    <text x="680" y="190" font-size="26" fill="#c9d1c7" text-anchor="middle">Heat getting in</text>
+    <text id="qL" x="680" y="240" font-size="50" font-weight="900" fill="#ff7a4a" text-anchor="middle" font-family="Archivo">0 W/m²</text>
+  </g>
+  <g id="R" transform="translate(980,300)">
+    <rect width="860" height="640" rx="22" fill="#18251e" stroke="#E8731A" stroke-width="3"/>
+    <text x="30" y="58" font-size="38" font-weight="800" fill="#f4f2ec" font-family="Archivo">CoolBrick wall</text>
+    <circle cx="90" cy="150" r="34" fill="#ffd36b"/>
+    <text x="150" y="615" font-size="24" fill="#8e998f">outside</text><text x="650" y="615" font-size="24" fill="#8e998f">room</text>
+    <rect x="380" y="110" width="110" height="450" fill="#e2c48a"/><rect x="372" y="110" width="12" height="450" fill="#ffffff"/>
+    <g fill="#8fd0ff" stroke="#3d9be0" stroke-width="2"><rect x="395" y="130" width="40" height="60"/><rect x="395" y="215" width="40" height="60"/><rect x="395" y="300" width="40" height="60"/><rect x="395" y="385" width="40" height="60"/><rect x="395" y="470" width="40" height="60"/></g>
+    <g fill="#a25bd1"><rect x="448" y="150" width="32" height="90"/><rect x="448" y="290" width="32" height="90"/><rect x="448" y="430" width="32" height="90"/></g>
+    <g id="raysR"></g><g id="heatR"></g>
+    <g fill="#4c6f9a"><circle cx="700" cy="380" r="20"/><rect x="678" y="402" width="44" height="60" rx="10"/></g>
+    <text x="230" y="505" font-size="26" fill="#c9d1c7" text-anchor="middle">Wall surface</text>
+    <text id="tR" x="230" y="555" font-size="54" font-weight="900" fill="#5ab8ff" text-anchor="middle" font-family="Archivo">30 °C</text>
+    <text x="680" y="190" font-size="26" fill="#c9d1c7" text-anchor="middle">Heat getting in</text>
+    <text id="qR" x="680" y="240" font-size="50" font-weight="900" fill="#5ab8ff" text-anchor="middle" font-family="Archivo">0 W/m²</text>
+    <text x="410" y="105" font-size="20" fill="#c9d1c7" text-anchor="middle">white face · air pockets · salt pockets</text>
+  </g>
+  <text id="n4" x="960" y="985" font-size="26" fill="#8e998f" text-anchor="middle">Sunny wall on a 41 °C day, clay brick = 100% (computer simulation)</text>
+</svg></div>
+
+<!-- ===== Scene 5b: result chart (2D overlay) ===== -->
+<div class="panel" id="p5" style="background:rgba(15,26,21,.93)"><svg width="1920" height="1080" viewBox="0 0 1920 1080" id="chart5"></svg></div>
+
+<!-- ===== Scene 6: cost (2D) ===== -->
+<div class="panel" id="p6"><svg width="1920" height="1080" viewBox="0 0 1920 1080" id="cost6"></svg></div>
+
+<!-- ===== Scene 7: close ===== -->
+<div class="panel" id="p7" style="background:transparent"><svg width="1920" height="1080" viewBox="0 0 1920 1080" id="close7"></svg>
+  <div class="credit">RIAN SIKKA &amp; DAIWIK ABROL · SCOTTISH HIGH INTERNATIONAL SCHOOL</div></div>
+
+<div class="steps" id="steps"></div>
+<div class="head" id="head"><div class="box"><h2 id="hH"></h2><p id="hP"></p></div></div>
+<div class="thermo" id="thermo"><div class="tube"><div class="fill" id="tfill"></div></div><div class="bulb"></div><div class="val" id="tval">30.0 °C</div><div class="lab" id="tlab">inside the classroom</div></div>
+<div class="note" id="note">Temperatures from our computer simulation, not lab measurements</div>
+<div class="fade" id="fade"></div>
+</div></div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x)),seg=(t,a,b)=>clamp((t-a)/(b-a)),ease=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,lerp=(a,b,u)=>a+(b-a)*u;
+const V=(x,y,z)=>new THREE.Vector3(x,y,z),$=id=>document.getElementById(id);
+const show=(id,on,op=1)=>{const e=$(id);e.style.display=on?'':'none';if(on)e.style.opacity=op;};
+const NS='http://www.w3.org/2000/svg';const el=(tag,attrs,parent)=>{const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;};
+let seed=5;const rnd=()=>{seed=(seed*16807)%2147483647;return(seed-1)/2147483646;};
+
+/* ---------------- numbers (from the classroom simulation) ---------------- */
+const SIM={typical:39.8};
+
+/* ---------------- 3D: classroom (1 m = 3 units) ---------------- */
+const renderer=new THREE.WebGLRenderer({canvas:$('gl'),antialias:true});renderer.setSize(1920,1080,false);renderer.setPixelRatio(1);
+renderer.shadowMap.enabled=true;renderer.toneMapping=THREE.ACESFilmicToneMapping;
+const labelR=new CSS2DRenderer({element:$('labels')});labelR.setSize(1920,1080);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xa7c2d4);
+const camera=new THREE.PerspectiveCamera(34,16/9,.5,2000);
+const hemi=new THREE.HemisphereLight(0xeef4ff,0x5b6247,.7);scene.add(hemi);
+const sunL=new THREE.DirectionalLight(0xfff0d6,2.1);sunL.position.set(-30,60,25);sunL.castShadow=true;sunL.shadow.mapSize.set(2048,2048);
+Object.assign(sunL.shadow.camera,{left:-50,right:50,top:50,bottom:-50,near:1,far:200});scene.add(sunL);
+const LBL=[];function tag(html,parent,pos,cls=''){const d=document.createElement('div');d.className='tag '+cls;d.innerHTML=html;const o=new CSS2DObject(d);o.position.copy(pos);parent.add(o);LBL.push(o);return o;}
+const W=21,D=18,H=9.6,TH=.7;
+const cls=new THREE.Group();scene.add(cls);
+const wallM=new THREE.MeshStandardMaterial({color:0xb86a45,roughness:.95,emissive:0xff3a10,emissiveIntensity:0});
+function box(w,h,d,m,x,y,z,parent=cls){const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);b.position.set(x,y,z);b.castShadow=b.receiveShadow=true;parent.add(b);return b;}
+box(W+TH,H,TH,wallM,0,H/2,-D/2);
+for(const sx of[-1,1]){const x=sx*W/2;box(TH,3.2,D,wallM,x,1.6,0);box(TH,H-6.6,D,wallM,x,6.6+(H-6.6)/2,0);for(const z of[-D/2+1.25,0,D/2-1.25])box(TH,3.4,2.5,wallM,x,4.9,z);}
+const front=new THREE.Group();cls.add(front);
+box(W+TH,3.2,TH,wallM,0,1.6,D/2,front);box(W+TH,H-6.6,TH,wallM,0,6.6+(H-6.6)/2,D/2,front);
+for(const x of[-W/2+1.2,-3.5,3.5,W/2-1.2])box(2.4,3.4,TH,wallM,x,4.9,D/2,front);
+box(2.2,4.6,TH*1.05,new THREE.MeshStandardMaterial({color:0x2f5d8a}),7.5,2.3,D/2+.02,front);
+const sign=new THREE.Mesh(new THREE.PlaneGeometry(9,1.4),new THREE.MeshBasicMaterial({color:0x2E7D32}));sign.position.set(-4,8.2,D/2+.4);front.add(sign);
+const floorC=new THREE.Mesh(new THREE.PlaneGeometry(W,D),new THREE.MeshStandardMaterial({color:0xa49c8b,roughness:1}));floorC.rotation.x=-Math.PI/2;floorC.position.y=.01;floorC.receiveShadow=true;cls.add(floorC);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.MeshStandardMaterial({color:0x6e7a52,roughness:1}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+const roofM=new THREE.MeshStandardMaterial({color:0x8d8d88,roughness:.9,emissive:0xff3a10,emissiveIntensity:0});
+const roof=box(W+2,.7,D+1.4,roofM,0,H+.35,0);
+const coat=new THREE.Mesh(new THREE.BoxGeometry(1,.1,D+1.4),new THREE.MeshStandardMaterial({color:0xffffff,roughness:.3,emissive:0x333333}));coat.position.y=H+.76;cls.add(coat);
+const roller=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,D+1.6,24),new THREE.MeshStandardMaterial({color:0xf2f2f2}));roller.rotation.x=Math.PI/2;cls.add(roller);
+const ceil=new THREE.Mesh(new THREE.PlaneGeometry(W-.2,D-.2),new THREE.MeshBasicMaterial({color:0xff6a1a,transparent:true,opacity:0,toneMapped:false,side:THREE.DoubleSide}));ceil.rotation.x=Math.PI/2;ceil.position.y=H-.02;cls.add(ceil);
+const heatL=new THREE.PointLight(0xff6a1a,0,40,1.4);heatL.position.set(0,H-1.2,0);cls.add(heatL);
+const deskM=new THREE.MeshStandardMaterial({color:0x7a5a3a}),stuM=new THREE.MeshStandardMaterial({color:0x4c6f9a}),headM=new THREE.MeshStandardMaterial({color:0x5a4030});
+for(let r=0;r<5;r++)for(let c=0;c<4;c++){const x=-7.5+c*5,z=-5.5+r*2.9;box(3.6,.25,1.1,deskM,x,2.1,z);
+  for(const dx of[-.9,.9]){const b=new THREE.Mesh(new THREE.CylinderGeometry(.42,.48,1.5,16),stuM);b.position.set(x+dx,2.3,z+1.1);cls.add(b);const h=new THREE.Mesh(new THREE.SphereGeometry(.4,16,16),headM);h.position.set(x+dx,3.45,z+1.15);cls.add(h);}}
+const fan=new THREE.Group();fan.position.set(0,H-1.4,0);cls.add(fan);for(let i=0;i<3;i++){const p=new THREE.Group();p.rotation.y=i*2.094;const bl=new THREE.Mesh(new THREE.BoxGeometry(2.6,.06,.45),new THREE.MeshStandardMaterial({color:0xdddddd}));bl.position.x=1.3;p.add(bl);fan.add(p);}
+function jaaliTex(){const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,256,256);g.globalCompositeOperation='destination-out';
+  for(let i=0;i<4;i++)for(let j=0;j<4;j++){g.beginPath();g.arc(32+i*64,32+j*64,22,0,7);g.fill();}const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(6,3);return t;}
+const JT=jaaliTex();const jaalis=[-1,1].map(sx=>{const j=new THREE.Mesh(new THREE.PlaneGeometry(D,4.6),new THREE.MeshStandardMaterial({color:0x3f9a4a,alphaMap:JT,transparent:true,alphaTest:.5,side:THREE.DoubleSide}));j.rotation.y=Math.PI/2;j.userData.sx=sx;cls.add(j);return j;});
+// sun + arrows for 3D scenes
+const sunBall=new THREE.Mesh(new THREE.SphereGeometry(2.6,32,32),new THREE.MeshBasicMaterial({color:0xffd36b,toneMapped:false}));sunBall.position.set(-26,40,4);scene.add(sunBall);
+const sunArrows=[...Array(6)].map((_,i)=>{const tgt=V(-W/2-.5,2.2+(i%3)*2.6,-6+i*2.4);const dir=tgt.clone().sub(sunBall.position).normalize();const a=new THREE.ArrowHelper(dir,sunBall.position.clone().addScaledVector(dir,4),tgt.distanceTo(sunBall.position)-4,0xffc23a,2.2,1.4);a.userData={tgt};scene.add(a);return a;});
+const downArrows=[...Array(6)].map((_,i)=>{const a=new THREE.ArrowHelper(V(1,0,0),V(-W/2+.6,2+(i%3)*2.4,-5+i*2.2),4,0xff4a2a,1.4,1.0);cls.add(a);return a;});
+const skyArrows=[...Array(5)].map((_,i)=>{const a=new THREE.ArrowHelper(V(0,1,0),V(-8+i*4,H+1.2,-2+(i%2)*4),5,0x5ab8ff,1.4,1.0);cls.add(a);return a;});
+const L2={roof:tag('Clay walls soak up the sun',cls,V(-W/2-1,H+1.5,4),'o'),ceil:tag('Wall surface 51.9 °C',cls,V(-W/2-1,1,6),'o'),down:tag('Heat passes through into the room',cls,V(-2,6.6,3),'')};
+// brick for close
+const BX=23,BY=7.5,BZ=11;const brick=new THREE.Group();scene.add(brick);
+{const s=new THREE.Mesh(new THREE.BoxGeometry(BX,BY,BZ),new THREE.MeshPhysicalMaterial({color:0xe2c48a,transparent:true,opacity:.45,depthWrite:false}));brick.add(s);
+ brick.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(BX,BY,BZ)),new THREE.LineBasicMaterial({color:0xf0cf8e})));
+ const c=new THREE.Mesh(new THREE.BoxGeometry(.7,BY,BZ),new THREE.MeshStandardMaterial({color:0xffffff}));c.position.x=-BX/2-.35;brick.add(c);
+ for(const x0 of[-8.3,-2.4])for(const z0 of[-2.6,2.6]){const m=new THREE.Mesh(new THREE.BoxGeometry(5,6.2,4.2),new THREE.MeshPhysicalMaterial({color:0x86cbff,transparent:true,opacity:.6}));m.position.set(x0,0,z0);brick.add(m);}
+ for(const z0 of[-2.6,2.6]){const m=new THREE.Mesh(new THREE.BoxGeometry(4,6.2,4.2),new THREE.MeshStandardMaterial({color:0x9b4fd0}));m.position.set(7.2,0,z0);brick.add(m);}
+ const sp=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.2,0),new THREE.MeshStandardMaterial({color:0x1b1b1b}),260);const mm=new THREE.Matrix4();for(let i=0;i<260;i++){mm.setPosition((rnd()-.5)*(BX-.6),(rnd()-.5)*(BY-.4),(rnd()-.5)*(BZ-.4));sp.setMatrixAt(i,mm);}brick.add(sp);}
+
+/* ---------------- 2D builders ---------------- */
+// scene 4 rays
+const mk=(tag,a,parent)=>el(tag,a,parent);
+const RY=[180,260,340,420,500];
+const raysL=RY.map(()=>mk('line',{stroke:'#ffd36b','stroke-width':6,'marker-end':'url(#ah2)'},$('raysL')));
+const raysR=RY.map(()=>mk('line',{stroke:'#ffd36b','stroke-width':6,'marker-end':'url(#ah2)'},$('raysR')));
+const reflR=RY.map(()=>mk('line',{stroke:'#ffd36b','stroke-width':6,'marker-end':'url(#ah2)'},$('raysR')));
+const hL2=[0,1,2,3].map(()=>mk('line',{stroke:'#ff5a3a','stroke-width':8,'marker-end':'url(#ahr)'},$('heatL')));
+const hR2=[0].map(()=>mk('line',{stroke:'#ff5a3a','stroke-width':5,'marker-end':'url(#ahr)'},$('heatR')));
+// scene 5 chart
+const C5=$('chart5');const bars=[['Clay brick',100,'#b5532f'],['Poly Citra v1',32,'#2E7D32'],['CoolBrick',17,'#1E88C8']];
+el('text',{x:160,y:330,'font-size':40,'font-weight':800,fill:'#f4f2ec','font-family':'Archivo'},C5).textContent='Heat that gets into a small building in one hot day';
+el('text',{x:160,y:378,'font-size':28,fill:'#c9d1c7'},C5).textContent='Clay brick = 100%. Small building, outdoor air up to 41 °C (computer simulation)';
+const barEls=bars.map((b,i)=>{const y=470+i*140;el('text',{x:160,y:y+50,'font-size':32,fill:'#f4f2ec'},C5).textContent=b[0];
+  const r=el('rect',{x:640,y:y+8,height:62,rx:8,fill:b[2],width:0},C5);const v=el('text',{y:y+52,'font-size':36,'font-weight':800,fill:'#f4f2ec','font-family':'Archivo'},C5);return{r,v,val:b[1]};});
+// scene 6 cost cards
+const C6=$('cost6');const cards=[['80% less','heat gets in','than through clay brick walls (computer test)'],['0','electricity needed','the cooling is built into the wall'],['2 wastes','turned into bricks','Styrofoam and orange peel, no kiln, no topsoil'],['₹29','per brick','salt instead of coconut oil, limonene reused']];
+const cardEls=cards.map((c,i)=>{const x=110+(i%2)*870,y=290+Math.floor(i/2)*265;const g=el('g',{transform:`translate(${x},${y+30})`},C6);
+  el('rect',{width:830,height:235,rx:22,fill:'#18251e',stroke:i===0?'#E8731A':'rgba(255,255,255,.14)','stroke-width':i===0?3:2},g);
+  el('text',{x:40,y:105,'font-size':84,'font-weight':900,fill:'#E8731A','font-family':'Archivo'},g).textContent=c[0];
+  el('text',{x:40,y:160,'font-size':32,fill:'#f4f2ec','font-weight':600},g).textContent=c[1];
+  el('text',{x:40,y:202,'font-size':26,fill:'#8e998f'},g).textContent=c[2];return g;});
+const fundG=el('g',{transform:'translate(110,890)',display:'none'},C6);el('text',{x:0,y:40,'font-size':30,fill:'#c9d1c7','font-weight':600},fundG).textContent='Paid for by:';
+['School grant (Samagra Shiksha)','Company CSR','Heat action plans','MP / MLA funds'].forEach((f,i,arr)=>{const x=200+[0,450,700,990][i];const g=el('g',{transform:`translate(${x},0)`},fundG);
+  el('rect',{y:0,width:[420,220,260,230][i],height:58,rx:29,fill:'rgba(46,125,50,.3)',stroke:'#2E7D32','stroke-width':2},g);el('text',{x:24,y:39,'font-size':27,fill:'#f4f2ec'},g).textContent=f;});
+// scene 7 SDGs
+const C7=$('close7');const SD=[[4,'#C5192D','Quality education'],[11,'#F99D26','Sustainable cities'],[12,'#BF8B2E','Less waste'],[13,'#3F7E44','Climate action']];
+const sdEls=SD.map(([n,c,l],i)=>{const g=el('g',{transform:`translate(${430+i*275},640)`},C7);el('rect',{width:250,height:140,rx:14,fill:c},g);
+  el('text',{x:125,y:68,'font-size':50,'font-weight':900,fill:'#fff','text-anchor':'middle','font-family':'Archivo'},g).textContent='SDG '+n;
+  el('text',{x:125,y:110,'font-size':24,fill:'#fff','text-anchor':'middle','font-weight':600},g).textContent=l;return g;});
+const tag7=el('text',{x:960,y:880,'font-size':70,'font-weight':800,fill:'#f4f2ec','text-anchor':'middle','font-family':'Archivo'},C7);
+tag7.innerHTML='Waste in. <tspan fill="#E8731A">Cooler classrooms</tspan> out.';
+const STEPS=['Problem','Cause','Our brick','How it works','Result','Why it matters'];
+$('steps').innerHTML=STEPS.map((s,i)=>`<div><b>${i+1}</b>${s}</div>`).join('');
+
+/* ---------------- timeline ---------------- */
+const CUT=[0,9,20,37,51,64,76,84];window.DURATION=84;
+function cam(p,tg){camera.position.copy(p);camera.lookAt(tg);}
+function head(h,p,op){$('hH').innerHTML=h;$('hP').innerHTML=p;show('head',!!h,op);}
+function renderAt(t){
+  const S=[0,1,2,3,4,5,6].find(i=>t>=CUT[i]&&t<CUT[i+1])??6;
+  let f=0;for(const c of CUT.slice(1,-1))f=Math.max(f,1-Math.abs(t-c)/.4);f=Math.max(f,1-t/.6,1-(84-t)/.8);$('fade').style.opacity=clamp(f);
+  ['p3','p4','p5','p6','p7','thermo','note','head'].forEach(id=>show(id,false));
+  show('steps',S<6);[...$('steps').children].forEach((d,i)=>{d.className=i===S?'on':(i<S?'done':'');});
+  const ft=(a,b)=>seg(t,a,a+.5)*clamp(1-seg(t,b-.5,b));
+  const in3D=S===0||S===1||S===4||S===6;cls.visible=S<=1||S===4;ground.visible=cls.visible;sunBall.visible=cls.visible;brick.visible=S===6;
+  scene.background.setHex(S===6?0x0f1a15:0xa7c2d4);
+  sunArrows.forEach(a=>a.visible=false);downArrows.forEach(a=>a.visible=false);skyArrows.forEach(a=>a.visible=false);
+  for(const k in L2)L2[k].visible=false;
+  coat.visible=false;roller.visible=false;jaalis.forEach(j=>j.visible=false);fan.rotation.y=t*7;
+  front.visible=S===0;
+
+  if(S===0){ // problem
+    const u=seg(t,0,9);cam(V(lerp(34,26,u),lerp(16,13,u),lerp(46,40,u)),V(0,5,0));
+    wallM.emissiveIntensity=seg(t,2,7)*.25;wallM.color.setHex(0xb86a45);
+    show('thermo',true,ft(1.5,9));const T=lerp(30,SIM.typical,ease(seg(t,2,7.5)));$('tval').textContent=T.toFixed(1)+' °C';$('tfill').style.height=clamp((T-25)/22)*100+'%';$('tfill').style.background='#E8731A';
+    head('On a hot day, this classroom reaches <b>39.8 °C</b> inside','40 students. No AC. Fans stop when the power goes out.',ft(.8,9));show('note',true,.9);}
+
+  if(S===1){ // cause
+    const u=seg(t,9,20);cam(V(lerp(-30,-24,u),lerp(13,11,u),lerp(38,34,u)),V(-2,5,0));
+    wallM.emissiveIntensity=.35*seg(t,10,13);ceil.material.opacity=.25;heatL.intensity=60;
+    sunArrows.forEach((a,i)=>a.visible=t>10+i*.15);downArrows.forEach((a,i)=>{a.visible=t>12.5+i*.15;a.position.x=-W/2+.6+((t*1.2+i*.3)%1)*1.2;});
+    L2.roof.visible=t>10.6;L2.ceil.visible=t>12;L2.down.visible=t>13;
+    head('The cause: <b>clay brick walls</b> soak up the sun','The heat they store passes through into the room, even into the night.',ft(9.3,20));}
+  else{ceil.material.opacity=0;heatL.intensity=0;}
+
+  if(S===2){ // material
+    show('p3',true,1);
+    const ap=(id,a)=>{$(id).style.opacity=seg(t,a,a+.6);$(id).setAttribute('transform',$(id).getAttribute('transform').replace(/translate\(([\d.]+),[\d.]+\)/,(m,x)=>`translate(${x},${330+(1-ease(seg(t,a,a+.6)))*40})`));};
+    ap('m1',20.6);ap('m2',23.6);ap('m3',26.8);ap('m4',30.2);
+    $('a31').style.opacity=seg(t,23.2,23.6);$('a32').style.opacity=seg(t,26.4,26.8);$('a33').style.opacity=seg(t,29.8,30.2);
+    [...$('drops').children].forEach((d,i)=>d.setAttribute('cy',140+((t*1.2+i/3)%1)*170));
+    const dis=seg(t,27.5,30);[...document.querySelectorAll('.fc')].forEach((r,i)=>{const s=1-clamp(dis*1.2-i*.1);r.setAttribute('opacity',s);r.setAttribute('transform',`translate(0,${dis*90})`);});
+    $('gel').setAttribute('ry',30+dis*14);
+    head('Step 1 · Turn two wastes into <b>building materials</b>','',ft(20.3,37));}
+
+  if(S===3){ // how it works
+    show('p4',true,1);
+    const u=ease(seg(t,38,44));
+    $('tL').textContent=lerp(32,51.9,u).toFixed(1)+' °C';$('tR').textContent=lerp(32,39.1,u).toFixed(1)+' °C';
+    $('qL').textContent=Math.round(lerp(0,100,u))+'%';$('qR').textContent=Math.round(lerp(0,17,u))+'%';
+    $('wallL').setAttribute('fill',`rgb(${Math.round(lerp(169,230,u))},${Math.round(lerp(80,70,u))},${Math.round(lerp(44,30,u))})`);
+    const ph=(t*.8)%1,op=seg(t,37.5,38.3);
+    const ray=(ln,i,xEnd)=>{const y2=RY[i];const p=clamp(((ph+i*.17)%1)*1.6);ln.setAttribute('x1',120);ln.setAttribute('y1',170);ln.setAttribute('x2',lerp(120,xEnd,Math.min(1,p)));ln.setAttribute('y2',lerp(170,y2,Math.min(1,p)));ln.setAttribute('opacity',op);return p;};
+    raysL.forEach((ln,i)=>ray(ln,i,372));
+    raysR.forEach((ln,i)=>{const p=ray(ln,i,364);const q=clamp((p-1)/0.6);const rl=reflR[i];rl.setAttribute('x1',364);rl.setAttribute('y1',RY[i]);rl.setAttribute('x2',364-q*170);rl.setAttribute('y2',RY[i]-q*90);rl.setAttribute('opacity',q>0?op:0);});
+    hL2.forEach((ln,i)=>{const o=((t*.9+i*.25)%1);const y=180+i*110;ln.setAttribute('x1',420+o*60);ln.setAttribute('y1',y);ln.setAttribute('x2',500+o*60);ln.setAttribute('y2',y);ln.setAttribute('opacity',u*(1-o*.4));});
+    hR2.forEach((ln,i)=>{const o=((t*.6)%1);ln.setAttribute('x1',500+o*40);ln.setAttribute('y1',330);ln.setAttribute('x2',540+o*40);ln.setAttribute('y2',330);ln.setAttribute('opacity',u*.6*(1-o*.5));});
+    head('Step 2 · How the <b>CoolBrick</b> keeps heat out','The white face reflects the sun, air pockets slow the heat, and salt pockets soak up the rest.',ft(37.3,51));}
+
+  if(S===4){ // result
+    const sw=ease(seg(t,52,56));
+    cam(V(lerp(-30,-26,seg(t,51,59)),lerp(12,13,seg(t,51,59)),lerp(36,34,seg(t,51,59))),V(-2,5,0));
+    wallM.color.lerpColors(new THREE.Color(0xb86a45),new THREE.Color(0xf1ece0),sw);wallM.emissiveIntensity=.35*(1-sw);
+    ceil.material.opacity=.25*(1-sw);heatL.intensity=60*(1-sw);
+    sunArrows.forEach(a=>a.visible=true);downArrows.forEach((a,i)=>{a.visible=sw<.85;a.setLength(Math.max(.5,4*(1-sw)),1.4*(1-sw*.6),1);a.position.x=-W/2+.6+((t*1.2+i*.3)%1)*1.2;});
+    if(t<59)head('Step 3 · Build the walls with <b>CoolBricks</b>','Same classroom, same sun.',ft(51.3,59.2));
+    show('note',true,.9);
+    if(t>=59){show('p5',true,seg(t,59,59.5));barEls.forEach((b,i)=>{const w=ease(seg(t,59.3+i*.3,60.3+i*.3))*b.val*9.5;b.r.setAttribute('width',w);b.v.setAttribute('x',650+w+16);b.v.textContent=w>5?b.val+'%':'';});
+      head('Result: about <b>80% less heat</b> gets in','',seg(t,59.2,59.7)*clamp(1-seg(t,63.5,64)));}}
+
+  if(S===5){ // cost
+    show('p6',true,1);cardEls.forEach((g,i)=>{g.style.opacity=seg(t,64.8+i*1.2,65.4+i*1.2);});$('cost6').lastChild.previousSibling;
+    head('Why it <b>matters</b>','Cooler classrooms and homes, made from waste, with no running cost.',ft(64.3,76));}
+
+  if(S===6){ // close
+    show('p7',true,1);brick.position.set(0,9,0);brick.rotation.set(.15,(t-76)*.55,0);cam(V(0,22,62),V(0,1,0));
+    sdEls.forEach((g,i)=>g.style.opacity=seg(t,76.6+i*.2,77+i*.2));tag7.style.opacity=seg(t,77.6,78.2);}
+  renderer.render(scene,camera);labelR.render(scene,camera);
+}
+window.renderAt=renderAt;
+const imgs=[...document.images].map(im=>im.complete?Promise.resolve():new Promise(r=>{im.onload=r;im.onerror=r;}));
+window.ready=Promise.all([document.fonts.ready,...imgs]).then(()=>new Promise(r=>setTimeout(r,1500))).then(()=>{renderAt(.01);return true;});
+</script>
+</body></html>
