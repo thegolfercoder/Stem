@@ -1,14 +1,8 @@
-% =====================================================================
-%  Poly Citra CoolBrick — A4 report
-%  Version 2: CoolBrick for cooler buildings and classrooms, SDG-focused,
-%  with a cost and funding plan for government schools.
-%
-%  Compile:  pdflatex poly_citra_coolbrick_a4.tex   (run twice)
-%  Red [ ... ] marks a placeholder the team must fill in or verify.
-% =====================================================================
+% Poly Citra CoolBrick: project report (A4)
+% Rian Sikka and Daiwik Abrol, Scottish High International School
+% Compile with: pdflatex poly_citra_coolbrick_a4.tex (run twice)
 \documentclass[11pt,a4paper]{article}
-
-\usepackage[a4paper,margin=2cm,top=2.2cm,bottom=2.2cm]{geometry}
+\usepackage[a4paper,margin=2.3cm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage[scaled=0.95]{helvet}
@@ -26,1199 +20,441 @@
 \usepackage{float}
 \usepackage{xcolor}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,calc,decorations.pathmorphing,patterns}
+\usetikzlibrary{arrows.meta,positioning,calc}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
-\usepackage[most]{tcolorbox}
 \usepackage{titlesec}
 \usepackage{fancyhdr}
-\usepackage{needspace}
 \usepackage[hidelinks]{hyperref}
-\providecommand{\rupee}{Rs\,}
-\newcommand{\sdg}[2]{\tikz[baseline=-0.7ex]\node[fill=#2,text=white,font=\scriptsize\bfseries,rounded corners=2pt,inner sep=2.5pt]{SDG #1};}
-
 \graphicspath{{img/}}
+\providecommand{\rupee}{Rs}
 
-% ---------- palette (from the original deck) ----------
-\definecolor{citrus}{HTML}{E8731A}
-\definecolor{leaf}{HTML}{2E7D32}
-\definecolor{sky}{HTML}{1E88C8}
-\definecolor{plum}{HTML}{8E2A8E}
-\definecolor{ink}{HTML}{1F2A36}
-\definecolor{heat}{HTML}{C62828}
-\definecolor{sdgthree}{HTML}{4C9F38}\definecolor{sdgfour}{HTML}{C5192D}\definecolor{sdgseven}{HTML}{E5A800}
-\definecolor{sdgnine}{HTML}{F36D25}\definecolor{sdgeleven}{HTML}{F99D26}\definecolor{sdgtwelve}{HTML}{BF8B2E}
-\definecolor{sdgthirteen}{HTML}{3F7E44}\definecolor{sdgseventeen}{HTML}{19486A}
-
+\definecolor{accent}{HTML}{D9661F}
+\definecolor{ink}{HTML}{222222}
+\definecolor{soft}{HTML}{6B6B6B}
+\definecolor{clay}{HTML}{B5532F}
+\definecolor{vone}{HTML}{2E7D32}
+\definecolor{cool}{HTML}{1E78C8}
 \color{ink}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{6pt}
-\setlist{itemsep=2pt,topsep=2pt}
+\setlength{\parskip}{7pt}
+\setlist{itemsep=3pt,topsep=3pt}
+\captionsetup{font=small,labelfont=bf,labelsep=period}
+\renewcommand{\arraystretch}{1.25}
 
-\captionsetup{font=small,labelfont={bf,color=citrus},labelsep=period}
-
-% ---------- headings ----------
-\titleformat{\section}{\Large\bfseries\color{ink}}
-  {\colorbox{citrus}{\color{white}\,\thesection\,}}{0.6em}{}[\vspace{-4pt}{\color{citrus}\titlerule[1.2pt]}]
-\titleformat{\subsection}{\large\bfseries\color{leaf}}{\thesubsection}{0.6em}{}
-\titlespacing*{\section}{0pt}{14pt}{8pt}
+\titleformat{\section}{\Large\bfseries}{\textcolor{accent}{\thesection}}{0.7em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{0.6em}{}
+\titlespacing*{\section}{0pt}{6pt}{10pt}
+\titlespacing*{\subsection}{0pt}{14pt}{4pt}
 \let\origsection\section
 \renewcommand{\section}{\clearpage\origsection}
-\titleformat{\part}[block]{\Huge\bfseries\color{leaf}}{}{0pt}{}
-\renewcommand{\contentsname}{\color{ink}Contents}
-\titlespacing*{\subsection}{0pt}{10pt}{4pt}
 
-% ---------- page frame: thin border + header/footer ----------
-\pagestyle{fancy}
-\fancyhf{}
-\renewcommand{\headrulewidth}{0pt}
-\fancyhead[L]{\small\color{citrus}\textbf{Poly Citra} \color{ink}CoolBrick}
-\fancyhead[R]{\small\color{gray}Project Rebrick}
-\fancyfoot[C]{\small\color{gray}\thepage}
-\usepackage{eso-pic}
-\AddToShipoutPictureBG{%
-  \begin{tikzpicture}[remember picture,overlay]
-    \draw[citrus,line width=1.2pt,rounded corners=6pt]
-      ($(current page.north west)+(1.0cm,-1.0cm)$) rectangle ($(current page.south east)+(-1.0cm,1.0cm)$);
-    \draw[leaf!60,line width=0.4pt,rounded corners=5pt]
-      ($(current page.north west)+(1.15cm,-1.15cm)$) rectangle ($(current page.south east)+(-1.15cm,1.15cm)$);
-  \end{tikzpicture}}
-
-% ---------- helpers ----------
-\newcommand{\todo}[1]{\textcolor{heat}{\textbf{[#1]}}}
-\newcommand{\new}{\tikz[baseline=-0.6ex]\node[fill=citrus,text=white,font=\tiny\bfseries,rounded corners=2pt,inner sep=2pt]{NEW};}
-\newenvironment{card}[2][]{\par\smallskip}{\par\smallskip}
-\newtcolorbox{keybox}[1]{enhanced,colback=#1!8,colframe=#1,boxrule=0.8pt,arc=3pt,
-  left=8pt,right=8pt,top=6pt,bottom=6pt,before skip=8pt,after skip=8pt}
-
+\pagestyle{fancy}\fancyhf{}\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\small\color{soft}\thepage}
+\newcommand{\toadd}[1]{\textit{\color{soft}[to add: #1]}}
 
 \begin{document}
+
+% ------------------------------------------------------------------ cover
 \begin{titlepage}
-\thispagestyle{empty}
-\vspace*{0.4cm}
-{\fontsize{34}{40}\selectfont\bfseries \textcolor{leaf}{Poly} \textcolor{citrus}{Citra} \textcolor{leaf}{Bricks}\par}
-\vspace{4pt}
-{\Large\itshape Transforming Waste into Sustainable Building Materials\par}
-\vspace{6pt}
-{\color{citrus}\rule{0.45\textwidth}{2pt}}\par
-\vspace{2pt}
-{\large Innovative Eco-Friendly Construction Solutions\par}
-\vspace{4pt}
-{\large\color{sky}\bfseries Version 2: \textcolor{citrus}{CoolBrick}: cooler classrooms that government schools can afford\par}
-\vspace{6pt}
-\sdg{4}{sdgfour} \sdg{11}{sdgeleven} \sdg{12}{sdgtwelve} \sdg{13}{sdgthirteen}
-
-\vspace{0.8cm}
-\begin{center}
-\begin{minipage}{0.49\textwidth}
-  \includegraphics[width=\linewidth,height=4.2cm,keepaspectratio=false]{styrofoam.jpg}
-\end{minipage}\hfill
-\begin{minipage}{0.49\textwidth}
-  \includegraphics[width=\linewidth,height=4.2cm,keepaspectratio=false]{peels.jpg}
-\end{minipage}\\[6pt]
-\includegraphics[width=\textwidth,height=7.2cm,keepaspectratio=false]{prototype.jpg}
-\end{center}
-
+\vspace*{1cm}
+{\fontsize{40}{46}\selectfont\bfseries Poly Citra \textcolor{accent}{CoolBrick}\par}
+\vspace{10pt}
+{\Large A brick made from Styrofoam and orange peel that keeps buildings cool\par}
+\vspace{1.2cm}
+\includegraphics[width=0.49\textwidth,height=4.6cm]{styrofoam.jpg}\hfill
+\includegraphics[width=0.49\textwidth,height=4.6cm]{peels.jpg}\\[0.25cm]
+\includegraphics[width=\textwidth,height=7.4cm]{prototype.jpg}
 \vfill
-\begin{tabular}{@{}ll}
-\textbf{Project:} & Project Rebrick \\
-\textbf{Team:} & Rian Sikka and Daiwik Abrol \\
-\textbf{Grade:} & Grade 9 (IGCSE) \\
-\textbf{School:} & Scottish High International School \\
-\end{tabular}
+{\large
+Rian Sikka and Daiwik Abrol\\
+Grade 9 (IGCSE), Scottish High International School\\[4pt]
+\color{soft}Project Rebrick\par}
 \end{titlepage}
 
-\setcounter{tocdepth}{1}
 \tableofcontents
 
-
+% ------------------------------------------------------------------ 1
 \section{Summary}
 
-Every year India throws away large amounts of \textbf{Styrofoam} (expanded
-polystyrene, EPS) packaging and \textbf{orange peel}. Our project,
-\textbf{Poly Citra Bricks}, turns these two wastes into building bricks. We
-extract \textbf{D-limonene}, a natural solvent, from orange peel by steam
-distillation. Limonene dissolves Styrofoam into a thick polystyrene gel,
-which we mould and cure into a light, waterproof brick. This first version
-has already been built, tested and recognised at national-level
-competitions \todo{list awards}.
+Styrofoam packaging and orange peel are two everyday wastes that usually end
+up in landfill or are burned. Our project, \textbf{Poly Citra Bricks}, turns
+them into a building brick. We extract \textbf{D-limonene}, a natural solvent,
+from orange peel by steam distillation. Limonene dissolves Styrofoam into a
+thick polystyrene gel, which we mould and cure into a light, waterproof
+brick. This first version has been built and tested, and has been recognised
+at national-level competitions \toadd{awards}.
 
-In this edition we turn it into a \textbf{CoolBrick system} that keeps
-\textbf{buildings cool without electricity}: hollow air cells, a
-coconut-oil phase-change material (PCM), a white calcium-carbonate
-``cool-face'' coating, orange-peel biochar and perforated \emph{jaali}
-screens. We focus on \textbf{classrooms}. India has about 10 lakh
-government schools, most of them without air-conditioning, and research
-shows that hot classrooms reduce learning.
+In this edition we redesign it as the \textbf{CoolBrick}, a brick that keeps
+heat out of buildings. Inside each brick are hollow air cells and sealed
+pockets of a coconut-oil phase-change material (PCM). The body contains
+biochar made from the leftover peel, and the outside face has a white
+heat-reflecting coat. India's buildings, and especially its classrooms, get
+dangerously hot in summer, and most cannot afford air-conditioning.
 
-Our computer simulation of a standard 7 m $\times$ 6 m classroom with 40
-students on a hot day (outdoor air 27--\SI{41}{\celsius}) shows that the
-cheapest step, a CoolBrick cool coat on the roof, cuts the hottest
-temperature students feel during school hours from 39.8 to
-36.8\,\si{\celsius}. In a tin-roofed classroom it falls from
-47.1 to 38.7\,\si{\celsius}. We designed a three-level plan that a
-government school can pay for from its own annual grant, and a plan for how
-governments can cool \textbf{public spaces} (schools, anganwadis, health
-centres, bus shelters, offices) at about \rupee108 per square metre of roof,
-about a third of the \rupee300/m\textsuperscript{2} that Telangana's Cool Roof
-Policy budgets.
-
-\textbf{Our USP:} CoolBrick cools classrooms without electricity, using
-materials made from two wastes, for about \rupee122 per student.
-
-\begin{keybox}{citrus}
-\centering
-\begin{tabular}{ccc}
-{\LARGE\bfseries\color{citrus} $-$3.4\,°C} & {\LARGE\bfseries\color{leaf} $-$8.4\,°C} & {\LARGE\bfseries\color{sky} \rupee122}\\[2pt]
-\small hottest felt temperature in a & \small in a tin-roofed classroom & \small per student to cool-coat\\
-\small typical classroom (Levels 1+2) & \small after a cool coat & \small a classroom roof (Level 1)
-\end{tabular}
-\end{keybox}
+We tested the design with a computer simulation of a wall on a hot day
+(outdoor air up to \SI{41}{\celsius}):
 
 \begin{center}
-\sdg{4}{sdgfour} \sdg{11}{sdgeleven} \sdg{12}{sdgtwelve} \sdg{13}{sdgthirteen}
+\begin{tabular}{lccc}
+\toprule
+ & Clay brick & Poly Citra v1 & \textbf{CoolBrick} \\
+\midrule
+Heat let through by a 230 mm wall ($U$, W/m\textsuperscript{2}K) & 2.20 & 0.76 & \textbf{0.60} \\
+Hottest outside surface (\si{\celsius}) & 51.9 & 52.1 & \textbf{39.1} \\
+Heat gained by a small building in one day (kWh) & 24.4 & 7.7 & \textbf{6.4} \\
+\bottomrule
+\end{tabular}
 \end{center}
-The project focuses on four UN Sustainable Development Goals
-(Section~2.4). All results are model predictions using assumed material
-values and price estimates. Our next step is to measure two real classrooms
-in our own school (Section~4).
 
+A CoolBrick building takes in about \textbf{74\% less heat} than a clay-brick
+one. These are simulation results; our next step is to measure real bricks.
 
+\textbf{Our USP:} a brick that keeps rooms cool without electricity, made
+from two wastes instead of mined clay and a coal-fired kiln.
+
+% ------------------------------------------------------------------ 2
 \section{Significance and Uniqueness of the Project}
 
-\subsection{The problem: two wastes}
-\begin{minipage}[t]{0.52\textwidth}
-\vspace{0pt}
+\subsection{The problem}
 \begin{itemize}
-  \item \textbf{Styrofoam waste} contributes to landfill overflow and
-        environmental pollution.
-  \item \textbf{Orange peel waste} ends up in landfills or is incinerated,
-        leading to environmental pollution.
-  \item Without effective recycling methods, these wastes worsen pollution
-        and waste-management issues.
-  \item A sustainable solution is needed to repurpose them into
-        eco-friendly alternatives.
+  \item \textbf{Two wastes.} Styrofoam fills landfills and breaks into
+        microplastics. Orange peel from juice shops is dumped or burned.
+  \item \textbf{Bricks harm the environment.} Fired clay bricks use fertile
+        topsoil and are baked in kilns that burn coal or wood.
+  \item \textbf{Hot buildings.} India has about 10 lakh government schools,
+        and most have no air-conditioning. In a US study of 10 million
+        students, every extra \SI{1}{\degree F} of school-year heat reduced
+        learning by about 1\% in schools without AC.
 \end{itemize}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.45\textwidth}
-\vspace{0pt}
-\includegraphics[width=\linewidth,height=3.3cm,keepaspectratio=false]{peel-waste.jpg}\\[-2pt]
-{\footnotesize\color{gray}Orange-peel waste}\\[4pt]
-\includegraphics[width=\linewidth,height=3.3cm,keepaspectratio=false]{plastic-waste.jpg}\\[-2pt]
-{\footnotesize\color{gray}Plastic and Styrofoam waste in landfill}
-\end{minipage}
-
-\subsection{The problem: classrooms that are too hot to learn in}
-\begin{itemize}
-  \item India has about \textbf{14.7 lakh schools}, of which about
-        \textbf{10.2 lakh are government schools} (UDISE+ 2023--24). Most
-        government classrooms have no air-conditioning, and fans stop during
-        power cuts.
-  \item Many classrooms have bare concrete roofs, and some have tin-sheet
-        roofs. In the sun these heat up and radiate heat down onto students.
-  \item A US study of 10 million students found that each extra
-        \SI{1}{\degree F} (about \SI{0.56}{\celsius}) of school-year heat cut
-        a year's learning by about \textbf{1\%} in schools without
-        air-conditioning, with the biggest losses for students from poorer
-        families.
-  \item In a 2026 survey of over 3,000 Indian children, nearly \textbf{7 in
-        10} said they had missed school or normal activities because of heat,
-        and \textbf{76\%} said heat hurt their concentration.
-\end{itemize}
-
-The hottest surface in most classrooms is the roof. A cheap white coat that
-reflects sunlight, made with our CoolBrick system, can cool the room without
-electricity.
-
-\needspace{22\baselineskip}
-\subsection{Our USP (unique selling point)}
-\begin{keybox}{citrus}
-\large\textbf{CoolBrick cools classrooms without electricity, using building
-materials made from two wastes (Styrofoam and orange peel), for about
-\rupee122 per student.}
-\end{keybox}
-What makes it different from other ways of cooling a classroom:
-\begin{center}
-\small
-\begin{tabularx}{\textwidth}{@{}l X X@{}}
-\toprule
- & \textbf{Usual options} & \textbf{CoolBrick} \\
-\midrule
-Running cost & AC and coolers need electricity every day & No electricity at all \\
-Materials & New paint, clay bricks or foam, made from fresh resources & Made from Styrofoam and orange-peel waste \\
-Cost & AC: tens of thousands of rupees per room, plus bills & About \rupee4,875 per classroom (\rupee122 per student) \\
-Who can make it & Factories and contractors & Local groups and school eco-clubs \\
-Waste & Creates waste & Removes waste; the solvent is recovered and reused \\
-\bottomrule
-\end{tabularx}
-\end{center}
-
-\subsection{How the project serves the UN Sustainable Development Goals}
-We focus on the four goals our project changes directly: better school
-buildings (SDG 4), greener buildings from local waste (SDG 11), less waste
-(SDG 12) and adapting to heatwaves (SDG 13).
-
-\begin{center}
-\small
-\begin{tabularx}{\textwidth}{@{}l l X X@{}}
-\toprule
-\textbf{Goal} & \textbf{Target} & \textbf{How CoolBrick contributes} & \textbf{What we measure} \\
-\midrule
-\sdg{4}{sdgfour} & 4.a & Upgrades school buildings into safe, effective learning environments: cooler classrooms help students concentrate, learn and stay healthy in heatwaves. & Classroom temperature and hours above \SI{35}{\celsius} in school hours. \\
-\sdg{11}{sdgeleven} & 11.6, 11.c & Better management of city waste; sustainable buildings from local materials. & kg of Styrofoam and peel reused. \\
-\sdg{12}{sdgtwelve} & 12.5 & Cuts waste through recycling and reuse; solvent recovered and reused. & Waste diverted from landfill. \\
-\sdg{13}{sdgthirteen} & 13.1, 13.3 & Helps schools adapt to heatwaves; students learn about climate by making the materials. & Students involved; schools adapted. \\
-\bottomrule
-\end{tabularx}
-\end{center}
-
-
-\section{Concept: The Science Behind the CoolBrick}
-
-\subsection{Dissolving polystyrene with D-limonene}
-Polystyrene and D-limonene are both \textbf{non-polar} hydrocarbons. Following
-the rule ``like dissolves like'', limonene molecules slip between the long
-polystyrene chains and separate them, so the solid foam turns into a sticky
-gel. One kilogram of limonene can dissolve about 3--4 kg of Styrofoam, and
-because the foam is about 98\% air its volume shrinks enormously. D-limonene
-makes up over 90\% of orange-peel oil and is extracted by \textbf{steam
-distillation}: steam carries the oil out of the peel, and the oil separates
-from the water when it condenses. Fresh peel gives roughly 0.6--1\% oil by
-mass. When the gel dries, the limonene evaporates and the polystyrene
-hardens again. The limonene vapour can be condensed and reused.
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[
-  stp/.style={rectangle,rounded corners=3pt,minimum width=2.75cm,minimum height=2.3cm,
-              text width=2.55cm,align=center,font=\footnotesize,text=white},
-  arr/.style={-{Stealth[length=3mm]},line width=1.2pt,color=ink!60}]
-\node[stp,fill=citrus] (a) {\textbf{Collection}\\[2pt]Styrofoam waste is gathered.};
-\node[stp,fill=leaf,right=0.5cm of a] (b) {\textbf{Processing}\\[2pt]D-limonene is extracted from orange peel by steam distillation, and dissolves Styrofoam into polystyrene gel.};
-\node[stp,fill=sky,right=0.5cm of b] (c) {\textbf{Moulding}\\[2pt]The gel is shaped into bricks.};
-\node[stp,fill=plum,below=0.7cm of b,xshift=-1.6cm] (d) {\textbf{Curing}\\[2pt]Bricks are dried and solidified.};
-\node[stp,fill=leaf!70!lime!80!black,right=0.5cm of d] (e) {\textbf{Usage}\\[2pt]Bricks are ready for construction.};
-\draw[arr] (a)--(b); \draw[arr] (b)--(c);
-\draw[arr] (c.south) |- ++(0,-0.35) -| (d.north);
-\draw[arr] (d)--(e);
-\end{tikzpicture}
-\caption{The Poly Citra Brick process.}
+\includegraphics[width=0.48\textwidth,height=4.4cm]{peel-waste.jpg}\hfill
+\includegraphics[width=0.48\textwidth,height=4.4cm]{plastic-waste.jpg}
+\caption{Orange-peel waste (left) and plastic and Styrofoam waste in landfill (right).}
 \end{figure}
 
-\begin{card}{leaf}
-\textbf{Why it works.} Styrofoam is about 98\% air, so dissolving it shrinks
-its volume dramatically and a large amount of waste fits into one brick.
-D-limonene is a natural, bio-based solvent (Sony piloted the same idea for
-recycling packaging foam), and no kiln firing is needed.
-\end{card}
+\subsection{Our USP}
+\textbf{The CoolBrick keeps rooms cool without electricity, and it is made
+from two wastes instead of mined clay and a coal-fired kiln.}
 
-\subsection{How heat gets into a building}
-\begin{minipage}[c]{0.46\textwidth}
-\centering
-\begin{tikzpicture}[scale=0.95]
-  \fill[citrus!90] (0,4.0) circle (0.45);
-  \foreach \a in {0,45,...,315}{\draw[citrus,line width=1pt] ($(0,4.0)+(\a:0.55)$)--($(0,4.0)+(\a:0.8)$);}
-  \fill[pattern=bricks,pattern color=citrus!60] (2.2,0) rectangle (3.0,3.6);
-  \draw[ink,line width=0.8pt] (2.2,0) rectangle (3.0,3.6);
-  \node[font=\scriptsize] at (2.6,-0.35) {wall};
-  \node[font=\scriptsize] at (4.6,3.3) {indoor room};
-  \draw[ink!40,dashed] (3.0,0) -- (6.0,0);
-  \draw[-{Stealth},heat,line width=1.5pt,decorate,decoration={snake,amplitude=1.5pt,segment length=6pt}] (0.4,3.5)--(2.15,2.5)
-     node[pos=0.3,above right,font=\scriptsize,text=heat]{1 radiation};
-  \draw[-{Stealth},heat,line width=1.5pt] (2.6,1.8)--(4.4,1.8)
-     node[pos=0.75,above,font=\scriptsize,text=heat]{2 conduction};
-  \draw[-{Stealth},sky,line width=1.5pt] (3.2,0.8)--(4.6,0.8)
-     node[pos=0.95,right,font=\scriptsize,text=sky,align=left]{3 stored heat\\released at night};
-\end{tikzpicture}
-\captionof{figure}{Three ways heat reaches the inside of a building.}
-\end{minipage}\hfill
-\begin{minipage}[c]{0.5\textwidth}
-Steady heat flow through a wall:
-\[
-  Q = U\,A\,\Delta T,
-  \qquad
-  U = \frac{1}{R_{si} + \sum_i d_i/k_i + R_{so}}
-\]
-{\small where $U$ is the heat transmittance (\si{W/m^2K}), $d$ the layer
-thickness (m), $k$ the thermal conductivity (\si{W/mK}), and
-$R_{si}=0.13$, $R_{so}=0.04$~\si{m^2K/W} are the surface resistances.}
+\begin{itemize}
+  \item \textbf{Cooling built into the wall.} Five features in one brick
+        work together (Section~3); no fans, AC or power needed.
+  \item \textbf{Two wastes, one product.} Styrofoam and orange peel replace
+        clay. No kiln, no topsoil.
+  \item \textbf{The whole orange is used.} The peel gives the solvent
+        (limonene) and, after distillation, the biochar filler. The limonene
+        is recovered and reused.
+  \item \textbf{Light and waterproof.} Easy to carry and build with, and it
+        does not soak up rain.
+\end{itemize}
 
-A CoolBrick must beat all three paths: reflect sunlight and radiate heat to
-the sky; have a low $k$; and buffer peaks with stored ``coolth''.
-\end{minipage}
+\subsection{UN Sustainable Development Goals}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+SDG 4: Quality education & Cooler classrooms help students learn. \\
+SDG 11: Sustainable cities & Greener buildings made from local waste. \\
+SDG 12: Responsible consumption & Styrofoam and orange peel are reused, not dumped. \\
+SDG 13: Climate action & No kiln emissions; buildings cope better with heatwaves. \\
+\bottomrule
+\end{tabularx}
+\end{center}
 
-\subsection{How people feel heat indoors}
-How hot a room feels depends on both the \textbf{air temperature} and the
-temperature of the \textbf{surfaces around you}. A hot roof radiates heat
-down onto everyone below it even when the air is the same. A simple
-measure is the ``felt'' (operative) temperature: roughly the average of the
-air temperature and the average surface temperature. Each student also gives
-off about \SI{60}{W} of body heat, so 40 students heat a classroom like a
-\SI{2.4}{kW} heater.
+% ------------------------------------------------------------------ 3
+\section{Concept}
 
-\subsection{Key insight: put the air back}
-\begin{minipage}[c]{0.52\textwidth}
-Styrofoam insulates because it is about \textbf{98\% trapped air}
-($k \approx \SI{0.035}{W/mK}$). When limonene dissolves it, the air escapes.
-Solid polystyrene has $k \approx 0.10$--\SI{0.17}{W/mK}: still far better
-than fired clay ($\approx\SI{0.8}{W/mK}$), but 3--5 times worse than the
-foam.
-
-So in version 2 we put the air back, using
-engineered cavities, porous bio-fillers and a controlled foaming step.
-\end{minipage}\hfill
-\begin{minipage}[c]{0.44\textwidth}
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-  xbar, width=\linewidth, height=5.4cm, bar width=9pt,
-  xmin=0, xmax=1.0, xlabel={$k$ (\si{W/mK}), lower is better},
-  xlabel style={font=\scriptsize}, xticklabel style={font=\scriptsize,/pgf/number format/fixed},
-  symbolic y coords={EPS foam,Solid PS gel,Orange-peel board,AAC block,Fired clay brick},
-  ytick=data, yticklabel style={font=\scriptsize},
-  nodes near coords, nodes near coords style={font=\tiny,/pgf/number format/fixed,/pgf/number format/precision=3},
-  axis lines*=left, enlarge y limits=0.15]
-\addplot[fill=leaf!70,draw=none] coordinates
-  {(0.035,EPS foam) (0.15,Solid PS gel) (0.065,Orange-peel board) (0.18,AAC block) (0.81,Fired clay brick)};
-\end{axis}
-\end{tikzpicture}
-\captionof{figure}{Thermal conductivity of wall materials (typical values).}
-\end{minipage}
-
-The CoolBrick puts that principle into one block. Figure~\ref{fig:xsec} shows the layers from the sunny outside face to the room side.
+\subsection{Turning waste into a brick}
+Polystyrene and D-limonene are both non-polar hydrocarbons, so limonene
+dissolves polystyrene (``like dissolves like''). Styrofoam is about 98\% air,
+so it shrinks into a small amount of thick gel. One kilogram of limonene can
+dissolve about 3--4~kg of Styrofoam. Limonene makes up over 90\% of orange-peel
+oil and is extracted by steam distillation. When the gel dries, the limonene
+evaporates and the polystyrene sets hard.
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[scale=1.25]
-  \fill[leaf!25] (0,0) rectangle (6,3);
-  \draw[ink,line width=1pt] (0,0) rectangle (6,3);
+\begin{tikzpicture}[box/.style={draw=soft,rounded corners=2pt,minimum width=2.6cm,minimum height=1.25cm,text width=2.4cm,align=center,font=\small},
+  arr/.style={-{Stealth[length=2.5mm]},thick,soft}]
+\node[box] (a) {Collect Styrofoam and orange peel};
+\node[box,right=0.45cm of a] (b) {Steam-distil peel to get limonene};
+\node[box,right=0.45cm of b] (c) {Dissolve foam into a gel};
+\node[box,right=0.45cm of c] (d) {Mould and cure the brick};
+\node[box,right=0.45cm of d,draw=accent] (e) {CoolBrick};
+\draw[arr] (a)--(b); \draw[arr] (b)--(c); \draw[arr] (c)--(d); \draw[arr] (d)--(e);
+\end{tikzpicture}
+\caption{How the brick is made.}
+\end{figure}
+
+\subsection{How heat gets through a wall}
+Sunlight heats the outside of a wall. The heat then travels through the wall
+by conduction and enters the room. How much gets through is given by
+\[
+  Q = U \times A \times \Delta T, \qquad U = \frac{1}{R_{\text{in}} + \dfrac{d}{k} + R_{\text{out}}}
+\]
+where $k$ is how well the material conducts heat, $d$ is the wall thickness,
+$A$ is the area and $\Delta T$ is the temperature difference. A cooler outer
+surface and a lower $k$ both reduce the heat that reaches the room.
+
+Solid polystyrene conducts heat about five times less than fired clay ($k$
+about 0.15 against \SI{0.81}{W/mK}). But dissolving the foam lets out its
+trapped air, so in the CoolBrick we put air back in.
+
+\subsection{The CoolBrick design}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[scale=1.3]
+  \fill[orange!12] (0,0) rectangle (6,3);
+  \draw[ink,line width=0.8pt] (0,0) rectangle (6,3);
   \fill[white] (-0.25,0) rectangle (0,3); \draw[ink] (-0.25,0) rectangle (0,3);
-  \foreach \x in {0.6,2.4}{\fill[sky!20] (\x,0.45) rectangle ++(1.2,0.85); \draw[sky] (\x,0.45) rectangle ++(1.2,0.85);
-                           \fill[sky!20] (\x,1.7) rectangle ++(1.2,0.85); \draw[sky] (\x,1.7) rectangle ++(1.2,0.85);}
-  \fill[plum!35] (4.2,0.45) rectangle ++(1.2,0.85); \draw[plum] (4.2,0.45) rectangle ++(1.2,0.85);
-  \fill[plum!35] (4.2,1.7) rectangle ++(1.2,0.85); \draw[plum] (4.2,1.7) rectangle ++(1.2,0.85);
+  \foreach \x in {0.6,2.4}{\fill[cool!15] (\x,0.45) rectangle ++(1.2,0.85); \draw[cool] (\x,0.45) rectangle ++(1.2,0.85);
+                           \fill[cool!15] (\x,1.7) rectangle ++(1.2,0.85); \draw[cool] (\x,1.7) rectangle ++(1.2,0.85);}
+  \fill[violet!25] (4.2,0.45) rectangle ++(1.2,0.85); \draw[violet] (4.2,0.45) rectangle ++(1.2,0.85);
+  \fill[violet!25] (4.2,1.7) rectangle ++(1.2,0.85); \draw[violet] (4.2,1.7) rectangle ++(1.2,0.85);
   \pgfmathsetseed{7}
   \foreach \i in {1,...,70}{\fill[ink!70] ({0.1+5.8*rnd},{0.08+2.84*rnd}) circle (0.022);}
   \node[font=\scriptsize,rotate=90] at (-0.6,1.5) {OUTSIDE (sun)};
   \node[font=\scriptsize,rotate=90] at (6.4,1.5) {INSIDE (room)};
-  \draw[ink!60] (-0.12,3) -- (-0.12,3.3) node[above,font=\scriptsize]{1 cool-face coat};
-  \draw[ink!60] (1.2,2.55) -- (1.2,3.75) node[above,font=\scriptsize]{2 air cells};
-  \draw[ink!60] (3.3,2.9) -- (3.3,3.3) node[above,font=\scriptsize]{3 PS + biochar matrix};
-  \draw[ink!60] (4.8,2.55) -- (4.8,3.75) node[above,font=\scriptsize]{4 sealed bio-PCM};
-  \draw[ink!60] (5.7,0) -- (5.7,-0.3) node[below,font=\scriptsize]{5 interlocking key};
+  \draw[soft] (-0.12,3) -- (-0.12,3.3) node[above,font=\scriptsize]{1 white coat};
+  \draw[soft] (1.2,2.55) -- (1.2,3.75) node[above,font=\scriptsize]{2 air cells};
+  \draw[soft] (3.3,2.9) -- (3.3,3.3) node[above,font=\scriptsize]{3 gel + peel biochar};
+  \draw[soft] (4.8,2.55) -- (4.8,3.75) node[above,font=\scriptsize]{4 coconut-oil PCM};
+  \draw[soft] (5.7,0) -- (5.7,-0.3) node[below,font=\scriptsize]{5 interlocking key};
 \end{tikzpicture}
-\caption{Cross-section concept of a CoolBrick, from outside (left) to inside (right).}\label{fig:xsec}
+\caption{Cross-section of a CoolBrick, from the outside face (left) to the room side (right).}
 \end{figure}
 
-\subsection{The five cooling upgrades}
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[
-  feat/.style={rectangle,rounded corners=3pt,minimum width=3.05cm,minimum height=3.0cm,
-               text width=2.8cm,align=center,font=\footnotesize,draw=none},
-  num/.style={circle,fill=white,text=ink,font=\small\bfseries,inner sep=1pt,minimum size=0.55cm}]
-\node[feat,fill=citrus!18] (f1) {\textbf{\color{citrus!80!black}Air-cell core}\\[3pt]Hollow cavities and foamed gel put the insulating air back.};
-\node[feat,fill=plum!15,right=0.2cm of f1] (f2) {\textbf{\color{plum}Bio-PCM pockets}\\[3pt]Sealed coconut-oil-based PCM soaks up daytime heat peaks.};
-\node[feat,fill=sky!15,right=0.2cm of f2] (f3) {\textbf{\color{sky!80!black}Cool face}\\[3pt]CaCO$_3$ coating reflects sun and radiates heat to the sky.};
-\node[feat,fill=leaf!15,right=0.2cm of f3] (f4) {\textbf{\color{leaf}Peel biochar}\\[3pt]Distillation leftovers become a porous, flame-retardant filler.};
-\node[feat,fill=heat!12,right=0.2cm of f4] (f5) {\textbf{\color{heat}Jaali variant}\\[3pt]Perforated CoolBrick screens for shade and breeze.};
-\foreach \i/\c in {1/citrus,2/plum,3/sky,4/leaf,5/heat}{\node[num,draw=\c,line width=1pt] at (f\i.north) {\i};}
-\end{tikzpicture}
-\caption{Overview of the five upgrades.}
-\end{figure}
-
-\subsubsection*{Upgrade 1: Air-cell core}
-
-\begin{minipage}[c]{0.54\textwidth}
-\small
-\begin{tabular}{@{}lcc@{}}
-\toprule
-Wall material (230 mm) & $k_\text{eff}$ (\si{W/mK}) & $U$ (\si{W/m^2K}) \\
-\midrule
-Fired clay brick       & 0.81 & \textbf{2.20} \\
-AAC block (benchmark)  & 0.18 & 0.69 \\
-Poly Citra v1 (solid)  & 0.20\textsuperscript{*} & 0.76 \\
-\textcolor{citrus}{CoolBrick v2 (target)} & \textcolor{citrus}{0.15\textsuperscript{*}} & \textcolor{citrus}{\textbf{0.59}} \\
-\bottomrule
-\end{tabular}
-
-\footnotesize\textsuperscript{*}Estimates, to be measured with a guarded hot plate (IS 3346).
-Example: $U_\text{clay} = 1/(0.13 + 0.23/0.81 + 0.04) = \SI{2.20}{W/m^2K}$.
-
-\small Air is added through (a) moulded hollow cells ($\sim$30--40\% void),
-(b) partial foaming of the gel, and (c) porous biochar filler. Result: up to
-\textbf{about 73\% less heat conducted} than through fired clay.
-\end{minipage}\hfill
-\begin{minipage}[c]{0.42\textwidth}
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-  ybar, width=\linewidth, height=5.4cm, bar width=18pt, bar shift=0pt,
-  ymin=0, ymax=2.6, ylabel={$U$ (\si{W/m^2K}), lower is better},
-  ylabel style={font=\scriptsize}, yticklabel style={font=\scriptsize},
-  symbolic x coords={Clay,AAC,v1,CoolBrick},
-  xtick={Clay,AAC,v1,CoolBrick}, xticklabel style={font=\scriptsize},
-  nodes near coords, nodes near coords style={font=\scriptsize},
-  axis lines*=left, enlarge x limits=0.2]
-\addplot[fill=heat!75,draw=none] coordinates {(Clay,2.20)};
-\addplot[fill=ink!40,draw=none] coordinates {(AAC,0.69)};
-\addplot[fill=leaf!60,draw=none] coordinates {(v1,0.76)};
-\addplot[fill=citrus,draw=none] coordinates {(CoolBrick,0.59)};
-\end{axis}
-\end{tikzpicture}
-\captionof{figure}{U-value of a one-brick wall.}
-\end{minipage}
-
-\subsubsection*{Upgrade 2: Bio-PCM pockets: a thermal battery}
-
-\begin{minipage}[c]{0.5\textwidth}
-\small
-\begin{itemize}
-  \item A \textbf{phase-change material} (PCM) melts when the room passes
-        its melting point, absorbing large amounts of heat at near-constant
-        temperature, and re-solidifies at night.
-  \item Candidate: a \textbf{coconut-oil-based blend}. Pure coconut oil
-        melts at about \SI{24}{\celsius}; the blend is tuned to
-        \SIrange{26}{28}{\celsius} for Indian comfort.
-  \item Sealed in polystyrene cavities, which are water-proof.
-        \todo{verify oil--PS compatibility}
-  \item For crowded classrooms the PCM should melt at about
-        \SI{31}{\celsius}, so that it can refreeze when the building cools at
-        night. Our simulation showed that \SI{27}{\celsius} was too low.
-  \item Published PCM-brick studies report \textbf{lower peaks (from about
-        3 up to about \SI{11}{\celsius}) and time delays of about 2 hours},
-        depending on the set-up.
-\end{itemize}
-\end{minipage}\hfill
-\begin{minipage}[c]{0.46\textwidth}
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-  width=\linewidth, height=5.4cm,
-  xmin=0, xmax=24, ymin=24, ymax=44,
-  xtick={0,6,12,18,24}, xlabel={Hour of day}, ylabel={Temperature (\si{\celsius})},
-  xlabel style={font=\scriptsize}, ylabel style={font=\scriptsize},
-  ticklabel style={font=\scriptsize}, axis lines*=left,
-  legend style={font=\tiny,at={(0.02,0.98)},anchor=north west,draw=none,fill=white,fill opacity=0.8},
-  domain=0:24, samples=60]
-\addplot[heat,thick,dashed] {34+8*sin(deg((x-9)*pi/12))};
-\addlegendentry{Outdoor}
-\addplot[ink!60,thick] {32.5+5.5*sin(deg((x-11)*pi/12))};
-\addlegendentry{Clay-brick room}
-\addplot[citrus,very thick] {30.5+2.2*sin(deg((x-13)*pi/12))};
-\addlegendentry{CoolBrick room}
-\end{axis}
-\end{tikzpicture}
-\captionof{figure}{Idea of the PCM effect (illustrative only; see Section~5 for simulation results).}
-\end{minipage}
-
-\subsubsection*{Upgrade 3: The cool face: radiative cooling}
-
-\begin{minipage}[c]{0.56\textwidth}
-\small
-\begin{itemize}
-  \item In direct sun, ordinary walls get much hotter than the air around
-        them.
-  \item A \textbf{calcium-carbonate radiative-cooling coat} (Purdue
-        University, 2020) reflects \textbf{95.5\%} of sunlight and emits heat
-        through the atmosphere's ``sky window'' (\SIrange{8}{13}{\micro m},
-        emissivity 0.94).
-  \item In field tests the surface stayed \textbf{1.7\,\si{\celsius} below
-        air temperature at noon} and \SI{10}{\celsius} below at night.
-  \item CaCO$_3$ is cheap and can come from \textbf{waste eggshells or marble
-        slurry}, giving a third waste stream. School roofs are large, flat
-        and in full sun, so this coat gives the biggest benefit of all the
-        upgrades (Section~5). The coat also shields
-        polystyrene from UV damage.
-\end{itemize}
-\end{minipage}\hfill
-\begin{minipage}[c]{0.4\textwidth}
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-  ybar, width=\linewidth, height=5.2cm, bar width=20pt,
-  ymin=0, ymax=105, ylabel={Solar reflectance (\%)},
-  ylabel style={font=\scriptsize}, yticklabel style={font=\scriptsize},
-  symbolic x coords={Bare brick,White paint,CaCO$_3$ coat},
-  xtick=data, xticklabel style={font=\scriptsize},
-  nodes near coords, nodes near coords style={font=\scriptsize},
-  axis lines*=left, enlarge x limits=0.25]
-\addplot[fill=sky!70,draw=none] coordinates {(Bare brick,30) (White paint,85) (CaCO$_3$ coat,95.5)};
-\end{axis}
-\end{tikzpicture}
-\captionof{figure}{Solar reflectance of wall finishes (typical values).}
-\end{minipage}
-
-\subsubsection*{Upgrade 4: Peel biochar: using the whole orange}
-
-\begin{minipage}[c]{0.54\textwidth}
-\small
-After steam distillation, the peel residue is still waste. We
-\textbf{pyrolyse it into biochar} and mix it into the gel:
-\begin{itemize}
-  \item \textbf{Porous:} adds trapped air and lowers $k$. Orange-peel
-        biochar in a polymer composite reached $k = \SI{0.081}{W/mK}$.
-  \item \textbf{Flame-retardant:} the same study achieved a UL-94
-        \textbf{V-1} rating. This tackles the biggest weakness of any
-        polystyrene product: \textcolor{heat}{fire}.
-  \item \textbf{Stores carbon:} biochar locks carbon into the wall instead
-        of releasing it when peels are burned.
-\end{itemize}
-\end{minipage}\hfill
-\begin{minipage}[c]{0.42\textwidth}
-\centering
-\begin{tikzpicture}[
-  n/.style={rectangle,rounded corners=3pt,text width=2.3cm,align=center,font=\scriptsize,minimum height=0.8cm},
-  a/.style={-{Stealth},thick,ink!60}]
-\node[n,fill=citrus!25] (p) at (2.1,4.6) {Orange peel waste};
-\node[n,fill=leaf!20] (l) at (0.6,3.0) {Limonene (solvent)};
-\node[n,fill=ink!15] (r) at (3.6,3.0) {Peel residue};
-\node[n,fill=sky!20] (g) at (0.6,1.5) {PS gel (EPS dissolved)};
-\node[n,fill=ink!30] (b) at (3.6,1.5) {Biochar filler};
-\node[n,fill=citrus,text=white] (c) at (2.1,0) {\textbf{CoolBrick}};
-\draw[a] (p) -- node[left,font=\tiny,pos=0.4]{steam distil} (l);
-\draw[a] (p) -- (r);
-\draw[a] (r) -- node[right,font=\tiny]{pyrolyse} (b);
-\draw[a] (l) -- node[left,font=\tiny]{+ EPS} (g);
-\draw[a] (g) -- (c); \draw[a] (b) -- (c);
-\draw[a,leaf,dashed] (c.west) to[out=180,in=180,looseness=1.6] node[left,font=\tiny,text=leaf,align=right,pos=0.5]{limonene\\recovered} (l.west);
-\end{tikzpicture}
-\captionof{figure}{Zero-waste use of the orange.}
-\end{minipage}
-
-\subsubsection*{Upgrade 5: Breeze-block (jaali) CoolBricks}
-
-\begin{minipage}[c]{0.56\textwidth}
-\small
-\begin{itemize}
-  \item Traditional Indian \textbf{jaali} screens shade walls and windows
-        while letting breezes through, giving cooling with zero energy.
-  \item The gel can be moulded, so the same process can cast
-        \textbf{perforated CoolBrick screens} as sun-screens in front of east-
-        and west-facing classroom windows, and as vent blocks that can stay
-        open at night without letting anyone in.
-  \item Our simulation showed that night ventilation matters: it lets the
-        building cool down before the next school day.
-  \item For hot-dry regions, \textbf{terracotta-clad} panels are an option:
-        wet clay surfaces add evaporative cooling.
-\end{itemize}
-\end{minipage}\hfill
-\begin{minipage}[c]{0.4\textwidth}
-\centering
-\begin{tikzpicture}[scale=0.85]
-  \fill[citrus!30] (0,0) rectangle (4.2,4.2);
-  \foreach \x in {0,1.05,2.1,3.15}{\foreach \y in {0,1.05,2.1,3.15}{
-     \fill[white] (\x+0.525,\y+0.525) circle (0.36);
-     \draw[citrus!80!black,line width=0.6pt] (\x+0.525,\y+0.525) circle (0.36);
-     \draw[citrus!80!black,line width=0.4pt] (\x,\y) rectangle ++(1.05,1.05);}}
-  \foreach \y in {0.6,1.6,2.6,3.6}{\draw[-{Stealth},sky,thick] (-0.8,\y)--(-0.1,\y);
-                                    \draw[-{Stealth},sky!70,thick,dashed] (4.3,\y)--(5.0,\y);}
-  \node[font=\scriptsize,sky] at (-0.5,4.5) {breeze};
-\end{tikzpicture}
-\captionof{figure}{CoolBrick jaali module (concept).}
-\end{minipage}
-
-\subsection{The CoolBrick classroom}
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}[scale=0.95]
-  \fill[ink!8] (-1.6,-0.15) rectangle (10.4,0);
-  % sun + sky
-  \fill[citrus!90] (-0.9,5.2) circle (0.35);
-  \foreach \a in {0,45,...,315}{\draw[citrus,line width=0.8pt] ($(-0.9,5.2)+(\a:0.45)$)--($(-0.9,5.2)+(\a:0.65)$);}
-  \draw[-{Stealth},citrus,line width=1.2pt] (-0.5,4.9)--(1.4,4.15); \draw[-{Stealth},citrus!60,line width=1.2pt,dashed] (1.45,4.15)--(0.0,5.4);
-  \node[font=\scriptsize,text=citrus!80!black,align=center] at (-0.9,6.35) {sunlight bounced\\off the cool roof};
-  \draw[-{Stealth},sky!80,line width=1.2pt,decorate,decoration={snake,amplitude=1.2pt,segment length=6pt}] (7.4,4.3)--(8.0,5.6);
-  \node[font=\scriptsize,text=sky,align=left,anchor=west] at (8.2,5.5) {heat radiated\\to the cold sky};
-  % walls
-  \fill[citrus!25] (1.0,0) rectangle (1.4,3.9); \fill[citrus!25] (8.6,0) rectangle (9.0,3.9);
-  % windows
-  \fill[sky!20] (1.0,1.5) rectangle (1.4,2.8); \fill[sky!20] (8.6,1.5) rectangle (9.0,2.8);
-  % vents
-  \foreach \y in {3.35,3.6}{\fill[white] (8.8,\y) circle (0.06); \fill[white] (1.2,\y) circle (0.06);}
-  % roof + coat
-  \fill[ink!30] (0.8,3.9) rectangle (9.2,4.15); \fill[white] (0.8,4.15) rectangle (9.2,4.25); \draw[ink!50] (0.8,3.9) rectangle (9.2,4.25);
-  % jaali screen on west
-  \foreach \y in {0.6,1.0,...,3.0}{\fill[leaf!35] (0.2,\y) rectangle (0.45,\y+0.28);}
-  \node[font=\scriptsize,align=right] at (-0.8,1.7) {CoolBrick\\jaali screen\\(shades the\\west wall)};
-  % fan
-  \draw[ink!60,line width=1pt] (5.0,3.9)--(5.0,3.5); \draw[ink!60,line width=1.5pt] (4.4,3.5)--(5.6,3.5);
-  % students
-  \foreach \x in {2.6,3.9,5.2,6.5,7.6}{\fill[ink!60] (\x,1.15) circle (0.17); \fill[ink!60] (\x-0.2,0.45) rectangle (\x+0.2,0.98); \fill[citrus!50] (\x+0.25,0.75) rectangle (\x+0.85,0.82);}
-  % airflow
-  \draw[-{Stealth},sky,line width=1.2pt] (10.6,2.15)--(7.9,2.15); \node[font=\scriptsize,text=sky,align=left,anchor=west] at (9.3,1.65) {air in through\\windows};
-  \draw[-{Stealth},sky!70,line width=1.2pt] (8.2,3.45)--(10.4,3.45); \node[font=\scriptsize,text=sky,align=left,anchor=west] at (9.3,3.0) {night vents stay\\open to cool the room};
-  \node[font=\scriptsize] at (5.0,1.75) {40 students $\approx$ 2.4 kW of body heat};
-  \draw[ink!50] (3.6,4.2)--(3.6,4.6) node[above,font=\scriptsize,align=center]{white CaCO\textsubscript{3} cool coat\\on the concrete roof};
-\end{tikzpicture}
-\caption{A CoolBrick classroom upgrade (concept, cross-section, not to scale).}
-\end{figure}
-
-Our simulation showed that in a crowded classroom without AC, reflecting
-sunlight and letting heat escape (cool roof, shading, night ventilation)
-matters more than insulation. Insulation on its own can trap the students'
-body heat.
-
-
-\section{Methodology \& Experimental Design}
-
-\subsection{Making the brick and the cool coat}
 \begin{enumerate}
-  \item \textbf{Collect} clean Styrofoam packaging and orange peels (school
-        eco-club drives can do this).
-  \item \textbf{Extract D-limonene} from the peels by steam distillation.
-  \item \textbf{Dissolve} broken Styrofoam in the limonene to form a thick
-        polystyrene gel \todo{ratio of foam to limonene used}.
-  \item \textbf{Mix} in sand or fly ash and the orange-peel biochar
-        \todo{mix proportions}.
-  \item \textbf{Mould} bricks with hollow air cells and PCM pockets, or
-        perforated jaali blocks. Fill and seal the PCM pockets.
-  \item \textbf{Cure} under a cover with a condenser to recover the limonene
-        \todo{curing time and temperature}, until no solvent smell remains.
-  \item \textbf{Cool coat:} mix calcium carbonate powder (or ground eggshell)
-        into a water-based acrylic binder, about 60\% filler by weight, and
-        apply two coats on a clean roof.
+  \item \textbf{White coat.} A calcium-carbonate coat on the outside face
+        reflects most sunlight and gives off heat to the sky, so the wall
+        surface stays near air temperature.
+  \item \textbf{Air cells.} Hollow cells trap still air, which conducts heat
+        very poorly.
+  \item \textbf{Gel and peel biochar body.} The polystyrene gel makes a
+        strong, waterproof body. Biochar from the leftover peel adds tiny air
+        pockets and helps the brick resist fire.
+  \item \textbf{Coconut-oil PCM.} Sealed pockets on the room side melt at
+        about \SI{27}{\celsius} and soak up heat while melting, then release
+        it at night.
+  \item \textbf{Interlocking keys.} Bricks lock together, so less mortar is
+        needed. Mortar joints let heat through.
 \end{enumerate}
 
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[
-  s/.style={rectangle,rounded corners=3pt,minimum width=3.6cm,minimum height=1.45cm,
-            text width=3.4cm,align=center,font=\footnotesize,text=white},
-  arr/.style={-{Stealth[length=2.5mm]},line width=1pt,color=ink!60}]
-\node[s,fill=citrus] (1) {\textbf{1 Collect}\\EPS + peels from juice vendors and packaging firms};
-\node[s,fill=leaf,right=0.45cm of 1] (2) {\textbf{2 Distil}\\Steam-distil limonene from peels};
-\node[s,fill=ink!70,right=0.45cm of 2] (3) {\textbf{3 Char}\\Pyrolyse the residue into biochar};
-\node[s,fill=leaf!70!black,right=0.45cm of 3] (4) {\textbf{4 Mix}\\EPS + limonene gel + biochar};
-\node[s,fill=sky,below=0.6cm of 4] (5) {\textbf{5 Mould}\\Hollow or jaali moulds; fill and seal PCM};
-\node[s,fill=plum,left=0.45cm of 5] (6) {\textbf{6 Cure \& recover}\\Dry; condense limonene for reuse};
-\node[s,fill=citrus!80!black,left=0.45cm of 6] (7) {\textbf{7 Coat}\\CaCO$_3$ cool face on the sun side};
-\node[s,fill=heat,left=0.45cm of 7] (8) {\textbf{8 Test}\\Strength, $k$, fire, water};
-\foreach \a/\b in {1/2,2/3,3/4,4/5,5/6,6/7,7/8}{\draw[arr] (\a)--(\b);}
-\end{tikzpicture}
-\caption{Version 2 production process with closed solvent loop.}
-\end{figure}
+% ------------------------------------------------------------------ 4
+\section{Methodology \& Experimental Design}
 
-\begin{card}{leaf}
-\textbf{Closed solvent loop:} curing in a covered tray with a simple
-condenser recovers the limonene vapour instead of releasing it, which
-lowers cost, odour and VOC emissions.
-\end{card}
+\subsection{Making the brick}
+\begin{enumerate}
+  \item Collect clean Styrofoam and orange peel.
+  \item Extract D-limonene from the peel by steam distillation.
+  \item Dissolve broken Styrofoam in the limonene to form a gel \toadd{ratio used}.
+  \item Mix in sand and orange-peel biochar \toadd{proportions}.
+  \item Pour into moulds that form the air cells and PCM pockets; fill and
+        seal the pockets with the coconut-oil blend.
+  \item Cure under a cover, collecting the limonene vapour for reuse
+        \toadd{curing time}.
+  \item Paint the outside face with the white calcium-carbonate coat.
+\end{enumerate}
 
+\subsection{Experiment: two model rooms}
+\textbf{Aim:} to compare how much heat gets into a room built from CoolBricks
+and one built from clay bricks.
 
-\subsection{Experimental design: two real classrooms}
-\textbf{Aim:} to find out how much a CoolBrick cool coat on the roof (Level 1)
-and jaali screens (Level 2) lower the temperature that students feel during
-school hours.
+\textbf{Hypothesis:} the CoolBrick room will stay at least \SI{3}{\celsius}
+cooler inside at the hottest time of day.
 
-\textbf{Hypothesis:} the coated classroom will be at least \SI{3}{\celsius}
-cooler at its hottest point during school hours than an identical uncoated
-classroom.
-
-\textbf{Method:} with the principal's permission, we choose two classrooms
-on the top floor of our school that face the same way and have the same
-size, windows and number of students. One gets the cool coat on the roof
-above it; the other is left as it is. Sensors log temperatures every 5
-minutes for 30 school days.
+\textbf{Method:} build two small rooms (\SI{0.6}{m} cubes), one from clay
+bricks and one from CoolBricks, side by side in the sun on the school roof. A
+\SI{100}{W} heater inside each acts like people in the room. Temperature
+sensors log the air and wall surfaces every 5 minutes for 30 days.
 
 \begin{center}
-\small
-\begin{tabularx}{\textwidth}{@{}>{\bfseries}l X@{}}
+\begin{tabularx}{\textwidth}{@{}l X@{}}
 \toprule
-Independent variable & Roof finish: bare concrete vs CoolBrick cool coat (then jaali screens added). \\
-Dependent variables & Air temperature; ceiling surface temperature; ``felt'' (black-globe) temperature at desk height; hours above \SI{35}{\celsius} in school hours. \\
-Control variables & Same floor, direction, size, windows, fans, timetable and number of students; same sensors and positions; same days. \\
-Equipment & Arduino with DS18B20 sensors, black-globe thermometers, IR thermometer, roof-surface sensors. \\
-Repeats & 30 school days; then swap which classroom is coated if possible. \\
-Safety and ethics & Sensors are placed out of students' reach; no change to lessons; the coat is water-based and applied when the school is closed. \\
+Independent variable & Brick type (clay or CoolBrick) \\
+Dependent variables & Inside air temperature, inner and outer wall temperature \\
+Control variables & Size, position, direction, heater, sensors, days \\
+Equipment & Arduino, DS18B20 temperature sensors, IR thermometer \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
-\subsection{Tests on the brick and the coat}
+\subsection{Tests on the brick}
 \begin{center}
-\small
-\begin{tabularx}{\textwidth}{@{}l X l l@{}}
+\begin{tabularx}{\textwidth}{@{}l X l@{}}
 \toprule
-\textbf{Property} & \textbf{Method} & \textbf{Standard} & \textbf{Target} \\
+Test & Method & Target \\
 \midrule
-Compressive strength & Universal testing machine, 5 samples per mix & IS 3495 (Pt 1) & $\geq$ \SI{3.5}{MPa} \\
-Water absorption     & 24 h immersion, weigh before and after & IS 3495 (Pt 2) & $<$ 5\% \\
-Thermal conductivity & Guarded hot plate (or DIY hot-box) & IS 3346 & $k \leq$ \SI{0.15}{W/mK} \\
-Fire behaviour       & Bunsen-flame burn test: char length, dripping & UL-94 (adapted) & V-1 or better \\
-PCM melting point    & DSC at a partner lab & --- & about \SI{31}{\celsius} \\
-Coat reflectance     & Roof surface vs air temperature at noon (IR thermometer) & --- & surface $\leq$ air \\
-Coat durability      & Re-measure after 3 and 6 months of sun and dust & --- & $<$ 20\% loss \\
+Strength & Compression test, 5 bricks (IS 3495) & at least \SI{3.5}{MPa} \\
+Water absorption & Soak 24 h, weigh before and after & under 5\% \\
+Heat conduction & Hot-box test (IS 3346) & $k$ under \SI{0.15}{W/mK} \\
+Fire & Flame test (UL-94 method) & does not drip or keep burning \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
 \subsection{Computer simulation}
-Before testing on real classrooms we wrote a heat-flow model in JavaScript.
-Each wall and the roof are split into thin slices about 5 mm thick. Every 8
-seconds of simulated time the program works out the heat moving between
-slices with Fourier's law, $q = k\,\Delta T/\Delta x$. Outside, surfaces
-absorb sunlight ($\alpha I$), exchange heat with the air
-($h_o = \SI{15}{W/m^2K}$) and radiate heat to a sky about \SI{18}{\celsius}
-colder than the air (Stefan--Boltzmann law). Inside, the room air gains heat
-from the walls and roof ($h_i = \SI{8}{W/m^2K}$), from 40 students
-(\SI{60}{W} each) and lights and fans (\SI{300}{W}) from 8:00 to 14:00, and
-swaps air with outside (10 air changes per hour in school hours, 6 at night
-through vents). The classroom is 7 m $\times$ 6 m $\times$ 3.2 m with a
-concrete roof. The weather is a hot north-Indian day (air
-27--\SI{41}{\celsius}, strong sun), run for three days with the third
-reported.
+Before building, we simulated the walls with a program we wrote. The wall is
+split into thin layers, and every few seconds the program calculates how much
+heat flows from one layer to the next (Fourier's law). The outside face
+absorbs sunlight and loses heat to the air and the sky; the inside face meets
+a room kept at \SI{25}{\celsius}. The weather is a hot north-Indian summer day
+(air 27--\SI{41}{\celsius}). We compared a 230~mm wall of clay brick, Poly
+Citra v1 and CoolBrick, and a small \SI{3}{m} building built from each.
 
-\begin{center}
-\small
-\begin{tabularx}{\textwidth}{@{}l X X@{}}
-\toprule
-Version & Walls & Roof \\
-\midrule
-Typical & 230 mm clay brick ($U$ = 2.12) & 150 mm bare concrete ($U$ = 3.60), absorbs 70\% of sun \\
-Tin roof & 230 mm clay brick & 0.5 mm metal sheet, absorbs 60\% \\
-Tin roof, coated & 230 mm clay brick & metal sheet with cool coat, absorbs 10\% \\
-Level 1 & 230 mm clay brick & concrete with cool coat, absorbs 10\% \\
-Level 2 & clay brick + jaali screens on east and west & as Level 1 \\
-Level 3 & 230 mm CoolBrick, PCM at \SI{31}{\celsius} ($U$ = 0.59) + jaali & as Level 1 \\
-\bottomrule
-\end{tabularx}
-\end{center}
-{\footnotesize\color{gray} We assume the coat absorbs 10\% of sunlight (not 5\%) to allow for dust. CoolBrick values are design targets.}
-
-\subsection{Safety and risks}
-\begin{center}
-\small
-\begin{tabularx}{\textwidth}{@{}>{\bfseries}l X X@{}}
-\toprule
-Risk & Why it matters & Our mitigation \\
-\midrule
-Fire & Schools need high fire safety; polystyrene burns. & Cool coat is mineral and water-based; CoolBricks used only as plastered infill or outdoor screens; biochar filler; burn tests before use. \\
-Solvent fumes & Limonene vapour in a classroom is unpleasant. & Bricks and blocks fully cured off-site; the roof coat uses no limonene. \\
-Jaali safety & Screens near children must not fall. & Fixed into a steel or concrete frame; tested for load. \\
-Dust on the coat & Dirt lowers reflectance. & Model already allows for dust; wash or re-coat every 2--3 years. \\
-Trapped heat & Insulation can trap body heat. & Design rule: cool roof + shading + night vents first. \\
-Strength & Walls must be safe. & Level 3 only after strength tests to IS 3495. \\
-Cost & Schools have small budgets. & Three levels; Level 1 is cheap (Section~7). \\
-\bottomrule
-\end{tabularx}
-\end{center}
-
-
+% ------------------------------------------------------------------ 5
 \section{Results So Far and Explanation of Results}
 
-\subsection{Prototype results (version 1)}
+\subsection{Prototype (version 1)}
 \begin{figure}[H]
 \centering
-\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{dissolving.jpg}\caption{Styrofoam dissolving}\end{subfigure}\hfill
-\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{brick-sample.jpg}\caption{Cured brick sample}\end{subfigure}\hfill
-\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{brickwall.jpg}\caption{Compared with a clay wall}\end{subfigure}\\[6pt]
-\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{water-test.jpg}\caption{Water test}\end{subfigure}\hfill
-\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{heat-test.jpg}\caption{Heat test}\end{subfigure}\hfill
-\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio=false]{load-test.jpg}\caption{Load test}\end{subfigure}
-\caption{Making and testing the Poly Citra Brick prototype.}
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.3cm]{dissolving.jpg}\caption{Foam dissolving}\end{subfigure}\hfill
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.3cm]{brick-sample.jpg}\caption{Cured sample}\end{subfigure}\hfill
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.3cm]{brickwall.jpg}\caption{Next to clay bricks}\end{subfigure}\\[6pt]
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.3cm]{water-test.jpg}\caption{Water test}\end{subfigure}\hfill
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.3cm]{heat-test.jpg}\caption{Heat test}\end{subfigure}\hfill
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.3cm]{load-test.jpg}\caption{Load test}\end{subfigure}
+\caption{Making and testing the version 1 brick.}
 \end{figure}
+Our version 1 bricks float, absorb little water, keep their shape when heated
+and hold a load \toadd{measured values}.
 
-We have made and tested Poly Citra v1 bricks. They float in water, show
-little water absorption, keep their shape when heated and hold a load
-\todo{add the measured values: mass, density, water absorption, load held,
-heat test temperature}.
-
-\subsection{Simulation results: the classroom}
+\subsection{Simulation (CoolBrick)}
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}
-\begin{axis}[width=0.98\textwidth,height=7cm,xmin=0,xmax=23,ymin=24,ymax=50,xtick={0,2,4,6,8,10,12,14,16,18,20,22},
-  xlabel={Hour of day},ylabel={Temperature students feel (\si{\celsius})},label style={font=\small},tick label style={font=\scriptsize},
-  legend style={font=\scriptsize,at={(0.01,0.99)},anchor=north west,draw=none,fill=white,fill opacity=0.85},legend columns=2,grid=major,grid style={gray!20},axis lines*=left]
-\fill[citrus!10] (axis cs:8,24) rectangle (axis cs:14,50);
-\node[font=\scriptsize,text=citrus!80!black] at (axis cs:11,25.6) {school hours};
-\addplot[gray,thick,densely dotted] coordinates {(0,29.1) (1,27.9) (2,27.2) (3,27) (4,27.2) (5,27.9) (6,29.1) (7,30.5) (8,32.2) (9,34) (10,35.8) (11,37.5) (12,38.9) (13,40.1) (14,40.8) (15,41) (16,40.8) (17,40.1) (18,38.9) (19,37.5) (20,35.8) (21,34) (22,32.2) (23,30.5)};
-\addlegendentry{Outdoor air (shade)}
-\addplot[ink!70,very thick] coordinates {(0,36.5) (1,35.5) (2,34.5) (3,33.6) (4,32.8) (5,32.2) (6,31.7) (7,31.4) (8,31.4) (9,33.4) (10,34.4) (11,35.7) (12,37.2) (13,38.7) (14,40) (15,39.6) (16,40.3) (17,40.8) (18,41) (19,40.9) (20,40.3) (21,39.6) (22,38.6) (23,37.6)};
-\addlegendentry{Typical (concrete roof)}
-\addplot[heat!75,very thick] coordinates {(0,33.5) (1,32.5) (2,31.7) (3,31) (4,30.6) (5,30.4) (6,30.5) (7,32.1) (8,34.4) (9,38.4) (10,41.2) (11,43.5) (12,45.4) (13,46.7) (14,47.2) (15,45.7) (16,44.6) (17,42.9) (18,40.8) (19,38.7) (20,37.7) (21,36.7) (22,35.6) (23,34.6)};
-\addlegendentry{Tin roof}
-\addplot[sky,very thick] coordinates {(0,34.3) (1,33.5) (2,32.7) (3,32) (4,31.4) (5,30.9) (6,30.6) (7,30.4) (8,30.4) (9,32.4) (10,33.2) (11,34.1) (12,35.1) (13,36) (14,36.9) (15,35.8) (16,36.1) (17,36.5) (18,36.7) (19,36.7) (20,36.6) (21,36.2) (22,35.7) (23,35)};
-\addlegendentry{Level 1: cool roof}
-\addplot[citrus,very thick] coordinates {(0,33.7) (1,33) (2,32.3) (3,31.6) (4,31.1) (5,30.6) (6,30.3) (7,30.1) (8,30.2) (9,32.2) (10,33) (11,33.8) (12,34.8) (13,35.7) (14,36.6) (15,35.4) (16,35.7) (17,36) (18,36.2) (19,36.2) (20,36) (21,35.6) (22,35.1) (23,34.5)};
-\addlegendentry{Level 2: + jaali}
+\begin{axis}[width=0.5\textwidth,height=6cm,xmin=0,xmax=23,ymin=20,ymax=56,xtick={0,6,12,18},
+  xlabel={Hour of day},ylabel={Outside wall surface (\si{\celsius})},label style={font=\small},tick label style={font=\small},
+  legend style={font=\scriptsize,at={(0.02,0.98)},anchor=north west,draw=none},axis lines*=left]
+\addplot[soft,densely dotted,thick] coordinates {(0,29.1)(1,27.9)(2,27.2)(3,27)(4,27.2)(5,27.9)(6,29.1)(7,30.5)(8,32.2)(9,34)(10,35.8)(11,37.5)(12,38.9)(13,40.1)(14,40.8)(15,41)(16,40.8)(17,40.1)(18,38.9)(19,37.5)(20,35.8)(21,34)(22,32.2)(23,30.5)};\addlegendentry{Outdoor air}
+\addplot[clay,very thick] coordinates {(0,29.3)(1,28.1)(2,27.2)(3,26.6)(4,26.4)(5,26.5)(6,27)(7,28.1)(8,29.6)(9,31.2)(10,32.9)(11,34.5)(12,35.9)(13,37.9)(14,43.4)(15,49.2)(16,51.9)(17,50.1)(18,44.6)(19,38.4)(20,35.8)(21,33.9)(22,32.2)(23,30.7)};\addlegendentry{Clay}
+\addplot[vone,very thick,dashed] coordinates {(0,28.2)(1,27.1)(2,26.3)(3,25.8)(4,25.8)(5,26.2)(6,26.9)(7,28.4)(8,30.1)(9,32)(10,33.9)(11,35.7)(12,37.2)(13,39.3)(14,45)(15,50.3)(16,52.1)(17,49.4)(18,43.2)(19,37)(20,34.8)(21,33)(22,31.2)(23,29.6)};\addlegendentry{Poly Citra v1}
+\addplot[cool,very thick] coordinates {(0,27.5)(1,26.4)(2,25.6)(3,25.2)(4,25.3)(5,25.8)(6,26.6)(7,27.9)(8,29.4)(9,31)(10,32.7)(11,34.2)(12,35.6)(13,36.9)(14,38.1)(15,38.9)(16,39)(17,38.2)(18,36.8)(19,35.1)(20,33.6)(21,32)(22,30.4)(23,28.8)};\addlegendentry{CoolBrick}
 \end{axis}
-\end{tikzpicture}
-\caption{Simulated ``felt'' temperature in a 40-student classroom on a hot day.}
-\end{figure}
-
-\begin{figure}[H]
-\centering
+\end{tikzpicture}\hfill
 \begin{tikzpicture}
-\begin{axis}[xbar,width=0.8\textwidth,height=6.2cm,bar width=10pt,xmin=30,xmax=50,
-  symbolic y coords={A,B,C,D,E,F},ytick=data,
-  yticklabels={Tin roof,Typical concrete roof,Tin roof + cool coat,Level 1: cool roof,Level 3: CoolBrick walls + cool roof,Level 2: cool roof + jaali},
-  yticklabel style={font=\small},xticklabel style={font=\scriptsize},nodes near coords,nodes near coords style={font=\scriptsize},
-  xlabel={Hottest felt temperature in school hours (\si{\celsius})},label style={font=\small},axis lines*=left,enlarge y limits=0.12]
-\addplot[fill=citrus!80,draw=none] coordinates {(47.1,A) (39.8,B) (38.7,C) (36.8,D) (36.8,E) (36.4,F)};
+\begin{axis}[width=0.5\textwidth,height=6cm,xmin=0,xmax=23,ymin=0,ymax=45,xtick={0,6,12,18},
+  xlabel={Hour of day},ylabel={Heat into the room (W/m\textsuperscript{2})},label style={font=\small},tick label style={font=\small},
+  legend style={font=\scriptsize,at={(0.02,0.98)},anchor=north west,draw=none},axis lines*=left]
+\addplot[clay,very thick] coordinates {(0,34.5)(1,31.4)(2,28.2)(3,25)(4,21.8)(5,18.9)(6,16.3)(7,14.1)(8,12.3)(9,11.2)(10,10.8)(11,11)(12,11.9)(13,13.4)(14,15.2)(15,17.6)(16,21.1)(17,26.1)(18,31.7)(19,36.8)(20,39.9)(21,40.6)(22,39.4)(23,37.2)};\addlegendentry{Clay}
+\addplot[vone,very thick,dashed] coordinates {(0,8.7)(1,9)(2,9.1)(3,9.2)(4,9.1)(5,8.9)(6,8.7)(7,8.4)(8,8)(9,7.6)(10,7.2)(11,6.8)(12,6.5)(13,6.2)(14,6)(15,5.8)(16,5.8)(17,5.8)(18,6)(19,6.2)(20,6.7)(21,7.2)(22,7.8)(23,8.3)};\addlegendentry{Poly Citra v1}
+\addplot[cool,very thick] coordinates {(0,7)(1,6.9)(2,6.9)(3,6.9)(4,6.8)(5,6.8)(6,6.8)(7,6.7)(8,6.7)(9,6.6)(10,6.5)(11,6.4)(12,6.3)(13,6.2)(14,6)(15,5.9)(16,5.8)(17,5.7)(18,5.6)(19,5.5)(20,5.4)(21,5.4)(22,5.4)(23,5.4)};\addlegendentry{CoolBrick}
 \end{axis}
 \end{tikzpicture}
-\caption{Hottest temperature students feel between 8:00 and 14:00 (simulation).}
+\caption{A sun-facing (west) wall over one hot day. Left: outside surface temperature. Right: heat entering a room kept at \SI{25}{\celsius}.}
 \end{figure}
 
 \begin{center}
-\small
-\begin{tabular}{@{}lccc@{}}
+\begin{tabular}{lccc}
 \toprule
-Classroom version & Hottest felt (\si{\celsius}) & Average felt (\si{\celsius}) & Hours above \SI{35}{\celsius} \\
-& \multicolumn{3}{c}{(during school hours, 8:00--14:00)} \\
+ & Clay & Poly Citra v1 & CoolBrick \\
 \midrule
-Tin roof & 47.1 & 42.6 & 5.8 \\
-Tin roof + cool coat & 38.7 & 35.5 & 3.5 \\
-Typical concrete roof & 39.8 & 35.8 & 3.5 \\
-Level 1: cool roof & 36.8 & 34.1 & 2.0 \\
-Level 2: cool roof + jaali & 36.4 & 33.8 & 1.7 \\
-Level 3: CoolBrick walls + cool roof + jaali & 36.8 & 34.1 & 2.0 \\
+$U$-value (W/m\textsuperscript{2}K) & 2.20 & 0.76 & 0.60 \\
+Hottest outside surface (\si{\celsius}) & 51.9 & 52.1 & 39.1 \\
+Most heat into the room (W/m\textsuperscript{2}) & 40.6 & 9.2 & 7.0 \\
+Heat gained by a small building per day (kWh) & 24.4 & 7.7 & 6.4 \\
 \bottomrule
 \end{tabular}
 \end{center}
-{\footnotesize\color{gray} For comparison, the outdoor air in the shade averages 37.0 \si{\celsius} during school hours and peaks at \SI{41}{\celsius}.}
 
-\subsection{Explanation of the results}
+\subsection{What the results mean}
 \begin{itemize}
-  \item \textbf{The roof is the main problem.} A bare concrete roof absorbs
-        most of the sunlight and its ceiling reaches about
-        42.5 \si{\celsius} during school hours, radiating heat onto the
-        students. A tin roof is far worse: its ceiling side reaches about
-        64.3 \si{\celsius}.
-  \item \textbf{The cool coat gives the biggest, cheapest gain.} It
-        reflects most of the sunlight and radiates heat to the sky, so the
-        ceiling stays near the air temperature. The hottest felt temperature
-        drops by 3.0 \si{\celsius} in a concrete-roofed classroom and by
-        8.4 \si{\celsius} in a tin-roofed one, and hours above \SI{35}{\celsius} fall
-        from 3.5 to 2.0.
-  \item \textbf{Shading adds a little more.} Jaali screens on the east and
-        west walls bring the peak down to 36.4 \si{\celsius}.
-  \item \textbf{Insulation is not always better.} When we insulated the roof
-        under the coat, the classroom got \emph{warmer}, because the 40
-        students' body heat could no longer escape through the roof, and the
-        coated roof had been cooling the room. CoolBrick walls perform as
-        well as Level 1 only when the PCM melts at about \SI{31}{\celsius} and
-        the room is ventilated at night. So for classrooms we recommend the
-        cool roof and shading first, and CoolBrick walls mainly for new
-        buildings where they also reuse waste.
-  \item \textbf{Limits.} These are model results with assumed values and one
-        hot day. Real classrooms have windows, doors and shading from trees.
-        Our two-classroom experiment will test the results.
+  \item \textbf{Clay lets in the most heat.} It conducts heat well and stores
+        it, so it keeps heating the room into the night.
+  \item \textbf{Version 1 already blocks most heat}, because polystyrene
+        conducts heat poorly. But its surface still gets as hot as clay.
+  \item \textbf{The CoolBrick does both:} its white coat keeps the surface
+        about \SI{13}{\celsius} cooler than clay, and its air cells and PCM
+        keep the heat flow low and steady. Overall it lets in about 74\% less
+        heat than clay.
+  \item \textbf{Limits.} These are simulation results using expected
+        material values. In rooms without AC and with many people, good
+        ventilation is also needed so that body heat can escape.
 \end{itemize}
 
-\subsection{Measured results (to be completed) \todo{fill in}}
-\begin{center}
-\small
-\begin{tabular}{@{}lcc@{}}
-\toprule
- & Uncoated classroom & Coated classroom \\
-\midrule
-Roof surface at noon (\si{\celsius})             & \todo{} & \todo{} \\
-Ceiling surface, hottest (\si{\celsius})         & \todo{} & \todo{} \\
-Hottest felt temperature, school hours (\si{\celsius}) & \todo{} & \todo{} \\
-Hours above \SI{35}{\celsius}, school hours      & \todo{} & \todo{} \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-
+% ------------------------------------------------------------------ 6
 \section{Conclusion}
 
-Poly Citra Bricks show that two common wastes, Styrofoam and orange peel, can
-become building materials without mining clay or firing a kiln. The
-CoolBrick system adds a reflective cool coat, air cells, a coconut-oil PCM,
-peel biochar and jaali screens. In our simulation of a 40-student classroom
-on a \SI{41}{\celsius} day, the cool roof alone lowers the hottest felt
-temperature in school hours from 39.8 to 36.8 \si{\celsius}, and from
-47.1 to 38.7 \si{\celsius} under a tin roof. This supports our
-hypothesis. We also learned that, in crowded classrooms, letting heat escape
-matters as much as keeping it out. Level 1 costs about \rupee4,875 per classroom,
-which a government school can pay from its own yearly grant. That is our
-USP: cooler classrooms with no electricity, made from waste, at about
-\rupee122 per student. The project supports SDGs 4, 11, 12 and 13. Next we
-will measure two real classrooms.
+Poly Citra Bricks show that Styrofoam and orange peel can replace clay in a
+building brick, with no kiln and no topsoil. By adding air cells, a
+coconut-oil PCM, peel biochar and a white outside coat, the CoolBrick also
+keeps buildings cool. In our simulation it lets in about 74\% less heat than a
+clay brick wall, and its outside surface stays about \SI{13}{\celsius}
+cooler. This supports our hypothesis. Next, we will measure real CoolBricks
+and test them in two model rooms.
 
 \begin{center}
-\small
-\begin{tabularx}{\textwidth}{@{}>{\bfseries}l X X@{}}
-\toprule
- & Poly Citra Bricks (v1) & Poly Citra CoolBrick (v2) \\
-\midrule
-Goal & Turn two wastes into a brick & \ldots{} and \textbf{cool buildings and classrooms} without power \\
-Audience & NGOs, housing, government & \textbf{Government schools}, anganwadis, clinics, low-cost housing \\
-Inputs & EPS + orange-peel limonene & + peel biochar, coconut-oil PCM, CaCO\textsubscript{3} cool coat \\
-Products & Solid brick & CoolBrick, Lite brick, jaali screens, cool-roof coat \\
-Thermal & Not measured & Classroom peak \textasciitilde 3.4 \si{\celsius} cooler (simulation) \\
-Cost & Not worked out & Level 1 \rupee4,875 per classroom; \rupee122 per student \\
-SDGs & 11, 12, 13 & 4, 11, 12, 13 \\
-Evidence & Prototype & Standard tests + 30-day two-classroom experiment \\
-\bottomrule
-\end{tabularx}
-\end{center}
-
-
-\section{Future Potential of the Project}
-
-\subsection{Cost price analysis}
-All prices are 2025--26 Indian market estimates from supplier listings and
-are rounded. They will change with location and quantity, so we will get
-quotes before building.
-
-\subsubsection*{A. Cost price of one CoolBrick (23 $\times$ 11 $\times$ 7.5 cm)}
-\begin{center}
-\small
-\begin{tabularx}{\textwidth}{@{}l X r@{}}
-\toprule
-\textbf{Item} & \textbf{Basis} & \textbf{\rupee per brick} \\
-\midrule
-Styrofoam (EPS) waste & about 0.49 kg, donated; collection and cleaning & 3.0 \\
-D-limonene top-up & 140 g used per brick, 80\% recovered; 28 g lost at \rupee590/kg & 16.5 \\
-Sand / fly-ash filler & 0.84 kg at \rupee1.5/kg & 1.3 \\
-Orange-peel biochar & 50 g from free peel; fuel for charring & 1.0 \\
-Coconut-oil PCM blend & 0.21 L at \rupee160/L (industrial grade) & 33.3 \\
-Sealing the PCM pockets & gel caps and tape & 2.0 \\
-CaCO\textsubscript{3} cool-face coat & 0.017 m\textsuperscript{2} at about \rupee55/m\textsuperscript{2} & 1.0 \\
-Energy & distilling, curing and solvent recovery & 4.0 \\
-Mould wear & reusable moulds over about 500 uses & 1.0 \\
-\midrule
-\textbf{Materials and energy} & & \textbf{63.1} \\
-Labour, pilot / at scale & 25 or 150 bricks a day at \rupee600/day & 24 / 4 \\
-\midrule
-\textbf{Cost price, pilot / at scale} & & \textbf{87 / 67} \\
-\textbf{``Lite'' brick (no PCM), pilot / at scale} & & \textbf{52 / 32} \\
-Fired clay brick, for comparison & market price & 5--12 \\
-\bottomrule
-\end{tabularx}
-\end{center}
-The coconut-oil PCM is about half the cost of a CoolBrick. The limonene
-top-up depends on how much solvent we recover (\rupee33, 17 or 4 per brick
-at 60\%, 80\% or 95\% recovery), and falls to mainly fuel if we distil our
-own limonene from free peel.
-
-\subsubsection*{B. Cost of cooling one classroom (7 m $\times$ 6 m, 40 students)}
-\begin{center}
-\small
-\begin{tabularx}{\textwidth}{@{}l X r r@{}}
-\toprule
-\textbf{Level} & \textbf{What is done} & \textbf{Cost} & \textbf{Per student} \\
-\midrule
-Level 1 & Clean and prime the roof (\rupee20/m\textsuperscript{2}), two coats of CaCO\textsubscript{3} cool coat (\rupee55/m\textsuperscript{2}) on 45 m\textsuperscript{2}, one day's labour & \rupee4,875 & \rupee122 \\
-Level 2 & Level 1 + about 24 m\textsuperscript{2} of CoolBrick jaali screens on east and west windows (\rupee1,050/m\textsuperscript{2} with frame) & \rupee30,075 & \rupee752 \\
-Level 3 & New classroom: about 6,204 Lite bricks instead of clay bricks for 66 m\textsuperscript{2} of 230 mm wall & +\rupee135,123 extra & --- \\
-\bottomrule
-\end{tabularx}
-\end{center}
-{\footnotesize\color{gray} Level 3 extra cost compares Lite bricks (\rupee32) with clay bricks (\rupee10). Using full CoolBricks with PCM would add about \rupee354,000. The cool coat may need washing or re-coating every 2--3 years (about \rupee2,475 each time).}
-
-\subsection{How a government school can afford it}
-\begin{minipage}[t]{0.56\textwidth}
-\vspace{0pt}
-\begin{enumerate}
-  \item \textbf{Its own yearly grant.} Under Samagra Shiksha, every
-        government school gets a \textbf{composite school grant} of
-        \rupee25,000 to \rupee1,00,000 a year, depending on enrolment, for
-        repairs and upkeep. Coating one or two classroom roofs a year
-        (Level 1) fits inside it.
-  \item \textbf{CSR funds.} Companies must spend part of their profits on
-        social projects; education and environment both qualify. A company
-        can sponsor ``Cool Classrooms'' across a district.
-  \item \textbf{Local development funds.} MP and MLA local area development
-        funds can pay for school building work, such as Level 2 screens.
-  \item \textbf{School programmes.} Model schools such as PM SHRI schools
-        aim to be green schools, and Level 3 fits new buildings there.
-  \item \textbf{Students and community.} Eco-clubs collect waste and help
-        make jaali blocks, and the School Management Committee organises
-        volunteers, cutting labour costs.
-\end{enumerate}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.4\textwidth}
-\vspace{0pt}
-\begin{card}{citrus}\textbf{Example:} a 300-student school with 8
-classrooms. Its composite grant is in the \rupee25,000--\rupee1,00,000
-range. Coating all 8 roofs costs about \rupee39,000. It can
-do this over one or two years, or in one go with a small CSR grant.\end{card}
-\begin{card}{leaf}Cooling 1 lakh of the hottest
-classrooms at Level 1 would cost about \rupee49 crore, or roughly
-\rupee122 per student, and needs no electricity afterwards.\end{card}
-\end{minipage}
-
-\subsection{How governments can afford it in public spaces}
-Schools are only one kind of public building. Anganwadis, health centres,
-bus shelters, panchayat offices, community halls and government offices all
-have hot roofs. Because the CoolBrick cool coat is cheap, needs no
-electricity and can be made locally, a government can roll it out widely.
-
-\subsubsection*{A. Cost per square metre}
-\begin{center}
-\small
-\begin{tabularx}{\textwidth}{@{}X r@{}}
-\toprule
-\textbf{Option} & \textbf{Cost per m\textsuperscript{2} of roof} \\
-\midrule
-CoolBrick cool coat, made locally from CaCO\textsubscript{3} or eggshell (our estimate, incl.\ cleaning and labour) & \rupee108 \\
-Commercial cool-roof treatment (Telangana Cool Roof Policy estimate) & \rupee300 \\
-CoolBrick jaali sun-screen, with frame (per m\textsuperscript{2} of screen) & \rupee1,050 \\
-\bottomrule
-\end{tabularx}
-\end{center}
-
-\subsubsection*{B. Cost of a Level 1 cool roof for different public buildings}
-\begin{center}
-\small
-\begin{tabularx}{\textwidth}{@{}X r r r r@{}}
-\toprule
-\textbf{Building (typical roof)} & \textbf{Roof (m\textsuperscript{2})} & \textbf{CoolBrick coat} & \textbf{Commercial} & \textbf{AC payback (coat / commercial)} \\
-\midrule
-Government classroom & 45 & \rupee4,875 & \rupee13,500 & --- \\
-Anganwadi centre & 40 & \rupee4,333 & \rupee12,000 & --- \\
-Bus shelter & 12 & \rupee1,300 & \rupee3,600 & --- \\
-Panchayat office / community hall & 200 & \rupee21,667 & \rupee60,000 & --- \\
-Primary health centre (with AC rooms) & 400 & \rupee43,333 & \rupee120,000 & 8 / 22 months \\
-Government office block (with AC) & 1,000 & \rupee108,333 & \rupee300,000 & 8 / 22 months \\
-\bottomrule
-\end{tabularx}
-\end{center}
-{\footnotesize\color{gray} Roof sizes are typical examples. Payback uses a field study in Hyderabad, which measured 20--22 kWh of air-conditioning saved per m\textsuperscript{2} of roof per year (14--26\% of AC energy) after whitening dark roofs, valued at \rupee8 per kWh. Plain concrete roofs will save somewhat less. Buildings without AC save no electricity; their benefit is cooler, safer rooms.}
-
-\subsubsection*{C. Where the money can come from}
-\begin{center}
-\small
-\begin{tabularx}{\textwidth}{@{}>{\bfseries}l X X@{}}
-\toprule
-Source & What it can pay for & Notes \\
-\midrule
-Heat Action Plans & Cool roofs on public buildings in hot cities and districts & NDMA has encouraged cool roofs in heat action plans and says mitigation funds are being opened up for them. \\
-State cool-roof policies & Government, commercial and public housing roofs & Telangana's Cool Roof Policy (2023--28) targets 300 km\textsuperscript{2} of cool roofs. Other states can copy it. \\
-Department budgets & Schools (Samagra Shiksha grants), anganwadis, health centres & Small yearly repair budgets can cover Level 1. \\
-Electricity savings & Air-conditioned offices and hospitals & Pays for itself in months; savings can repay the cost. \\
-MP / MLA local area funds & Bus shelters, community halls, school screens & Visible, low-cost local projects. \\
-Company CSR & Any public building & Education, health and environment all qualify. \\
-Municipal budgets & Bus shelters, markets, public toilets & Can be added to routine painting and repair work. \\
-\bottomrule
-\end{tabularx}
-\end{center}
-
-\subsubsection*{D. A step-by-step government roll-out}
-\begin{center}
-\small
 \begin{tabularx}{\textwidth}{@{}l X X@{}}
 \toprule
-\textbf{Stage} & \textbf{What happens} & \textbf{Who pays} \\
+ & Version 1 & CoolBrick (version 2) \\
 \midrule
-Year 1: pilot & 1 block: schools, anganwadis and the health centre; measure temperatures before and after & CSR or the district heat action plan \\
-Year 2: district & All public buildings in the district; train self-help groups to make and apply the coat & District and department budgets \\
-Year 3+: state & Add cool roofs to the state's routine repair rules for public buildings, like Telangana & State budgets and electricity savings \\
+Purpose & Turn two wastes into a brick & Also keep buildings cool \\
+Inside the brick & Solid gel & Air cells, PCM pockets, peel biochar \\
+Outside face & Plain & White heat-reflecting coat \\
+Heat through a wall ($U$) & 0.76 & 0.60 (clay: 2.20) \\
+Solvent & Used once & Recovered and reused \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
-\subsection{Who will use it}
-\begin{minipage}[c]{0.62\textwidth}
-\begin{itemize}
-  \item \textbf{Government schools} first, especially those with tin or bare
-        concrete roofs in hot districts.
-  \item \textbf{Anganwadi centres} for young children.
-  \item \textbf{Primary health centres} and hostels.
-  \item \textbf{Bus shelters, panchayat offices, markets} and community halls.
-  \item \textbf{Low-cost housing}.
-  \item Municipal bodies, state departments, CSR teams and NGOs that fund them.
-\end{itemize}
-\end{minipage}\hfill
-\begin{minipage}[c]{0.33\textwidth}
-\centering\includegraphics[width=\linewidth]{audience.png}
-\end{minipage}
+% ------------------------------------------------------------------ 7
+\section{Future Potential of the Project}
 
-\subsection{Business model}
-\begin{minipage}[c]{0.68\textwidth}
-\begin{card}{citrus}\textbf{Cool Classroom kits.} Cool-coat material, jaali
-blocks and instructions sold at cost-plus prices to schools.\end{card}
-\begin{card}{leaf}\textbf{Sponsor a Cool Classroom.} Companies fund
-classrooms through CSR and receive temperature data and photos.\end{card}
-\begin{card}{sky}\textbf{Partnerships.} Collect Styrofoam from shops and
-packaging companies, and peels from juice vendors.\end{card}
-\begin{card}{plum}\textbf{Building market.} CoolBricks and Lite bricks for
-eco-buildings and low-cost housing.\end{card}
-\end{minipage}\hfill
-\begin{minipage}[c]{0.28\textwidth}
-\centering\includegraphics[width=\linewidth]{revenue.png}
-\end{minipage}
+\subsection{Where it can be used}
+Government schools and anganwadis, low-cost housing, health centres, and
+any building in a hot region where air-conditioning is too expensive.
 
-\subsection{Spreading the idea}
-\begin{minipage}[c]{0.62\textwidth}
-\begin{enumerate}[label=\textcolor{citrus}{\textbf{\arabic*.}}]
-  \item \textbf{Pilot in our own school}, sharing the 30-day results with
-        the district education office.
-  \item \textbf{Thermal-camera photos} of a coated vs uncoated roof.
-  \item \textbf{Eco-club network:} students in other schools make jaali
-        blocks from waste they collect.
-  \item \textbf{Social-media storytelling} of waste becoming cooler
-        classrooms.
-  \item \textbf{NGO and CSR partners} to reach government schools in the
-        hottest districts.
-\end{enumerate}
-\end{minipage}\hfill
-\begin{minipage}[c]{0.34\textwidth}
-\centering
-\includegraphics[width=0.48\linewidth,height=3.6cm,keepaspectratio=false]{social-media.png}\hfill
-\includegraphics[width=0.48\linewidth]{ngo.png}
-\end{minipage}
-
-\subsection{Roadmap}
+\subsection{Cost}
 \begin{center}
-\begin{tikzpicture}[
-  ph/.style={rectangle,rounded corners=3pt,minimum width=3.8cm,minimum height=2.8cm,text width=3.5cm,align=left,font=\small,anchor=north},
-  hd/.style={rectangle,rounded corners=3pt,minimum width=3.8cm,minimum height=0.8cm,font=\bfseries,text=white,anchor=south}]
-\foreach \i/\c/\t/\b in {
-  0/plum/{Now}/{\textbullet\ Brick and coat tests\\\textbullet\ Measure $k$, strength\\\textbullet\ Coat recipe},
-  1/sky/{Next 3 months}/{\textbullet\ Two-classroom trial in our school\\\textbullet\ PCM at \SI{31}{\celsius}},
-  2/leaf/{6 months}/{\textbullet\ Pilot in 3 government schools\\\textbullet\ Real cost per classroom},
-  3/citrus/{12 months+}/{\textbullet\ CSR partners\\\textbullet\ District roll-out\\\textbullet\ Anganwadis and clinics}}{
-  \node[hd,fill=\c] at (\i*4.1,0) {\t};
-  \node[ph,fill=\c!10] at (\i*4.1,0) {\b};}
-\end{tikzpicture}
+\begin{tabular}{lc}
+\toprule
+Brick & Estimated cost per brick \\
+\midrule
+CoolBrick (made in bulk) & \rupee\,67 \\
+CoolBrick without PCM & \rupee\,32 \\
+Fired clay brick (market price) & \rupee\,5--12 \\
+\bottomrule
+\end{tabular}
 \end{center}
+About half the cost of a CoolBrick is the coconut oil, so we will test cheaper
+plant fats and recover more limonene. Because a CoolBrick costs more than a
+clay brick, it makes most sense on the sunniest walls. For government
+schools, it could be paid for through the yearly school grant (Samagra
+Shiksha), company CSR funds, or state heat action plans.
 
+\subsection{Next steps}
+\begin{enumerate}
+  \item Test strength, water absorption, heat conduction and fire safety.
+  \item Build the two model rooms and log temperatures for 30 days.
+  \item Build a test wall at a government school with the school's permission.
+  \item Work with local builders and NGOs to make bricks at a larger scale.
+\end{enumerate}
 
+% ------------------------------------------------------------------ 8
 \section{Bibliography, References and Acknowledgements}
 
 \subsection*{References}
 \small
 \begin{enumerate}[label={[\arabic*]},leftmargin=*]
-\item United Nations (2015). \emph{Transforming our world: the 2030 Agenda for Sustainable Development} (SDG targets 4.a, 11.6, 11.c, 12.5, 13.1, 13.3).
 \item Park, R.\,J., Goodman, J., Hurwitz, M., \& Smith, J.\ (2020). Heat and Learning. \emph{American Economic Journal: Economic Policy}, 12(2), 306--339.
 \item Ministry of Education (2024). \emph{UDISE+ 2023--24}. Government of India.
-\item CRY (Child Rights and You) (2026). \emph{Feeling the Heat} (survey of children on heat and schooling).
-\item Ministry of Education. \emph{Samagra Shiksha: Framework for Implementation} (composite school grant).
-\item Li, X., Peoples, J., Huang, Z., Zhao, Z., Qiu, J., \& Ruan, X. (2020). Full daytime sub-ambient radiative cooling in commercial-like paints with high figure of merit. \emph{Cell Reports Physical Science}, 1(10).
-\item Vitale, M., \& Cascone, S. (2022). Orange peels as a potential ecological thermal insulation material for building application. \emph{TeMA}, 8(2).
-\item Enhanced biodegradability and thermal insulation capability of poly(lactic acid) reinforced with calcium-crosslinked orange-peel biochar. Chung-Ang University. \todo{complete citation}
-\item Sony Corporation (c.\ 2001). Limonene-based expanded-polystyrene recycling system. \todo{complete citation}
-\item Florida Chemical Company. D-limonene as a solvent for expanded polystyrene (300--400 kg EPS per 100 kg limonene). Via cleanersolutions.org.
-\item Studies of orange-peel oil yield by steam distillation (about 0.6--2\%, limonene over 90\%). \todo{choose and complete one citation}
-\item Computational and experimental analysis of PCM-infused brick for sustainable heat regulation. \todo{complete citation}
-\item Bureau of Indian Standards: IS 1077, IS 3495 Parts 1--4, IS 3346.
-\item UL 94: Standard for Safety of Flammability of Plastic Materials.
-\item Government of Telangana (2023). \emph{Telangana Cool Roof Policy 2023--2028}.
-\item Akbari, H., et al.\ (2011). \emph{Using cool roofs to reduce energy use, greenhouse gas emissions, and urban heat-island effects: findings from an India experiment}. Lawrence Berkeley National Laboratory and IIIT Hyderabad.
-\item Natural Resources Defense Council (NRDC). \emph{Keeping it cool: models for city cool roof programs} (Ahmedabad and Hyderabad).
-\item National Disaster Management Authority (2025). Statements on mitigation funds for heat action plans (Business Standard, May 2025).
-\item Price sources (2025--26): InfraLens brick prices; IndiaMART and TradeIndia listings for coconut oil, calcium carbonate and D-limonene.
+\item Li, X., Peoples, J., Huang, Z., Zhao, Z., Qiu, J., \& Ruan, X.\ (2020). Full daytime sub-ambient radiative cooling in commercial-like paints with high figure of merit. \emph{Cell Reports Physical Science}, 1(10).
+\item Vitale, M., \& Cascone, S.\ (2022). Orange peels as a potential ecological thermal insulation material for building application. \emph{TeMA}, 8(2).
+\item Florida Chemical Company. D-limonene as a solvent for expanded polystyrene. Via cleanersolutions.org.
+\item Sony Corporation (c.\ 2001). Limonene-based expanded-polystyrene recycling system.
+\item Studies of orange-peel oil yield by steam distillation (about 0.6--2\%, over 90\% limonene).
+\item Studies of bricks with phase-change materials and of orange-peel biochar composites.
+\item Bureau of Indian Standards: IS 1077, IS 3495, IS 3346.
+\item United Nations (2015). \emph{The 2030 Agenda for Sustainable Development}.
 \end{enumerate}
 
-\subsection*{Acknowledgements}
 \normalsize
-We thank \todo{teacher / mentor names} and Scottish High International
-School for their guidance and for the use of the science laboratory, and our
-families for their support. \todo{add anyone else who helped}
-
-\vfill
-\begin{center}
-{\Huge\bfseries\color{citrus}Thank you!}\\[4pt]
-{\large Waste in. Cooler classrooms out.}\\[6pt]
-\sdg{4}{sdgfour} \sdg{11}{sdgeleven} \sdg{12}{sdgtwelve} \sdg{13}{sdgthirteen}\\[6pt]
-{\small Rian Sikka \& Daiwik Abrol \textbullet\ Grade 9 (IGCSE) \textbullet\ Scottish High International School}
-\end{center}
+\subsection*{Acknowledgements}
+We thank \toadd{teacher names} and Scottish High International School for
+their guidance and the use of the science laboratory, and our families for
+their support.
 
 \end{document}
