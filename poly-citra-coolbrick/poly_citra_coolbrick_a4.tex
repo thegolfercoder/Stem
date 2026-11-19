@@ -25,7 +25,11 @@
 \pgfplotsset{compat=1.18}
 \usepackage{titlesec}
 \usepackage{fancyhdr}
+\usepackage[most]{tcolorbox}
 \usepackage[hidelinks]{hyperref}
+\newtcolorbox{usp}{enhanced,colback=accent!7,colframe=accent,boxrule=1.2pt,arc=4pt,
+  left=12pt,right=12pt,top=10pt,bottom=10pt,before skip=12pt,after skip=12pt,
+  title={\bfseries OUR USP (UNIQUE SELLING POINT)},fonttitle=\small,coltitle=white,colbacktitle=accent,attach boxed title to top left={yshift=-2mm,xshift=8pt},boxed title style={arc=2pt,boxrule=0pt}}
 \graphicspath{{img/}}
 \providecommand{\rupee}{Rs}
 
@@ -110,8 +114,10 @@ A CoolBrick building lets in about \textbf{three-quarters less heat} than a
 clay-brick one. These are computer results; our next step is to test real
 bricks.
 
-\textbf{Our USP:} a brick that keeps rooms cool without electricity, made
-from two wastes instead of mined clay and a coal-fired kiln.
+\begin{usp}
+\Large\bfseries A brick that keeps rooms cool without electricity, made from
+two wastes (Styrofoam and orange peel) instead of mined clay and a coal-fired kiln.
+\end{usp}
 
 % ------------------------------------------------------------------ 2
 \section{Significance and Uniqueness of the Project}
@@ -136,8 +142,11 @@ from two wastes instead of mined clay and a coal-fired kiln.
 \end{figure}
 
 \subsection{Our USP}
-\textbf{The CoolBrick keeps rooms cool without electricity, and it is made
-from two wastes instead of mined clay and a coal-fired kiln.}
+\begin{usp}
+\Large\bfseries A brick that keeps rooms cool without electricity, made from
+two wastes (Styrofoam and orange peel) instead of mined clay and a coal-fired kiln.
+\end{usp}
+Why this matters:
 
 \begin{itemize}
   \item \textbf{Cooling built into the wall.} Five features in one brick
