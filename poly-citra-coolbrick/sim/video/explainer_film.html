@@ -81,9 +81,8 @@ svg text{font-family:"IBM Plex Sans",sans-serif}
     <g transform="translate(55,90)"><path d="M0,40 L130,0 L230,30 L100,72 Z" fill="#e2c48a"/><path d="M0,40 L100,72 L100,140 L0,108 Z" fill="#c9a96b"/><path d="M100,72 L230,30 L230,98 L100,140 Z" fill="#b8955c"/><path d="M0,40 L0,108 L-10,104 L-10,36 Z" fill="#fff"/></g>
     <text x="40" y="285" font-size="32" fill="#f4f2ec" font-weight="700">CoolBrick</text>
     <text x="40" y="330" font-size="24" fill="#c9d1c7">air pockets</text>
-    <text x="40" y="365" font-size="24" fill="#c9d1c7">salt pockets</text>
-    <text x="40" y="400" font-size="24" fill="#c9d1c7">orange-peel charcoal</text>
-    <text x="40" y="435" font-size="24" fill="#c9d1c7">white heat-reflecting face</text>
+    <text x="40" y="365" font-size="24" fill="#c9d1c7">white heat-reflecting face</text>
+    <text x="40" y="400" font-size="24" fill="#c9d1c7">moulded, no kiln</text>
   </g>
   <g id="arrows3" stroke="#E8731A" stroke-width="6" marker-end="url(#ah)">
     <line id="a31" x1="495" y1="610" x2="550" y2="610"/><line id="a32" x1="965" y1="610" x2="1020" y2="610"/><line id="a33" x1="1435" y1="610" x2="1490" y2="610"/>
@@ -122,7 +121,7 @@ svg text{font-family:"IBM Plex Sans",sans-serif}
     <text id="tR" x="230" y="555" font-size="54" font-weight="900" fill="#5ab8ff" text-anchor="middle" font-family="Archivo">30 °C</text>
     <text x="680" y="190" font-size="26" fill="#c9d1c7" text-anchor="middle">Heat getting in</text>
     <text id="qR" x="680" y="240" font-size="50" font-weight="900" fill="#5ab8ff" text-anchor="middle" font-family="Archivo">0 W/m²</text>
-    <text x="410" y="105" font-size="20" fill="#c9d1c7" text-anchor="middle">white face · air pockets · salt pockets</text>
+    <text x="410" y="105" font-size="20" fill="#c9d1c7" text-anchor="middle">white face · air pockets</text>
   </g>
   <text id="n4" x="960" y="985" font-size="26" fill="#8e998f" text-anchor="middle">Sunny wall on a 41 °C day, clay brick = 100% (computer simulation)</text>
 </svg></div>
@@ -224,7 +223,7 @@ el('text',{x:160,y:378,'font-size':28,fill:'#c9d1c7'},C5).textContent='Clay bric
 const barEls=bars.map((b,i)=>{const y=470+i*140;el('text',{x:160,y:y+50,'font-size':32,fill:'#f4f2ec'},C5).textContent=b[0];
   const r=el('rect',{x:640,y:y+8,height:62,rx:8,fill:b[2],width:0},C5);const v=el('text',{y:y+52,'font-size':36,'font-weight':800,fill:'#f4f2ec','font-family':'Archivo'},C5);return{r,v,val:b[1]};});
 // scene 6 cost cards
-const C6=$('cost6');const cards=[['80% less','heat gets in','than through clay brick walls (computer test)'],['0','electricity needed','the cooling is built into the wall'],['2 wastes','turned into bricks','Styrofoam and orange peel, no kiln, no topsoil'],['₹29','per brick','salt instead of coconut oil, limonene reused']];
+const C6=$('cost6');const cards=[['80% less','heat gets in','than through clay brick walls (computer test)'],['0','electricity needed','the cooling is built into the wall'],['2 wastes','turned into bricks','Styrofoam and orange peel, no kiln, no topsoil'],['₹24','per brick','estimate for batch production']];
 const cardEls=cards.map((c,i)=>{const x=110+(i%2)*870,y=290+Math.floor(i/2)*265;const g=el('g',{transform:`translate(${x},${y+30})`},C6);
   el('rect',{width:830,height:235,rx:22,fill:'#18251e',stroke:i===0?'#E8731A':'rgba(255,255,255,.14)','stroke-width':i===0?3:2},g);
   el('text',{x:40,y:105,'font-size':84,'font-weight':900,fill:'#E8731A','font-family':'Archivo'},g).textContent=c[0];
@@ -296,7 +295,7 @@ function renderAt(t){
     raysR.forEach((ln,i)=>{const p=ray(ln,i,364);const q=clamp((p-1)/0.6);const rl=reflR[i];rl.setAttribute('x1',364);rl.setAttribute('y1',RY[i]);rl.setAttribute('x2',364-q*170);rl.setAttribute('y2',RY[i]-q*90);rl.setAttribute('opacity',q>0?op:0);});
     hL2.forEach((ln,i)=>{const o=((t*.9+i*.25)%1);const y=180+i*110;ln.setAttribute('x1',420+o*60);ln.setAttribute('y1',y);ln.setAttribute('x2',500+o*60);ln.setAttribute('y2',y);ln.setAttribute('opacity',u*(1-o*.4));});
     hR2.forEach((ln,i)=>{const o=((t*.6)%1);ln.setAttribute('x1',500+o*40);ln.setAttribute('y1',330);ln.setAttribute('x2',540+o*40);ln.setAttribute('y2',330);ln.setAttribute('opacity',u*.6*(1-o*.5));});
-    head('Step 2 · How the <b>CoolBrick</b> keeps heat out','The white face reflects the sun, air pockets slow the heat, and salt pockets soak up the rest.',ft(37.3,51));}
+    head('Step 2 · How the <b>CoolBrick</b> keeps heat out','The white face reflects the sun, and air pockets slow the heat that gets through.',ft(37.3,51));}
 
   if(S===4){ // result
     const sw=ease(seg(t,52,56));
