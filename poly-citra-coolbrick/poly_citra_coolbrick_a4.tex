@@ -1,0 +1,579 @@
+% Poly Citra CoolBrick: project report (A4)
+% Rian Sikka and Daiwik Abrol, Scottish High International School
+% Compile with: pdflatex poly_citra_coolbrick_a4.tex (run twice)
+\documentclass[11pt,a4paper]{article}
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[scaled=0.95]{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage[most]{tcolorbox}
+\usepackage[hidelinks]{hyperref}
+\newtcolorbox{usp}{enhanced,colback=accent!7,colframe=accent,boxrule=1.2pt,arc=4pt,
+  left=12pt,right=12pt,top=10pt,bottom=10pt,before skip=12pt,after skip=12pt,
+  title={\bfseries OUR USP (UNIQUE SELLING POINT)},fonttitle=\small,coltitle=white,colbacktitle=accent,attach boxed title to top left={yshift=-2mm,xshift=8pt},boxed title style={arc=2pt,boxrule=0pt}}
+\graphicspath{{img/}}
+\providecommand{\rupee}{Rs}
+
+\definecolor{accent}{HTML}{D9661F}
+\definecolor{ink}{HTML}{222222}
+\definecolor{soft}{HTML}{6B6B6B}
+\definecolor{clay}{HTML}{B5532F}
+\definecolor{vone}{HTML}{2E7D32}
+\definecolor{cool}{HTML}{1E78C8}
+\color{ink}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{7pt}
+\setlist{itemsep=3pt,topsep=3pt}
+\captionsetup{font=small,labelfont=bf,labelsep=period}
+\renewcommand{\arraystretch}{1.25}
+
+\titleformat{\section}{\Large\bfseries}{\textcolor{accent}{\thesection}}{0.7em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{0.6em}{}
+\titlespacing*{\section}{0pt}{6pt}{10pt}
+\titlespacing*{\subsection}{0pt}{14pt}{4pt}
+\let\origsection\section
+\renewcommand{\section}{\clearpage\origsection}
+
+\pagestyle{fancy}\fancyhf{}\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\small\color{soft}\thepage}
+\newcommand{\toadd}[1]{\textit{\color{soft}[to add: #1]}}
+
+\begin{document}
+
+% ------------------------------------------------------------------ cover
+\begin{titlepage}
+\vspace*{1cm}
+{\fontsize{40}{46}\selectfont\bfseries Poly Citra \textcolor{accent}{CoolBrick}\par}
+\vspace{10pt}
+{\Large A brick made from Styrofoam and orange peel that keeps buildings cool\par}
+\vspace{1.2cm}
+\includegraphics[width=0.49\textwidth,height=4.6cm]{styrofoam.jpg}\hfill
+\includegraphics[width=0.49\textwidth,height=4.6cm]{peels.jpg}\\[0.25cm]
+\includegraphics[width=\textwidth,height=7.4cm]{prototype.jpg}
+\vfill
+{\large
+Rian Sikka and Daiwik Abrol\\
+Grade 9 (IGCSE), Scottish High International School\\[4pt]
+\color{soft}Project Rebrick\par}
+\end{titlepage}
+
+\tableofcontents
+
+% ------------------------------------------------------------------ 1
+\section{Summary}
+
+Styrofoam packaging and orange peel are two everyday wastes that usually end
+up in landfill or are burned. Our project, \textbf{Poly Citra Bricks}, turns
+them into a building brick. We extract \textbf{D-limonene}, a natural solvent,
+from orange peel by steam distillation. Limonene dissolves Styrofoam into a
+thick polystyrene gel, which we mould and cure into a light, waterproof
+brick. This first version has been built and tested, and has been recognised
+at national-level competitions \toadd{awards}.
+
+In this edition we redesign it as the \textbf{CoolBrick}, a brick that keeps
+heat out of buildings. Inside each brick are hollow air pockets and sealed
+pockets of a cheap salt (Glauber's salt) that soaks up heat. The brick also contains charcoal
+made from the leftover peel, and the outside face has a white
+coat that reflects sunlight. India's buildings, especially classrooms, get
+very hot in summer, and most cannot afford air-conditioning.
+
+We tested the design with a computer program that works out how much heat
+gets through different walls on a hot day (up to \SI{41}{\celsius}):
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+ & Clay brick & Poly Citra v1 & \textbf{CoolBrick} \\
+\midrule
+Hottest temperature of the outside of the wall & \SI{52}{\celsius} & \SI{52}{\celsius} & \textbf{\SI{39}{\celsius}} \\
+Heat let into a small building in one day & 100\% & 32\% & \textbf{17\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A CoolBrick building lets in about \textbf{80\% less heat} than a
+clay-brick one. We also replaced the expensive coconut oil used in our first
+design with Glauber's salt and recover more of the limonene, which brings a brick from \rupee\,67 down to about \rupee\,29. These
+are computer results; our next step is to test real bricks, including how
+strong they are.
+
+\begin{usp}
+\Large\bfseries A brick that keeps rooms cool without electricity, made from
+two wastes (Styrofoam and orange peel) instead of mined clay and a coal-fired kiln.
+\end{usp}
+
+% ------------------------------------------------------------------ 2
+\section{Significance and Uniqueness of the Project}
+
+\subsection{The problem}
+\begin{itemize}
+  \item \textbf{Two wastes.} Styrofoam fills landfills and breaks into
+        microplastics. Orange peel from juice shops is dumped or burned.
+  \item \textbf{Bricks harm the environment.} Fired clay bricks use fertile
+        topsoil and are baked in kilns that burn coal or wood.
+  \item \textbf{Hot buildings.} India has about 10 lakh government schools,
+        and most have no air-conditioning. In a US study of 10 million
+        students, every extra \SI{1}{\degree F} of school-year heat reduced
+        learning by about 1\% in schools without AC.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.48\textwidth,height=4.4cm]{peel-waste.jpg}\hfill
+\includegraphics[width=0.48\textwidth,height=4.4cm]{plastic-waste.jpg}
+\caption{Orange-peel waste (left) and plastic and Styrofoam waste in landfill (right).}
+\end{figure}
+
+\subsection{Our USP}
+\begin{usp}
+\Large\bfseries A brick that keeps rooms cool without electricity, made from
+two wastes (Styrofoam and orange peel) instead of mined clay and a coal-fired kiln.
+\end{usp}
+Why this matters:
+
+\begin{itemize}
+  \item \textbf{Cooling built into the wall.} Five features in one brick
+        work together (Section~3); no fans, AC or power needed.
+  \item \textbf{Two wastes, one product.} Styrofoam and orange peel replace
+        clay. No kiln, no topsoil.
+  \item \textbf{The whole orange peel is used.} It gives the limonene, and
+        what is left becomes charcoal for the brick. The limonene is collected
+        and reused.
+  \item \textbf{Light and waterproof.} Easy to carry and build with, and it
+        does not soak up rain.
+\end{itemize}
+
+\subsection{UN Sustainable Development Goals}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+SDG 4: Quality education & Cooler classrooms help students learn. \\
+SDG 11: Sustainable cities & Greener buildings made from local waste. \\
+SDG 12: Responsible consumption & Styrofoam and orange peel are reused, not dumped. \\
+SDG 13: Climate action & No kiln emissions; buildings cope better with heatwaves. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ------------------------------------------------------------------ 3
+\section{Concept}
+
+\subsection{Turning waste into a brick}
+Limonene is the oil that gives orange peel its smell. We get it by steam
+distillation: steam carries the oil out of the peel, and the oil separates
+from the water when it cools. Limonene dissolves Styrofoam, just as water
+dissolves sugar. Styrofoam is about 98\% air, so a big pile of foam shrinks
+into a small amount of thick gel. When the gel dries, the limonene
+evaporates and the plastic sets hard.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[box/.style={draw=soft,rounded corners=2pt,minimum width=2.6cm,minimum height=1.25cm,text width=2.4cm,align=center,font=\small},
+  arr/.style={-{Stealth[length=2.5mm]},thick,soft}]
+\node[box] (a) {Collect Styrofoam and orange peel};
+\node[box,right=0.45cm of a] (b) {Steam-distil peel to get limonene};
+\node[box,right=0.45cm of b] (c) {Dissolve foam into a gel};
+\node[box,right=0.45cm of c] (d) {Mould and cure the brick};
+\node[box,right=0.45cm of d,draw=accent] (e) {CoolBrick};
+\draw[arr] (a)--(b); \draw[arr] (b)--(c); \draw[arr] (c)--(d); \draw[arr] (d)--(e);
+\end{tikzpicture}
+\caption{How the brick is made.}
+\end{figure}
+
+\subsection{How heat gets into a room}
+The sun heats the outside of a wall. The heat then slowly moves through the
+wall and warms the room. Two things keep a room cooler:
+\begin{itemize}
+  \item a \textbf{light, shiny surface} that reflects sunlight, so the wall
+        does not get as hot;
+  \item a material that \textbf{lets heat through slowly}, such as trapped
+        air (this is why a flask keeps tea hot).
+\end{itemize}
+Dissolving the foam lets its trapped air out, so in the CoolBrick we put air
+back in.
+
+\subsection{The CoolBrick design}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[scale=1.05]
+  \fill[orange!12] (0,0) rectangle (6,3);
+  \draw[ink,line width=0.8pt] (0,0) rectangle (6,3);
+  \fill[white] (-0.25,0) rectangle (0,3); \draw[ink] (-0.25,0) rectangle (0,3);
+  \foreach \x in {0.6,2.4}{\fill[cool!15] (\x,0.45) rectangle ++(1.2,0.85); \draw[cool] (\x,0.45) rectangle ++(1.2,0.85);
+                           \fill[cool!15] (\x,1.7) rectangle ++(1.2,0.85); \draw[cool] (\x,1.7) rectangle ++(1.2,0.85);}
+  \fill[violet!25] (4.2,0.45) rectangle ++(1.2,0.85); \draw[violet] (4.2,0.45) rectangle ++(1.2,0.85);
+  \fill[violet!25] (4.2,1.7) rectangle ++(1.2,0.85); \draw[violet] (4.2,1.7) rectangle ++(1.2,0.85);
+  \pgfmathsetseed{7}
+  \foreach \i in {1,...,70}{\fill[ink!70] ({0.1+5.8*rnd},{0.08+2.84*rnd}) circle (0.022);}
+  \node[font=\scriptsize,rotate=90] at (-0.6,1.5) {OUTSIDE (sun)};
+  \node[font=\scriptsize,rotate=90] at (6.4,1.5) {INSIDE (room)};
+  \draw[soft] (-0.12,3) -- (-0.12,3.3) node[above,font=\scriptsize]{1 white coat};
+  \draw[soft] (1.2,2.55) -- (1.2,3.75) node[above,font=\scriptsize]{2 air pockets};
+  \draw[soft] (3.3,2.9) -- (3.3,3.3) node[above,font=\scriptsize]{3 plastic + peel charcoal};
+  \draw[soft] (4.8,2.55) -- (4.8,3.75) node[above,font=\scriptsize]{4 salt pockets};
+  \draw[soft] (5.7,0) -- (5.7,-0.3) node[below,font=\scriptsize]{5 interlocking shape};
+\end{tikzpicture}
+\caption{Cross-section of a CoolBrick, from the outside face (left) to the room side (right).}
+\end{figure}
+
+\begin{enumerate}
+  \item \textbf{White coat.} A white coat (chalk-like calcium carbonate) on
+        the outside reflects most sunlight.
+  \item \textbf{Air pockets.} Hollow spaces trap still air, which slows heat
+        down.
+  \item \textbf{Body.} The hardened plastic gel makes the brick strong and
+        waterproof. Charcoal from the leftover peel adds tiny air spaces and
+        helps the brick resist fire.
+  \item \textbf{Salt pockets.} Sealed pockets of Glauber's salt (sodium
+        sulfate), which melts at about \SI{32}{\celsius}. As it melts it soaks
+        up heat, like ice in a cold drink, and it sets again at night.
+        Section~5.4 explains why we chose it instead of coconut oil.
+  \item \textbf{Interlocking shape.} Bricks lock together, so less cement is
+        needed between them.
+\end{enumerate}
+
+% ------------------------------------------------------------------ 4
+\section{Methodology \& Experimental Design}
+
+\subsection{Making the brick}
+\begin{enumerate}
+  \item Collect clean Styrofoam and orange peel.
+  \item Extract D-limonene from the peel by steam distillation.
+  \item Dissolve broken Styrofoam in the limonene to form a gel \toadd{ratio used}.
+  \item Mix in sand and charcoal made from the peel \toadd{proportions}.
+  \item Press the mix into moulds that leave air pockets and salt pockets;
+        fill the salt pockets with Glauber's salt mixed with a little borax and
+        a thickener, and seal them.
+  \item Cure in a closed box connected to the still's condenser, so that
+        at least 90\% of the limonene vapour is collected and reused
+        \toadd{curing time}.
+  \item Paint the outside face with the white coat.
+\end{enumerate}
+
+\subsection{Experiment: two model rooms}
+\textbf{Aim:} to compare how much heat gets into a room built from CoolBricks
+and one built from clay bricks.
+
+\textbf{Hypothesis:} the CoolBrick room will stay at least \SI{3}{\celsius}
+cooler inside at the hottest time of day.
+
+\textbf{Method:} build two small rooms (\SI{0.6}{m} cubes), one from clay
+bricks and one from CoolBricks, side by side in the sun on the school roof. A
+\SI{100}{W} heater inside each acts like people in the room. Temperature
+digital thermometers record the temperatures every 5 minutes for 30 days.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+Independent variable & Brick type (clay or CoolBrick) \\
+Dependent variables & Inside air temperature, inner and outer wall temperature \\
+Control variables & Size, position, direction, heater, sensors, days \\
+Equipment & Digital thermometers with a data logger \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Tests on the brick}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+Test & How we do it \\
+\midrule
+Strength & Crush bricks in a testing machine (see Section~4.4) \\
+Water & Soak a brick for 24 hours and weigh it before and after \\
+Heat & Shine a heat lamp on one side and measure the other side \\
+Fire & Hold a flame to a sample and check it does not keep burning \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\clearpage
+\subsection{Will the brick be strong enough?}
+A brick in a wall has to carry weight without cracking. Strength is measured
+by crushing a brick: \textbf{strength = force $\div$ area}, in N/mm\textsuperscript{2}.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}X c@{}}
+\toprule
+What we found & Strength (N/mm\textsuperscript{2}) \\
+\midrule
+Indian standard for clay bricks, lowest class (IS 1077) & at least 3.5 \\
+Sand held together by dissolved Styrofoam (5--17\% foam) [11] & about 4--12 \\
+Sand held together by melted waste plastic [13, 14] & about 9--33 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+So bricks made from dissolved Styrofoam \emph{and sand} can pass the
+standard. But research also shows some risks for our design:
+\begin{itemize}
+  \item \textbf{More foam or air makes a brick weaker}. Our air and salt
+        pockets will reduce strength, so the walls between pockets must stay
+        thick enough.
+  \item \textbf{Leftover limonene keeps the plastic soft.} We will dry each
+        brick until its weight stops dropping.
+  \item \textbf{Pressing the mix into the mould makes it stronger} [12], so
+        we will press, not just pour.
+  \item \textbf{Fire.} Plastic bricks can drip and keep burning, and one study
+        found they lost up to a third of their strength after a fire [15].
+        Adding sand and clay reduced the burning a lot [14], so our mix uses
+        sand and peel charcoal, and the wall is plastered on both sides.
+  \item \textbf{Sunlight} makes polystyrene brittle over time; the white coat
+        covers it. Polystyrene softens only near \SI{95}{\celsius}, far above
+        the \SI{39}{\celsius} the CoolBrick's outside reaches.
+\end{itemize}
+
+\textbf{Our strength test.} We will make three mixes with different amounts of
+foam gel and sand \toadd{ratios}, five bricks of each, and crush them at a
+local cement-testing lab \toadd{lab name}. A brick face of
+190\,mm $\times$ 90\,mm must hold about \SI{60}{kN} (about 6 tonnes) to reach
+3.5 N/mm\textsuperscript{2}. We will also check water soaking (the standard
+allows at most 20\% of the brick's weight). If the CoolBrick is not strong
+enough for load-bearing walls, it can still be used for the filling walls of
+concrete-frame buildings, which carry only their own weight.
+
+\subsection{Computer simulation}
+Before building, we wrote a computer program that works out, minute by
+minute, how much heat gets through a wall on a hot summer day (up to
+\SI{41}{\celsius}). It includes the sunshine, the outside air and a room
+kept at \SI{25}{\celsius}. We compared walls made of clay brick, Poly Citra
+v1 and CoolBrick, and a small \SI{3}{m} building made from each.
+
+% ------------------------------------------------------------------ 5
+\section{Results So Far and Explanation of Results}
+
+\subsection{Prototype (version 1)}
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.3cm]{dissolving.jpg}\caption{Foam dissolving}\end{subfigure}\hfill
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.3cm]{brick-sample.jpg}\caption{Cured sample}\end{subfigure}\hfill
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.3cm]{brickwall.jpg}\caption{Next to clay bricks}\end{subfigure}\\[6pt]
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.3cm]{water-test.jpg}\caption{Water test}\end{subfigure}\hfill
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.3cm]{heat-test.jpg}\caption{Heat test}\end{subfigure}\hfill
+\begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth,height=3.3cm]{load-test.jpg}\caption{Load test}\end{subfigure}
+\caption{Making and testing the version 1 brick.}
+\end{figure}
+Our version 1 bricks float, absorb little water, keep their shape when heated
+and hold a load \toadd{measured values}.
+
+\subsection{Simulation (CoolBrick)}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=0.5\textwidth,height=6cm,xmin=0,xmax=23,ymin=20,ymax=56,xtick={0,6,12,18},
+  xlabel={Hour of day},ylabel={Outside of the wall (\si{\celsius})},label style={font=\small},tick label style={font=\small},
+  legend style={font=\scriptsize,at={(0.02,0.98)},anchor=north west,draw=none},axis lines*=left]
+\addplot[soft,densely dotted,thick] coordinates {(0,29.1)(1,27.9)(2,27.2)(3,27)(4,27.2)(5,27.9)(6,29.1)(7,30.5)(8,32.2)(9,34)(10,35.8)(11,37.5)(12,38.9)(13,40.1)(14,40.8)(15,41)(16,40.8)(17,40.1)(18,38.9)(19,37.5)(20,35.8)(21,34)(22,32.2)(23,30.5)};\addlegendentry{Outdoor air}
+\addplot[clay,very thick] coordinates {(0,29.3)(1,28.1)(2,27.2)(3,26.6)(4,26.4)(5,26.5)(6,27)(7,28.1)(8,29.6)(9,31.2)(10,32.9)(11,34.5)(12,35.9)(13,37.9)(14,43.4)(15,49.2)(16,51.9)(17,50.1)(18,44.6)(19,38.4)(20,35.8)(21,33.9)(22,32.2)(23,30.7)};\addlegendentry{Clay}
+\addplot[vone,very thick,dashed] coordinates {(0,28.2)(1,27.1)(2,26.3)(3,25.8)(4,25.8)(5,26.2)(6,26.9)(7,28.4)(8,30.1)(9,32)(10,33.9)(11,35.7)(12,37.2)(13,39.3)(14,45)(15,50.3)(16,52.1)(17,49.4)(18,43.2)(19,37)(20,34.8)(21,33)(22,31.2)(23,29.6)};\addlegendentry{Poly Citra v1}
+\addplot[cool,very thick] coordinates {(0,27.4)(1,26.3)(2,25.6)(3,25.2)(4,25.3)(5,25.8)(6,26.6)(7,27.9)(8,29.3)(9,31)(10,32.6)(11,34.2)(12,35.6)(13,36.8)(14,38.1)(15,38.9)(16,39)(17,38.2)(18,36.8)(19,35.1)(20,33.6)(21,32)(22,30.4)(23,28.8)};\addlegendentry{CoolBrick}
+\end{axis}
+\end{tikzpicture}\hfill
+\begin{tikzpicture}
+\begin{axis}[width=0.5\textwidth,height=6cm,xmin=0,xmax=23,ymin=0,ymax=45,xtick={0,6,12,18},
+  xlabel={Hour of day},ylabel={Heat getting into the room},label style={font=\small},tick label style={font=\small},
+  legend style={font=\scriptsize,at={(0.02,0.98)},anchor=north west,draw=none},axis lines*=left]
+\addplot[clay,very thick] coordinates {(0,34.5)(1,31.4)(2,28.2)(3,25)(4,21.8)(5,18.9)(6,16.3)(7,14.1)(8,12.3)(9,11.2)(10,10.8)(11,11)(12,11.9)(13,13.4)(14,15.2)(15,17.6)(16,21.1)(17,26.1)(18,31.7)(19,36.8)(20,39.9)(21,40.6)(22,39.4)(23,37.2)};\addlegendentry{Clay}
+\addplot[vone,very thick,dashed] coordinates {(0,8.7)(1,9)(2,9.2)(3,9.2)(4,9.1)(5,9)(6,8.7)(7,8.4)(8,8)(9,7.6)(10,7.2)(11,6.8)(12,6.5)(13,6.2)(14,6)(15,5.8)(16,5.8)(17,5.8)(18,6)(19,6.3)(20,6.7)(21,7.2)(22,7.8)(23,8.3)};\addlegendentry{Poly Citra v1}
+\addplot[cool,very thick] coordinates {(0,5.2)(1,5.3)(2,5.4)(3,5.3)(4,5.2)(5,4.9)(6,4.7)(7,4.4)(8,4.1)(9,3.8)(10,3.5)(11,3.2)(12,3)(13,2.9)(14,2.9)(15,3)(16,3.1)(17,3.3)(18,3.5)(19,3.8)(20,4.2)(21,4.5)(22,4.8)(23,5.1)};\addlegendentry{CoolBrick}
+\end{axis}
+\end{tikzpicture}
+\caption{A sunny wall over one hot day (computer results). Left: how hot the outside of the wall gets. Right: how much heat gets into the room (higher means a hotter room).}
+\end{figure}
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+ & Clay & Poly Citra v1 & CoolBrick \\
+\midrule
+Hottest temperature of the outside of the wall & \SI{52}{\celsius} & \SI{52}{\celsius} & \SI{39}{\celsius} \\
+Heat let into a small building in one day & 100\% & 32\% & 17\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{What the results mean}
+\begin{itemize}
+  \item \textbf{Clay lets in the most heat.} Heat passes through it easily,
+        and it stays warm, so it keeps heating the room at night.
+  \item \textbf{Version 1 already blocks most heat}, because the plastic
+        lets heat through slowly. But its outside still gets as hot as clay.
+  \item \textbf{The CoolBrick does both.} The white coat keeps the outside
+        about \SI{13}{\celsius} cooler, and the air pockets slow the heat
+        down. It lets in about 80\% less heat than clay.
+  \item \textbf{Limits.} These are computer results. Real bricks may do a
+        little worse, so we need to test them. Rooms full of people also need
+        good airflow.
+\end{itemize}
+
+\subsection{Replacing coconut oil}
+Coconut oil made up about half the cost of our first CoolBrick design, so we
+used the computer program to test cheaper fillers. We found something
+surprising: \textbf{coconut oil was hardly helping}. It melts at about
+\SI{27}{\celsius}, but on a hot day the inside of a classroom without AC
+stays above that even at night, so the oil stays liquid and stops soaking up
+heat. (Our first results were slightly wrong for this reason: the program had
+not run long enough to settle. The corrected numbers are the ones in this
+report.)
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}X c c c@{}}
+\toprule
+Filler & Melts at & Heat it can store & Cost per brick \\
+\midrule
+Coconut oil & \SI{24}{\celsius}--\SI{27}{\celsius} & 1$\times$ & \rupee\,35--50 \\
+Calcium chloride salt & \SI{29}{\celsius} & about 3$\times$ & \rupee\,3--8 \\
+\textbf{Glauber's salt (sodium sulfate)} & \textbf{\SI{32}{\celsius}} & \textbf{nearly 4$\times$} & \textbf{\rupee\,3} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+We chose \textbf{Glauber's salt}. It is one of the cheapest heat-storing
+materials there is [16], it does not burn, it is safe to handle, and it melts
+at a temperature a hot classroom actually reaches, so it can still melt and
+set again each day. It does have two known problems: it can stay liquid
+below its melting point, and it can separate into layers. Adding a little
+borax and a thickener fixes both [17], and it must be sealed so it cannot
+leak out of the brick. The salt pockets are a small extra; most of the
+cooling comes from the air pockets and the white coat. We will test how much
+the salt really helps in the model rooms.
+
+% ------------------------------------------------------------------ 6
+\section{Conclusion}
+
+Poly Citra Bricks show that Styrofoam and orange peel can replace clay in a
+building brick, with no kiln and no topsoil. By adding air pockets,
+salt pockets, peel charcoal and a white outside coat, the CoolBrick
+also keeps buildings cool. In our computer tests it lets in about
+80\% less heat than a clay brick wall, and its outside stays about
+\SI{13}{\celsius} cooler. This supports our hypothesis. Replacing coconut oil with Glauber's salt and
+recovering more limonene brings the cost to about \rupee\,29 per brick. Research shows bricks of sand and dissolved Styrofoam can
+meet the Indian strength standard, so our next step is to crush-test real
+CoolBricks and test them in two model rooms.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l X X@{}}
+\toprule
+ & Version 1 & CoolBrick (version 2) \\
+\midrule
+Purpose & Turn two wastes into a brick & Also keep buildings cool \\
+Inside the brick & Solid & Air pockets, salt pockets, peel charcoal \\
+Outside face & Plain & White coat that reflects sunlight \\
+Heat let in (clay = 100\%) & 32\% & 17\% \\
+Solvent & Used once & Recovered and reused \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ------------------------------------------------------------------ 7
+\section{Future Potential of the Project}
+
+\subsection{Where it can be used}
+Government schools and anganwadis, low-cost housing, health centres, and
+any building in a hot region where air-conditioning is too expensive.
+
+\subsection{Cost}
+\begin{center}
+\begin{tabular}{lc}
+\toprule
+Brick & Estimated cost per brick \\
+\midrule
+First design (coconut oil, 80\% limonene recovered) & \rupee\,67 \\
+\textbf{CoolBrick (Glauber's salt, 90\% limonene recovered)} & \textbf{\rupee\,29} \\
+Fired clay brick (market price) & \rupee\,5--12 \\
+\bottomrule
+\end{tabular}
+\end{center}
+What makes up the \rupee\,29:
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+Item (per brick) & Cost \\
+\midrule
+D-limonene lost while curing (14\,g) & \rupee\,8.3 \\
+Labour (\rupee\,600 a day, 150 bricks a day) & \rupee\,4 \\
+Energy for distilling and curing & \rupee\,4 \\
+Collecting and cleaning Styrofoam & \rupee\,3 \\
+Glauber's salt pockets & \rupee\,3 \\
+Sealing the salt pockets & \rupee\,2 \\
+Sand, peel charcoal, white coat, mould wear & \rupee\,4.3 \\
+\midrule
+\textbf{Total} & \textbf{about \rupee\,29} \\
+\bottomrule
+\end{tabular}
+\end{center}
+The labour cost assumes bricks are made in bulk with proper moulds; made by
+hand in small numbers, a brick would cost much more.
+
+Most of the saving comes from two changes: Glauber's salt instead of coconut
+oil (saves about \rupee\,30), and catching 90\% of the limonene instead of
+80\% while the bricks cure (saves about \rupee\,8, because limonene is the
+most expensive thing we use). We keep D-limonene as our only solvent because
+it is natural and comes from orange peel. Our target is a brick that costs
+less than \rupee\,30. Because a CoolBrick still costs more than a
+clay brick, it makes most sense on the sunniest walls. For government
+schools, it could be paid for through the yearly school grant (Samagra
+Shiksha), company CSR funds, or state heat action plans.
+
+\subsection{Next steps}
+\begin{enumerate}
+  \item Crush-test three mixes, and test water, heat and fire safety.
+  \item Make and seal the salt pockets and check they do not leak.
+  \item Build the two model rooms and log temperatures for 30 days.
+  \item Build a test wall at a government school with the school's permission.
+  \item Work with local builders and NGOs to make bricks at a larger scale.
+\end{enumerate}
+
+% ------------------------------------------------------------------ 8
+\section{Bibliography, References and Acknowledgements}
+
+\subsection*{References}
+\sloppy
+\small
+\begin{enumerate}[label={[\arabic*]},leftmargin=*]
+\item Park, R.\,J., Goodman, J., Hurwitz, M., \& Smith, J.\ (2020). Heat and Learning. \emph{American Economic Journal: Economic Policy}, 12(2), 306--339.
+\item Ministry of Education (2024). \emph{UDISE+ 2023--24}. Government of India.
+\item Li, X., Peoples, J., Huang, Z., Zhao, Z., Qiu, J., \& Ruan, X.\ (2020). Full daytime sub-ambient radiative cooling in commercial-like paints with high figure of merit. \emph{Cell Reports Physical Science}, 1(10).
+\item Vitale, M., \& Cascone, S.\ (2022). Orange peels as a potential ecological thermal insulation material for building application. \emph{TeMA}, 8(2).
+\item Florida Chemical Company. D-limonene as a solvent for expanded polystyrene. Via cleanersolutions.org.
+\item Sony Corporation (c.\ 2001). Limonene-based expanded-polystyrene recycling system.
+\item Studies of orange-peel oil yield by steam distillation (about 0.6--2\%, over 90\% limonene).
+\item Studies of bricks with phase-change materials and of orange-peel biochar composites.
+\item Bureau of Indian Standards: IS 1077, IS 3495, IS 3346.
+\item United Nations (2015). \emph{The 2030 Agenda for Sustainable Development}.
+\item Assessing the feasibility of using EPS mortar as a construction material for mitigating foam waste. \emph{TNI Journal of Engineering and Technology} (ThaiJO).
+\item Mortar using expanded polystyrene diluted in gasoline as binder. \emph{Journal of Materials in Civil Engineering} (ASCE), doi:10.1061/JMCEE7.MTENG-18010.
+\item Plastic-sand and plastic-clay bricks. \emph{Journal of University of Babylon for Engineering Sciences}.
+\item Waste HDPE and sand bricks with kaolin clay. Durban University of Technology thesis (ir.dut.ac.za/handle/10321/5486).
+\item Behaviour of masonry systems incorporating waste plastic subjected to fire. Stellenbosch University (scholar.sun.ac.za/handle/10019.1/124748).
+\item Oak Ridge National Laboratory. Review of low-cost organic and inorganic phase change materials.
+\item Influence of carboxymethyl cellulose as a thickening agent for Glauber's salt-based PCM (2024). \emph{Materials}, 17(10), 2442.
+\end{enumerate}
+
+\normalsize
+\subsection*{Acknowledgements}
+We thank \toadd{teacher names} and Scottish High International School for
+their guidance and the use of the science laboratory, and our families for
+their support.
+
+\end{document}

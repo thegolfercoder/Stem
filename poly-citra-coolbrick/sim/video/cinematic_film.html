@@ -1,0 +1,103 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>CoolBrick Film</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+html,body{margin:0;background:#000;overflow:hidden}
+#stage{position:relative;width:1920px;height:1080px;overflow:hidden;background:#000;font-family:"IBM Plex Sans",sans-serif;color:#fff}
+canvas{position:absolute;inset:0}
+.cap{position:absolute;left:150px;bottom:190px;display:grid;gap:14px;max-width:1500px}
+.cap h1{margin:0;font:900 108px/1 "Archivo",sans-serif;letter-spacing:-.015em;text-shadow:0 6px 40px rgba(0,0,0,.6)}
+.cap h1 b{color:#ff8a3d}
+.cap p{margin:0;font:500 34px/1.3 "IBM Plex Sans";color:rgba(255,255,255,.88);text-shadow:0 3px 20px rgba(0,0,0,.7)}
+.end{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:34px;text-align:center}
+.end h1{margin:0;font:900 170px/1 "Archivo";letter-spacing:-.02em}.end h1 span{color:#ff8a3d}
+.end .sub{font:500 38px/1.3 "IBM Plex Sans";color:rgba(255,255,255,.85)}
+.sdgs{display:flex;gap:18px}
+.sdgs div{width:230px;height:120px;border-radius:12px;display:grid;place-content:center;gap:8px;text-align:center}
+.sdgs b{font:900 44px/1 "Archivo"}.sdgs small{font:600 22px/1 "IBM Plex Sans"}
+.names{font:600 30px/1.4 "IBM Plex Sans";letter-spacing:.08em;color:rgba(255,255,255,.8)}
+.credits{position:absolute;inset:0;display:grid;place-content:center;gap:14px;font:400 26px/1.45 "IBM Plex Sans";color:rgba(255,255,255,.82);text-align:center}
+.credits h3{margin:0 0 10px;font:800 40px/1 "Archivo";color:#fff}
+</style></head><body>
+<div id="stage">
+  <canvas id="cv" width="1920" height="1080"></canvas>
+  <div class="cap" id="cap"><h1 id="cH"></h1><p id="cP"></p></div>
+  <div class="end" id="end"><h1>Cool<span>Brick</span></h1><div class="sub">Building materials from Styrofoam and orange peel</div>
+    <div class="sdgs"><div style="background:#C5192D"><b>SDG 4</b><small>Quality education</small></div><div style="background:#F99D26"><b>SDG 11</b><small>Sustainable cities</small></div><div style="background:#BF8B2E"><b>SDG 12</b><small>Less waste</small></div><div style="background:#3F7E44"><b>SDG 13</b><small>Climate action</small></div></div>
+    <div class="names">RIAN SIKKA &amp; DAIWIK ABROL<br>SCOTTISH HIGH INTERNATIONAL SCHOOL</div></div>
+  <div class="credits" id="credits"><h3>Photo credits</h3>
+    <div>Project and lab photos: Rian Sikka &amp; Daiwik Abrol</div>
+    <div>"Over The Rooftops 4" and "9" — Alexandre Ultré, CC BY-SA 3.0, Wikimedia Commons</div>
+    <div>Classroom in Howrah — Billjones94, CC BY-SA 4.0, Wikimedia Commons</div>
+    <div>View from rooftop in Majnu-ka-tilla — calliopejen, CC BY-SA 2.0, Wikimedia Commons</div>
+    <div>Rooftop at Welcome Metro Station, Delhi — Kool Nerd 123, CC BY 4.0, Wikimedia Commons</div>
+    <div>Classroom (Akshaya Patra Foundation) and Greek rooftops — rawpixel, CC0</div>
+    <div style="margin-top:14px;color:rgba(255,255,255,.6)">Temperature figures come from the team's computer simulation, not lab measurements.</div></div>
+</div>
+<script>
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x)),seg=(t,a,b)=>clamp((t-a)/(b-a)),ease=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,lerp=(a,b,u)=>a+(b-a)*u;
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');const W=1920,H=1080,BAR=96;
+const $=id=>document.getElementById(id);
+const IM={};const load=(k,src)=>new Promise(r=>{const i=new Image();i.onload=()=>{IM[k]=i;r()};i.onerror=()=>r();i.src=src;});
+const SRC={city:'photos/city_rooftops.jpg',cls:'photos/classroom_howrah.jpg',roof:'photos/concrete_rooftops.jpg',greece:'photos/white_roofs_greece.jpg',terrace:'photos/rooftop_terrace.jpg',kids:'photos/classroom_hands.jpg',jaipur:'photos/jaipur_aerial.jpg',
+  foam:'img/styrofoam.jpg',peel:'img/peel-waste.jpg',peels2:'img/peels.jpg',waste:'img/plastic-waste.jpg',diss:'img/dissolving.jpg',water:'img/water-test.jpg',heat:'img/heat-test.jpg',sample:'img/brick-sample.jpg',proto:'img/prototype.jpg',load:'img/load-test.jpg'};
+// grain texture
+const grain=document.createElement('canvas');grain.width=grain.height=256;{const g=grain.getContext('2d'),d=g.createImageData(256,256);let s=7;for(let i=0;i<d.data.length;i+=4){s=(s*16807)%2147483647;const v=s%255;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=22;}g.putImageData(d,0,0);}
+// shots: [start,end,key,{zoom from,to},{pan x from,to,y from,to},grade,shimmer,caption,sub]
+const SHOTS=[
+ [0,4.6,'city',[1.08,1.2],[0,-.04,0,.02],'hot',true,'41 °C.','A summer afternoon in India.'],
+ [4.6,9.2,'cls',[1.12,1.18],[.05,-.05,0,0],'hot',true,'Too hot to learn.','No AC. The fans stop when the power goes.'],
+ [9.2,13.4,'roof',[1.05,1.18],[0,.03,-.04,.02],'hot',true,'The roof is the problem.','Bare concrete soaks up the sun all day.'],
+ [13.4,15.2,'foam',[1.06,1.14],[0,.02,0,0],'neutral',false,'Two wastes…',''],
+ [15.2,17.2,'peel',[1.06,1.14],[0,-.02,0,0],'neutral',false,'Two wastes…',''],
+ [17.2,19.0,'diss',[1.05,1.15],[0,0,0,-.02],'neutral',false,'…become a cool coat and bricks.','Orange-peel oil dissolves the foam.'],
+ [19.0,20.8,'sample',[1.05,1.15],[0,.02,0,0],'neutral',false,'…become a cool coat and bricks.','Orange-peel oil dissolves the foam.'],
+ [20.8,22.6,'heat',[1.05,1.15],[0,-.02,0,0],'neutral',false,'Tested in our school lab.',''],
+ [22.6,24.6,'proto',[1.05,1.15],[0,0,0,.02],'neutral',false,'Tested in our school lab.',''],
+ [24.6,29.0,'greece',[1.05,1.18],[-.03,.03,0,0],'cool',false,'White roofs stay cool.','People in hot countries have known this for centuries.'],
+ [29.0,33.6,'terrace',[1.04,1.12],[0,.03,0,0],'neutral',false,'Paint the school roof white.','A cool coat made from waste.'],
+ [33.6,38.6,'kids',[1.08,1.18],[0,0,.02,-.02],'cool',false,'<b>3.4 °C</b> cooler.*','*Our computer simulation of a 40-student classroom.'],
+ [38.6,43.0,'jaipur',[1.06,1.2],[.03,-.03,0,0],'neutral',false,'<b>₹122</b> per student.','No electricity. No machines. Made from waste.'],
+];
+const END=[43.0,49.0],CRED=[49.0,53.0];window.DURATION=53;
+function drawCover(img,zoom,px,py,alpha,shimmer,t){
+  const s=Math.max(W/img.width,H/img.height)*zoom,dw=img.width*s,dh=img.height*s;
+  const x=(W-dw)/2+px*W,y=(H-dh)/2+py*H;ctx.globalAlpha=alpha;
+  if(!shimmer){ctx.drawImage(img,x,y,dw,dh);}
+  else{const strip=6;for(let sy=0;sy<H;sy+=strip){const off=Math.sin(sy*.045+t*5.5)*2.2*(sy/H+.2);const srcY=(sy-y)/s;ctx.drawImage(img,0,srcY,img.width,strip/s,x+off,sy,dw,strip);}}
+  ctx.globalAlpha=1;}
+function grade(kind,a){
+  if(kind==='hot'){ctx.globalCompositeOperation='overlay';ctx.fillStyle=`rgba(255,120,30,${.32*a})`;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over';
+    const g=ctx.createRadialGradient(W*.15,-H*.2,50,W*.15,-H*.2,W*.9);g.addColorStop(0,`rgba(255,220,150,${.45*a})`);g.addColorStop(1,'rgba(255,220,150,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);}
+  if(kind==='cool'){ctx.globalCompositeOperation='soft-light';ctx.fillStyle=`rgba(120,190,255,${.25*a})`;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over';}}
+function paintSweep(u,a){ // white coat rolling across the lower part of the terrace photo
+  if(u<=0)return;ctx.save();ctx.beginPath();const edge=lerp(-200,W+200,u);
+  ctx.moveTo(0,H*.62);ctx.lineTo(edge,H*.60);ctx.lineTo(edge-260,H);ctx.lineTo(0,H);ctx.closePath();ctx.clip();
+  ctx.globalAlpha=.86*a;ctx.fillStyle='#f4f4f1';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;
+  const g=ctx.createLinearGradient(edge-300,0,edge,0);g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(1,'rgba(255,255,255,.5)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.restore();
+  // roller line
+  ctx.strokeStyle=`rgba(220,220,220,${a})`;ctx.lineWidth=16;ctx.beginPath();ctx.moveTo(edge,H*.60);ctx.lineTo(edge-260,H);ctx.stroke();}
+function finish(t){
+  const v=ctx.createRadialGradient(W/2,H/2,H*.35,W/2,H/2,H*.95);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
+  const ox=Math.floor((t*97)%256),oy=Math.floor((t*61)%256);ctx.save();ctx.translate(-ox,-oy);ctx.fillStyle=ctx.createPattern(grain,'repeat');ctx.fillRect(0,0,W+256,H+256);ctx.restore();
+  ctx.fillStyle='#000';ctx.fillRect(0,0,W,BAR);ctx.fillRect(0,H-BAR,W,BAR);}
+function renderAt(t){
+  ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+  let capH='',capP='',capA=0;
+  for(let i=0;i<SHOTS.length;i++){const [a,b,k,z,p,gr,sh,ch,cp]=SHOTS[i];const xf=.45;
+    if(t<a-xf||t>b+xf)continue;const img=IM[k];if(!img)continue;
+    const alpha=Math.min(seg(t,a-xf,a+xf),1-seg(t,b-xf,b+xf))*(i===0?seg(t,0,.8):1);
+    const u=seg(t,a-xf,b+xf);drawCover(img,lerp(z[0],z[1],u),lerp(p[0],p[1],u),lerp(p[2],p[3],u),alpha,sh,t);
+    grade(gr,alpha);
+    if(k==='terrace')paintSweep(ease(seg(t,a+.6,b-.6)),alpha);
+    if(t>=a&&t<b){capH=ch;capP=cp;const sameAsPrev=i>0&&SHOTS[i-1][7]===ch,sameAsNext=i<SHOTS.length-1&&SHOTS[i+1][7]===ch;
+      capA=Math.min(sameAsPrev?1:seg(t,a+.25,a+.8),sameAsNext?1:1-seg(t,b-.5,b-.05));}}
+  finish(t);
+  $('cH').innerHTML=capH;$('cP').textContent=capP;$('cap').style.opacity=capA;$('cap').style.transform=`translateY(${(1-capA)*18}px)`;
+  const ea=Math.min(seg(t,END[0],END[0]+.8),1-seg(t,END[1]-.5,END[1]));$('end').style.opacity=t>=END[0]-.1&&t<END[1]?ea:0;
+  const ca=Math.min(seg(t,CRED[0],CRED[0]+.5),1-seg(t,CRED[1]-.5,CRED[1]));$('credits').style.opacity=t>=CRED[0]?ca:0;
+}
+window.renderAt=renderAt;
+window.ready=Promise.all([document.fonts.ready,...Object.entries(SRC).map(([k,s])=>load(k,s))]).then(()=>new Promise(r=>setTimeout(r,500))).then(()=>{renderAt(.01);return Object.keys(IM).length;});
+</script></body></html>
