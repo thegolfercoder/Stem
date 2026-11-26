@@ -198,7 +198,7 @@ pipe_flange = [6.0, 0.8];          // [diameter, thickness]; the 5 mm LED's dome
 //              (or phones in a MagSafe case) with nothing else to buy.
 phone_mount   = false;          // the old stud / MagSafe stem: replaced by the folding arm (arm = true)
 holder        = "stud";         // [stud, magsafe]
-dock_t        = 2.4;            // base plate
+dock_t        = 2.0;            // base plate: a stand on a mat, stiffened by its lips, the spine and the pod pocket
 dock_lip_h    = 6.0;            // lips up the unit's front and rear faces
 dock_gap      = 0.3;            // unit to lips and stem
 dock_depth    = 58;             // base, front lip to rear edge
@@ -228,7 +228,8 @@ slide_clear   = 0.3;            // channel over the slide, each side
 slide_ext     = 46;             // how far the slide pulls up: puts the phone's lower edge clear of the unit
 head_d        = 60;             // MagSafe head: ring_od + 1.75 mm each side
 head_t        = 4.0;
-knuckle_d     = 8.0;            // hinge knuckles; a printed 3 mm pin runs through them
+knuckle_d     = 6.0;            // hinge knuckles; a printed 3 mm pin runs through them (1.25 mm wall round its 3.5 bore).
+                                // Their back is flush with the head's back face, so the head prints flat on it.
 pin_d         = 3.0;
 pin_clear     = 0.25;
 tilt_default  = 25;             // deg back from vertical: frames ball, golfer and club at the top
@@ -238,15 +239,24 @@ yaw_step      = 5;              // swivel detents every 5 deg, +-yaw_max
 yaw_max       = 25;
 swivel_d      = 12.0;           // swivel drum in the slide's cup
 swivel_h      = 4.2;            // drum height: the tilt axis rises this much over the old tab
+tilt_offset   = 21.0;           // the tilt hinge sits this far behind the swivel's axis, on a bar: the phone hangs
+                                // 42 mm below the hinge, and tilted back 35 deg its lower edge swings 21 mm toward
+                                // the unit; turned 25 deg as well, a corner of it reaches 6 mm further. Over the
+                                // swivel it would cut into the slide (fit report: phone clear of the slide)
+tilt_leaf     = [1.2, 0.6, 0.2, 0.35];  // tilt detent: [leaf thickness, slot, nub interference, groove depth]. A leaf cut
+                                // from each head knuckle's inner end presses a nub into grooves on the swivel
+                                // knuckle's end faces, one per tilt step and one folded
 head_style    = "magsafe";      // [magsafe, clamp]: the phone head on the arm
 clamp_range   = [65, 80];       // phone widths the clamp takes, mm
-clamp_hook    = [6.0, 3.0];     // jaw lip [reach over the screen, thickness]
+clamp_hook    = [2.0, 3.0];     // jaw lip [reach over the screen's edge, thickness]: a 45-degree undercut, so it prints
+                                // unsupported. It takes phones whose screen-side edge is rounded by 1.5 mm or more; for
+                                // a sharp-edged phone raise cl_wall. Untested on a phone.
 clamp_pitch   = 2.0;            // ratchet tooth pitch
 arm_open      = false;          // assembly view: arm up (true) or folded flat (false)
 pod_pocket    = [34.1, 33.0, 13];   // pod lying on a side face [X, Y, wall height]: snug, half its height walled.
                                    // X: the 33.5 mm pod (script_shaft_imu.scad) + 0.3 a side
-pod_wall      = 1.6;
-pod_pocket_y0 = 35.9;             // pocket's front inner edge, behind the folded head
+pod_wall      = 1.2;              // three perimeters: a carry tray, not a structure
+pod_pocket_y0 = 57.6;             // pocket's front inner edge, behind the folded head (fit report: folded head clear of pocket wall)
 // 1/4"-20 stud: a 1/4"-20 x 1/2" hex bolt, glued head-down in a hex pocket that
 // opens under the cap, thread up. Tripod screws stand 4.5-6 mm proud.
 cap           = [30, 22, 11.4]; // [X, Y from the stem's front face, Z]
@@ -482,11 +492,24 @@ module win_shape(inset = 0) {
 
 // The clear aperture behind the radome: the ledge round it, with square pads
 // in the corners where the radar module's posts stand.
-module ledge_opening() {
-    difference() {
-        win_shape(ledge_w);
-        for (sx = [-1, 1], z = [0, win_size - ledge_pad])
-            translate([sx > 0 ? win_size / 2 - ledge_pad : -win_size / 2, z]) square(ledge_pad);
+module ledge_opening() { win_shape(ledge_w); }
+
+// The radar posts' pads, in the aperture's corners behind the ledge. The shell
+// prints front face down, so a pad's front is a roof over the radome's pocket:
+// each pad is a wedge on its corner's side wall that grows at 45 degrees from
+// the ledge's width to ledge_pad, ledge_pad long, and the post stands on it
+// there. Only the side walls carry pads: on the top wall the window's 15-degree
+// tilt would flatten a wedge to 30 degrees in print. The radome rests on the
+// ledge alone.
+pad_y = win_t + 0.2 + (ledge_pad - ledge_w);        // window frame: where the pads are full size
+module radar_pads() {
+    for (sx = [-1, 1], up = [false, true]) {
+        x0 = sx * (win_size / 2 + 0.3);             // 0.3 into the side wall, so it fuses with it
+        z0 = up ? win_size - ledge_pad : 0;
+        hull() {
+            translate([sx > 0 ? x0 - (ledge_w + 0.3) : x0, win_t + 0.2, z0]) cube([ledge_w + 0.3, 0.01, ledge_pad]);
+            translate([sx > 0 ? x0 - (ledge_pad + 0.3) : x0, pad_y, z0]) cube([ledge_pad + 0.3, 0.01, ledge_pad]);
+        }
     }
 }
 
@@ -541,6 +564,7 @@ module shell() {
         // Holes and cutouts through everything above.
         lid_screw_pilots();
         standoff_pilots();
+        in_window_frame() for (h = radar_holes) translate([h[0], win_t + radar_gap - 4.5, h[1]]) y_cylinder(5, m2_pilot);
         usb_c_cutout();
         switch_slot();
         led_hole();
@@ -572,7 +596,10 @@ module window_bevel() {
             translate([0, -1, 0]) cube([body_w, 1, body_h]);
         }
         intersection() {
-            in_window_frame() xz_extrude(-40, 12) win_shape();
+            // 0.05 mm inside the pocket, so the bevel crosses the pocket's wall just
+            // in front of this plane instead of meeting it along its outline there
+            // (which left edges shared by four faces at the rounded corners).
+            in_window_frame() xz_extrude(-40, 12) offset(delta = -0.05) win_shape();
             translate([0, win_chamfer, 0]) cube([body_w, 0.01, body_h]);
         }
     }
@@ -581,31 +608,35 @@ module window_bevel() {
 module window_rear_clearance() {
     // Hollow out the front wall behind the radome, so the module can sit square
     // behind it.
-    in_window_frame() translate([-win_size / 2, win_t, 0])
-        cube([win_size, radar_stack + 2, win_size]);
+    // The ledge's opening, 0.05 mm in, so it never meets the pocket's planes or
+    // corner arcs: where it did, the cuts left edges shared by four faces. The
+    // module sits radar_gap behind the radome, well behind the front wall, so it
+    // still clears; the aperture stays the ledge's size.
+    in_window_frame() xz_extrude(win_t, win_t + radar_stack + 2) win_shape(ledge_w + 0.05);
 }
 
 module window_housing() {
     // A collar round the aperture. Above the bottom edge the window sits behind
     // the front face, so the collar forms the side walls and roof of the pocket.
     // Behind the radome it closes in to the ledge and corner pads.
-    in_window_frame() difference() {
-        translate([-win_size / 2 - win_frame, -40, -win_frame])
-            cube([win_size + 2 * win_frame, 40 + win_t + ledge_t, win_size + 2 * win_frame]);
-        xz_extrude(-41, win_t) win_shape();
-        xz_extrude(win_t - 0.01, win_t + ledge_t + 1) ledge_opening();
+    in_window_frame() {
+        difference() {
+            translate([-win_size / 2 - win_frame, -40, -win_frame])
+                cube([win_size + 2 * win_frame, 40 + win_t + ledge_t, win_size + 2 * win_frame]);
+            xz_extrude(-41, win_t) win_shape();
+            xz_extrude(win_t - 0.01, win_t + ledge_t + 1) ledge_opening();
+        }
+        radar_pads();
     }
 }
 
 module radar_posts() {
     // M2 standoffs on the corner pads, normal to the window, so the module sits
     // parallel to the radome at radar_gap behind it.
-    post = radar_gap - ledge_t;
+    // They start where the pads are full size; the pilots run on into the pads.
+    post = win_t + radar_gap - pad_y;
     in_window_frame() for (h = radar_holes)
-        translate([h[0], win_t + ledge_t - 0.01, h[1]]) difference() {
-            y_cylinder(post + 0.01, 4.6);
-            translate([0, post - 4.5, 0]) y_cylinder(5, m2_pilot);
-        }
+        translate([h[0], pad_y - 0.3, h[1]]) y_cylinder(post + 0.3, 4.6);   // pilots: cut in shell()
 }
 
 module radome() {
@@ -745,7 +776,14 @@ module switch_holder() {
     // A pocket that holds the switch body against the inside of the right wall.
     t = 1.0;
     by = sw_body[0] + 2 * sw_fit; bz = sw_body[1] + 2 * sw_fit; bx = sw_body[2];
-    translate([body_w - wall - bx - t, sw_center[0] - by / 2 - t, sw_center[1] - bz / 2 - t])
+    // The shell prints front face down, so the pocket's front end would hang
+    // bx + t off the wall: a 45-degree gusset carries it from the wall.
+    y0 = sw_center[0] - by / 2 - t;
+    hull() {
+        translate([body_w - wall - bx - t, y0, sw_center[1] - bz / 2 - t]) cube([bx + t + 0.01, 0.01, bz + 2 * t]);
+        translate([body_w - wall - 0.01, y0 - (bx + t), sw_center[1] - bz / 2 - t]) cube([0.02, 0.01, bz + 2 * t]);
+    }
+    translate([body_w - wall - bx - t, y0, sw_center[1] - bz / 2 - t])
         difference() {
             cube([bx + t + 0.01, by + 2 * t, bz + 2 * t]);
             translate([t, t, t]) cube([bx + 1, by, bz]);
@@ -1005,10 +1043,16 @@ stem_screw_seat  = 3.0;                // their heads seat this far behind the s
 module dock_outline() {
     // Plan view [X, Y]: full width under the unit, narrowing behind it, where
     // it only has to stop the phone's weight tipping the dock backwards.
-    hull() {
+    if (!arm) hull() {
         translate([0, dock_y0]) rrect(body_w, stem_y1 + buttress[1] + 4 - dock_y0, 6);
-        if (!arm) translate([ring_center[0] - 34, dock_y0 + dock_depth - 26]) rrect(68, 26, 13);
-        if (arm) translate([body_w / 2 - pp_out[0] / 2 - 4, pod_pocket_y0 - pod_wall]) rrect(pp_out[0] + 8, pp_out[1] + 4, 10);
+        translate([ring_center[0] - 34, dock_y0 + dock_depth - 26]) rrect(68, 26, 13);
+    }
+    // With the arm: the full width under the unit and the spine, then a neck as
+    // wide as the pod pocket back to it, its inner corners rounded. The folded
+    // head hangs 3 mm over the base and needs nothing under it.
+    if (arm) offset(r = -8) offset(r = 8) union() {
+        translate([0, dock_y0]) rrect(body_w, spine_y1 + 4 - dock_y0, 6);
+        translate([body_w / 2 - pp_out[0] / 2 - 1, spine_y1 - 2]) rrect(pp_out[0] + 2, pod_pocket_y0 - pod_wall + pp_out[1] + 2 - (spine_y1 - 2), 6);
     }
 }
 
@@ -1148,7 +1192,10 @@ ch_t     = slide_t + 2 * slide_clear;
 ch_y0    = spine_y0 + (arm_t - ch_t) / 2;
 ch_floor = -1;                                      // channel floor, Z: 1 mm into the base plate, so the folded swivel sits no higher
 slide_y0 = ch_y0 + slide_clear;
-hinge_y  = spine_y1 + head_t / 2 + (knuckle_d / 2 - head_t / 2 + 0.4) + 0.6;   // hinge axis: the folded head's mid-plane, its raised phone face (phone_standoff) clear of the spine
+swivel_y = spine_y1 + 5.0;                         // swivel axis (vertical): the cup on the slide's tab, behind the spine
+hinge_y  = swivel_y + tilt_offset;                  // tilt hinge axis (along X), at the end of the swivel's bar
+bar_drop = 2.15;                                    // the swivel bar's underside below the hinge axis: 0.35 over the
+                                                    // cup's rim, and 0.35 over the folded head's raised ring
 detent_z = [ch_floor + 8, ch_floor + 8 + slide_ext];    // spine holes the slide's bump clicks into: stored, open
 pp_out   = [pod_pocket[0] + 2 * pod_wall, pod_pocket[1] + 2 * pod_wall];
 function slide_z0(open) = ch_floor + (open ? slide_ext : 0);
@@ -1163,6 +1210,7 @@ module chamfer_box(size, c) {
     }
 }
 
+spine_notch = 14.8;   // the tab and cup hull are 13.9 across where they pass the rear wall; 0.45 a side
 module arm_spine() {
     // Rises from the base behind the lid's centre, 1 mm short of the unit's top
     // edge: from behind, a slim bar on the slab, not a post above it.
@@ -1171,8 +1219,10 @@ module arm_spine() {
 module arm_spine_cut() {
     // The slide's channel, open at the top, and the two detent holes in the
     // rear wall the slide's bump clicks into (folded, and pulled up).
-    translate([body_w / 2 - ch_w / 2, ch_y0, ch_floor]) cube([ch_w, ch_t, arm_top]);
+    translate([body_w / 2 - ch_w / 2, ch_y0, ch_floor]) cube([ch_w, ch_t, arm_top + 2]);
     for (z = detent_z) translate([body_w / 2, ch_y0 + ch_t - 0.1, z]) y_cylinder(arm_t, 2.2);
+    // Stored, the slide's tab and cup sit in the spine's top: a notch in the rear wall takes them.
+    translate([body_w / 2 - spine_notch / 2, ch_y0 + ch_t - 0.1, slide_z0(false) + slide_len - 3 - 0.4]) cube([spine_notch, arm_t, arm_top]);
 }
 
 module pod_pocket_walls() {
@@ -1186,49 +1236,83 @@ module pod_pocket_cut() {
     translate([body_w / 2, pod_pocket_y0 + pod_pocket[1] - 1, pod_pocket[2]]) rotate([-90, 0, 0]) cylinder(h = pod_wall + 2, d = 18, $fn = 48);
 }
 
-module arm_slide(open = arm_open) {
+// The slide's detent: a bump on a tongue cut free in the plate, so it presses
+// into the spine's holes and holds the open arm up (a bump on the rigid plate
+// would slip out through the channel's 0.6 mm of play).
+sl_tongue = [6, 10, 1.6, 0.6];   // [width X, length Z, thickness (0.8 recessed from the rear face), slot]
+sl_bump_z = 8;                   // bump above the slide's foot (the detent holes are at ch_floor + 8)
+module arm_slide(open = arm_open, bump = true) {
     // A flat plate in the spine's channel. At its top a tab reaches back over
     // the spine to a cup the swivel turns in.
     z0 = slide_z0(open);
     top = z0 + slide_len;
-    translate([body_w / 2 - slide_w / 2, slide_y0, z0]) chamfer_box([slide_w, slide_t, slide_len], 0.4);
-    // Bump that clicks into the spine's detent holes.
-    translate([body_w / 2, slide_y0 + slide_t - 0.01, z0 + 8]) y_cylinder(0.6, 2.0);
+    tw = sl_tongue[0]; tl = sl_tongue[1]; tg = sl_tongue[3];
+    tz0 = z0 + sl_bump_z - 2.5;                      // the tongue's free end, under the bump; its root is tl above
+    difference() {
+        translate([body_w / 2 - slide_w / 2, slide_y0, z0]) chamfer_box([slide_w, slide_t, slide_len], 0.4);
+        // U-slot round the tongue (through), and the tongue thinned from the rear face.
+        translate([body_w / 2 - tw / 2 - tg, slide_y0 - 1, tz0 - tg]) difference() {
+            cube([tw + 2 * tg, slide_t + 2, tl + tg]);
+            translate([tg, -1, tg]) cube([tw, slide_t + 4, tl + 1]);
+        }
+        translate([body_w / 2 - tw / 2, slide_y0 + sl_tongue[2], tz0]) cube([tw, slide_t, tl - 1]);
+    }
+    // Bump that clicks into the spine's detent holes, on the tongue's thinned face.
+    if (bump) translate([body_w / 2, slide_y0 + sl_tongue[2] - 0.01, z0 + sl_bump_z]) y_cylinder(slide_t - sl_tongue[2] + 0.6 + 0.01, 2.0);
     difference() {
         hull() {
-            translate([body_w / 2 - 6, slide_y0, top - 3]) cube([12, slide_t, 3 + swivel_h - 0.2]);
-            translate([body_w / 2, hinge_y, top - 1.2]) cylinder(h = swivel_h + 1.0, d = swivel_d + 3.2, $fn = 64);
+            translate([body_w / 2 - 6, slide_y0, top - 3]) cube([12, slide_t, 3 + swivel_h - 0.5]);
+            translate([body_w / 2, swivel_y, top - 1.2]) cylinder(h = swivel_h + 0.7, d = swivel_d + 3.2, $fn = 64);
         }
         // Cup and the swivel's peg hole.
-        translate([body_w / 2, hinge_y, top]) cylinder(h = swivel_h, d = swivel_d + 0.4, $fn = 64);
-        translate([body_w / 2, hinge_y, top - 2]) cylinder(h = 3, d = pin_d + 2 * pin_clear, $fn = 24);
+        translate([body_w / 2, swivel_y, top]) cylinder(h = swivel_h, d = swivel_d + 0.4, $fn = 64);
+        translate([body_w / 2, swivel_y, top - 2]) cylinder(h = 3, d = pin_d + 2 * pin_clear, $fn = 24);
         // Detent notches in the cup wall, every yaw_step.
-        for (a = [-yaw_max : yaw_step : yaw_max]) translate([body_w / 2, hinge_y, top + 0.6]) rotate([0, 0, 90 + a])
+        for (a = [-yaw_max : yaw_step : yaw_max]) translate([body_w / 2, swivel_y, top + 0.6]) rotate([0, 0, 90 + a])
             translate([swivel_d / 2 + 0.1, -0.5, 0]) cube([0.6, 1.0, swivel_h]);
     }
 }
 
-// Swivel: a drum in the slide's cup, turning toward the golfer, carrying the
-// tilt hinge's middle knuckle. A rib on the drum clicks into the cup's notches.
+// Swivel: a drum in the slide's cup, turning toward the golfer, and a bar back
+// to the tilt hinge's middle knuckle. A rib on the drum clicks into the cup's
+// notches. The bar's top is flat at the knuckle's top: the swivel prints upside
+// down on it, drum and peg up, so nothing overhangs.
+function tilt_groove_angles() = concat(tilt_steps, [180]);   // where the head's nub sits: each tilt step, and folded
+module swivel_knuckle_2d() {
+    // The middle knuckle's section [Y, Z] about the axis: round, with its top
+    // flat and a 45-degree chamfer, so it prints on the flat.
+    r = knuckle_d / 2; c = r / sqrt(2);
+    union() {
+        circle(r = r, $fn = 48);
+        polygon([[0, 0], [c, c], [c - (r - c), r], [0, r]]);
+    }
+}
 module arm_swivel(open = arm_open, yaw = yaw_default) {
     top = slide_z0(open) + slide_len;
     hz = hinge_z(open);
     y = open ? yaw : 0;
-    translate([body_w / 2, hinge_y, 0]) rotate([0, 0, y]) translate([-body_w / 2, -hinge_y, 0]) difference() {
+    lg = tilt_leaf;
+    translate([body_w / 2, swivel_y, 0]) rotate([0, 0, y]) translate([-body_w / 2, -swivel_y, 0]) difference() {
         union() {
-            translate([body_w / 2, hinge_y, top + 0.2]) cylinder(h = swivel_h - 0.2, d = swivel_d, $fn = 64);
-            translate([body_w / 2, hinge_y, top - 1.8]) cylinder(h = 2.2, d = pin_d, $fn = 24);   // peg
-            translate([body_w / 2, hinge_y, top + 0.8]) rotate([0, 0, 90])
+            translate([body_w / 2, swivel_y, top + 0.2]) cylinder(h = swivel_h - 0.2 + 0.2, d = swivel_d, $fn = 64);
+            translate([body_w / 2, swivel_y, top - 1.8]) cylinder(h = 2.2, d = pin_d, $fn = 24);   // peg
+            translate([body_w / 2, swivel_y, top + 0.8]) rotate([0, 0, 90])
                 translate([swivel_d / 2 - 0.2, -0.4, 0]) cube([0.6, 0.8, swivel_h - 1.2]);       // detent rib
+            // Bar: the drum's circle, narrowing to 8 mm, back to a block under the
+            // knuckle, flat on top. Bending under the phone stays under 2 MPa.
             hull() {
-                translate([body_w / 2 - 6, hinge_y - swivel_d / 2 + 1, top + swivel_h - 0.6]) cube([12, swivel_d - 2, 0.6]);
-                translate([body_w / 2 - 6, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 12, d = knuckle_d);
+                translate([body_w / 2, swivel_y, hz - bar_drop]) cylinder(h = bar_drop + knuckle_d / 2, d = swivel_d, $fn = 64);
+                translate([body_w / 2 - 4, hinge_y - 4.5, hz - bar_drop]) cube([8, 0.01, bar_drop + knuckle_d / 2]);
             }
+            translate([body_w / 2 - 6, hinge_y - 4.5, hz - bar_drop]) cube([12, 4.5, bar_drop + knuckle_d / 2]);
+            translate([body_w / 2 - 6, hinge_y, hz]) rotate([90, 0, 90]) linear_extrude(12) swivel_knuckle_2d();
         }
-        translate([body_w / 2 - 7, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 14, d = pin_d + 2 * pin_clear);
-        // Tilt detent grooves on the knuckle, every tilt step.
-        for (a = tilt_steps) translate([body_w / 2 - 6.4, hinge_y, hz]) rotate([a, 0, 0])
-            translate([0, -0.4, knuckle_d / 2 - 0.5]) cube([12.8, 0.8, 1]);
+        translate([body_w / 2 - 7, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 14, d = pin_d + 2 * pin_clear, $fn = 24);
+        // Tilt detent grooves in both end faces: radial, where the head's nub
+        // sits at each tilt step (the nub is straight below the axis in the head's frame).
+        for (sx = [-1, 1], a = tilt_groove_angles())
+            translate([body_w / 2 + sx * 6, hinge_y, hz]) rotate([-a, 0, 0])
+                translate([sx > 0 ? -lg[3] : -0.01, -0.5, -(knuckle_d / 2 + 0.1)]) cube([lg[3] + 0.01, 1.0, knuckle_d / 2 - pin_d / 2 - pin_clear - 0.3 + 0.1]);
     }
 }
 
@@ -1236,53 +1320,93 @@ module arm_swivel(open = arm_open, yaw = yaw_default) {
 // or folded down over the spine.
 module head_place(open, tilt, yaw) {
     hz = hinge_z(open);
-    translate([body_w / 2, hinge_y, 0]) rotate([0, 0, open ? yaw : 0]) translate([-body_w / 2, -hinge_y, 0])
+    translate([body_w / 2, swivel_y, 0]) rotate([0, 0, open ? yaw : 0]) translate([-body_w / 2, -swivel_y, 0])
         translate([0, hinge_y, hz]) rotate([open ? -tilt : 180, 0, 0]) translate([0, -hinge_y, -hz]) children();
 }
 head_cz_off = knuckle_d / 2 + head_d / 2 - 1;   // head centre above the hinge axis
+head_off    = -(knuckle_d / 2 - head_t / 2);    // the head's mid-plane in front of the axis (-Y, open): its back face
+                                                // is flush with the knuckles' back, so it prints flat on it
 // The phone's face stands this far proud of the head, so the phone's back clears
-// the hinge knuckles (8 mm across on a 4 mm head) by 0.4 mm: a raised face that
-// carries the magnet ring (MagSafe) or the jaws (clamp).
-phone_standoff = knuckle_d / 2 - head_t / 2 + 0.4;
+// the swivel's knuckle by 0.6 mm (0.4 + the 0.2 grip the phone sits off the face):
+// a raised face that carries the magnet ring (MagSafe) or the jaws (clamp).
+phone_standoff = knuckle_d / 2 - (head_off + head_t / 2) + 0.4;
+head_y0     = hinge_y + head_off - head_t / 2;  // the head's back face
+head_y1     = hinge_y + head_off + head_t / 2;  // its front face, under the raised face
+phone_y     = head_y1 + phone_standoff + 0.2;   // the phone's back
+relief_r    = knuckle_d / 2 + 0.7;              // the head clears the swivel knuckle (r 3, chamfer corner 3.25) by 0.45
+relief_back_r = 4.8;                            // and, behind the axis, the bar's top corner (r 4.24) by 0.56
 
+// The head's two knuckles, either side of the swivel's: round, with a flat foot
+// on the back face so the head prints flat. The inner end of each is a leaf, cut
+// free by a slot up to the head's edge, with a nub that presses into the swivel
+// knuckle's grooves: the tilt detent.
+hk_x = [body_w / 2 - 13.5, body_w / 2 + 6.5];    // the knuckles' -X ends; 7 long, 0.5 from the swivel knuckle
 module head_knuckles(hz) {
-    for (x = [body_w / 2 - 13.5, body_w / 2 + 6.5])
-        hull() {
-            translate([x, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 7, d = knuckle_d);
-            translate([x, hinge_y - head_t / 2, hz + knuckle_d / 2]) cube([7, head_t, 2]);
-        }
+    r = knuckle_d / 2;
+    for (x = hk_x) hull() {
+        translate([x, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 7, r = r, $fn = 48);
+        translate([x, head_y0, hz - r]) cube([7, r, 2 * r]);                           // foot, flush with the back face
+        translate([x, hinge_y + head_off - head_t / 2, hz + r]) cube([7, head_t, 2]);  // into the head
+    }
+}
+module head_leaf_cuts(hz) {
+    // Slots that free the leaves: from below the knuckle up into the head's edge.
+    for (sx = [-1, 1]) translate([body_w / 2 + sx * (6.5 + tilt_leaf[0]) - (sx < 0 ? tilt_leaf[1] : 0), head_y0 - 1, hz - knuckle_d / 2 - 1])
+        cube([tilt_leaf[1], knuckle_d + 2, knuckle_d / 2 + 1 + 4]);
+}
+module head_nubs(hz) {
+    // On each leaf's inner face, straight below the axis: a ridge 0.7 wide that
+    // stands into the 0.5 gap to the swivel knuckle, tilt_leaf[2] past its end face.
+    h = 0.5 + tilt_leaf[2];
+    for (sx = [-1, 1]) translate([body_w / 2 + sx * 6.5 - (sx > 0 ? h : 0), hinge_y - 0.35, hz - (knuckle_d / 2 - 0.15)])
+        cube([h, 0.7, knuckle_d / 2 - 0.15 - (pin_d / 2 + pin_clear + 0.35)]);
+}
+// Cuts every head makes: the pin bore, the relief over the swivel's knuckle, the leaf slots.
+module head_common_cuts(hz) {
+    translate([body_w / 2 - 15, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 30, d = pin_d + 2 * pin_clear, $fn = 24);
+    translate([body_w / 2 - 6.45, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 12.9, r = relief_r, $fn = 48);
+    // Deeper on the back (-Y, open): near upright the head's back edge comes over the
+    // swivel bar's top corner. Only on the back, clear of the magnet ring's pocket.
+    intersection() {
+        translate([body_w / 2 - 6.45, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 12.9, r = relief_back_r, $fn = 48);
+        translate([body_w / 2 - 7, hinge_y - 10, hz - 10]) cube([14, 10, 20]);
+    }
+    head_leaf_cuts(hz);
 }
 
-module arm_head(open = arm_open, tilt = tilt_default, yaw = yaw_default) {
+module arm_head(open = arm_open, tilt = tilt_default, yaw = yaw_default, nubs = true) {
     // The round MagSafe head. Open: up from the hinge, tilted back. Folded:
-    // hanging down over the spine, its plain face out.
+    // hanging down behind the spine, its plain face out.
     hz = hinge_z(open);
-    head_place(open, tilt, yaw) difference() {
-        union() {
-            translate([body_w / 2, hinge_y - head_t / 2, hz + head_cz_off])
-                rotate([-90, 0, 0]) hull() {
-                    cylinder(h = head_t, d = head_d - 1.2, $fn = 128);
-                    translate([0, 0, 0.6]) cylinder(h = head_t - 1.2, d = head_d, $fn = 128);
+    head_place(open, tilt, yaw) {
+        difference() {
+            union() {
+                translate([body_w / 2, head_y0, hz + head_cz_off])
+                    rotate([-90, 0, 0]) hull() {
+                        cylinder(h = head_t, d = head_d - 1.2, $fn = 128);
+                        translate([0, 0, 0.6]) cylinder(h = head_t - 1.2, d = head_d, $fn = 128);
+                    }
+                head_knuckles(hz);
+                // Raised face that carries the ring, chamfered at its edge.
+                // A ring, not a disc: the phone only bears on the magnet ring.
+                translate([body_w / 2, head_y1 - 0.01, hz + head_cz_off]) difference() {
+                    hull() {
+                        y_cylinder(phone_standoff - 0.5 + 0.01, ring_od + 2.5);
+                        y_cylinder(phone_standoff + 0.01, ring_od + 1.5);
+                    }
+                    translate([0, -1, 0]) y_cylinder(phone_standoff + 2, ring_id - 3);
                 }
-            head_knuckles(hz);
-            // Raised face that carries the ring, chamfered at its edge.
-            // A ring, not a disc: the phone only bears on the magnet ring.
-            translate([body_w / 2, hinge_y + head_t / 2 - 0.01, hz + head_cz_off]) difference() {
-                hull() {
-                    y_cylinder(phone_standoff - 0.5 + 0.01, ring_od + 2.5);
-                    y_cylinder(phone_standoff + 0.01, ring_od + 1.5);
-                }
-                translate([0, -1, 0]) y_cylinder(phone_standoff + 2, ring_id - 3);
+            }
+            head_common_cuts(hz);
+            // Shallow recess inside the ring, behind the phone: material it does not need.
+            translate([body_w / 2, head_y1 - 1.6, hz + head_cz_off]) y_cylinder(1.6 + phone_standoff + 1, ring_id - 5);
+            // Magnet ring pocket on the phone side (+Y, away from the unit when open).
+            translate([body_w / 2, head_y1 + phone_standoff - ring_depth, hz + head_cz_off]) difference() {
+                y_cylinder(ring_depth + 1, ring_od);
+                translate([0, -1, 0]) y_cylinder(ring_depth + 3, ring_id);
             }
         }
-        translate([body_w / 2 - 15, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 30, d = pin_d + 2 * pin_clear);
-        // Shallow recess inside the ring, behind the phone: material it does not need.
-        translate([body_w / 2, hinge_y + head_t / 2 - 1.6, hz + head_cz_off]) y_cylinder(1.6 + phone_standoff + 1, ring_id - 5);
-        // Magnet ring pocket on the phone side (+Y, away from the unit when open).
-        translate([body_w / 2, hinge_y + head_t / 2 + phone_standoff - ring_depth, hz + head_cz_off]) difference() {
-            y_cylinder(ring_depth + 1, ring_od);
-            translate([0, -1, 0]) y_cylinder(ring_depth + 3, ring_id);
-        }
+        if (nubs) head_nubs(hz);
     }
 }
 
@@ -1290,33 +1414,40 @@ module arm_head(open = arm_open, tilt = tilt_default, yaw = yaw_default) {
 // knuckles to a cross bar at the phone's middle. A fixed jaw at one end; a
 // sliding jaw on the bar, pushed in against the phone, held by a ratchet:
 // a flexing pawl on the jaw over saw teeth on the bar. Lift the pawl to open.
+// It prints flat on its back face like the MagSafe head; the jaws' lips are
+// 45-degree hooks, so they print without support.
 cl_bar  = [clamp_range[1] + 2 * 7 + 4, 10, head_t];   // [length X, height Z, thickness Y]
 cl_x0   = body_w / 2 - clamp_range[1] / 2;            // fixed jaw's inner face (phones sit to it)
-module clamp_hook_2d(h) {   // jaw profile [Y, Z] in the bar's plane: up the phone's side and over its screen
-    polygon([[0, 0], [phone[2] + 0.6 + clamp_hook[1], 0], [phone[2] + 0.6 + clamp_hook[1], h],
-             [phone[2] + 0.6, h], [phone[2] + 0.6, clamp_hook[0] * 0 + h - 0.01], [0, h]]);
+cl_wall = phone[2] + 0.6;                             // jaw wall height off the bar's face: the phone's thickness + 0.6
+module clamp_jaw_2d(wall_h) {
+    // A jaw's section [u away from the phone, v up off the face it stands on]:
+    // a wall 3 thick up the phone's side, undercut at 45 degrees into a lip
+    // that reaches clamp_hook[0] over the screen's edge.
+    r = clamp_hook[0]; t = clamp_hook[1];
+    polygon([[0, 0], [3, 0], [3, wall_h + t], [-r, wall_h + t], [-r, wall_h], [0, wall_h - r]]);
 }
-module arm_clamp(open = arm_open, tilt = tilt_default, yaw = yaw_default) {
+module arm_clamp(open = arm_open, tilt = tilt_default, yaw = yaw_default, nubs = true) {
     hz = hinge_z(open);
     cz = hz + head_cz_off;
-    head_place(open, tilt, yaw) difference() {
-        union() {
-            // Stem from the knuckles to the bar.
-            translate([body_w / 2 - 9, hinge_y - head_t / 2, hz + knuckle_d / 2 - 1]) chamfer_box([18, head_t, cz - hz - knuckle_d / 2 + 6], 0.6);
-            // Cross bar.
-            translate([cl_x0 - 7, hinge_y - head_t / 2, cz - cl_bar[1] / 2]) chamfer_box([cl_bar[0], head_t + phone_standoff, cl_bar[1]], 0.6);
-            // Fixed jaw: a wall up the phone's side, with a lip over its screen.
-            translate([cl_x0 - 3, hinge_y + head_t / 2 + phone_standoff, cz - cl_bar[1] / 2]) {
-                cube([3, phone[2] + 0.6 + clamp_hook[1], cl_bar[1]]);
-                translate([0, phone[2] + 0.6, 0]) cube([3 + clamp_hook[0], clamp_hook[1], cl_bar[1]]);
+    head_place(open, tilt, yaw) {
+        difference() {
+            union() {
+                // Stem from the knuckles to the bar.
+                translate([body_w / 2 - 9, head_y0, hz + knuckle_d / 2 - 1]) chamfer_box([18, head_t, cz - hz - knuckle_d / 2 + 6], 0.6);
+                // Cross bar.
+                translate([cl_x0 - 7, head_y0, cz - cl_bar[1] / 2]) chamfer_box([cl_bar[0], head_t + phone_standoff, cl_bar[1]], 0.6);
+                // Fixed jaw: a wall up the phone's side and a hooked lip over its screen.
+                multmatrix([[-1, 0, 0, cl_x0], [0, 1, 0, head_y1 + phone_standoff - 0.01], [0, 0, 1, cz - cl_bar[1] / 2], [0, 0, 0, 1]])
+                    linear_extrude(cl_bar[1]) clamp_jaw_2d(cl_wall + 0.01);
+                // Ratchet teeth along the bar's top edge, for the sliding jaw's pawl.
+                for (x = [cl_x0 + clamp_range[0] - 2 : clamp_pitch : cl_x0 + clamp_range[1] + 6])
+                    translate([x, head_y0 + head_t, cz + cl_bar[1] / 2 - 0.01])
+                        rotate([90, 0, 0]) linear_extrude(head_t) polygon([[-0.05, 0], [clamp_pitch, 0], [clamp_pitch, 1.0]]);   // each overlaps the last
+                head_knuckles(hz);
             }
-            // Ratchet teeth along the bar's top edge, for the sliding jaw's pawl.
-            for (x = [cl_x0 + clamp_range[0] - 2 : clamp_pitch : cl_x0 + clamp_range[1] + 6])
-                translate([x, hinge_y - head_t / 2, cz + cl_bar[1] / 2 - 0.01])
-                    rotate([90, 0, 0]) mirror([0, 0, 1]) linear_extrude(head_t) polygon([[0, 0], [clamp_pitch, 0], [clamp_pitch, 1.0]]);
-            head_knuckles(hz);
+            head_common_cuts(hz);
         }
-        translate([body_w / 2 - 15, hinge_y, hz]) rotate([0, 90, 0]) cylinder(h = 30, d = pin_d + 2 * pin_clear);
+        if (nubs) head_nubs(hz);
     }
 }
 // The sliding jaw: a sleeve round the bar, the mirror of the fixed jaw, and a
@@ -1327,50 +1458,57 @@ module arm_clamp_jaw(open = arm_open, tilt = tilt_default, yaw = yaw_default, wi
     x1 = cl_x0 + width;                                  // its inner face, on the phone's other side
     head_place(open, tilt, yaw) {
         difference() {
-            translate([x1, hinge_y - head_t / 2 - 1.6, cz - cl_bar[1] / 2 - 1.6]) chamfer_box([10, head_t + phone_standoff + 3.2, cl_bar[1] + 3.2 + 1.2], 0.5);
-            translate([x1 - 1, hinge_y - head_t / 2 - 0.2, cz - cl_bar[1] / 2 - 0.2]) cube([12, head_t + phone_standoff + 0.4, cl_bar[1] + 1.4]);
+            translate([x1, head_y0 - 1.6, cz - cl_bar[1] / 2 - 1.6]) chamfer_box([10, head_t + phone_standoff + 3.2, cl_bar[1] + 3.2 + 1.2], 0.5);
+            translate([x1 - 1, head_y0 - 0.2, cz - cl_bar[1] / 2 - 0.2]) cube([12, head_t + phone_standoff + 0.4, cl_bar[1] + 1.4]);
         }
-        translate([x1, hinge_y + head_t / 2 + phone_standoff + 1.6 - 0.01, cz - cl_bar[1] / 2]) {
-            cube([3, phone[2] + 0.6 + clamp_hook[1] - 1.6, cl_bar[1]]);
-            translate([-clamp_hook[0], phone[2] + 0.6 - 1.6, 0]) cube([3 + clamp_hook[0], clamp_hook[1], cl_bar[1]]);
-        }
-        // Pawl: a tongue along the top, its tooth dropping onto the bar's teeth.
-        translate([x1 + 10, hinge_y - head_t / 2, cz + cl_bar[1] / 2 + 1.0]) cube([8, head_t, 1.0]);
-        translate([x1 + 16, hinge_y - head_t / 2, cz + cl_bar[1] / 2 + 0.2]) cube([2, head_t, 0.9]);
+        // The sleeve's full height, so it prints upside down with the sleeve.
+        multmatrix([[1, 0, 0, x1], [0, 1, 0, head_y1 + phone_standoff + 1.6 - 0.01], [0, 0, 1, cz - cl_bar[1] / 2 - 1.6], [0, 0, 0, 1]])
+            linear_extrude(cl_bar[1] + 3.2 + 1.2) clamp_jaw_2d(cl_wall - 1.6 + 0.01);
+        // Pawl: a tongue along the top, flush with the sleeve's top face (the jaw
+        // prints upside down on it), its tooth dropping onto the bar's teeth.
+        translate([x1 + 10 - 0.5, head_y0, cz + cl_bar[1] / 2 + 1.8]) cube([8.5, head_t, 1.0]);
+        translate([x1 + 16, head_y0, cz + cl_bar[1] / 2 + 0.2]) cube([2, head_t, 1.7]);
     }
 }
-module arm_pin() { rotate([0, 90, 0]) cylinder(h = 28, d = pin_d); }
+module arm_pin() { rotate([0, 90, 0]) cylinder(h = 28, d = pin_d, $fn = 24); }
 
 // The phone on the open head: back to the head, centred on it.
 module phone_ghost(tilt = tilt_default, yaw = yaw_default) {
     hz = hinge_z(true);
     c = [body_w / 2, hinge_y, hz + head_cz_off];
     head_place(true, tilt, yaw)
-        translate([c[0] - phone[0] / 2, c[1] + head_t / 2 + phone_standoff + 0.2, c[2] - phone[1] / 2]) cube([phone[0], phone[2], phone[1]]);
+        translate([c[0] - phone[0] / 2, phone_y, c[2] - phone[1] / 2]) cube([phone[0], phone[2], phone[1]]);
 }
-// Lens: a point on the phone's back, phone_lens_from_top below its top edge (yaw 0).
-function lens_pos(tilt = tilt_default) = let(hz = hinge_z(true), r = head_cz_off + phone[1] / 2 - phone_lens_from_top,
-    y = hinge_y + head_t / 2 + phone_standoff + 0.2) [body_w / 2, hinge_y + r * sin(tilt) + (y - hinge_y) * cos(tilt), hz + r * cos(tilt) - (y - hinge_y) * sin(tilt)];
-function phone_bottom(tilt) = let(hz = hinge_z(true), r = head_cz_off - phone[1] / 2)
-    [hinge_y + r * sin(tilt), hz + r * cos(tilt)];
+// A point on the phone's back, d above the head's centre, at a tilt (yaw 0): [Y, Z].
+function phone_back_at(d, tilt) = let(hz = hinge_z(true), r = head_cz_off + d, y = phone_y - hinge_y)
+    [hinge_y + r * sin(tilt) + y * cos(tilt), hz + r * cos(tilt) - y * sin(tilt)];
+// Lens: on the phone's back, phone_lens_from_top below its top edge (yaw 0).
+function lens_pos(tilt = tilt_default) = let(p = phone_back_at(phone[1] / 2 - phone_lens_from_top, tilt)) [body_w / 2, p[0], p[1]];
+function phone_bottom(tilt) = phone_back_at(-phone[1] / 2, tilt);
 
-// Print orientations: slide flat (tab up), swivel drum down, heads on their
-// back faces, pin flat.
+// Print orientations: slide flat (front face down, tab up), swivel upside down
+// on its bar's flat top (drum and peg up), heads on their back faces, pin flat.
 module arm_slide_print() { translate([-body_w / 2 + slide_w / 2, slide_len + slide_z0(false) + 12, -slide_y0]) rotate([90, 0, 0]) arm_slide(false); }
-module arm_swivel_print() { translate([-body_w / 2, -hinge_y, -(slide_z0(false) + slide_len) + 1.8]) arm_swivel(false); }
+module arm_swivel_print() { translate([-body_w / 2, swivel_y, hinge_z(false) + knuckle_d / 2]) rotate([180, 0, 0]) arm_swivel(false); }
 module arm_head_print() {
     hz = hinge_z(true);
-    translate([0, 0, head_t / 2]) rotate([90, 0, 0]) translate([-body_w / 2, -hinge_y, -(hz + head_cz_off)]) arm_head(true, 0, 0);
+    translate([0, 0, hinge_y - head_y0]) rotate([90, 0, 0]) translate([-body_w / 2, -hinge_y, -(hz + head_cz_off)]) arm_head(true, 0, 0);
 }
 module arm_clamp_print() {
     hz = hinge_z(true);
-    translate([0, 0, head_t / 2]) rotate([90, 0, 0]) translate([-body_w / 2, -hinge_y, -(hz + head_cz_off)]) arm_clamp(true, 0, 0);
+    translate([0, 0, hinge_y - head_y0]) rotate([90, 0, 0]) translate([-body_w / 2, -hinge_y, -(hz + head_cz_off)]) arm_clamp(true, 0, 0);
 }
 module arm_clamp_jaw_print() {
+    // Upside down on the sleeve's top face and the pawl: its section stands
+    // vertical, so the lip is a wall, and the bar's slot is a 6.8 mm bridge.
     hz = hinge_z(true);
-    translate([0, 0, head_t / 2 + 1.6]) rotate([90, 0, 0]) translate([-body_w / 2, -hinge_y, -(hz + head_cz_off)]) arm_clamp_jaw(true, 0, 0);
+    translate([0, 0, hz + head_cz_off + cl_bar[1] / 2 + 2.8]) rotate([180, 0, 0]) translate([-(cl_x0 + phone[0]), 0, 0]) arm_clamp_jaw(true, 0, 0);
 }
-module arm_pin_print() { translate([0, 0, pin_d / 2]) arm_pin(); }
+// Pin: flat, on a 0.2 mm flat so it stands on a face, not an edge (still a push fit in the 3.5 bore).
+module arm_pin_print() translate([0, 0, pin_d / 2 - 0.2]) difference() {
+    arm_pin();
+    translate([-1, -pin_d, -pin_d]) cube([30, 2 * pin_d, pin_d / 2 + 0.2]);
+}
 
 // Print orientations. Base: as it sits. Stem: flat, front face on the bed,
 // ring pocket facing up.
@@ -1607,32 +1745,32 @@ module fit_test_coupon() {
 // are the full print's and follow any change to the arm's numbers. One pair a row:
 //   S  channel  cpa_h of the dock base's spine round the stored detent: the channel
 //               and its detent hole. Stands as the base prints.
-//      slide    The same cpa_h of the slide, with its bump: flat, front face down, as
-//               the slide prints. Push it into the channel until the bump clicks.
-//   H  head     Both of the head's knuckles and a band of the head round them, cut
-//               at the ring pocket's floor, printed upside down (knuckles up): the
-//               head itself prints on its back face, which its knuckles stand 2 mm
-//               below. A 3 mm pin goes through it and the swivel's knuckle.
-//      knuckle  The swivel above its drum: the knuckle and its tilt grooves, drum
-//               side down, as the swivel prints.
+//      slide    The same cpa_h of the slide, with its sprung bump: flat, front face
+//               down, as the slide prints. Push it into the channel until the bump clicks.
+//   H  head     Both of the head's knuckles, with their detent leaves and nubs, and a
+//               band of the head over them cut at its front face: flat on its back
+//               face, as the head prints. A 3 mm pin goes through it and the swivel's knuckle.
+//      knuckle  The end of the swivel's bar: the middle knuckle and its tilt grooves,
+//               upside down on the bar's flat top, as the swivel prints. Pinned into
+//               H it should click at each tilt step and hold the head's weight.
 //   Y  cup      The slide's cup with its yaw notches and peg hole, floor down (the
 //               slide prints it on its side).
 //      drum     The swivel's drum, rib and peg, upside down: drop it into the cup.
 // Set coupon_assembled to see the pieces where they mate.
 coupon_assembled = false;
-cpa_h     = 11;                          // the S pair's height, centred on the stored detent
-cpa_z0    = detent_z[0] - cpa_h / 2;
-cpa_z1    = cpa_z0 + cpa_h;
+cpa_z0    = detent_z[0] - 5.5;           // the S pair: from under the stored detent to 2 mm past the
+cpa_z1    = slide_z0(false) + sl_bump_z - 2.5 + sl_tongue[1] + 2;   // detent tongue's root, so the tongue stays on
+cpa_h     = cpa_z1 - cpa_z0;
 cpa_top   = slide_z0(true) + slide_len;  // the open slide's top: the swivel's seat
 cpa_hz    = hinge_z(true);
 cpa_floor = 1.2;                         // arm_slide's cup starts this far under its top: the cup piece's flat underside
 cpa_r     = swivel_d / 2 + 2;            // the box round the cup, swivel_d + 3.2 across
-cpa_hw    = 30;                          // the box round the head's knuckles: as long as the head's pin bore
+cpa_hw    = 30;                          // the head piece's width: as long as the head's pin bore
 cpa_band  = knuckle_d / 2 + 5;           // the head piece reaches this far over the axis
-cpa_hy0   = hinge_y - knuckle_d / 2;     // the head piece in Y: the knuckles' back to the ring pocket's floor
-cpa_hy1   = hinge_y + max(head_t / 2, head_t / 2 + phone_standoff - ring_depth);
+cpa_kw    = 14;                          // the knuckle piece: the swivel knuckle and the end of its bar
+cpa_ky    = [hinge_y - 5, hinge_y + knuckle_d / 2];
 // Footprints [X, Y] as laid out: channel, slide; head, knuckle; cup, drum. One pair a row.
-cpa_fp    = [[arm_w, arm_t], [slide_w, cpa_h], [cpa_hw, cpa_hy1 - cpa_hy0], [swivel_d + 2, swivel_d],
+cpa_fp    = [[arm_w, arm_t], [slide_w, cpa_h], [cpa_hw, knuckle_d / 2 + cpa_band], [cpa_kw, cpa_ky[1] - cpa_ky[0]],
              [2 * cpa_r, 2 * cpa_r], [swivel_d + 2, swivel_d + 2]];
 cpa_row_d = [for (i = [0 : 2]) max(cpa_fp[2 * i][1], cpa_fp[2 * i + 1][1])];
 cpa_row_y = [0, cpa_row_d[0] + coupon_gap, cpa_row_d[0] + cpa_row_d[1] + 2 * coupon_gap];
@@ -1649,21 +1787,22 @@ module cpa_slide() intersection() {
     cpa_box([body_w / 2 - slide_w / 2 - 1, slide_y0 - 1, cpa_z0], [body_w / 2 + slide_w / 2 + 1, spine_y1, cpa_z1]);
 }
 module cpa_head() intersection() {
+    // The head's knuckles, leaves and nubs, and the band of the head over them, cut over the knuckles.
     if (head_style == "clamp") arm_clamp(true, 0, 0); else arm_head(true, 0, 0);
-    cpa_box([body_w / 2 - cpa_hw / 2, cpa_hy0 - 1, cpa_hz - knuckle_d / 2 - 1], [body_w / 2 + cpa_hw / 2, cpa_hy1, cpa_hz + cpa_band]);
+    cpa_box([body_w / 2 - cpa_hw / 2, head_y0 - 0.01, cpa_hz - knuckle_d / 2 - 1], [body_w / 2 + cpa_hw / 2, hinge_y + knuckle_d / 2 + 0.01, cpa_hz + cpa_band]);
 }
 module cpa_knuckle() intersection() {
     arm_swivel(true, 0);
-    // From 0.01 over the drum's top face: cut exactly at it, the face would be left as a sheet.
-    cpa_box([body_w / 2 - swivel_d / 2 - 1, hinge_y - swivel_d / 2, cpa_top + swivel_h + 0.01], [body_w / 2 + swivel_d / 2 + 1, hinge_y + swivel_d / 2, cpa_hz + knuckle_d]);
+    cpa_box([body_w / 2 - cpa_kw / 2, cpa_ky[0], cpa_hz - bar_drop - 0.01], [body_w / 2 + cpa_kw / 2, cpa_ky[1] + 0.01, cpa_hz + knuckle_d / 2 + 0.01]);
 }
 module cpa_cup() intersection() {
     arm_slide(true);
-    cpa_box([body_w / 2 - cpa_r, hinge_y - cpa_r, cpa_top - cpa_floor], [body_w / 2 + cpa_r, hinge_y + cpa_r, cpa_top + swivel_h + 1]);
+    cpa_box([body_w / 2 - cpa_r, swivel_y - cpa_r, cpa_top - cpa_floor], [body_w / 2 + cpa_r, swivel_y + cpa_r, cpa_top + swivel_h + 1]);
 }
 module cpa_drum() intersection() {
+    // The drum, rib and peg, cut where the bar starts.
     arm_swivel(true, 0);
-    cpa_box([body_w / 2 - swivel_d / 2 - 1, hinge_y - swivel_d / 2 - 1, cpa_top - 3], [body_w / 2 + swivel_d / 2 + 1, hinge_y + swivel_d / 2 + 1, cpa_top + swivel_h]);
+    cpa_box([body_w / 2 - swivel_d / 2 - 1, swivel_y - swivel_d / 2 - 1, cpa_top - 3], [body_w / 2 + swivel_d / 2 + 1, swivel_y + swivel_d / 2 + 1, cpa_hz - bar_drop - 0.01]);
 }
 // A label engraved mark_depth into the face it is placed on (the text's +Z out of the face).
 module cpa_mark(s) translate([0, 0, -mark_depth]) linear_extrude(mark_depth + 1) text(s, size = coupon_text, font = font, halign = "center", valign = "center");
@@ -1672,16 +1811,13 @@ module cpa_mark(s) translate([0, 0, -mark_depth]) linear_extrude(mark_depth + 1)
 module cpa_channel_print() translate([-(body_w / 2 - arm_w / 2), -spine_y0, -cpa_z0]) cpa_channel();
 module cpa_slide_print() difference() {
     translate([-(body_w / 2 - slide_w / 2), cpa_z1, -slide_y0]) rotate([90, 0, 0]) cpa_slide();
-    translate([slide_w * 0.8, cpa_h / 2, slide_t]) cpa_mark("S");
+    translate([slide_w * 0.85, cpa_h / 2, slide_t]) cpa_mark("S");
 }
-module cpa_head_print() difference() {
-    translate([-(body_w / 2 - cpa_hw / 2), cpa_hy1, cpa_hz + cpa_band]) rotate([180, 0, 0]) cpa_head();
-    // On the head's back face, now facing +Y, midway up the band under the swivel's knuckle.
-    translate([cpa_hw / 2, cpa_hy1 - (hinge_y - head_t / 2), (cpa_band - (head_cz_off - head_d / 2)) / 2]) rotate([90, 0, 180]) cpa_mark("H");
-}
-module cpa_knuckle_print() translate([-(body_w / 2 - swivel_d / 2 - 1), -(hinge_y - swivel_d / 2), -(cpa_top + swivel_h + 0.01)]) cpa_knuckle();
-module cpa_cup_print() translate([-(body_w / 2 - cpa_r), -(hinge_y - cpa_r), -(cpa_top - cpa_floor)]) cpa_cup();
-module cpa_drum_print() translate([-(body_w / 2 - swivel_d / 2 - 1), hinge_y + swivel_d / 2 + 1, cpa_top + swivel_h]) rotate([180, 0, 0]) cpa_drum();
+// On its back face, as the head prints.
+module cpa_head_print() translate([-(body_w / 2 - cpa_hw / 2), cpa_hz + cpa_band, -head_y0]) rotate([90, 0, 0]) cpa_head();
+module cpa_knuckle_print() translate([-(body_w / 2 - cpa_kw / 2), cpa_ky[1], cpa_hz + knuckle_d / 2]) rotate([180, 0, 0]) cpa_knuckle();
+module cpa_cup_print() translate([-(body_w / 2 - cpa_r), -(swivel_y - cpa_r), -(cpa_top - cpa_floor)]) cpa_cup();
+module cpa_drum_print() translate([-(body_w / 2 - swivel_d / 2 - 1), swivel_y + swivel_d / 2 + 1, cpa_hz - bar_drop - 0.01]) rotate([180, 0, 0]) cpa_drum();
 module cpa_place(row, col) translate([col == 0 ? 0 : cpa_fp[2 * row][0] + coupon_gap, cpa_row_y[row], 0]) children();
 
 module arm_fit_coupon() {
@@ -1973,18 +2109,38 @@ module fit_report() {
     // Folding arm
     ball = [-1400, 0];                                   // [Y, Z]: the ball, 1.4 m in front of the unit
     function line_z_at(y, t) = let(l = lens_pos(t)) l[2] + (ball[1] - l[2]) * (y - l[1]) / (ball[0] - l[1]);
+    // The phone's back, where it crosses height z at a tilt (yaw 0): its Y.
+    function phone_back_y_at(z, t) = let(hz = hinge_z(true), d = (z - hz + (phone_y - hinge_y) * sin(t)) / cos(t) - head_cz_off)
+        phone_back_at(d, t)[0];
+    top_open = slide_z0(true) + slide_len;
+    cup_r = (swivel_d + 3.2) / 2;
     arm_lines = !arm ? [] : [
         for (tt = [tilt_steps[0], tilt_default, tilt_steps[len(tilt_steps) - 1]])
             chk(str("phone's lower edge over unit, ", tt, " deg"), phone_bottom(tt)[1] - (body_h + sight_h)),
         chk("lens sightline over the unit (front)", line_z_at(0, tilt_default) - (body_h + sight_h)),
         chk("lens sightline over the unit (rear) ", line_z_at(body_d, tilt_default) - (body_h + sight_h)),
+        // Tilted back, the phone's lower end swings toward the unit, past the slide (Y) and over the swivel's cup.
+        for (tt = [tilt_default, tilt_steps[len(tilt_steps) - 1]])
+            chk(str("phone clear of the slide, ", tt, " deg      "), phone_bottom(tt)[0] - (slide_y0 + slide_t) - 0.3),
+        chk("phone clear of the swivel's cup, 35 ", phone_back_y_at(top_open + swivel_h + 0.7 - 1.2, 35) - (swivel_y + cup_r) - 0.3),
+        // Turned yaw_max as well, the lower edge comes nearest the slide at the slide's edge.
+        let(t = tilt_steps[len(tilt_steps) - 1], q = yaw_max, a = swivel_y - phone_bottom(t)[0], h = slide_w / 2)
+            chk(str("phone clear of the slide, ", t, " & ", q, " deg  "), swivel_y + ((-h - a * sin(q)) * tan(q) - a * cos(q)) - (slide_y0 + slide_t) - 0.3),
         chk("slide still 12 mm in the spine, open", (arm_top - slide_z0(true)) - 12),
         chk("spine below the unit's top edge     ", body_h - arm_top),
-        chk("folded head inside the dock (Z)     ", (hinge_z(false) - knuckle_d / 2 - head_d) - 0),
-        chk("folded head clear of pocket wall    ", (pod_pocket_y0 - pod_wall) - (hinge_y + head_t / 2) - 0.3),
+        chk("folded head inside the dock (Z)     ", (hinge_z(false) - head_cz_off - head_d / 2) - 1),
+        chk("folded head clear of pocket wall    ", (pod_pocket_y0 - pod_wall) - (hinge_y + knuckle_d / 2) - 0.3),
         chk("folded head inside the lid's width  ", (body_w - head_d) / 2 - 2),
-        chk("phone's back clear of the knuckles  ", (head_t / 2 + phone_standoff + 0.2) - knuckle_d / 2 - 0.3),
-        chk("folded head's raised face to spine  ", (hinge_y - head_t / 2 - phone_standoff) - spine_y1 - 0.3),
+        chk("phone's back clear of swivel knuckle", (phone_y - hinge_y) - knuckle_d / 2 - 0.3),
+        chk("folded head's raised face to the cup", (hinge_y - (head_y1 + phone_standoff - hinge_y)) - (swivel_y + cup_r) - 0.3),
+        // 0.3 mm gaps, the least that prints apart: the bar is as low as the folded ring and the cup's rim allow.
+        chk("folded head's ring under swivel bar ", (head_cz_off - (ring_od + 2.5) / 2) - bar_drop - 0.3),
+        chk("swivel bar over the cup's rim       ", (swivel_h + knuckle_d / 2 - 1 - bar_drop) - (swivel_h + 0.7 - 1.2) - 0.3),
+        // The swivel knuckle's farthest point is its chamfer's corner.
+        chk("swivel knuckle in the head's relief ", relief_r - norm([knuckle_d / sqrt(2) - knuckle_d / 2, knuckle_d / 2]) - 0.3),
+        chk("tilt nub clear of the bore          ", (pin_d / 2 + pin_clear + 0.35) - (pin_d / 2 + pin_clear) - 0.3),
+        chk("tilt grooves deeper than the nub    ", tilt_leaf[3] - tilt_leaf[2] - 0.1),
+        chk("spine notch over the tab and cup    ", spine_notch / 2 - 6.95 - 0.45),
         chk("pod pocket walls hold half the pod  ", pod_pocket[2] - 26 / 2),
         chk("pod pocket over the pod, a side     ", (pod_pocket[0] - pp_size[0]) / 2),
         chk("arm fit coupon inside 80 x 60 plate ", min(80 - cpa_plate[0], 60 - cpa_plate[1])),
@@ -1996,7 +2152,7 @@ module fit_report() {
         // open arm: masses are estimates (unit with its cell and boards about
         // 150 g at mid-depth; dock and arm about 45 g).
         rear = pod_pocket_y0 + pp_out[1] - pod_wall;
-        cg_phone = hinge_y + (knuckle_d / 2 + head_d / 2 - 1) * sin(tilt_default) + (head_t / 2 + phone[2] / 2) * cos(tilt_default);
+        cg_phone = hinge_y + head_cz_off * sin(tilt_default) + (phone_y - hinge_y + phone[2] / 2) * cos(tilt_default);
         restoring = 150 * (rear - body_d / 2) + 45 * (rear - 25);
         tipping = 240 * (cg_phone - rear);
         echo(str("  info  open arm, ", tilt_default, " deg: lens at [Y, Z] ", lens_pos(tilt_default), " mm; phone's centre ",
@@ -2005,7 +2161,14 @@ module fit_report() {
                  str("; tipping moment ", tipping, " g.mm against ", restoring)));
         echo(str("  info  arm fit coupon: plate ", cpa_plate, " mm; channel ", [ch_w, ch_t], " over the slide's ", [slide_w, slide_t],
                  " (", slide_clear, " a side); hinge bores ", pin_d + 2 * pin_clear, " for the ", pin_d, " mm pin; drum ", swivel_d,
-                 ", notches every ", yaw_step, " deg; tilt grooves at ", tilt_steps, " deg"));
+                 ", notches every ", yaw_step, " deg; tilt grooves at ", tilt_groove_angles(), " deg"));
+        // The leaves are cantilevers fixed where the slot meets the head's edge.
+        lf_l = (head_cz_off - sqrt(pow(head_d / 2, 2) - pow(6.5 + tilt_leaf[0], 2))) + (knuckle_d / 2 - 0.5);
+        echo(str("  info  tilt detent: leaf ", tilt_leaf[0], " thick, about ", lf_l, " mm free; the nub presses ", tilt_leaf[2],
+                 " mm into ", tilt_leaf[3], " mm grooves: bending strain about ", 100 * 3 * tilt_leaf[0] * tilt_leaf[2] / (2 * lf_l * lf_l),
+                 " % (PETG yields near 4 %); holding torque untested"));
+        echo(str("  info  slide detent: bump on a tongue ", sl_tongue[0], " x ", sl_tongue[1], " x ", sl_tongue[2],
+                 " mm; 0.6 mm of deflection is a bending strain of about ", 100 * 3 * sl_tongue[2] * 0.6 / (2 * sl_tongue[1] * sl_tongue[1]), " %"));
     }
     echo(str("  info  radar window centre ", [win_cx, win_zb + top_on_face / 2],
              ", boresight ", win_tilt, " deg up, skin ", win_t, " mm"));

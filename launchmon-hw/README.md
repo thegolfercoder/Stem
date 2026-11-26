@@ -77,9 +77,10 @@ What sets it apart, for little or no added cost:
 - **The radome is the one colour choice:** smoke, ice or amber, on a matte black
   body.
 
-All printed parts for both units come to about 87 g and 5.1 hours, an estimated
-$3.98 a kit on your own printer or $9.90 at a print-farm rate, within the
-$5-10 budget (`cad/stl/cost_report.txt`).
+All printed parts for both units come to about 88 g and 5.2 hours, an estimated
+$4.02 a kit on your own printer or $9.97 at a print-farm rate, within the
+$5-10 budget (`cad/stl/cost_report.txt`). Every part prints as exported with no
+supports (`cad/stl/print_report.txt`), and Bambu Lab plates are in `cad/bambu/`.
 
 ## Where it departs from the brief, and why
 
@@ -118,9 +119,10 @@ $5-10 budget (`cad/stl/cost_report.txt`).
   over a post on each side, under the shaft; it is reusable, and zip ties
   still fit as a fallback. Its hold has not been pull-tested.
 - **The phone films from the unit, on a folding MagSafe arm** (owner's
-  decision). At the default 25° the CAD puts the phone's lower edge 8.5 mm
-  clear of the unit, the lens sightline over 100 mm clear of it, and the
-  phone's centre over the base. The phone sits low, about 1.4 m behind the
+  decision). At the default 25° the CAD puts the phone's lower edge 5.3 mm
+  above the unit and behind it, the lens sightline over 100 mm clear of it, and
+  the phone's centre over the base. The tilt hinge sits on a bar 21 mm behind
+  the swivel, so the tilted phone's lower edge swings clear of the slide. The phone sits low, about 1.4 m behind the
   ball, so a swivel at the top of the slide turns the head toward the golfer:
   ±25° in 5° detents, 20° by default (+ for a right-hander, − for a
   left-hander). That lets the phone's normal 1x lens frame the golfer; the
@@ -147,9 +149,11 @@ Each of these is also explained where it happens, in the CAD and the docs.
 |---|---|
 | Both OpenSCAD scripts render in OpenSCAD 2021.01, every part | Yes; STLs in `cad/stl/` |
 | Clearances in the fit report | All `ok`. Tightest: 0.07 mm (window bevel inside the R12 corner), 0.3 mm (radar posts on their pads, the folded phone head clear of the pod pocket's wall, the pod strap's latch) |
-| Phone on the open arm, 25° | From the fit report, with a 147.6 mm stand-in phone: lower edge 8.5 mm over the unit, lens sightline over 100 mm clear, centre over the base. Not checked on a print |
+| Phone on the open arm, 25° | From the fit report, with a 147.6 mm stand-in phone: lower edge 5.3 mm over the unit, lens sightline over 100 mm clear, centre over the base. Not checked on a print |
+| Arm parts against each other, every pose | `cad/check_clash.py`: each moving part intersected with everything it must clear, stored, sliding, folding and open at every tilt and swivel step, MagSafe and clamp heads (`cad/stl/clash_report.txt`). Clear, except by design the two sprung detents between their stops. It does not measure clearance; the fit report does |
+| Every part prints as exported, no supports | `cad/check_print.py` (`cad/stl/print_report.txt`): one closed solid each, no overhang over 45°, no bridge over 11 mm, no ledge over 1.2 mm. Two named exceptions on the pod base (a 22 mm bridge inside its far end; the USB-C recess's frame). Geometry, not a slice |
 | Radar window: 1.0 mm radome, 15° tilt, module parallel behind it | Confirmed on a rendered cutaway |
-| Printed-part cost | Estimated from the STLs (`cost_report.py`): 87 g, 5.1 h, $3.98 a kit on your own printer, $9.90 at $1.50/h (within $10). Not yet sliced |
+| Printed-part cost | Estimated from the STLs (`cost_report.py`): 88 g, 5.2 h, $4.02 a kit on your own printer, $9.97 at $1.50/h (within $10). Not yet sliced |
 | Firmware: C++ syntax, `-Wall -Wextra` | Clean, against stub headers: ground 0.5, pod 0.3 (see `firmware/README.md` for what that does not prove) |
 | Part sizes against datasheets and listings | Reviewed in [docs/hardware_review.md](docs/hardware_review.md); sellers disagree on several, so **measure before printing**: the 1500 mAh cell (up to 52 x 34.5 x 8.3 mm), TP4056 length and board thickness, MT3608 overall height (at most 8 mm), the slide switch and its lever, the radar module, the SuperMini's board thickness, and the pod's cell with its protection PCB (up to about 22 mm) and charger board (build instructions, section 0) |
 | I/Q skew-correction arithmetic | Checked on synthetic tones: about 62 dB image rejection |

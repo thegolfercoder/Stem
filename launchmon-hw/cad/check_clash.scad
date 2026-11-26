@@ -18,15 +18,20 @@ lower = 0;               // 0..1: with open = true, the arm lowered this fractio
 head_kind = "magsafe";   // [magsafe, clamp]: which head "head" means
 
 travel = slide_z0(true) - slide_z0(false);
+in_groove = !open || max([for (g = tilt_groove_angles()) g == tilt ? 1 : 0]) == 1;
 
 module moving() translate([0, 0, open ? -lower * travel : 0]) children();
 
 module one(n) {
     if (n == "base")   dock_base();                              // dock base: plate, spine, pod pocket
     if (n == "unit")   { envelope(); shell(); lid(); }           // the ground unit's closed body and what stands on it
-    if (n == "slide")  moving() arm_slide(open);
+    // Between its stops the slide's bump presses into the spine's rear wall by design
+    // (it is on a sprung tongue): the travel poses leave it out.
+    if (n == "slide")  moving() arm_slide(open, bump = lower == 0);
     if (n == "swivel") moving() arm_swivel(open, yaw);
-    if (n == "head")   moving() { if (head_kind == "clamp") arm_clamp(open, tilt, yaw); else arm_head(open, tilt, yaw); }
+    // Between tilt detents the head's nubs press into the swivel knuckle's end faces by
+    // design (they are on sprung leaves): poses off a groove leave them out.
+    if (n == "head")   moving() { if (head_kind == "clamp") arm_clamp(open, tilt, yaw, nubs = in_groove); else arm_head(open, tilt, yaw, nubs = in_groove); }
     if (n == "jaw")    moving() arm_clamp_jaw(open, tilt, yaw);  // the clamp head's sliding jaw, at the stand-in phone's width
     if (n == "phone")  moving() phone_ghost(tilt, yaw);          // stand-in phone on the open head
 }

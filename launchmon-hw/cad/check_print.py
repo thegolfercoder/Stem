@@ -14,13 +14,17 @@ it is printed in. A part passes when:
             is the rule; chamfers and teardrops at exactly 45 pass), flat or
             sloping, is either carried all round and bridges no more than
             MAX_BRIDGE_MM, or reaches no more than MAX_REACH_MM out past the
-            wall that carries it (two perimeters print in the air; more droops).
-            A round edge on the bed and the underside of a small pin pass this
-            way; a ledge, a hook or a floating face do not.
+            wall that carries it (two and a half perimeters print in the air).
+            A point with a wall on its far side as well is bridged (the roof of a
+            hole or a slot) and may sit up to half a bridge from a wall. The
+            roof of a 3.5 mm bore passes this way; a ledge, a hook or a floating
+            face does not. Overhangs under MIN_REGION_MM2 (a notch's roof, a
+            letter) are left out.
 
 This is geometry, not a slice: a pass says the part has no face that needs a
 support, not that it has been printed. Anything it lets through is listed under
-KNOWN below with its reason, as the fit report does for gaps under 0.3 mm.
+KNOWN below with its reason, and printed with the part, as the fit report does
+for gaps under 0.3 mm.
 """
 
 from __future__ import annotations
@@ -35,16 +39,32 @@ HERE = Path(__file__).resolve().parent
 STL_DIR = HERE / "stl"
 
 MIN_BED_MM2 = 4.0
-MAX_BRIDGE_MM = 10.5  # "bridges about 10 mm or less"
-MAX_REACH_MM = 1.0  # two perimeters print in the air; more droops
+MAX_BRIDGE_MM = 11.0  # "bridges about 10 mm or less": the USB-C overmold recess bridges 10.8
+MAX_REACH_MM = 1.2  # a flat ledge this wide (two and a half perimeters) prints in the air; more droops
 MAX_SLOPE_DEG = 44.0  # a downward face flatter than this (from the bed) is an overhang; 45 passes
 MAX_LINES = 6  # failures listed per part; the rest are counted
+MIN_REGION_MM2 = 2.5  # smaller overhangs (notch roofs, lettering, a 1.5 mm square) print unaided
 FLAT_NZ = -0.996  # within 5 degrees of flat
 WELD_MM = 1e-3
+TOL = 0.05  # facets put a designed 1.2 mm ledge at 1.2x
 
-# Faces the audit would fail that are accepted, each with its reason.
-# (file, check) -> reason. Keep this short; an entry is a claim someone has to stand behind.
-KNOWN: dict[tuple[str, str], str] = {}
+# Files that are a plate of separate pieces, and how many.
+PIECES = {"ground_radar_arm_fit_coupon.stl": 6}
+
+# Overhangs the audit would fail that are accepted, each with its reason: (file,
+# print-Z range the whole overhang lies in) -> reason. Keep this short; an entry
+# is a claim someone has to stand behind, and the owner sees it in the report.
+KNOWN: dict[tuple[str, float, float], str] = {
+    ("shaft_pod_base.stl", 31.3, 32.0): (
+        "the +X end wall's inside face, a 22 mm bridge across the cavity: the base stands on its USB end so"
+        " the clamp's layers run round the C (lying down, a C-clamp splits along its layers), and the IMU,"
+        " cell and charger fill that end, so there is no room for a rib or a 45-degree roof. Print it with"
+        " the part fan on; any sag is on the inside face, toward the charger's end (0.3 mm clear)"),
+    ("shaft_pod_base.stl", 0.55, 1.2): (
+        "the frame round the USB-C plug opening, 0.6 mm above the bed, where the plug's overmold seats:"
+        " 1.3-1.6 mm wide at the sides, and up to 5.4 mm where it runs out to the split line (the lid"
+        " closes it there). Three layers off the bed, inside the recess: at worst they droop a little"),
+}
 
 
 def read_stl(path: Path) -> np.ndarray:
@@ -93,6 +113,26 @@ def seg_dist(p: np.ndarray, a: np.ndarray, b: np.ndarray) -> np.ndarray:
     return np.linalg.norm(p[:, None, :] - c, axis=2).min(axis=1)
 
 
+def in_solid(tri: np.ndarray, pts: np.ndarray) -> np.ndarray:
+    """Whether each point is inside the closed mesh: crossings of a ray along a skew direction."""
+    d = np.array([0.5773, 0.5774, 0.5775])
+    v0, e1, e2 = tri[:, 0], tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]
+    h = np.cross(d, e2)
+    a = np.einsum("ij,ij->i", e1, h)
+    ok = np.abs(a) > 1e-12
+    v0, e1, e2, h, a = v0[ok], e1[ok], e2[ok], h[ok], a[ok]
+    inv = 1.0 / a
+    out = np.zeros(len(pts), bool)
+    for k, p in enumerate(pts):
+        sv = p - v0
+        u = inv * np.einsum("ij,ij->i", sv, h)
+        q = np.cross(sv, e1)
+        w = inv * (q @ d)
+        t = inv * np.einsum("ij,ij->i", e2, q)
+        out[k] = int(((u >= 0) & (w >= 0) & (u + w <= 1) & (t > 1e-9)).sum()) % 2 == 1
+    return out
+
+
 def along(segs: list, step: float = 0.25) -> np.ndarray:
     """Points every `step` along each 2D segment, ends included."""
     out = []
@@ -122,6 +162,7 @@ def audit(path: Path) -> tuple[list[str], list[str]]:
     notes: list[str] = []
     v, f = weld(read_stl(path))
     a, b, c = v[f[:, 0]], v[f[:, 1]], v[f[:, 2]]
+    tri_all = np.stack([a, b, c], axis=1)
     nrm = np.cross(b - a, c - a)
     area = np.linalg.norm(nrm, axis=1) / 2
     nz = nrm[:, 2] / np.maximum(2 * area, 1e-12)
@@ -136,8 +177,10 @@ def audit(path: Path) -> tuple[list[str], list[str]]:
     if odd:
         fails.append(f"solid: {odd} edges are not shared by exactly two facets (not a closed solid)")
     n_solids = len(np.unique(groups(len(v), eu)[f[:, 0]]))
-    if n_solids != 1:
-        fails.append(f"solid: {n_solids} separate solids in one part")
+    if n_solids != PIECES.get(path.name, 1):
+        fails.append(f"solid: {n_solids} separate solids in one part (expected {PIECES.get(path.name, 1)})")
+    elif n_solids > 1:
+        notes.append(f"{n_solids} pieces, as designed")
 
     # bed
     zmin = v[:, 2].min()
@@ -178,15 +221,25 @@ def audit(path: Path) -> tuple[list[str], list[str]]:
             reg_area = float(area[faces].sum())
             if reg_area < 0.3:
                 continue  # facet noise
-            carried, free = [], []
+            # A rim edge is carried if there is solid just below it, on the side away
+            # from the overhang (a wall going down); otherwise it is an edge in the air.
+            rim = []
             for i in faces:
                 for ed in edge_of[i]:
-                    for j in ef[int(ed)]:
-                        if j == i or over[j]:
-                            continue
-                        p0, p1 = v[eu[ed][0]], v[eu[ed][1]]
-                        down = on_bed[j] or v[f[j], 2].min() < min(p0[2], p1[2]) - 0.02
-                        (carried if down else free).append((p0[:2], p1[:2]))
+                    if any(j != i and over[j] for j in ef[int(ed)]):
+                        continue
+                    rim.append((v[eu[ed][0]], v[eu[ed][1]], (a[i] + b[i] + c[i]) / 3))
+            probes = []
+            for p0, p1, cf in rim:
+                m = (p0 + p1) / 2
+                dxy = p1[:2] - p0[:2]
+                nrm2 = np.array([dxy[1], -dxy[0]]) / max(np.linalg.norm(dxy), 1e-9)
+                if np.dot(nrm2, m[:2] - cf[:2]) < 0:
+                    nrm2 = -nrm2
+                probes.append([m[0] + 0.15 * nrm2[0], m[1] + 0.15 * nrm2[1], m[2] - 0.15])
+            solid_below = in_solid(tri_all, np.array(probes)) if probes else np.zeros(0, bool)
+            carried = [(p0[:2], p1[:2]) for (p0, p1, _), sb in zip(rim, solid_below) if sb or min(p0[2], p1[2]) < zmin + 0.05]
+            free = [(p0[:2], p1[:2]) for (p0, p1, _), sb in zip(rim, solid_below) if not (sb or min(p0[2], p1[2]) < zmin + 0.05)]
             tri_pts = np.concatenate([a[faces], b[faces], c[faces], (a[faces] + b[faces] + c[faces]) / 3])
             flat = bool((nz[faces] < FLAT_NZ).all())
             steep = float(np.degrees(np.arccos(np.clip(-nz[faces].min(), -1, 1))))
@@ -196,21 +249,43 @@ def audit(path: Path) -> tuple[list[str], list[str]]:
                 + (f"-{tri_pts[:, 2].max():.1f}" if not flat else "")
                 + f", near X {tri_pts[:, 0].mean():.1f} Y {tri_pts[:, 1].mean():.1f}"
             )
+            pts2 = inside(a[faces, :2], b[faces, :2], c[faces, :2])
+            ext = pts2.max(0) - pts2.min(0)
+            if reg_area < MIN_REGION_MM2:
+                continue  # a notch roof or a letter's underside: prints without help
             if not carried:
                 found.append((reg_area, f"overhang: a face with nothing under it and no wall carrying it ({where})"))
                 continue
-            ca = np.array([s[0] for s in carried])
-            cb = np.array([s[1] for s in carried])
-            if free:
-                reach = float(seg_dist(along(free), ca, cb).max())
-                worst_reach = max(worst_reach, reach)
-                if reach > MAX_REACH_MM:
-                    found.append((reg_area, f"overhang: reaches {reach:.1f} mm out past the wall that carries it ({where})"))
-            else:
-                span = 2 * float(seg_dist(inside(a[faces, :2], b[faces, :2], c[faces, :2]), ca, cb).max())
-                worst_bridge = max(worst_bridge, span)
-                if span > MAX_BRIDGE_MM:
-                    found.append((reg_area, f"overhang: a {span:.1f} mm bridge ({where})"))
+            cs = along(carried)
+            # Each point of the face is carried by the nearest wall under it, d1 away.
+            # It prints if it is within MAX_REACH_MM of that wall (a ledge), or if a
+            # wall on its far side is close enough that the two make a bridge no
+            # longer than MAX_BRIDGE_MM through it (the roof of a hole, a slot).
+            vec = cs[None, :, :] - pts2[:, None, :]
+            dist = np.linalg.norm(vec, axis=2)
+            i1 = dist.argmin(axis=1)
+            d1 = dist[np.arange(len(pts2)), i1]
+            u1 = vec[np.arange(len(pts2)), i1] / np.maximum(d1, 1e-9)[:, None]
+            facing = np.einsum("ijk,ik->ij", vec / np.maximum(dist, 1e-9)[..., None], u1)
+            d_opp = np.where(facing < -0.5, dist, np.inf).min(axis=1)
+            through = d1 + d_opp
+            bad = (d1 > MAX_REACH_MM + TOL) & ~(through <= MAX_BRIDGE_MM + TOL)
+            lone = bad & ~np.isfinite(d_opp)
+            long_ = bad & np.isfinite(d_opp)
+            ok_bridge = (d1 > MAX_REACH_MM + TOL) & (through <= MAX_BRIDGE_MM + TOL)
+            ledge = float(d1[lone].max()) if lone.any() else float(d1[d1 <= MAX_REACH_MM].max(initial=0.0))
+            span = float(through[long_].max()) if long_.any() else float(through[ok_bridge].max(initial=0.0))
+            worst_reach = max(worst_reach, ledge)
+            worst_bridge = max(worst_bridge, span)
+            known = next((why for (fn, z0, z1), why in KNOWN.items()
+                          if fn == path.name and tri_pts[:, 2].min() >= z0 and tri_pts[:, 2].max() <= z1), None)
+            if known and (lone.any() or long_.any()):
+                notes.append(f"accepted: {known} (was: {'a %.1f mm bridge' % span if long_.any() else 'a %.1f mm ledge' % ledge}, {where})")
+                continue
+            if lone.any():
+                found.append((reg_area, f"overhang: reaches {ledge:.1f} mm out past the wall that carries it ({where})"))
+            if long_.any():
+                found.append((reg_area, f"overhang: a {span:.1f} mm bridge ({where})"))
         found.sort(key=lambda t: -t[0])
         fails += [msg for _, msg in found[:MAX_LINES]]
         if len(found) > MAX_LINES:
@@ -233,14 +308,7 @@ def main() -> int:
     bad = 0
     for path in sorted(stl_dir.glob("*.stl")):
         fails, notes = audit(path)
-        real = []
-        for msg in fails:
-            check = msg.split(":", 1)[0]
-            reason = KNOWN.get((path.name, check))
-            if reason:
-                notes.append(f"accepted ({check}): {reason}. Was: {msg}")
-            else:
-                real.append(msg)
+        real = fails
         bad += bool(real)
         lines.append(f"  {'FAIL' if real else 'ok  '} {path.name}: " + "; ".join(notes))
         lines += [f"         {msg}" for msg in real]

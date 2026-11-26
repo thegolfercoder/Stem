@@ -82,10 +82,30 @@ Each STL is already in its print orientation.
 
 ### Part-specific notes
 
+Every STL is exported in its print orientation and checked by
+`cad/check_print.py` (report: `cad/stl/print_report.txt`): one closed solid,
+flat on the bed, no face steeper than 45 degrees from vertical over air, no
+bridge over 11 mm, no flat ledge over 1.2 mm. Two places on the pod base are
+accepted exceptions, named there and below. That is geometry, not a slice:
+nothing has been printed yet.
+
+**Print the fit coupons first** (`ground_radar_arm_fit_coupon.stl` in PETG,
+`shaft_pod_strap_fit_coupon_post.stl` in PETG and
+`shaft_pod_strap_fit_coupon_latch_TPU.stl` in TPU; about 20 minutes together).
+They are cut from the real parts, so every fit is the one the full print gets:
+the slide in a slice of its channel (it should click into the detent hole and
+hold), the swivel's drum in its cup (clicks every 5 degrees), the head's
+knuckles on the swivel's knuckle with a 3 mm pin (clicks at each tilt step and
+holds the head's weight), and the strap's latch on a pod post. If a fit is
+tight or loose on your printer, change its clearance in the script and print
+the coupon again before the four-hour kit.
+
 **Ground shell (`ground_radar_shell.stl`).** Prints front face down on the
 textured sheet, open back up, with **no supports**. The window is an open
 pocket in the front face; the radome that closes it is a separate part. The
-ledge the radome sits on is a 1.2 mm overhang, and the slicer bridges it.
+ledge the radome sits on is a 1.2 mm overhang, and the slicer bridges it. The
+radar module's four posts stand on pads that grow out of the window's side
+walls at 45 degrees, so they print without support too.
 
 **Radome (`ground_radar_radome.stl`).** Flat, **outer face up**, with
 **ironing** on the top surface: the one smooth, slightly glossy face on a
@@ -104,44 +124,65 @@ The sight's rear notch blade stands on its top edge.
 
 **Dock base (`ground_radar_dock_base.stl`).** As it sits, no supports. The
 arm's spine rises from it behind the lid's centre, with the slide's channel
-open at the top and two detent holes in its rear wall; the pod pocket sits
-behind the spine. Check the channel is clear of stringing all the way down
-before fitting the slide.
+open at the top, a notch in its rear wall for the stored slide's tab and two
+detent holes below it; the pod pocket sits behind the spine, where the base
+narrows to the pocket's width. Check the channel is clear of stringing all the
+way down before fitting the slide.
 
-**Arm slide (`ground_radar_arm_slide.stl`).** Flat, with the tab that holds
-the swivel's cup up, no supports. Check it slides the full length of the
+**Arm slide (`ground_radar_arm_slide.stl`).** Flat, front face down, with the
+tab that holds the swivel's cup up, no supports. Its detent bump is on a
+tongue cut free in the plate, so it springs into the spine's holes and holds
+the open arm up with a phone on it. Check it slides the full length of the
 spine's channel (0.3 mm clearance each side) and clicks at both ends. If it is
-tight, sand its faces rather than forcing it; if it is loose, the clicks will
-be weak. Clear any stringing out of the cup and its peg hole.
+tight, sand its faces rather than forcing it; keep the tongue free (clear its
+slot of stringing). Clear any stringing out of the cup and its peg hole.
 
-**Arm swivel (`ground_radar_arm_swivel.stl`).** Upright as it sits, the peg
-under the drum on the bed, no supports. Check the drum turns in the slide's
-cup (0.2 mm clearance a side) and clicks at each 5° notch, and that the peg
-drops into the hole in the cup's floor. A stiff turn: sand the drum, not the
-detent rib.
+**Arm swivel (`ground_radar_arm_swivel.stl`).** Upside down, on the flat top
+of its bar, the drum and peg up, no supports. The bar carries the tilt hinge
+21 mm behind the drum: the phone hangs 42 mm below the hinge, and there its
+lower edge clears the slide at every tilt and turn. Check the drum turns in
+the slide's cup (0.2 mm clearance a side) and clicks at each 5° notch, and
+that the peg drops into the hole in the cup's floor. A stiff turn: sand the
+drum, not the detent rib. Keep the grooves in the knuckle's two end faces
+clean: they are the tilt detents.
 
 **Arm head (`ground_radar_arm_head_magsafe.stl`).** On its plain face on the
 textured sheet, ring pocket up, no supports: the face that shows when the arm
-is folded is the one on the bed. Check the magnet ring drops into its pocket
+is folded is the one on the bed, and its knuckles stand on flat feet flush
+with it. The inner end of each knuckle is a leaf, cut free by a slot, with a
+small ridge that clicks into the swivel knuckle's grooves; clear the slots of
+stringing so the leaves can flex. Check the magnet ring drops into its pocket
 and sits flush or very slightly below the surface.
 
 **Clamp head, instead of the MagSafe head (`ground_radar_arm_head_clamp.stl`
 and `ground_radar_arm_clamp_jaw.stl`).** Only for a phone without MagSafe.
-Both flat on their back faces, jaws up, no supports. Check the sliding jaw's
-sleeve slides along the cross bar and that its pawl clicks over the saw teeth
-one way and holds the other. Not yet printed: how firmly the pawl holds is
+The head prints flat on its back face, the jaw upside down on its sleeve's top
+face and pawl, no supports; the jaws' lips are 45-degree undercuts, so they
+print without support and still hook the screen's edge (a phone whose
+screen-side edge is rounded 1.5 mm or more). Check the sliding jaw's sleeve
+slides along the cross bar and that its pawl clicks over the saw teeth one way
+and holds the other. Not yet printed: how firmly the pawl and the lips hold is
 untested.
 
-**Arm pin (`ground_radar_arm_pin.stl`).** Flat. A printed 3 mm pin; print a
-spare. A 3 mm steel pin or a length of 3 mm rod cut to 28 mm can replace it.
+**Arm pin (`ground_radar_arm_pin.stl`).** Flat, on a 0.2 mm flat along its
+underside. A printed 3 mm pin; print a spare. A 3 mm steel pin or a length of
+3 mm rod cut to 28 mm can replace it.
 
 **Pod base (`shaft_pod_base.stl`).** Prints **standing on its USB end, with
 the clamp bore vertical**. Every layer then contains a complete C, so the
 jaws flex along the layers. Printed lying down, the layers would run across
 the jaws and they would split at the root the first time they snap onto a
-shaft. Use a brim. The zip-tie tunnels and the USB port bridge without supports.
+shaft. Use a brim. The USB end's edges are cut at 45 degrees where they meet
+the bed, the second jaw's lower half grows from the saddle at 45 degrees, and
+the IMU fence's ends are carried, so nothing needs support. Two places are
+accepted exceptions (the print audit names them): the inside of the far end
+wall is a **22 mm bridge** across the cavity, which has no room for a rib, so
+print with the part fan on and check that face is clean before fitting the
+charger (it has 0.3 mm to the wall); and the frame round the USB-C opening,
+0.6 mm above the bed, prints as a short ledge.
 
-**Pod lid.** Flat, outside face down.
+**Pod lid.** Flat, outside face down. Its top edges are cut at 45 degrees where
+they meet the bed, a 1.2 mm facet along the edge.
 
 **Pod strap (`shaft_pod_strap_TPU.stl`).** **TPU 95A**, flat, outer face down,
 no supports: 1.0 mm thick, five 0.20 mm layers. Print slowly (about 20-30
@@ -277,29 +318,36 @@ The dock is the stand, the phone holder and the pod's storage in one: a base
 with a lip in front of the unit, a slim spine rising from it behind the lid's
 centre (30 x 5 mm, its top 1 mm under the unit's top edge), and a pocket for
 the club pod behind the spine. The arm is a slide that pulls up out of the
-spine, a swivel drum in a cup at the slide's top, and a round 60 mm MagSafe
-head (or the clamp head) hinged to the swivel. Folded,
-the slide is in the spine and the head hangs flat over it, plain face out:
-nothing stands above the unit. There are no screws in the dock.
+spine, a swivel drum in a cup at the slide's top with a bar 21 mm back to the
+tilt hinge, and a round 60 mm MagSafe head (or the clamp head) on that hinge.
+The hinge sits behind the swivel so that, tilted back, the phone's lower edge
+swings clear of the slide. Folded, the slide is in the spine and the head
+hangs flat behind it, plain face out, between the spine and the pod pocket;
+only the swivel's bar and knuckles stand above the unit's top edge (4 mm).
+There are no screws in the dock.
 
 1. **Magnet ring.** Check its orientation with a phone first: it should pull
    the phone in and centre it; if it repels or slides, turn it over. Glue it
    and its alignment magnet into their pockets in the head with epoxy or CA,
    and let it cure. Cover the ring with the 0.5 mm grip pad. Folded, the ring
-   sits a few millimetres behind the lid, near the MT3608: measure the
-   MT3608's output with the arm folded and open, and it should not move.
+   sits about 25 mm behind the lid: measure the MT3608's output with the arm
+   folded and open, and it should not move.
 2. **Swivel.** Drop the swivel's drum into the cup at the top of the slide,
    peg first, so the peg goes into the hole in the cup's floor and the drum's
    rib clicks into the middle (0°) notch. Leave it at 0° for now. No glue: it
    has to turn.
 3. **Hinge.** Set the swivel's middle knuckle between the head's two outer
-   knuckles and push the 3 mm pin through all three. The head should hold at
-   each detent (0, 10, 20, 25, 30, 35°); how firmly has not been tested on a
-   print yet. If the pin works loose, a drop of CA in one outer knuckle holds
-   it; keep CA off the middle knuckle, which has to turn.
+   knuckles and push the 3 mm pin through all three. The leaves on the head's
+   knuckles click into the grooves on the middle knuckle's ends: the head
+   should hold at each detent (0, 10, 20, 25, 30, 35°) and folded. The phone
+   leans back on it, so the detent carries the phone's weight; how firmly it
+   holds has not been tested on a print yet (the arm fit coupon tests it). If
+   the pin works loose, a drop of CA in one outer knuckle's outer end holds it;
+   keep CA off the leaves and the middle knuckle, which have to move.
 4. **Slide into the spine.** Push the slide down into the spine's channel from
    the top, bump toward the rear, until it clicks into the lower (stored)
-   detent. Fold the head down over the back of the spine.
+   detent; the tab at its top drops into the notch in the spine's rear wall.
+   Fold the head back and down, behind the spine.
 5. **Feet.** Stick four 8 mm silicone bumpers into the recesses under the base
    for hard floors and hitting mats.
 

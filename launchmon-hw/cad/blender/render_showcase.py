@@ -34,24 +34,26 @@ TIMED_FPS = 30
 # win_tilt) and launchmon-py config/hardware.yaml (range_from_tee_m,
 # azimuth/elevation beamwidth). Used only to place the placement-shot props.
 WIN_CX, WIN_ZB, WIN_SIZE, WIN_TILT = 76.1, 33.0, 25.4, 15.0
-DOCK_T = 2.4              # the dock base is under the unit: its underside is the floor
+DOCK_T = 2.0              # the dock base is under the unit: its underside is the floor
 RANGE_FROM_TEE = 1400.0
 BEAM_AZ_DEG, BEAM_EL_DEG = 80.0, 40.0
 
 # The folding phone arm, from script_ground_radar.scad (echoed with openscad):
-# body_w, hinge_y, hinge_z(false), slide_ext, tilt_default, yaw_default,
-# head_cz_off, head_t. The slide rises SLIDE_EXT; the swivel turns about the
-# vertical axis through [BODY_W/2, HINGE_Y]; the head turns about the X axis
-# through [*, HINGE_Y, hinge z]. Folded, the head is at 180 deg about X from
-# upright; open it is at -TILT (tilted back) and turned YAW toward the golfer.
-BODY_W, HINGE_Y, HINGE_Z_FOLDED = 96.0, 28.9, 66.2
+# body_w, swivel_y, hinge_y, hinge_z(false), slide_ext, tilt_default,
+# yaw_default, head_cz_off, phone_y - hinge_y. The slide rises SLIDE_EXT; the
+# swivel turns about the vertical axis through [BODY_W/2, SWIVEL_Y]; the head
+# turns about the X axis through [*, HINGE_Y, hinge z], at the end of the
+# swivel's bar (tilt_offset behind the swivel). Folded, the head is at 180 deg
+# about X from upright; open it is at -TILT (tilted back) and turned YAW
+# toward the golfer.
+BODY_W, SWIVEL_Y, HINGE_Y, HINGE_Z_FOLDED = 96.0, 31.3, 52.3, 65.2
 SLIDE_EXT, TILT, YAW = 46.0, 25.0, 20.0
-HEAD_CZ_OFF, HEAD_T = 33.0, 4.0
+HEAD_CZ_OFF, PHONE_BACK = 32.0, 3.6   # the phone's back, from the hinge axis (phone_y - hinge_y)
 FLIP = 180.0 - TILT        # the head's turn about the hinge, folded to open: 180 -> 335 deg
 PHONE_W, PHONE_H, PHONE_T = 71.6, 147.6, 8.3   # phone = [W, H, T]; its back 0.2 mm off the head (phone_ghost)
 # The pod's pocket in the dock base (pod_pocket, pod_pocket_y0, pod_wall): the
 # pod lies on a side face, its Y axis up, its lid toward the rear.
-POCKET_X0, POCKET_X1, POCKET_Y0, POCKET_Y1 = 30.95, 65.05, 33.5, 66.5
+POCKET_X0, POCKET_X1, POCKET_Y0, POCKET_Y1 = 30.95, 65.05, 57.6, 90.6
 
 
 def args() -> list[str]:
@@ -301,7 +303,7 @@ class Arm:
             o.animation_data_clear()
             o.location = (0, 0, 0)
         self.lift = empty("Arm slide travel", (0, 0, 0))
-        self.yaw = empty("Arm swivel axis", (BODY_W / 2, HINGE_Y, 0), self.lift)
+        self.yaw = empty("Arm swivel axis", (BODY_W / 2, SWIVEL_Y, 0), self.lift)
         self.hinge = empty("Arm hinge axis", (0, HINGE_Y, HINGE_Z_FOLDED), self.yaw)
         attach(obj("Phone arm slide"), self.lift)
         attach(obj("Phone arm swivel"), self.yaw)
@@ -344,7 +346,7 @@ class Arm:
         scr.location = (0, PHONE_T / 2 + 0.05, 0)
         bpy.ops.object.select_all(action="DESELECT")
         # Upright pose at the folded hinge, then folded through 180 deg like the head.
-        up = Matrix.Translation((BODY_W / 2, HINGE_Y + HEAD_T / 2 + 0.2 + PHONE_T / 2, HINGE_Z_FOLDED + HEAD_CZ_OFF))
+        up = Matrix.Translation((BODY_W / 2, HINGE_Y + PHONE_BACK + PHONE_T / 2, HINGE_Z_FOLDED + HEAD_CZ_OFF))
         about = Matrix.Translation((0, HINGE_Y, HINGE_Z_FOLDED))
         self.phone_rest = about @ Matrix.Rotation(math.pi, 4, "X") @ about.inverted() @ up
         ph.parent = self.hinge

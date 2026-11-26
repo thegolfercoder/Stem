@@ -40,21 +40,36 @@
   ok   sight: rear blade clear of cap   : 8.1 mm
   ok   sight: rear blade inside corner  : 3.9 mm
   ok   sight: groove starts behind ramp : 0.6 mm
-  ok   phone's lower edge over unit, 0 deg: 4.9 mm
-  ok   phone's lower edge over unit, 25 deg: 8.72264 mm
-  ok   phone's lower edge over unit, 35 deg: 12.2786 mm
-  ok   lens sightline over the unit (front): 109.107 mm
-  ok   lens sightline over the unit (rear) : 111.741 mm
+  ok   phone's lower edge over unit, 0 deg: 2.9 mm
+  ok   phone's lower edge over unit, 25 deg: 5.29491 mm
+  ok   phone's lower edge over unit, 35 deg: 8.39457 mm
+  ok   lens sightline over the unit (front): 105.394 mm
+  ok   lens sightline over the unit (rear) : 107.972 mm
+  ok   phone clear of the slide, 25 deg      : 12.5973 mm
+  ok   phone clear of the slide, 35 deg      : 5.97345 mm
+  ok   phone clear of the swivel's cup, 35 : 15.7443 mm
+  ok   phone clear of the slide, 35 & 25 deg  : 0.0486006 mm
   ok   slide still 12 mm in the spine, open: 6 mm
   ok   spine below the unit's top edge     : 1 mm
   ok   folded head inside the dock (Z)     : 2.2 mm
-  ok   folded head clear of pocket wall    : 0.7 mm
+  ok   folded head clear of pocket wall    : 0.8 mm
   ok   folded head inside the lid's width  : 16 mm
-  ok   phone's back clear of the knuckles  : 0.3 mm
-  ok   folded head's raised face to spine  : 0.3 mm
+  ok   phone's back clear of swivel knuckle: 0.3 mm
+  ok   folded head's raised face to the cup: 9.7 mm
+  ok   folded head's ring under swivel bar : 0.05 mm
+  ok   swivel bar over the cup's rim       : 0.05 mm
+  ok   swivel knuckle in the head's relief : 0.152823 mm
+  ok   tilt nub clear of the bore          : 0.05 mm
+  ok   tilt grooves deeper than the nub    : 0.05 mm
+  ok   spine notch over the tab and cup    : 1.66533e-16 mm
   ok   pod pocket walls hold half the pod  : 0 mm
   ok   pod pocket over the pod, a side     : 0.3 mm
-  info  open arm, 25 deg: lens at [Y, Z] [48, 70.0392, 184.392] mm; phone's centre 50.8202 mm behind the unit's front, base ends at 70.5 (the phone is over the base: it cannot tip it backwards)
+  ok   arm fit coupon inside 80 x 60 plate : 10 mm
+  ok   arm fit coupon slices hold a detent : 3.5 mm
+  info  open arm, 25 deg: lens at [Y, Z] [48, 89.7103, 182.908] mm; phone's centre 72.8477 mm behind the unit's front, base ends at 91.8 (the phone is over the base: it cannot tip it backwards)
+  info  arm fit coupon: plate [59.4, 50] mm; channel [26, 3] over the slide's [25.4, 2.4] (0.3 a side); hinge bores 3.5 for the 3 mm pin; drum 12, notches every 5 deg; tilt grooves at [0, 10, 20, 25, 30, 35, 180] deg
+  info  tilt detent: leaf 1.2 thick, about 5.505 mm free; the nub presses 0.2 mm into 0.35 mm grooves: bending strain about 1.18792 % (PETG yields near 4 %); holding torque untested
+  info  slide detent: bump on a tongue 6 x 10 x 1.6 mm; 0.6 mm of deflection is a bending strain of about 1.44 %
   info  radar window centre [76.1, 46.148], boresight 15 deg up, skin 1 mm
   info  USB-C receptacle centre X 74.95 Y 7.15
   info  sight radius 19.6 mm: 0.3 mm of eye misalignment = 0.876908 deg of aim, a Doppler speed error (1 - cos) of 0.0117118 %; eyeballing 10 deg off costs 1.51922 %
@@ -93,3 +108,9 @@
   info  strap 8 x 1 mm TPU 95A, 62.3443 mm long; slots [3.9, 3.3] mm, bearing edges 53.3443 mm apart; fitted path 57.6118 mm on a 13 mm shaft (8 % stretch)
   info  strap section 8 mm2, 4.1 mm2 at the slots; preload about 16.64 N per leg at E = 26 MPa
   info  strap strength: about 102-144 N at the slots from TPU 95A's 25-35 MPa datasheet tensile strength; the hold on a club needs a physical pull test
+  ok   strap coupon: block on the flat wall : 0 mm
+  ok   strap coupon: whole post in the block: 1 mm
+  ok   strap coupon: block >= the real wall  : 2.4 mm
+  ok   strap coupon: latch cut on the straight: 13.8 mm
+  info  strap coupon post matches the pod's post: shank 2.4 (X, outer end) x 2 (Z) x 1.3 mm, head 1 mm thick, 3.6 mm tall (lips 1 up, 0.6 down); latch slot [3.9, 3.3] mm: 0.1 mm a side across the post, 0.3 under the head, 1 of upper lip over the bearing edge, 0.3 mm detent
+  info  strap coupon pieces: post 10 x 8 x 4 mm block (1.6 wall + 2.4 backer), latch 17.8 x 8 x 1 mm

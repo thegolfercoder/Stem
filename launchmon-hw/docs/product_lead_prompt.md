@@ -66,6 +66,11 @@ their fits, their print files and the scenes and renders that show them.
 - **Honesty.** No number is presented as measured unless it was. Anything
   unprinted, unbuilt or uncompiled is said to be so. Spin, face angle, club
   path, attack angle and swing plane are never outputs.
+- **Print and fit, checked.** `python3 cad/check_print.py` passes: every STL as
+  exported is one closed solid that needs no support; an exception is named in its
+  KNOWN table with its reason. `python3 cad/check_clash.py` passes: no arm part cuts
+  into another in any pose (the sprung detents are left out between their stops, by
+  design). A new moving part gets poses there; a new printed part gets an STL.
 - **Unchanged STLs are not re-triangulated.** After an export, compare each
   STL with `git show HEAD:` (volume and vertex set). Restore the ones that only
   re-triangulated with `git checkout`, so the diff shows only real changes.

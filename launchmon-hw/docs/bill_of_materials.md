@@ -116,9 +116,11 @@ still match older notes.
 
 ## 3. Printed parts
 
-All from `cad/stl/` (regenerate with `cad/export_stl.sh`). **PETG, ABS or ASA
-only**, except the pod strap, which is TPU 95A: see [build_instructions.md](build_instructions.md) for why not PLA and
-for the slicer settings.
+All from `cad/stl/` (regenerate with `cad/export_stl.sh`), and as Bambu Lab
+plates in `cad/bambu/`, one 3MF per material and option, the parts already in
+their print orientation. **PETG, ABS or ASA only**, except the pod strap, which
+is TPU 95A: see [build_instructions.md](build_instructions.md) for why not PLA
+and for the slicer settings. **Print the fit coupons first** (last rows).
 
 | File | Unit | Qty | Print orientation (already set in the STL) |
 |---|---|---|---|
@@ -128,24 +130,31 @@ for the slicer settings.
 | `ground_radar_led_pipe.stl` | Ground | 1 | Flange down. Natural PETG |
 | `ground_radar_esp32_clamp_tab_x2.stl` | Ground | **2** | Flat |
 | `ground_radar_dock_base.stl` | Ground | 1 | As it sits. Carries the arm's spine and the pod pocket |
-| `ground_radar_arm_slide.stl` | Ground | 1 | Flat, the tab with the swivel's cup up |
-| `ground_radar_arm_swivel.stl` | Ground | 1 | Upright as it sits, peg on the bed. The drum that turns in the slide's cup and carries the hinge's middle knuckle |
-| `ground_radar_arm_head_magsafe.stl` | Ground | 1 | On its plain face, ring pocket up. **Or**, for a phone without MagSafe, the two clamp parts below instead |
+| `ground_radar_arm_slide.stl` | Ground | 1 | Flat, front face down, the tab with the swivel's cup up. Its detent bump is on a sprung tongue |
+| `ground_radar_arm_swivel.stl` | Ground | 1 | Upside down on its bar's flat top, drum and peg up. The drum that turns in the slide's cup, and the bar 21 mm back to the hinge's middle knuckle |
+| `ground_radar_arm_head_magsafe.stl` | Ground | 1 | On its plain face, ring pocket up; the knuckles' feet are flush with it. **Or**, for a phone without MagSafe, the two clamp parts below instead |
 | `ground_radar_arm_head_clamp.stl` *(alternative)* | Ground | 1 | Flat on its back face, fixed jaw and teeth up. Clamp head: printed instead of the MagSafe head |
-| `ground_radar_arm_clamp_jaw.stl` *(alternative)* | Ground | 1 | Flat on its back face, jaw lip up. The clamp head's sliding jaw |
-| `ground_radar_arm_pin.stl` | Ground | 1 (print a spare) | Flat. The 3 mm hinge pin; a 3 mm steel pin or a length of 3 mm rod works too |
-| `shaft_pod_base.stl` | Pod | 1 | Standing on its USB end, clamp bore vertical |
+| `ground_radar_arm_clamp_jaw.stl` *(alternative)* | Ground | 1 | Upside down on its sleeve's top face and pawl. The clamp head's sliding jaw |
+| `ground_radar_arm_pin.stl` | Ground | 1 (print a spare) | Flat, on a 0.2 mm flat. The 3 mm hinge pin; a 3 mm steel pin or a length of 3 mm rod works too |
+| `shaft_pod_base.stl` | Pod | 1 | Standing on its USB end, clamp bore vertical. Brim. The far end wall's inside is a 22 mm bridge (part fan on) |
 | `shaft_pod_lid.stl` | Pod | 1 | Outside face down |
 | `shaft_pod_strap_TPU.stl` | Pod | 1 (print a spare) | Flat, outer face down. **TPU 95A, not PETG**: it has to stretch. Its length comes from `shaft_d` |
+| `ground_radar_arm_fit_coupon.stl` *(print first)* | Ground | 1 | Six pieces cut from the arm, each in its part's print orientation: the slide in its channel, the drum in its cup, the head's knuckles on the swivel's knuckle |
+| `shaft_pod_strap_fit_coupon_post.stl` *(print first)* | Pod | 1 | A strap post on a slice of the pod's wall, standing as the base prints |
+| `shaft_pod_strap_fit_coupon_latch_TPU.stl` *(print first)* | Pod | 1 | **TPU 95A**. The strap's latch end, flat |
 
-About **87 g** of filament and **5.1 hours** of printing for both units (86.7 g,
-5.13 h), with no supports anywhere. `cad/cost_report.py` estimates it from the
-STLs and writes `cad/stl/cost_report.txt`: about $1.74 of filament, $3.98 a kit
-on your own printer and $9.90 at a print-farm machine rate, against a $5-10
+About **88 g** of filament and **5.2 hours** of printing for both units (88.1 g,
+5.15 h), with no supports anywhere. `cad/cost_report.py` estimates it from the
+STLs and writes `cad/stl/cost_report.txt`: about $1.77 of filament, $4.02 a kit
+on your own printer and $9.97 at a print-farm machine rate, against a $5-10
 budget for the printed parts. That total is with the MagSafe head. The clamp
-head and its jaw are listed apart as an alternative (6.3 g and 1.3 g; $0.78 and
-$0.39 at the farm rate, each on its own plate). Those are estimates, within about 20% of a slice; slice the STLs with
-your printer's profile before quoting a price.
+head and its jaw are listed apart as an alternative (6.0 g and 1.3 g; $0.75 and
+$0.32 at the farm rate, each on its own plate), and so are the fit coupons,
+printed once ($0.67, $0.24 and $0.13). Those are estimates, within about 20% of
+a slice; slice the STLs with your printer's profile before quoting a price.
+`cad/check_print.py` checks every STL prints as exported, with no supports
+(`cad/stl/print_report.txt`), and `cad/check_clash.py` that no arm part cuts
+into another in any pose (`cad/stl/clash_report.txt`). Neither is a print.
 
 ## 4. Tools
 

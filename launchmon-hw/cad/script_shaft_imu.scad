@@ -249,6 +249,27 @@ module rbox(size, r) {
 
 module rrect(w, h, r) { translate([r, r]) offset(r = r) square([w - 2 * r, h - 2 * r]); }
 
+// The body: rounded all over, except where the round meets the two faces that
+// print on the bed (the base's -X end, the lid's top face). There a round leaves
+// the bed nearly flat, an overhang; instead the face runs out to a 45-degree cut
+// tangent to the round, which takes over 0.6 mm up. It shows as a 1.2 mm facet
+// along the edge, not a change of form.
+bed_k = edge_r * (2 - sqrt(2));   // where the 45-degree cut meets the face, in from the edge (1.76)
+bed_c = edge_r - bed_k;           // the face's corner radius there (1.24)
+bed_cap = 0.6;                    // how far the cut runs before the round takes over
+module bed_cap_2d(w, h, out) { translate([bed_k - out, bed_k - out]) rrect(w - 2 * bed_k + 2 * out, h - 2 * bed_k + 2 * out, bed_c + out); }
+module pod_body() {
+    rbox(pod, edge_r);
+    hull() {   // top face
+        translate([0, 0, pod[2] - 0.01]) linear_extrude(0.01) bed_cap_2d(pod[0], pod[1], 0);
+        translate([0, 0, pod[2] - bed_cap]) linear_extrude(0.01) bed_cap_2d(pod[0], pod[1], bed_cap);
+    }
+    hull() {   // -X (USB) end
+        x_extrude(0, 0.01) bed_cap_2d(pod[1], pod[2], 0);
+        x_extrude(bed_cap - 0.01, bed_cap) bed_cap_2d(pod[1], pod[2], bed_cap);
+    }
+}
+
 module sector(r, a0, a1, steps = 48) {
     // 2D pie slice from angle a0 to a1 (degrees, counter-clockwise from +x).
     polygon(concat([[0, 0]], [for (i = [0 : steps]) r * [cos(a0 + (a1 - a0) * i / steps), sin(a0 + (a1 - a0) * i / steps)]]));
@@ -264,7 +285,7 @@ module base() {
     difference() {
         union() {
             intersection() {
-                rbox(pod, edge_r);
+                pod_body();
                 translate([-1, -1, -1]) cube([pod[0] + 2, pod[1] + 2, base_h + 1]);
             }
             clamp();
@@ -430,11 +451,17 @@ module imu_pocket() {
     x0 = imu_x0 - c; y0 = imu_y0 - c;
     w = imu_pcb[0] + 2 * c; d = imu_pcb[1] + 2 * c;
     translate([0, 0, floor_t - 0.01]) {
+        // The base prints standing on its -X end, so a fence face across X faces the
+        // bed: the -X end runs on to the end wall, and the +X end's inner face is
+        // chamfered above 1.2 mm (the board's edge bears below that).
         difference() {
-            translate([x0 - t, y0 - t, 0]) cube([w + 2 * t, d + 2 * t, imu_fence_h]);
+            translate([wall - 0.01, y0 - t, 0]) cube([x0 + w + t - wall + 0.01, d + 2 * t, imu_fence_h]);
             translate([x0, y0, -1]) cube([w, d, imu_fence_h + 2]);
             // Finger gaps at the short ends for lifting the board out.
-            for (x = [x0 - t - 1, x0 + w - 1]) translate([x, y0 + d / 2 - 3, -1]) cube([t + 2, 6, imu_fence_h + 2]);
+            translate([wall + 0.3, y0 + d / 2 - 3, -1]) cube([x0 + 1 - wall - 0.3, 6, imu_fence_h + 2]);
+            translate([x0 + w - 1, y0 + d / 2 - 3, -1]) cube([t + 2, 6, imu_fence_h + 2]);
+            translate([0, y0 - t - 1, 0]) rotate([90, 0, 0]) mirror([0, 0, 1]) linear_extrude(d + 2 * t + 2)
+                polygon([[x0 + w - 0.01, 1.2], [x0 + w + imu_fence_h - 1.2, imu_fence_h + 0.01], [x0 + w - 0.01, imu_fence_h + 0.01]]);
             // Wire notch on the pad-row side: the five wires leave the pads sideways and
             // run up the gap between the fence and the wall, outside the cell's footprint.
             translate([imu_x0 + imu_notch[1] - imu_notch[0] / 2, imu_pad_side < 0 ? y0 - t - 1 : y0 + d - 1, -1])
@@ -446,7 +473,7 @@ module imu_pocket() {
         }
         for (y = [y0 + d / 2 + 4.5, y0 + d / 2 - 4.5]) {
             translate([x0, y, 0]) cylinder(h = imu_fence_h, r = c + 0.1, $fn = 12);
-            translate([x0 + w, y, 0]) cylinder(h = imu_fence_h, r = c + 0.1, $fn = 12);
+            translate([x0 + w, y, 0]) cylinder(h = 1.2, r = c + 0.1, $fn = 12);   // under the chamfer
         }
     }
 }
@@ -483,6 +510,17 @@ module pry_notch() {
 // ---- Clamp ----------------------------------------------------------------------
 module clamp() {
     mouth = 360 - wrap_deg;
+    // The +X jaw's lower half hangs past the saddle (which follows only the
+    // shaft's top half) when the base prints standing on its -X end: its -X face
+    // is cut back at 45 degrees below the bore's centre, so it grows from the saddle.
+    difference() {
+        clamp_jaws(mouth);
+        translate([0, -1, 0]) rotate([-90, 0, 0]) linear_extrude(pod[1] + 2)
+            polygon([[jaw_xs[1][0], -bore_z], [jaw_xs[1][0] + 20, -bore_z + 20], [jaw_xs[1][0] - 1, -bore_z + 20], [jaw_xs[1][0] - 1, -bore_z]]);
+    }
+    clamp_saddle();
+}
+module clamp_jaws(mouth) {
     for (j = jaw_xs) x_extrude(j[0], j[1]) translate([bore_y, bore_z]) difference() {
         union() {
             circle(r = jaw_R);
@@ -492,6 +530,8 @@ module clamp() {
         // Mouth, centred on -Z.
         rotate(-90) sector(jaw_R + 2, -mouth / 2, mouth / 2);
     }
+}
+module clamp_saddle() {
     // Between the jaws, a saddle that follows the top of the shaft, so the
     // underside reads as one form sitting on the shaft rather than two clips.
     // It stands clear of the shaft: only the lined jaws grip.
@@ -543,7 +583,7 @@ module lid() {
     difference() {
         union() {
             intersection() {
-                rbox(pod, edge_r);
+                pod_body();
                 translate([-1, -1, base_h]) cube([pod[0] + 2, pod[1] + 2, lid_t + 1]);
             }
             // Lip, with snap bumps at the middle of each side.

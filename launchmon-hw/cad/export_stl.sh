@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Regenerate every printable STL in cad/stl/ from the two OpenSCAD scripts.
+# Regenerate every printable STL in cad/stl/ from the two OpenSCAD scripts, then
+# the cost estimate, the print audit and the Bambu Lab plates in cad/bambu/.
 #
 #   ./export_stl.sh              # all parts
 #   OPENSCAD=/path/to/openscad ./export_stl.sh
@@ -38,7 +39,10 @@ echo "shaft motion pod"
 export_part script_shaft_imu.scad    base            shaft_pod_base.stl
 export_part script_shaft_imu.scad    lid             shaft_pod_lid.stl
 export_part script_shaft_imu.scad    strap           shaft_pod_strap_TPU.stl
-echo "fit test coupon (print it first; not part of a kit)"
+echo "fit test coupons (print them first; not part of a kit)"
+export_part script_ground_radar.scad arm_fit_coupon  ground_radar_arm_fit_coupon.stl
+export_part script_shaft_imu.scad    strap_fit_coupon_post  shaft_pod_strap_fit_coupon_post.stl
+export_part script_shaft_imu.scad    strap_fit_coupon_latch shaft_pod_strap_fit_coupon_latch_TPU.stl
 
 # Keep one copy of each script's fit report rather than one per part.
 awk '!seen[$0]++' stl/fit_report.txt | sed -n 's/^ECHO: "\(.*\)"$/\1/p' > stl/fit_report.tmp
@@ -71,4 +75,12 @@ for path in sys.argv[1:]:
 PY
 fi
 ls -l stl
-if command -v python3 >/dev/null 2>&1; then python3 cost_report.py; fi
+if command -v python3 >/dev/null 2>&1; then
+  python3 cost_report.py
+  # Each part as exported: one closed solid, no face that needs a support.
+  python3 check_print.py || echo "print audit: see stl/print_report.txt"
+  # Bambu Lab plates, one 3MF per material and option, from these STLs.
+  python3 make_3mf.py stl bambu
+fi
+# The arm's interference check (every pose, about 35 minutes) is separate:
+#   python3 check_clash.py     # writes stl/clash_report.txt

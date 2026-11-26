@@ -69,6 +69,9 @@ PARTS = [
     Part("ground_radar_arm_swivel.stl", "ground", note="swivel: turns the head toward the golfer"),
     Part("ground_radar_arm_head_clamp.stl", "ground", kit=False, note="clamp head: instead of the MagSafe head, for phones without MagSafe"),
     Part("ground_radar_arm_clamp_jaw.stl", "ground", kit=False, note="the clamp head's sliding jaw"),
+    Part("ground_radar_arm_fit_coupon.stl", "ground", kit=False, note="fit coupon, printed once before the arm"),
+    Part("shaft_pod_strap_fit_coupon_post.stl", "pod", kit=False, note="strap latch coupon, PETG"),
+    Part("shaft_pod_strap_fit_coupon_latch_TPU.stl", "pod", kit=False, density=1.21, usd_kg=30.0, note="strap latch coupon, TPU 95A"),
     Part("shaft_pod_base.stl", "pod"),
     Part("shaft_pod_lid.stl", "pod"),
     Part("shaft_pod_strap_TPU.stl", "pod", density=1.21, usd_kg=30.0, note="TPU 95A"),
@@ -178,10 +181,11 @@ def main() -> None:
         "Labour (support removal, inserts, assembly) is not included.",
     ]
     if extras:
-        lines += ["", "Not in the kit total (alternatives, printed instead of a kit part):"]
+        lines += ["", "Not in the kit total (alternatives printed instead of a kit part, and the fit coupons):"]
         for p, e in extras:
             g, m = e.grams * p.qty, e.minutes * p.qty
-            usd = (g / 1000.0 * filament_usd_kg + (m + JOB_OVERHEAD_MIN) / 60.0 * farm_usd_h) * FAILURE_ALLOWANCE
+            usd_kg = p.usd_kg if p.usd_kg is not None else filament_usd_kg
+            usd = (g / 1000.0 * usd_kg + (m + JOB_OVERHEAD_MIN) / 60.0 * farm_usd_h) * FAILURE_ALLOWANCE
             lines.append(
                 f"{p.file:40s} {p.qty:3d} {g:7.1f} {m:8.0f}  ${usd:4.2f} at the farm rate, own plate. {p.note}"
             )
