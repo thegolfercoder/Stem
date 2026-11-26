@@ -4,18 +4,20 @@ One sketch per unit. Each folder name matches its `.ino`, as the Arduino IDE req
 
 | Sketch | Runs on | Role |
 |---|---|---|
-| `ground_unit/ground_unit.ino` | Ground radar unit's ESP32-C3 | Captures the radar's I/Q signals, triggers on a shot, runs the FFT analysis, links to the pod as BLE central, serves a phone as BLE peripheral, streams JSON and raw captures over USB |
+| `ground_unit/ground_unit.ino` | Ground radar unit's ESP32-WROOM-32 DevKit (from 0.6) | Captures the radar's I/Q signals, triggers on a shot, runs the FFT analysis, links to the pod as BLE central, serves a phone as BLE peripheral, streams JSON and raw captures over USB |
 | `shaft_pod/shaft_pod.ino` | Pod's ESP32-C3 | Samples the IMU at 1.66 kHz, streams swings as raw counts over BLE, deep-sleeps with wake-on-motion |
 
 The two share only the BLE packet format, which is specified in
 [`../docs/wiring_schematic.md`](../docs/wiring_schematic.md#3-ble-link) and
 pinned on both sides with `static_assert`s on the struct sizes.
 
-**Versions.** Ground unit **0.5**, pod **0.3**: the build for the original
-parts list only. Ground 0.2-0.4 and pod 0.2 drove parts that are no longer
+**Versions.** Ground unit **0.6**, pod **0.3**. Ground 0.6 runs on the
+ESP32-WROOM-32 DevKit (owner's decision, 2026-11-26): its pins and the ADC's DMA
+format changed, nothing else; 0.5 was the same build for the ESP32-C3 SuperMini.
+0.5 and 0.6 are the build for the original parts list only. Ground 0.2-0.4 and pod 0.2 drove parts that are no longer
 fitted (a piezo buzzer, the pod's charging contacts, soft power, battery-sense
 dividers) and had a second BLE characteristic, `UnitStatus`. A phone or log
-that sees ground `0.5` knows it has none of those. The ground unit prints its
+that sees ground `0.5` or `0.6` knows it has none of those. The ground unit prints its
 version in the `boot` line; the pod sends its own in every status packet.
 
 ## Toolchain
@@ -31,7 +33,25 @@ version in the `boot` line; the pod sends its own in every status packet.
 - No other libraries. The IMU is driven at register level, so the Adafruit
   library is not needed, and the FFT is in the sketch.
 
-Board settings, both units:
+Board settings, ground unit (ESP32-WROOM-32 DevKit, CH340):
+
+| Setting | Value |
+|---|---|
+| Board | ESP32 Dev Module |
+| Upload speed | 921600 (460800 if uploads fail) |
+| CPU frequency | 240 MHz |
+| Flash size | 4 MB |
+| Partition scheme | Default 4MB with spiffs, or Huge APP |
+
+The DevKit's USB goes through a CH340 serial chip: install its driver if the
+computer does not list a port, and open the serial monitor at **921600**.
+
+```bash
+arduino-cli compile --fqbn esp32:esp32:esp32 firmware/ground_unit
+arduino-cli upload  --fqbn esp32:esp32:esp32 -p /dev/ttyUSB0 firmware/ground_unit
+```
+
+Board settings, pod (ESP32-C3 SuperMini):
 
 | Setting | Value |
 |---|---|
@@ -47,21 +67,25 @@ arduino-cli upload  --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc -p /dev/ttyACM0 fir
 ```
 
 If a SuperMini will not enter the bootloader, hold BOOT (GPIO9), tap RESET,
-release BOOT, then upload. Flash the ground unit with its slide switch on: the
-SuperMini's USB 5 V and the MT3608's 5 V meet at its 5V pin, and the MT3608's
-output diode blocks reverse current into it.
+release BOOT, then upload. On the DevKit, hold BOOT (GPIO0) while the upload
+starts if it does not enter the bootloader by itself. Flash the ground unit
+with its slide switch on: the DevKit's USB 5 V and the MT3608's 5 V meet at its
+VIN, and the MT3608's output diode blocks reverse current into it.
 
 Build options, each a `#define` or constant near the top of its sketch:
 
 | Option | Sketch | Default | What |
 |---|---|---|---|
-| `PIN_RADAR_EN` | ground unit | -1 (none) | Set to 5 if your radar module has an enable pin |
+| `PIN_RADAR_EN` | ground unit | -1 (none) | Set to 26 if your radar module has an enable pin |
 | `RECEDING_SIGN` | ground unit | +1 | Set with the bench check in the build instructions (4.3) |
 | `STEM_USE_2M_PHY` | pod | 1 | Set to 0 if NimBLE lacks `updatePhy()` |
 
 ## Verification status
 
-**Neither sketch has been compiled for the ESP32-C3 or run on hardware yet.**
+**Neither sketch has been compiled for its chip (the ground unit's ESP32, the
+pod's ESP32-C3) or run on hardware yet.** On the ESP32, check on the bench that
+`adc_desync` in the shot lines stays 0 and that a hand waved toward and away
+from the radar gives opposite Doppler signs (build instructions 4.3).
 They have been checked with a host compiler (`g++ -std=gnu++2a -x c++ -c
 -Wall -Wextra`) against stub headers, with no warnings. That catches C++ errors
 in the sketches, and the full `-c` compile also reports unused functions. It

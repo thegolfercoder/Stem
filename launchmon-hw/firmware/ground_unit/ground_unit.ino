@@ -1,7 +1,9 @@
 // =============================================================================
 //  Stem launch monitor - GROUND RADAR UNIT firmware
-//  Board : ESP32-C3 SuperMini   (Arduino-ESP32 core 3.x, "ESP32C3 Dev Module",
-//          USB CDC On Boot: Enabled)
+//  Board : ESP32-WROOM-32 DevKit, 30 pins, CH340 USB-C (Arduino-ESP32 core
+//          3.x, "ESP32 Dev Module"). Owner's decision, 2026-11-26: it replaces
+//          the ESP32-C3 SuperMini in this unit (fw 0.5 and earlier); the pod
+//          keeps its SuperMini.
 //  Radar : Infineon BGT24LTR11 24 GHz CW Doppler, I and Q IF outputs through
 //          an LM358 pre-amp into ADC1
 //  Radio : BLE central to the shaft pod and BLE peripheral to a phone, at the
@@ -11,7 +13,7 @@
 //  SIGNAL PATH
 //    BGT24LTR11 IFI/IFQ -> LM358 pre-amp (x20, AC-coupled 200 Hz - 14 kHz,
 //    biased at 0.9 V, run from 3.3 V: docs/wiring_schematic.md 1.4) ->
-//    GPIO0 / GPIO1 -> ADC1 in continuous DMA mode, 80 kS/s interleaved, i.e.
+//    GPIO36 / GPIO39 -> ADC1 in continuous DMA mode, 80 kS/s interleaved, i.e.
 //    40 kS/s per channel. Each channel's DC level is removed in software, so
 //    any bias inside the ADC's range works.
 //
@@ -51,18 +53,20 @@
 //  to true ball speed needs a launch angle, and is fusion's job. It is not
 //  applied here.
 //
-//  PINS (SuperMini)                   see docs/wiring_schematic.md
-//      GPIO0  ADC1_CH0 <- I channel (pre-amp output, radar IFI)
-//      GPIO1  ADC1_CH1 <- Q channel (pre-amp output, radar IFQ)
-//      GPIO5           -> radar enable, if the module has one (optional, off by default)
-//      GPIO10          -> 5 mm status LED through 330 R
-//      GPIO9           <- BOOT button: short press toggles raw USB streaming
-//      GPIO20/21       UART0 RX/TX, auxiliary serial (Serial1)
-//      GPIO2, GPIO8 are strapping pins and are left alone.
+//  PINS (ESP32 DevKit)                see docs/wiring_schematic.md 1.2
+//      GPIO36 (VP) ADC1_CH0 <- I channel (pre-amp output, radar IFI)
+//      GPIO39 (VN) ADC1_CH3 <- Q channel (pre-amp output, radar IFQ)
+//      GPIO26           -> radar enable, if the module has one (optional, off by default)
+//      GPIO25           -> 5 mm status LED through 330 R
+//      GPIO0            <- BOOT button: short press toggles raw USB streaming
+//      GPIO16/17        auxiliary serial RX/TX (Serial1, remapped)
+//      GPIO2, GPIO5, GPIO12, GPIO15 are strapping pins and are left alone;
+//      GPIO1/3 are the CH340's USB serial. Only ADC1 is used: ADC2 does not
+//      work while the radio is on.
 //
 //  POWER
-//  LiPo -> TP4056 -> slide switch -> MT3608 (5 V) -> SuperMini 5V pin and the
-//  radar module; the SuperMini's 3V3 feeds the pre-amp. The switch cuts
+//  LiPo -> TP4056 -> slide switch -> MT3608 (5 V) -> the DevKit's VIN pin and
+//  the radar module; the DevKit's 3V3 (its AMS1117) feeds the pre-amp. The switch cuts
 //  everything after the TP4056: off is off.
 // =============================================================================
 
@@ -78,38 +82,41 @@
 #if !defined(ESP_ARDUINO_VERSION_MAJOR) || ESP_ARDUINO_VERSION_MAJOR < 3
 #error "This sketch needs the Arduino-ESP32 core 3.x (ESP-IDF 5.x)."
 #endif
-#if !CONFIG_IDF_TARGET_ESP32C3
-#error "Written for the ESP32-C3: ADC1 channel numbers, the TYPE2 DMA format and the sample-rate limits are C3-specific."
+#if !CONFIG_IDF_TARGET_ESP32
+#error "Written for the ESP32 (WROOM-32 DevKit): ADC1 channel numbers, the TYPE1 DMA format and the sample-rate limits are ESP32-specific. fw 0.5 is the ESP32-C3 SuperMini version."
 #endif
 
 // -----------------------------------------------------------------------------
 //  Configuration
 // -----------------------------------------------------------------------------
 namespace cfg {
+// 0.6: the ESP32-WROOM-32 DevKit instead of the ESP32-C3 SuperMini; pins and
+// the ADC's DMA format only, the signal path and outputs are 0.5's.
 // 0.5: the original parts only. No buzzer, pod charging, soft power, battery
 // sense or UnitStatus characteristic (those were 0.2-0.4).
-constexpr uint8_t  FW_MAJOR = 0, FW_MINOR = 5;
+constexpr uint8_t  FW_MAJOR = 0, FW_MINOR = 6;
 
-constexpr int      PIN_I         = 0;     // ADC1_CH0
-constexpr int      PIN_Q         = 1;     // ADC1_CH1
-constexpr int      PIN_RADAR_EN  = -1;    // set to 5 if your module has an enable pin
+constexpr int      PIN_I         = 36;    // VP, ADC1_CH0
+constexpr int      PIN_Q         = 39;    // VN, ADC1_CH3
+constexpr int      PIN_RADAR_EN  = -1;    // set to 26 if your module has an enable pin
 constexpr bool     RADAR_EN_ACTIVE_HIGH = true;
-constexpr int      PIN_LED       = 10;
-constexpr int      PIN_BUTTON    = 9;     // BOOT button, active low
-constexpr int      PIN_AUX_RX    = 20;
-constexpr int      PIN_AUX_TX    = 21;
+constexpr int      PIN_LED       = 25;
+constexpr int      PIN_BUTTON    = 0;     // BOOT button, active low
+constexpr int      PIN_AUX_RX    = 16;
+constexpr int      PIN_AUX_TX    = 17;
 constexpr uint32_t AUX_BAUD      = 115200;
 
-constexpr adc_channel_t CH_I    = ADC_CHANNEL_0;
-constexpr adc_channel_t CH_Q    = ADC_CHANNEL_1;
+constexpr adc_channel_t CH_I    = ADC_CHANNEL_0;   // GPIO36
+constexpr adc_channel_t CH_Q    = ADC_CHANNEL_3;   // GPIO39
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
-constexpr adc_atten_t ADC_ATTEN = ADC_ATTEN_DB_12;   // ~0-2.5 V usable on the C3
+constexpr adc_atten_t ADC_ATTEN = ADC_ATTEN_DB_12;   // ~0.15-2.45 V usable on the ESP32; the pre-amp's 0.9 V bias sits inside it
 #else
 constexpr adc_atten_t ADC_ATTEN = ADC_ATTEN_DB_11;
 #endif
 
-// Sampling. The C3's continuous ADC tops out at 83.3 kS/s in total, and two
-// channels share it.
+// Sampling. Two channels share the continuous ADC: 80 kS/s in total, 40 kS/s
+// each, as on the C3 (the ESP32's range is 20 kS/s to 2 MS/s), so the FFT
+// bins, the capture window and the host's sample rate are unchanged.
 constexpr uint32_t ADC_TOTAL_HZ  = 80000;
 constexpr uint32_t FS_HZ         = ADC_TOTAL_HZ / 2;         // per channel
 constexpr size_t   ADC_FRAME_BYTES = 256 * SOC_ADC_DIGI_RESULT_BYTES;
@@ -251,7 +258,7 @@ static std::atomic<bool>     g_capture_ready{false};
 static std::atomic<uint32_t> g_capture_end{0};      // pair index one past the frozen capture
 static volatile int64_t      g_capture_end_us = 0;  // ground clock when the last pair was stored
 static std::atomic<bool>     g_user_armed{true};    // serial 'a' toggles
-static std::atomic<uint32_t> g_desync{0};           // Q without a preceding I (should stay 0)
+static std::atomic<uint32_t> g_desync{0};           // DMA words without one I and one Q (should stay 0)
 static volatile float        g_trig_metric = 0, g_trig_noise = 0;
 static volatile bool         g_debug_trigger = false;
 
@@ -286,7 +293,7 @@ static bool adcStreamStart() {
   dcfg.adc_pattern = pattern;
   dcfg.sample_freq_hz = cfg::ADC_TOTAL_HZ;
   dcfg.conv_mode = ADC_CONV_SINGLE_UNIT_1;
-  dcfg.format = ADC_DIGI_OUTPUT_FORMAT_TYPE2;
+  dcfg.format = ADC_DIGI_OUTPUT_FORMAT_TYPE1;   // the ESP32's: 12-bit data and the channel, no unit field
   if (adc_continuous_config(g_adc, &dcfg) != ESP_OK) return false;
 
   adc_continuous_evt_cbs_t cbs = {};
@@ -298,8 +305,7 @@ static bool adcStreamStart() {
 // Reads DMA frames, pairs I with Q, fills the ring and runs the trigger.
 static void adcTask(void*) {
   static uint8_t buf[cfg::ADC_FRAME_BYTES];
-  bool have_i = false;
-  int16_t pending_i = 0;
+  constexpr uint32_t RB = SOC_ADC_DIGI_RESULT_BYTES;   // 2 on the ESP32 (TYPE1)
   // Trigger state, per block.
   float mean_i = 2048, mean_q = 2048, prev_i = 0, prev_q = 0;
   float acc_s = 0, acc_i = 0, acc_q = 0;
@@ -311,14 +317,19 @@ static void adcTask(void*) {
     ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(20));
     uint32_t got = 0;
     while (g_adc && adc_continuous_read(g_adc, buf, sizeof buf, &got, 0) == ESP_OK) {
-      for (uint32_t i = 0; i + SOC_ADC_DIGI_RESULT_BYTES <= got; i += SOC_ADC_DIGI_RESULT_BYTES) {
-        auto* p = reinterpret_cast<adc_digi_output_data_t*>(&buf[i]);
-        uint32_t ch = p->type2.channel;
-        int16_t v = int16_t(p->type2.data);
-        if (ch == cfg::CH_I) { pending_i = v; have_i = true; continue; }
-        if (ch != cfg::CH_Q) continue;
-        if (!have_i) { g_desync.fetch_add(1); continue; }
-        have_i = false;
+      // The ESP32 reads its ADC through I2S DMA, which can store the two 16-bit
+      // results of each 32-bit word swapped. The pattern converts I then Q, so
+      // each word holds one I and the Q converted 12.5 us after it, in either
+      // order: pair within the word, by the channel tags, and the skew that
+      // analyse() corrects is the same whichever way round they are stored.
+      for (uint32_t i = 0; i + 2 * RB <= got; i += 2 * RB) {
+        auto* a = reinterpret_cast<adc_digi_output_data_t*>(&buf[i]);
+        auto* b = reinterpret_cast<adc_digi_output_data_t*>(&buf[i + RB]);
+        uint32_t ca = a->type1.channel, cb = b->type1.channel;
+        int16_t pending_i, v;
+        if (ca == cfg::CH_I && cb == cfg::CH_Q)      { pending_i = int16_t(a->type1.data); v = int16_t(b->type1.data); }
+        else if (ca == cfg::CH_Q && cb == cfg::CH_I) { pending_i = int16_t(b->type1.data); v = int16_t(a->type1.data); }
+        else { g_desync.fetch_add(1); continue; }   // not one of each: a dropped or misaligned result
 
         // Store the pair, unless a capture is frozen waiting for analysis.
         if (g_capture_ready) continue;
@@ -363,9 +374,10 @@ static void adcTask(void*) {
 }
 
 // -----------------------------------------------------------------------------
-//  FFT: iterative radix-2, in place, float. The C3 has no FPU, so a 1024-point
-//  transform costs some tens of milliseconds. Only frames inside a capture are
-//  transformed, never the live stream.
+//  FFT: iterative radix-2, in place, float. On the C3 (no FPU) a 1024-point
+//  transform cost some tens of milliseconds; the ESP32 has a single-precision
+//  FPU, so it should be quicker (not yet timed). Only frames inside a capture
+//  are transformed, never the live stream.
 // -----------------------------------------------------------------------------
 static float g_re[cfg::FFT_N], g_im[cfg::FFT_N];
 static float g_win[cfg::FFT_N], g_cos[cfg::FFT_N / 2], g_sin[cfg::FFT_N / 2];
@@ -889,7 +901,7 @@ void setup() {
     pinMode(cfg::PIN_RADAR_EN, OUTPUT);
     digitalWrite(cfg::PIN_RADAR_EN, cfg::RADAR_EN_ACTIVE_HIGH ? HIGH : LOW);
   }
-  Serial.begin(921600);   // USB CDC: the baud rate is ignored, kept for USB-UART adapters
+  Serial.begin(921600);   // through the DevKit's CH340: set the host to 921600
   uint32_t t0 = millis();
   while (!Serial && millis() - t0 < 1000) delay(10);
   Serial1.begin(cfg::AUX_BAUD, SERIAL_8N1, cfg::PIN_AUX_RX, cfg::PIN_AUX_TX);

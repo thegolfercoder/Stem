@@ -205,15 +205,16 @@ pod's is built in section 5, steps 1-4, and test 4 ends it.
    or green.
 2. **Radar module and pre-amp, before they touch the ESP32's ADC pins.**
    Check the radar's supply (wiring doc 1.3) **before** powering it. Power the
-   SuperMini from the 5 V rail, and the radar and the LM358 board as in the
-   wiring doc, with the pre-amp's outputs not yet on GPIO0/GPIO1. Measure each
+   ESP32 DevKit from the 5 V rail (its VIN), and the radar and the LM358 board
+   as in the wiring doc, with the pre-amp's outputs not yet on GPIO36/GPIO39. Measure each
    pre-amp output to ground: it should sit steady at about 0.9 V (the bias,
    wiring doc 1.4) and never above 3.3 V. Wave a hand in front of the radar:
    on an oscilloscope, or a multimeter on AC, both outputs should move.
-3. **Ground signal.** Connect the pre-amp's I output to GPIO0 and its Q output
-   to GPIO1, and the LED through its 330 Ω resistor to GPIO10. Flash
-   `firmware/ground_unit`. The serial monitor should print a `boot` line with
-   `"fw":"0.5"`, then `ready`, and the LED should blip every 2 s.
+3. **Ground signal.** Connect the pre-amp's I output to GPIO36 (VP) and its Q
+   output to GPIO39 (VN), and the LED through its 330 Ω resistor to GPIO25.
+   Flash `firmware/ground_unit` (board: ESP32 Dev Module). The serial monitor,
+   at 921600, should print a `boot` line with `"fw":"0.6"`, then `ready`, and
+   the LED should blip every 2 s.
 4. **Pod power**, once the cell is on (section 5, step 4). First with no USB:
    the SuperMini's 5V pin reads the cell voltage less about 0.3 V. If it reads
    about 0 V, P5 is in backwards: fix it before plugging in USB. Then with USB

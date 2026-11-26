@@ -91,11 +91,8 @@ module's LED shows red while charging and blue or green when done.
 
 **Owner's decision, 2026-11-26:** the ground unit uses an **ESP32-WROOM-32
 DevKit (30 pins, CH340, USB-C)** instead of the ESP32-C3 SuperMini; the pod
-keeps its SuperMini. Its pins are below. **The ground firmware has not been
-changed yet** (the software side is paused): it still targets the ESP32-C3 and
-the old pins in the second table, and its pin constants (`ground_unit.ino`,
-`PIN_I` to `PIN_AUX_TX`), its board target (ESP32 Dev Module) and its ADC set-up
-must be moved to this table before it runs on the DevKit.
+keeps its SuperMini. Its pins are below; ground firmware **0.6** uses them (0.5 and earlier are
+the SuperMini build, second table).
 
 | DevKit pin | Direction | Connects to | Notes |
 |---|---|---|---|
@@ -114,7 +111,7 @@ must be moved to this table before it runs on the DevKit.
 Only ADC1 is used: ADC2 does not work while the radio is on. The CH340's USB-C
 is for flashing, with the lid off.
 
-**The ESP32-C3 SuperMini's pins, which the ground firmware still uses:**
+**The ESP32-C3 SuperMini's pins, ground firmware 0.5 and earlier:**
 
 | SuperMini pin | Direction | Connects to | Notes |
 |---|---|---|---|

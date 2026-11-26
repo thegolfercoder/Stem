@@ -1,6 +1,6 @@
 // Stem ground unit BLE protocol: the ShotSummary value, parsed.
 //
-// Source of truth: launchmon-hw/firmware/ground_unit/ground_unit.ino, fw 0.5.
+// Source of truth: launchmon-hw/firmware/ground_unit/ground_unit.ino, fw 0.5 and 0.6 (the same packet).
 // ShotSummary is the unit's one characteristic; its layout is unchanged since
 // fw 0.2. (fw 0.3-0.4 had a second, live-status characteristic, 7d2a0103,
 // for the pod's charging and the batteries. Those parts are gone, and so is it.)

@@ -155,10 +155,10 @@ Each of these is also explained where it happens, in the CAD and the docs.
 | Every part prints as exported, no supports | `cad/check_print.py` (`cad/stl/print_report.txt`): one closed solid each, no overhang over 45°, no bridge over 11 mm, no ledge over 1.2 mm. Two named exceptions on the pod base (a 22 mm bridge inside its far end; the USB-C recess's frame). Geometry, not a slice |
 | Radar window: 1.0 mm radome, 15° tilt, module parallel behind it | Confirmed on a rendered cutaway |
 | Printed-part cost | Estimated from the STLs (`cost_report.py`): 91 g, 5.3 h, $4.15 a kit on your own printer, $10.29 at $1.50/h (over $10 by $0.29: the deeper case for the ESP32 DevKit). Not yet sliced |
-| Firmware: C++ syntax, `-Wall -Wextra` | Clean, against stub headers: ground 0.5, pod 0.3 (see `firmware/README.md` for what that does not prove) |
+| Firmware: C++ syntax, `-Wall -Wextra` | Clean, against stub headers: ground 0.6 (ESP32 DevKit), pod 0.3 (see `firmware/README.md` for what that does not prove) |
 | Part sizes against datasheets and listings | Reviewed in [docs/hardware_review.md](docs/hardware_review.md); sellers disagree on several, so **measure before printing**: the 1500 mAh cell (up to 52 x 34.5 x 8.3 mm), TP4056 length and board thickness, MT3608 overall height (at most 8 mm), the slide switch and its lever, the radar module, the SuperMini's board thickness, and the pod's cell with its protection PCB (up to about 22 mm) and charger board (build instructions, section 0) |
 | I/Q skew-correction arithmetic | Checked on synthetic tones: about 62 dB image rejection |
-| Compiled for the ESP32-C3 | **No** |
+| Compiled for the ESP32 (ground) and ESP32-C3 (pod) | **No** |
 | Printed, assembled, run | **No** |
 | Any speed, rate or tempo measured | **No** |
 
