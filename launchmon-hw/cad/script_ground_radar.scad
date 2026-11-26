@@ -81,7 +81,7 @@ $fn             = 64;
 /* [Envelope - MagSafe battery-pack form factor] */
 body_w      = 96;     // X
 body_h      = 64;     // Z
-body_d      = 21;     // Y (thickness)
+body_d      = 24;     // Y (thickness). 24 (from 21): the ESP32 DevKit lies on the lid, behind the cell and the LM358 board
 corner_r    = 12;     // R12 plan corners
 wall        = 2.4;    // outer wall: 6 perimeters at 0.4 mm, or 4 at 0.6 mm
 lid_t       = 2.4;    // rear lid plate thickness
@@ -139,6 +139,23 @@ esp_pad_d   = 1.8;                 // pad plus solder fillet, either face
 esp_tab_in  = 5.0;                 // clamp tab centre in from each long edge: clear of pins 8 and 16
 esp_rail_in = 3.0;                 // rails run between the pin rows, this far in from each long edge
 
+/* [ESP32-WROOM-32 DevKit, the ground unit's controller] */
+// Owner's decision (2026-11-26): the ground unit uses an ESP32-WROOM-32 DevKit
+// (30 pins, CH340, USB-C) instead of the ESP32-C3 SuperMini; the pod keeps its
+// SuperMini. It is 51.5 x 28.3 mm, too long for the lid's top beside the radar,
+// so it stands on end on the lid, left of centre, USB end down, antenna end up
+// (away from the cell, toward the plastic top: better for Bluetooth). Fit it
+// WITHOUT pin headers (or with them removed): wires solder to its pins.
+dk_pcb      = [28.3, 51.5, 1.6];   // [X width, Z length, thickness]: the common 30-pin USB-C CH340 board. MEASURE YOURS
+dk_pos      = [11.4, 6.0];         // lower-left corner, front view [X, Z]
+dk_rail_h   = 2.0;                 // PCB's lid-side face off the lid: clears the pins' solder joints
+dk_parts_h  = 3.5;                 // tallest part on its top face (the WROOM-32's can 3.2, buttons, USB-C)
+dk_usb      = [9.0, 3.3];          // USB-C receptacle [width, height], centred on the USB end
+dk_row_in   = 1.4;                 // pin row centre in from each long edge (measure)
+dk_pins_z   = 38.1;                // the pin rows' length from the USB end: 15 pins at 2.54 (measure)
+dk_tab_z    = 44.0;                // clamp tabs, from the USB end: past the pin rows, clear of the lid's top-left boss
+dk_rail_in  = 4.0;                 // rails run between the pin rows, this far in from each long edge
+
 /* [LM358 pre-amp board] */
 // Kept by the owner (2026-11-09): the plain BGT24LTR11 module's I/Q outputs
 // go through this two-stage LM358 pre-amp to the SuperMini's ADC.
@@ -146,6 +163,8 @@ lm_pcb      = [23.0, 20.0, 1.6];   // [X, Z, thickness]; a 9 x 8 hole perfboard
 lm_pos      = [38.8, 40.5];        // lower-left corner [X, Z]
 lm_hole_inset = 2.5;               // M2 holes inset from each corner
 lm_standoff_h = 4.0;               // clears through-hole leads under the board
+divider_h   = 9.7;                 // the battery bay's divider (top bar) off the front wall: under the DevKit and MT3608
+lm_parts_h  = 5.0;                 // tallest part on its top face (DIP-8, resistors; lay electrolytics flat). Measure
 
 /* [Power: LiPo, TP4056, MT3608, switch, LED] */
 batt        = [52.0, 34.5, 8.3];   // 803450-class 1500 mAh cell [X, Z, thickness]: EEMB LP803450's
@@ -161,11 +180,11 @@ tp_pad_in   = 0.6;                 // those pads' outer edge in from the board's
 tp_x        = 66.2;                // module left edge: the 52 mm cell's bay on the left, the R9.6 corner on the right
 tp_pad_h    = 1.5;                 // PCB underside above the front wall
 tp_usb_h    = 3.3;                 // receptacle height above the PCB
-mt_pcb      = [37.5, 17.5, 1.6];   // MT3608 boost module [X, Z, t]: takes the 36 - 37.2 mm boards sold
+mt_pcb      = [17.5, 37.5, 1.6];   // MT3608 boost module [X, Z, t], standing on end beside the DevKit: takes the 36 - 37.2 mm boards sold
 mt_parts_h  = 5.8;                 // tallest part above its PCB (trimmer / inductor). The most the 8.3 mm
                                    // cell leaves with 0.3 to spare: buy a low-profile module, 7.4 mm overall
                                    // at most (PCB + parts). The common 14 mm tall ones do not fit
-mt_pos      = [19.0, 12.0];        // lower-left on the lid, in front-view [X, Z]
+mt_pos      = [45.3, 5.2];         // lower-left on the lid, in front-view [X, Z]
 usb_cut     = [11.5, 6.0];         // bottom USB-C cutout [X, Y]
 usb_recess  = [13.6, 7.8, 1.2];    // outer recess round it [X, Y, depth]: a larger plug overmold seats in it
 usb_plug_standoff = 1.0;           // furthest a plug's overmold may stand off the receptacle face and still
@@ -174,7 +193,7 @@ sw_body     = [8.8, 4.1, 3.9];     // SS12D00-style slide switch body [Y-long, Z
 sw_fit      = 0.1;                 // pocket over the body, per side: pressed in, then a drop of CA
 sw_slot     = [4.6, 2.2];          // actuator slot [Y, Z]
 sw_center   = [10.5, 20.0];        // slot centre [Y, Z] on the right wall
-led_pos     = [22.75, 13.0];       // [X, Y] on the top face
+led_pos     = [22.75, 7.0];        // [X, Y] on the top face: in the front layer, ahead of the DevKit
 led_hole_d  = 3.0;                 // the light pipe shows as a 2.8 mm dot, flush with the face
 pipe_d      = 2.8;
 pipe_flange = [6.0, 0.8];          // [diameter, thickness]; the 5 mm LED's dome sits under it
@@ -256,7 +275,7 @@ arm_open      = false;          // assembly view: arm up (true) or folded flat (
 pod_pocket    = [34.1, 33.0, 13];   // pod lying on a side face [X, Y, wall height]: snug, half its height walled.
                                    // X: the 33.5 mm pod (script_shaft_imu.scad) + 0.3 a side
 pod_wall      = 1.2;              // three perimeters: a carry tray, not a structure
-pod_pocket_y0 = 57.6;             // pocket's front inner edge, behind the folded head (fit report: folded head clear of pocket wall)
+pod_pocket_y0 = 60.6;             // pocket's front inner edge, behind the folded head (fit report: folded head clear of pocket wall)
 // 1/4"-20 stud: a 1/4"-20 x 1/2" hex bolt, glued head-down in a hex pocket that
 // opens under the cap, thread up. Tripod screws stand 4.5-6 mm proud.
 cap           = [30, 22, 11.4]; // [X, Y from the stem's front face, Z]
@@ -553,7 +572,6 @@ module shell() {
                 }
             }
             radar_posts();
-            esp32_mount();
             lm358_standoffs();
             battery_bay();
             tp4056_pocket();
@@ -703,10 +721,6 @@ module standoff_pilots() {
     // where a standoff is shorter than the screw. At least 1.4 mm of front wall
     // is always left intact.
     max_into_wall = wall - 1.4;
-    esp_top = esp_rail_h + esp_pcb[2];
-    for (z = esp32_tab_z())
-        translate([esp_pos[0] + esp_pcb[0] + 2.2, y_front - min(max_into_wall, 4.4 - esp_top), z])
-            y_cylinder(esp_top + 5, m2_pilot);
     for (h = lm_holes())
         translate([h[0], y_front - min(max_into_wall, 4.4 - lm_standoff_h), h[1]])
             y_cylinder(lm_standoff_h + 5, m2_pilot);
@@ -726,7 +740,7 @@ module battery_bay() {
         // Divider. Its right end stops short of the radar module, which hangs
         // over it behind the tilted window.
         difference() {
-            translate([x0 - t, 0, z0 + bh]) cube([bw + 2 * t, inner_d * 0.6, t]);
+            translate([x0 - t, 0, z0 + bh]) cube([bw + 2 * t, divider_h, t]);
             translate([0, 0.01 - y_front, 0]) window_rear_clearance();
         }
         translate([x0 + bw, 0, z0])         cube([t, fh, bh * 0.3]);    // right, lower
@@ -932,6 +946,7 @@ module lid() {
                 if (buzzer) pz_lid_relief();
             }
             mt3608_fence();
+            devkit_mount();
             tp4056_presser();
             if (pod_park) pod_park_board_fence();
             sight_rear();
@@ -944,7 +959,32 @@ module lid() {
             translate([p[0], body_d - 0.4, p[1]]) y_cone(0.41, m2_head_d, m2_head_d + 0.8);
         }
         if (pod_park) pod_park_lid_holes();
+        // The DevKit's clamp tab screws: M2 x 6 into its standoffs, from inside.
+        // 3.6 of standoff and 1.4 into the lid (1.0 of it left): the 4.4 mm an M2 x 6 needs past the 1.6 tab.
+        for (p = dk_tab_xz()) translate([p[0], y_back - dk_rail_h - dk_pcb[2] - 0.01, p[1]]) y_cylinder(dk_rail_h + dk_pcb[2] + lid_t - 1.0, m2_pilot);
     }
+}
+
+// ---- ESP32 DevKit cradle, on the lid ---------------------------------------------
+// The board stands on end, its component face toward the cell. It sits on two
+// rails between its pin rows, its USB end hooks under two lips either side of
+// the receptacle, and two printed clamp tabs on M2 standoffs hold its long
+// edges at the antenna end, past the pins. Solder its wires first (bench
+// harness), from the component side, and trim the joints on the lid side flush.
+function dk_tab_xz() = [[dk_pos[0] - 2.2, dk_pos[1] + dk_tab_z], [dk_pos[0] + dk_pcb[0] + 2.2, dk_pos[1] + dk_tab_z]];
+dk_front_y = y_back - dk_rail_h - dk_pcb[2] - dk_parts_h;   // its parts' front, toward the cell
+module devkit_mount() {
+    x0 = dk_pos[0]; z0 = dk_pos[1]; W = dk_pcb[0]; L = dk_pcb[1];
+    hb = dk_rail_h + dk_pcb[2];
+    for (x = [x0 + dk_rail_in, x0 + W - dk_rail_in - 2])
+        translate([x, y_back - dk_rail_h, z0 + 4]) cube([2, dk_rail_h + 0.01, L - 8]);
+    lip_len = (W - dk_usb[0]) / 2 - 1.6;   // clear of the plug overmold
+    for (x = [x0, x0 + W - lip_len])
+        translate([x, y_back - hb - 1.2, z0 - 1.2]) difference() {
+            cube([lip_len, hb + 1.2 + 0.01, 2.2]);
+            translate([-0.1, 1.2, 1.2]) cube([lip_len + 0.2, hb + 0.1, 2]);
+        }
+    for (p = dk_tab_xz()) translate([p[0], y_back - hb, p[1]]) y_cylinder(hb + 0.01, 4.2);
 }
 
 // ---- Lid seam gasket --------------------------------------------------------------
@@ -1013,7 +1053,8 @@ module mt3608_fence() {
         translate([x0 - fit_clear, -1, z0 - fit_clear])
             cube([mt_pcb[0] + 2 * fit_clear, h + 2, mt_pcb[1] + 2 * fit_clear]);
         // Gaps for the four wire pads at the module's short ends.
-        translate([x0 - 3, -1, z0 + 3]) cube([mt_pcb[0] + 6, h + 2, mt_pcb[1] - 6]);
+        if (mt_pcb[0] >= mt_pcb[1]) translate([x0 - 3, -1, z0 + 3]) cube([mt_pcb[0] + 6, h + 2, mt_pcb[1] - 6]);
+        else translate([x0 + 3, -1, z0 - 3]) cube([mt_pcb[0] - 6, h + 2, mt_pcb[1] + 6]);
     }
 }
 
@@ -1866,9 +1907,11 @@ module ghost(name) {
     if (name == "mt3608") color("MediumPurple", 0.6) translate([mt_pos[0], y_back - mt_pcb[2] - mt_parts_h, mt_pos[1]])
         cube([mt_pcb[0], mt_pcb[2] + mt_parts_h, mt_pcb[1]]);
     // ESP32-C3 SuperMini
-    if (name == "esp32") color("Black", 0.7) translate([esp_pos[0], y_front + esp_rail_h, esp_pos[1]]) {
-        cube([esp_pcb[0], esp_pcb[2], esp_pcb[1]]);
-        translate([-0.5, esp_pcb[2], esp_pcb[1] / 2 - esp_usb[0] / 2]) cube([7.3, esp_usb[1], esp_usb[0]]);
+    if (name == "esp32") color("Black", 0.7) {   // ESP32-WROOM-32 DevKit, on the lid
+        translate([dk_pos[0], y_back - dk_rail_h - dk_pcb[2], dk_pos[1]]) cube([dk_pcb[0], dk_pcb[2], dk_pcb[1]]);
+        // The WROOM-32 can at the antenna end, and the USB-C at the other.
+        translate([dk_pos[0] + (dk_pcb[0] - 18) / 2, dk_front_y, dk_pos[1] + dk_pcb[1] - 25.5]) cube([18, dk_parts_h, 25.5]);
+        translate([dk_pos[0] + (dk_pcb[0] - dk_usb[0]) / 2, y_back - dk_rail_h - dk_pcb[2] - dk_usb[1], dk_pos[1] - 0.5]) cube([dk_usb[0], dk_usb[1], 7.5]);
     }
     // LM358 board
     if (name == "lm358") color("Green", 0.6) translate([lm_pos[0], y_front + lm_standoff_h, lm_pos[1]])
@@ -1923,8 +1966,9 @@ module ghost(name) {
 // Clamp tab i (0 or 1) where it sits when fitted: on its standoff, over the
 // end of the SuperMini.
 module esp32_clamp_tab_in_place(i) {
-    translate([esp_pos[0] + esp_pcb[0] + 2.2, y_front + esp_rail_h + esp_pcb[2], esp32_tab_z()[i]])
-        rotate([-90, 0, 0]) esp32_clamp_tab();
+    // On the DevKit's standoff, its tongue over the board's long edge.
+    p = dk_tab_xz()[i]; sx = i == 0 ? -1 : 1;   // the tab's tongue points -X in its own frame
+    multmatrix([[sx, 0, 0, p[0]], [0, 0, -1, y_back - dk_rail_h - dk_pcb[2]], [0, 1, 0, p[1]], [0, 0, 0, 1]]) esp32_clamp_tab();
 }
 
 // ----------------------------------------------------------------------------
@@ -1955,8 +1999,7 @@ module fit_report() {
     tp_stop  = z_floor + tp_pcb[1] + fit_clear;
     // The presser rib is drawn for tp_pcb[2]; its gap over a board of thickness t:
     function press(t) = tp_press_gap + (tp_pcb[2] - t);
-    row_z    = esp_row_z();
-    tab_z    = esp32_tab_z();
+    lm_top = y_front + lm_standoff_h + lm_pcb[2] + lm_parts_h;   // the LM358 board's parts, toward the lid
     lines = [
         chk("depth behind radar module      ", y_back - radar_back_y),
         // The radar board's front face against the TP4056's pad end and its joints.
@@ -1978,23 +2021,31 @@ module fit_report() {
         chk("TP4056 1.0 board kept in guides  ", tp_guide_h - (tp_pad_h + press(1.0) + 1.0)),
         chk("window opening inside outline   ", (corner_r - wall) - sqrt(dx * dx + dz * dz)),
         chk("LM358 board to radar housing    ", radar_x0 - (lm_pos[0] + lm_pcb[0])),
-        chk("ESP32 tab posts to LM358 board  ", lm_pos[0] - (esp_pos[0] + esp_pcb[0] + 2.2 + 2.1)),
         chk("divider to LM358 board          ", lm_pos[1] - (batt_pos[1] + batt[1] + 2 * batt_clear + 1.2)),
         chk("battery bay to TP4056 guide     ", (tp_x - 1 - fit_clear) - (batt_pos[0] + batt[0] + 2 * batt_clear + 1.2)),
         chk("cell + MT3608 depth stack       ", inner_d - (batt[2] + 0.2 + mt_pcb[2] + mt_parts_h)),
-        chk("MT3608 fence to the lower bosses", (mt_pos[0] - fit_clear - 1.0) - (lid_bosses[0][0] + (boss_d + 3.6) / 2)),
+        // The ESP32 DevKit on the lid (owner, 2026-11-26).
+        chk("DevKit over the cell (depth)    ", dk_front_y - (y_front + batt_clear + batt[2]) - 0.3),
+        chk("DevKit over the LM358 parts     ", dk_front_y - lm_top - 0.3),
+        chk("MT3608 over the LM358 parts     ", (y_back - mt_pcb[2] - mt_parts_h) - lm_top - 0.3),
+        chk("DevKit and MT3608 over the divider", min(dk_front_y, y_back - mt_pcb[2] - mt_parts_h) - (y_front + divider_h) - 0.3),
+        chk("DevKit clear of the left bosses ", dk_pos[0] - (lid_bosses[0][0] + boss_d / 2) - 0.3),
+        chk("DevKit tab post clear of a boss ", norm([dk_tab_xz()[0][0] - lid_bosses[2][0], dk_tab_xz()[0][1] - lid_bosses[2][1]]) - (boss_d / 2 + 2.1) - 0.3),
+        chk("DevKit lips over the lid's lip  ", (dk_pos[1] - 1.2) - (wall + fit_clear + lid_lip_w) - 0.3),
+        chk("DevKit under the lid's lip (top)", (body_h - (wall + fit_clear + lid_lip_w)) - (dk_pos[1] + dk_pcb[1]) - 0.3),
+        chk("DevKit tab post to MT3608 fence ", max((mt_pos[0] - fit_clear - 1.0) - (dk_tab_xz()[1][0] + 2.1),
+                                                    (dk_tab_xz()[1][1] - 2.1) - (mt_pos[1] + mt_pcb[1] + fit_clear + 1.0)) - 0.3),
+        chk("DevKit tabs past its pin rows   ", (dk_tab_z - 2.3) - dk_pins_z),
+        chk("DevKit rails between pin rows   ", dk_rail_in - (dk_row_in + esp_pad_d / 2) - 0.3),
+        chk("MT3608 clear of the radar (X)   ", (win_cx - win_size / 2) - (mt_pos[0] + mt_pcb[0]) - 0.3),
+
         chk("MT3608 over the cell (X)        ", min(mt_pos[0] - (batt_pos[0] + batt_clear),
                                                     (batt_pos[0] + batt_clear + batt[0]) - (mt_pos[0] + mt_pcb[0]))),
-        chk("MT3608 fence below the divider  ", (batt_pos[1] + batt[1] + 2 * batt_clear) - (mt_pos[1] + mt_pcb[1] + fit_clear + 1.0)),
+        chk("MT3608 above the lid's lip      ", (mt_pos[1] - fit_clear - 1.0) - (wall + fit_clear + lid_lip_w)),
         // The cell's front top corner, in the window frame: beside the radome pocket or behind it.
         chk("cell corner clear of the radome  ", let(c = wf(y_front, batt_pos[1] + batt_clear + batt[1]),
                                                      fx = abs(batt_pos[0] + batt_clear + batt[0] - win_cx))
                                                  max(fx - win_size / 2, c[0] - win_t)),
-        chk("divider to ESP32 board          ", esp_pos[1] - (batt_pos[1] + batt[1] + 2 * batt_clear + 1.2)),
-        chk("ESP32 rails clear of pin rows   ", (esp_pos[1] + esp_rail_in) - (row_z[0] + esp_pad_d / 2)),
-        chk("ESP32 USB-end lips clear of pin 1", (esp_pin1_x - esp_pad_d / 2) - 1.0),
-        chk("ESP32 tabs clear of pins 8 / 16 ", (tab_z[0] - 2.3) - (row_z[0] + esp_pad_d / 2)),
-        chk("ESP32 pin 8 on the board        ", (esp_pos[0] + esp_pcb[0]) - (esp_pin8_x() + esp_pad_d / 2)),
         chk("switch pocket to TP4056 guide   ", (body_w - wall - sw_body[2] - 1.0) - (tp_x + tp_pcb[0] + fit_clear + 1.0)),
         chk("switch pocket inside the depth  ", min((sw_center[0] - sw_body[0] / 2 - sw_fit - 1.0) - y_front,
                                                     y_back - (sw_center[0] + sw_body[0] / 2 + sw_fit + 1.0))),
@@ -2010,7 +2061,7 @@ module fit_report() {
         chk("window bevel inside outline     ", (corner_r - wall) - sqrt(dx * dx + dz * dz) - win_chamfer),
         chk("radar posts on their corner pads", ledge_pad - (win_size / 2 - abs(radar_holes[0][0]) + 2.3)),
         chk("radar post pilot under its depth", (radar_gap - ledge_t) - 4.5),
-        chk("light pipe flange to ESP32 board", (body_h - wall) - (esp_pos[1] + esp_pcb[1]) - 0),
+        chk("LED and pipe ahead of the DevKit ", dk_front_y - (led_pos[1] + 2.5) - 0.3),
     ];
     // Dock: only the checks for the stem head being exported.
     ms_lines = !ms ? [] : [

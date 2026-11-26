@@ -32,7 +32,7 @@ and set the CAD parameter before printing (build instructions, section 0).
 | # | Part | Specification | Qty | Notes |
 |---|---|---|---|---|
 | G1 | **Infineon BGT24LTR11** 24 GHz radar module | Dual-channel I/Q CW Doppler, 24.00-24.25 GHz ISM band, IFI and IFQ outputs | 1 | A plain module: its IFI and IFQ outputs go to the LM358 pre-amp (G3), which amplifies and band-limits them (wiring doc 1.4). The enclosure assumes a 25.4 x 25.4 mm board with M2 holes 2.5 mm in from each corner. **Measure yours** and set `radar_pcb` and `radar_holes` in the CAD before printing. The BGT24LTR11 chip runs on 3.3 V. Feed the module's 5 V pin only if it has its own 3.3 V regulator (see the wiring doc). If it has a pin header fitted, remove it unless the CAD's `radar_back_clear` allows for it, and solder the leads to the pads (build 4, step 0). |
-| G2 | **ESP32-C3 SuperMini** | ESP32-C3, 4 MB flash, USB-C, 22.5 x 18 mm | 1 (+1 spare) | It has no mounting holes. The enclosure holds it with rails, two fixed lips and two printed M2 clamp tabs. |
+| G2 | **ESP32-WROOM-32 DevKit**, 30 pins, CH340, USB-C (owner's decision, 2026-11-26; was the ESP32-C3 SuperMini) | ESP32 dual core, Wi-Fi + Bluetooth, about 51.5 x 28.3 mm | 1 (+1 spare) | **Buy it without pin headers, or remove them**: wires solder to its pins, and the case has no room for headers. It stands on end on the lid's inside, on two rails, its USB end under two lips and its antenna end held by the two printed clamp tabs. Measure yours (`dk_pcb`). The ground firmware still targets the ESP32-C3 and must be moved to it (wiring doc 1.2). |
 | G3 | **LM358** dual op-amp pre-amp | DIP-8 or SOIC-8 on a breakout, run from **3.3 V** | 1 | Fitted (owner's decision, 2026-11-09): the radar module's IF outputs go through it. **MCP6002** is a drop-in rail-to-rail alternative with more headroom at 3.3 V. Passives are listed under G3a. |
 | G3a | Pre-amp passives, for both channels | 2x 10 kΩ (R_in), 2x 200 kΩ (R_f), 2x 82 nF film or C0G (C_in), 2x 56 pF C0G (C_f), 2x 1 kΩ + 2x 4.7 nF (output RC), 27 kΩ + 10 kΩ (bias divider), 10 µF + 100 nF (bias and supply decoupling) | 1 set | One gain stage per channel: x20, 200 Hz to 14 kHz. Built on a **23 x 20 mm** piece of perfboard (9 x 8 holes), with M2 holes 2.5 mm in from each corner. |
 | G4 | **3.7 V 1500 mAh LiPo** | 803450 class, **with a protection PCB**, JST-PH 2.0 lead. Listed sizes run from 50 x 34 x 8 mm to **52 x 34.5 x 8.3 mm** (EEMB LP803450, the largest listed); the protection PCB is often inside that length | 1 | **Measure yours** (length including the protection PCB, width, thickness) and set `batt` in the ground CAD before printing; plan for 52 x 34.5 x 8.3 mm. The TP4056 has solder pads, not a JST socket, and no mating plug is listed: either **cut the JST-PH plug off** and solder the leads to B+/B- one at a time (build 4, step 9), or add a mating JST-PH 2.0 pigtail (an extra part) and solder that to the pads. |
@@ -143,11 +143,12 @@ and for the slicer settings. **Print the fit coupons first** (last rows).
 | `shaft_pod_strap_fit_coupon_post.stl` *(print first)* | Pod | 1 | A strap post on a slice of the pod's wall, standing as the base prints |
 | `shaft_pod_strap_fit_coupon_latch_TPU.stl` *(print first)* | Pod | 1 | **TPU 95A**. The strap's latch end, flat |
 
-About **88 g** of filament and **5.2 hours** of printing for both units (88.1 g,
-5.15 h), with no supports anywhere. `cad/cost_report.py` estimates it from the
-STLs and writes `cad/stl/cost_report.txt`: about $1.77 of filament, $4.02 a kit
-on your own printer and $9.97 at a print-farm machine rate, against a $5-10
-budget for the printed parts. That total is with the MagSafe head. The clamp
+About **91 g** of filament and **5.3 hours** of printing for both units (91.1 g,
+5.31 h), with no supports anywhere. `cad/cost_report.py` estimates it from the
+STLs and writes `cad/stl/cost_report.txt`: about $1.83 of filament, $4.15 a kit
+on your own printer and $10.29 at a print-farm machine rate, against a $5-10
+budget for the printed parts: **$0.29 over**, since the ground unit is 3 mm
+deeper for the ESP32 DevKit. That total is with the MagSafe head. The clamp
 head and its jaw are listed apart as an alternative (6.0 g and 1.3 g; $0.75 and
 $0.32 at the farm rate, each on its own plate), and so are the fit coupons,
 printed once ($0.67, $0.24 and $0.13). Those are estimates, within about 20% of

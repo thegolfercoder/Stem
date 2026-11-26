@@ -23,7 +23,9 @@ it gives the range, and the figures below are the ones to check first.
 | MT3608 overall height (at most 8 mm: BOM G6) and its length, 36-37.2 mm | `mt_parts_h`, `mt_pcb` | ground |
 | TP4056 overall length with the receptacle (about 29 mm), width (about 17.3 mm) and board thickness | `tp_pcb` | ground |
 | Slide switch body and lever length (BOM G7) | `sw_body` | ground |
-| ESP32-C3 SuperMini board thickness | `esp_pcb` | ground, pod |
+| ESP32-C3 SuperMini board thickness | `esp_pcb` | pod |
+| ESP32 DevKit's size, pin rows and tallest part (no pin headers) | `dk_pcb`, `dk_row_in`, `dk_pins_z`, `dk_parts_h` | ground |
+| LM358 board's tallest part (lay electrolytics flat) | `lm_parts_h` | ground |
 | Shaft diameter where the pod will sit | `shaft_d` | pod |
 | Micro LiPo, overall length including its protection PCB (up to about 22 mm) | `batt` | pod |
 | Pod charger board (about 7 x 10 mm, BOM P4) | `chg` | pod |
@@ -253,14 +255,16 @@ Front view, as used: the window is upper right, the battery lower left.
       doc 1.3), GND, IFI and IFQ leads, with the IF pair twisted with GND. Wire
       the pre-amp board as in wiring doc 1.4: its inputs from IFI and IFQ, its
       3V3 and GND, and its I and Q outputs, short.
-   5. **SuperMini, on its top side.** Solder its leads (5V, GND, 3V3, GPIO0,
-      GPIO1, GPIO10) on the **top** side of the pads, wires bent inward along
-      the board, so nothing stands below it to rock it on its rails and no
-      wire lies under a clamp tab. At most two wires per pad: join extra
+   5. **ESP32 DevKit, on its component side.** Remove any pin headers first
+      (cut the plastic, desolder the pins one at a time, wick the holes). Solder
+      its leads (VIN, GND, 3V3, GPIO36, GPIO39, GPIO25; wiring doc 1.2) from the
+      **component** side, wires bent inward along the board, and trim the
+      joints on the other side flush: that side lies on rails 2 mm off the lid.
+      Keep wires off the antenna end, where the clamp tabs bear. At most two wires per pad: join extra
       grounds (the radar's, the LED cathode) on the pre-amp board's ground or
       as a splice under heat-shrink.
    6. **LED.** The 330 Ω resistor inline on the anode lead, under heat-shrink,
-      the anode lead to GPIO10 and the cathode to GND. Solder it before gluing
+      the anode lead to GPIO25 and the cathode to GND. Solder it before gluing
       it to the light pipe.
 
    Run bench tests 2 and 3 (section 3) on this harness now, then disconnect the
@@ -278,15 +282,12 @@ Front view, as used: the window is upper right, the battery lower left.
    free-space wavelength at 24.125 GHz, so reflections from the window skin
    return in a known phase rather than an arbitrary one. Do not shim it closer.
 3. **Pre-amp board.** Four M2 x 6 into the standoffs left of the radar.
-4. **ESP32-C3 SuperMini**, already wired. USB end first: hook it under the two
-   lips at the left of its bay, lower the far end onto the rails, and fit the
-   two printed clamp tabs with M2 x 6, keeping the wires clear of the tabs. Its
-   USB-C stays reachable with the lid off, for flashing.
+4. **ESP32 DevKit**, already wired, goes on the lid (step 8), with the MT3608.
 5. **Status light.** Push the printed light pipe into the top-face hole **from
    inside** until its flange seats; its end sits flush with the top face. Hold
    the 5 mm LED's dome against the flange and fix it with a drop of hot glue or
-   clear silicone. The light then shows as a small soft dot. Glue it after the
-   SuperMini is in: the LED hangs over part of the SuperMini's pin row.
+   clear silicone. The light then shows as a small soft dot. It sits in front of
+   the DevKit's place, clear of it.
 6. **Switch**, already wired. Press it into the pocket on the inside of the
    right wall, lever through the slot. A drop of CA on the body, only once the
    joints are cool.
@@ -294,8 +295,13 @@ Front view, as used: the window is upper right, the battery lower left.
    twisted with ground, away from the MT3608's leads. Add a dab of hot glue as
    strain relief at every joint on a board pad. No joint should need making
    in the box except the cell's.
-8. **MT3608 on the lid.** Lay it PCB-down inside the fence on the lid's inner
-    face (components toward the cell), with a dab of hot glue.
+8. **MT3608 and ESP32 DevKit on the lid.** Lay the MT3608 PCB-down inside the
+    fence on the lid's inner face, standing on end right of centre (components
+    toward the cell), with a dab of hot glue. The DevKit stands on end left of
+    it, component side toward the cell, USB end down: hook its USB end under
+    the two lips, lay it on the two rails, and fit the two printed clamp tabs
+    over its long edges at the antenna end with M2 x 6. Its USB-C is
+    reachable with the lid off, for flashing.
 9. **Cell, last.** 1 mm foam tape on its back, Kapton over the face that will
     sit behind the MT3608. Place it in the lower-left bay, leads out through the
     gap in the right-hand fence. Join it to the TP4056's B+ and B- leads **one

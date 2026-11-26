@@ -57,10 +57,10 @@ writes `cad/stl/cost_report.txt` each time the STLs are exported.
 
 | | Before (prototype) | Now |
 |---|---|---|
-| Filament, both units | 98 g, including supports | 88.1 g, no supports |
-| Print time, both units | 5.7 h | 5.2 h |
-| Kit cost, own printer ($0.40/h) | $4.45 | **$4.02** |
-| Kit cost, print farm ($1.50/h) | $11.00 (over budget) | **$9.97** (within $5-10) |
+| Filament, both units | 98 g, including supports | 91.1 g, no supports |
+| Print time, both units | 5.7 h | 5.3 h |
+| Kit cost, own printer ($0.40/h) | $4.45 | **$4.15** |
+| Kit cost, print farm ($1.50/h) | $11.00 (over budget) | **$10.29** ($0.29 over $5-10) |
 
 "Now" is with the MagSafe head and the swivel. The clamp head, printed instead
 of the MagSafe head, is listed apart in `cost_report.txt` ($0.75 for the head
@@ -84,7 +84,10 @@ Making the arm work (item V: the tilt hinge 21 mm behind the swivel so the
 tilted phone clears the slide, the pod pocket moved back with it, sprung
 detents) took the base deeper; narrowing the base behind the unit to the
 pocket's width, a 2.0 mm base plate and 1.2 mm pocket walls paid for it, at
-$9.97.
+$9.97. The ESP32-WROOM-32 DevKit (owner's decision, 2026-11-26) is 51.5 x 28.3
+mm against the SuperMini's 22.5 x 18: it stands on end on the lid, and the
+unit grew 3 mm deeper (21 to 24 mm) so it clears the cell and the LM358 board.
+That took the kit to $10.29, $0.29 over the budget.
 
 ## What was left out, and why
 

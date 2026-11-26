@@ -77,9 +77,10 @@ What sets it apart, for little or no added cost:
 - **The radome is the one colour choice:** smoke, ice or amber, on a matte black
   body.
 
-All printed parts for both units come to about 88 g and 5.2 hours, an estimated
-$4.02 a kit on your own printer or $9.97 at a print-farm rate, within the
-$5-10 budget (`cad/stl/cost_report.txt`). Every part prints as exported with no
+All printed parts for both units come to about 91 g and 5.3 hours, an estimated
+$4.15 a kit on your own printer or $10.29 at a print-farm rate: **$0.29 over the
+$5-10 budget**, since the ground unit grew 3 mm deeper to take the ESP32-WROOM-32
+DevKit (owner's decision, 2026-11-26; `cad/stl/cost_report.txt`). Every part prints as exported with no
 supports (`cad/stl/print_report.txt`), and Bambu Lab plates are in `cad/bambu/`.
 
 ## Where it departs from the brief, and why
@@ -153,7 +154,7 @@ Each of these is also explained where it happens, in the CAD and the docs.
 | Arm parts against each other, every pose | `cad/check_clash.py`: each moving part intersected with everything it must clear, stored, sliding, folding and open at every tilt and swivel step, MagSafe and clamp heads (`cad/stl/clash_report.txt`). Clear, except by design the two sprung detents between their stops. It does not measure clearance; the fit report does |
 | Every part prints as exported, no supports | `cad/check_print.py` (`cad/stl/print_report.txt`): one closed solid each, no overhang over 45°, no bridge over 11 mm, no ledge over 1.2 mm. Two named exceptions on the pod base (a 22 mm bridge inside its far end; the USB-C recess's frame). Geometry, not a slice |
 | Radar window: 1.0 mm radome, 15° tilt, module parallel behind it | Confirmed on a rendered cutaway |
-| Printed-part cost | Estimated from the STLs (`cost_report.py`): 88 g, 5.2 h, $4.02 a kit on your own printer, $9.97 at $1.50/h (within $10). Not yet sliced |
+| Printed-part cost | Estimated from the STLs (`cost_report.py`): 91 g, 5.3 h, $4.15 a kit on your own printer, $10.29 at $1.50/h (over $10 by $0.29: the deeper case for the ESP32 DevKit). Not yet sliced |
 | Firmware: C++ syntax, `-Wall -Wextra` | Clean, against stub headers: ground 0.5, pod 0.3 (see `firmware/README.md` for what that does not prove) |
 | Part sizes against datasheets and listings | Reviewed in [docs/hardware_review.md](docs/hardware_review.md); sellers disagree on several, so **measure before printing**: the 1500 mAh cell (up to 52 x 34.5 x 8.3 mm), TP4056 length and board thickness, MT3608 overall height (at most 8 mm), the slide switch and its lever, the radar module, the SuperMini's board thickness, and the pod's cell with its protection PCB (up to about 22 mm) and charger board (build instructions, section 0) |
 | I/Q skew-correction arithmetic | Checked on synthetic tones: about 62 dB image rejection |

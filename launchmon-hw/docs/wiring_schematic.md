@@ -58,8 +58,8 @@ without it.
 | TP4056 **OUT+** | slide switch, one end | |
 | slide switch, common | MT3608 **VIN+** | The switch cuts everything after the TP4056 |
 | TP4056 **OUT-** | **GND rail**, MT3608 **VIN-** and **VOUT-** | One ground for everything |
-| MT3608 **VOUT+** (5.0 V) | **5 V rail**: SuperMini **5V** pin, and the radar module's 5 V pin (1.3) | |
-| SuperMini **3V3** pin | Pre-amp V+ (LM358 pin 8), bias divider (1.4), radar **VCC** if the module is 3.3 V only (1.3) | The SuperMini's regulator makes 3.3 V from its 5V pin and supplies the whole analogue side |
+| MT3608 **VOUT+** (5.0 V) | **5 V rail**: the DevKit's **VIN** pin (the SuperMini's 5V pin before 2026-11-26), and the radar module's 5 V pin (1.3) | |
+| DevKit **3V3** pin (SuperMini **3V3** before) | Pre-amp V+ (LM358 pin 8), bias divider (1.4), radar **VCC** if the module is 3.3 V only (1.3) | The SuperMini's regulator makes 3.3 V from its 5V pin and supplies the whole analogue side |
 
 How it behaves:
 
@@ -87,7 +87,34 @@ reports none (0, "not read"). The TP4056 module's DW01A cuts the cell off when
 it is flat, about 2.4 V, and the unit stops. Charge it after each session; the
 module's LED shows red while charging and blue or green when done.
 
-### 1.2 Signal wiring (SuperMini pins)
+### 1.2 Signal wiring (ESP32-WROOM-32 DevKit pins)
+
+**Owner's decision, 2026-11-26:** the ground unit uses an **ESP32-WROOM-32
+DevKit (30 pins, CH340, USB-C)** instead of the ESP32-C3 SuperMini; the pod
+keeps its SuperMini. Its pins are below. **The ground firmware has not been
+changed yet** (the software side is paused): it still targets the ESP32-C3 and
+the old pins in the second table, and its pin constants (`ground_unit.ino`,
+`PIN_I` to `PIN_AUX_TX`), its board target (ESP32 Dev Module) and its ADC set-up
+must be moved to this table before it runs on the DevKit.
+
+| DevKit pin | Direction | Connects to | Notes |
+|---|---|---|---|
+| **GPIO36 (VP)**, ADC1_CH0 | in | Pre-amp channel I output (1.4) | Input-only pin, no pull-ups: a clean ADC input |
+| **GPIO39 (VN)**, ADC1_CH3 | in | Pre-amp channel Q output | The same |
+| **GPIO25** | out | **330 Ω** → 5 mm LED anode; cathode → GND | Status LED in the top face |
+| **GPIO26** | out | Radar module enable, **if it has one** | |
+| **GPIO0** | in | On-board BOOT button | Short press toggles raw USB streaming |
+| **GPIO16 / GPIO17** | UART2 RX / TX | Auxiliary serial | Spare |
+| **VIN (5V) / GND** | power | the 5 V rail from the MT3608 (1.1) | The DevKit's AMS1117 makes 3.3 V from it |
+| **3V3** | power out | Pre-amp V+ and bias divider (1.4); a bare 3.3 V radar board (1.3) | |
+| GPIO2, GPIO5, GPIO12, GPIO15 | - | **leave unconnected** | Strapping pins (GPIO2 also drives the on-board LED) |
+| GPIO1 / GPIO3 | - | (USB serial through the CH340) | Do not connect |
+| GPIO6-GPIO11 | - | (flash) | Not on the 30-pin header; never connect |
+
+Only ADC1 is used: ADC2 does not work while the radio is on. The CH340's USB-C
+is for flashing, with the lid off.
+
+**The ESP32-C3 SuperMini's pins, which the ground firmware still uses:**
 
 | SuperMini pin | Direction | Connects to | Notes |
 |---|---|---|---|

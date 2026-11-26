@@ -2,12 +2,12 @@ Printed-part cost estimate (not a slice: within about 20% of one)
 PETG 20 $/kg, 0.2 mm layers, 20% infill, 4.0 mm3/s sustained, 5% scrap allowance
 
 part                                     qty   grams  minutes
-ground_radar_shell.stl                     1    26.0       85  
-ground_radar_lid.stl                       1    14.0       46  
+ground_radar_shell.stl                     1    27.7       91  
+ground_radar_lid.stl                       1    14.8       48  
 ground_radar_radome.stl                    1     0.8        3  translucent smoke PETG
 ground_radar_led_pipe.stl                  1     0.0        1  natural PETG
 ground_radar_esp32_clamp_tab_x2.stl        2     0.1        2  
-ground_radar_dock_base.stl                 1    24.6       81  
+ground_radar_dock_base.stl                 1    25.2       83  
 ground_radar_arm_slide.stl                 1     4.1       13  folding phone arm
 ground_radar_arm_head_magsafe.stl          1     8.7       29  MagSafe head
 ground_radar_arm_pin.stl                   1     0.2        1  hinge pin
@@ -16,14 +16,14 @@ shaft_pod_base.stl                         1     6.0       20
 shaft_pod_lid.stl                          1     1.5        5  
 shaft_pod_strap_TPU.stl                    1     0.6        2  TPU 95A
 
-ground     80.0 g   4.57 h
+ground     83.0 g   4.74 h
 pod         8.1 g   0.58 h
-both       88.1 g   5.15 h
+both       91.1 g   5.31 h
 
-material                         $ 1.77
-own printer   ($0.40/h machine) $ 4.02  per kit
-print farm    ($1.50/h machine) $ 9.97  per kit
-budget                           $5-10: WITHIN at the print-farm rate
+material                         $ 1.83
+own printer   ($0.40/h machine) $ 4.15  per kit
+print farm    ($1.50/h machine) $10.29  per kit
+budget                           $5-10: OVER at the print-farm rate
 
 Labour (support removal, inserts, assembly) is not included.
 

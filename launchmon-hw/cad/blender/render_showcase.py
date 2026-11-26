@@ -46,14 +46,14 @@ BEAM_AZ_DEG, BEAM_EL_DEG = 80.0, 40.0
 # swivel's bar (tilt_offset behind the swivel). Folded, the head is at 180 deg
 # about X from upright; open it is at -TILT (tilted back) and turned YAW
 # toward the golfer.
-BODY_W, SWIVEL_Y, HINGE_Y, HINGE_Z_FOLDED = 96.0, 31.3, 52.3, 65.2
+BODY_W, SWIVEL_Y, HINGE_Y, HINGE_Z_FOLDED = 96.0, 34.3, 55.3, 65.2
 SLIDE_EXT, TILT, YAW = 46.0, 25.0, 20.0
 HEAD_CZ_OFF, PHONE_BACK = 32.0, 3.6   # the phone's back, from the hinge axis (phone_y - hinge_y)
 FLIP = 180.0 - TILT        # the head's turn about the hinge, folded to open: 180 -> 335 deg
 PHONE_W, PHONE_H, PHONE_T = 71.6, 147.6, 8.3   # phone = [W, H, T]; its back 0.2 mm off the head (phone_ghost)
 # The pod's pocket in the dock base (pod_pocket, pod_pocket_y0, pod_wall): the
 # pod lies on a side face, its Y axis up, its lid toward the rear.
-POCKET_X0, POCKET_X1, POCKET_Y0, POCKET_Y1 = 30.95, 65.05, 57.6, 90.6
+POCKET_X0, POCKET_X1, POCKET_Y0, POCKET_Y1 = 30.95, 65.05, 60.6, 93.6
 
 
 def args() -> list[str]:
