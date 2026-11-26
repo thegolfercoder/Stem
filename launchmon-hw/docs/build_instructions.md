@@ -48,6 +48,24 @@ radar's beam; a warped clamp lets go of the shaft.
 | **ASA** | Ground unit outdoors | Best UV resistance. Print in an enclosure. |
 | **ABS** | Either | Print in an enclosure; prone to warping on large flat parts like the ground shell. |
 
+**A test print in PLA is fine** for checking fits, assembly and the bench
+tests, as long as the result isn't used as the finished unit. The plates set no
+filament, so pick PLA in the slicer (about 210-220 °C nozzle, 55-60 °C bed,
+full cooling). What changes:
+
+- **Sprung parts click harder and can crack.** These are the slide's tongue,
+  the head's detent leaves, the clamp head's jaw, the ESP32 clamp tabs, the
+  pod's C-clamp on the shaft and its lid snap. PLA is about 1.5 times as stiff
+  as PETG and breaks at a smaller bend. Work them gently, and push the pod onto
+  the shaft slowly. A leaf
+  that snaps in PLA says nothing about the design, and the click force you feel
+  is not the PETG one.
+- **The pod strap and its latch coupon still need TPU 95A.** PLA does not
+  stretch. Without TPU, hold the pod on with a hook-and-loop strap for the test.
+- **The radome:** natural or translucent PLA is close to PETG at 24 GHz. The
+  same fillers to avoid apply, and the 4.5 bench check still decides.
+- **Keep it out of the sun and out of a car.** PLA softens at 55-60 °C.
+
 **Colour matters for the radome, and only for the radome.** The radar looks
 out through one part, the radome, so that is the only part whose filament the
 radar cares about. Print it in **translucent PETG: smoke (dye-tinted), ice
