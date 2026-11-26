@@ -32,7 +32,7 @@ const NAN32 = [0x00, 0x00, 0xc0, 0x7f];   // quiet NaN, as NAN is on the target
 const reading = (valueBytes, prov, refusal) => [...valueBytes, ...u8(prov), ...u8(refusal)];
 
 // The example in firmware/README.md's JSON (format only, not a result), as the
-// BLE packet. Battery fields 0 and 0, "not read", as ground firmware 0.5 sends.
+// BLE packet. Battery fields 0 and 0, "not read", as ground firmware 0.5 and 0.6 send.
 function examplePacket() {
   return Uint8Array.from([
     0x5a, 0x01,                                   // magic, version
@@ -87,7 +87,7 @@ test('parses every field at its offset with its scaling', () => {
   assert.equal(p.readings.tempo_ratio.value, Math.fround(3.02));
   assert.equal(p.readings.tempo_ratio.provenance, 'derived');
 
-  // Firmware 0.5: both 0, "not read". The page shows them as unavailable, not 0 V.
+  // Firmware 0.5 and 0.6: both 0, "not read". The page shows them as unavailable, not 0 V.
   assert.equal(p.battery.groundMv, 0);
   assert.equal(p.battery.groundKnown, false);
   assert.equal(p.battery.podMv, 0);
@@ -335,8 +335,9 @@ test('firmware: refusal texts match refusalText() word for word, in enum order',
   assert.deepEqual(texts, Object.keys(REFUSAL).map((k) => REFUSAL[k]));
 });
 
-test('firmware 0.5: one characteristic, and battery sent as 0 = not read', () => {
-  assert.match(FW, /FW_MAJOR = 0, FW_MINOR = 5;/);
+// 0.6 is 0.5 ported to the ESP32 DevKit's pins: the same packet and characteristic.
+test('firmware 0.6: one characteristic, and battery sent as 0 = not read', () => {
+  assert.match(FW, /FW_MAJOR = 0, FW_MINOR = 6;/);
   assert.doesNotMatch(FW, /7d2a0103/, 'the live-status characteristic is gone');
   assert.doesNotMatch(FW, /struct[^\n]*UnitStatus/);
   assert.match(FW, /sum\.battery_mv_ground = 0;/);
