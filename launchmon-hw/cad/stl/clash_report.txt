@@ -1,0 +1,126 @@
+Arm interference check: every moving part against everything it must not touch, in every pose
+(121 checks; a pass is an empty CGAL intersection; it does not measure clearance)
+
+  ok   slide  stored: clear of base, unit, swivel, head
+  ok   swivel stored: clear of base, unit, slide, head
+  ok   head   stored: clear of base, unit, slide, swivel
+  ok   slide  slide 75% up, head hanging: clear of base, unit
+  ok   swivel slide 75% up, head hanging: clear of base, unit
+  ok   head   slide 75% up, head hanging: clear of base, unit
+  ok   slide  slide 50% up, head hanging: clear of base, unit
+  ok   swivel slide 50% up, head hanging: clear of base, unit
+  ok   head   slide 50% up, head hanging: clear of base, unit
+  ok   slide  slide 25% up, head hanging: clear of base, unit
+  ok   swivel slide 25% up, head hanging: clear of base, unit
+  ok   head   slide 25% up, head hanging: clear of base, unit
+  ok   head   folding, head at 180 deg: clear of base, unit, slide, swivel
+  ok   head   folding, head at 150 deg: clear of base, unit, slide, swivel
+  ok   head   folding, head at 120 deg: clear of base, unit, slide, swivel
+  ok   head   folding, head at 90 deg: clear of base, unit, slide, swivel
+  ok   head   folding, head at 60 deg: clear of base, unit, slide, swivel
+  ok   slide  open, swivel -25 deg: clear of base, unit, swivel
+  ok   swivel open, swivel -25 deg: clear of base, unit, slide
+  ok   head   open, tilt 0 deg, swivel -25 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 0 deg, swivel -25 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 10 deg, swivel -25 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 10 deg, swivel -25 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 20 deg, swivel -25 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 20 deg, swivel -25 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 25 deg, swivel -25 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 25 deg, swivel -25 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 30 deg, swivel -25 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 30 deg, swivel -25 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 35 deg, swivel -25 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 35 deg, swivel -25 deg: clear of base, unit, slide, swivel, head
+  ok   slide  open, swivel 0 deg: clear of base, unit, swivel
+  ok   swivel open, swivel 0 deg: clear of base, unit, slide
+  ok   head   open, tilt 0 deg, swivel 0 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 0 deg, swivel 0 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 10 deg, swivel 0 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 10 deg, swivel 0 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 20 deg, swivel 0 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 20 deg, swivel 0 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 25 deg, swivel 0 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 25 deg, swivel 0 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 30 deg, swivel 0 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 30 deg, swivel 0 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 35 deg, swivel 0 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 35 deg, swivel 0 deg: clear of base, unit, slide, swivel, head
+  ok   slide  open, swivel 20 deg: clear of base, unit, swivel
+  ok   swivel open, swivel 20 deg: clear of base, unit, slide
+  ok   head   open, tilt 0 deg, swivel 20 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 0 deg, swivel 20 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 10 deg, swivel 20 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 10 deg, swivel 20 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 20 deg, swivel 20 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 20 deg, swivel 20 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 25 deg, swivel 20 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 25 deg, swivel 20 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 30 deg, swivel 20 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 30 deg, swivel 20 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 35 deg, swivel 20 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 35 deg, swivel 20 deg: clear of base, unit, slide, swivel, head
+  ok   slide  open, swivel 25 deg: clear of base, unit, swivel
+  ok   swivel open, swivel 25 deg: clear of base, unit, slide
+  ok   head   open, tilt 0 deg, swivel 25 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 0 deg, swivel 25 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 10 deg, swivel 25 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 10 deg, swivel 25 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 20 deg, swivel 25 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 20 deg, swivel 25 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 25 deg, swivel 25 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 25 deg, swivel 25 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 30 deg, swivel 25 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 30 deg, swivel 25 deg: clear of base, unit, slide, swivel, head
+  ok   head   open, tilt 35 deg, swivel 25 deg: clear of base, unit, slide, swivel, phone
+  ok   phone  open, tilt 35 deg, swivel 25 deg: clear of base, unit, slide, swivel, head
+  ok   slide  clamp head, stored: clear of base, unit, swivel, head, jaw
+  ok   swivel clamp head, stored: clear of base, unit, slide, head, jaw
+  ok   head   clamp head, stored: clear of base, unit, slide, swivel, jaw
+  ok   jaw    clamp head, stored: clear of base, unit, slide, swivel, head
+  ok   slide  clamp head, slide 75% up, head hanging: clear of base, unit
+  ok   swivel clamp head, slide 75% up, head hanging: clear of base, unit
+  ok   head   clamp head, slide 75% up, head hanging: clear of base, unit
+  ok   jaw    clamp head, slide 75% up, head hanging: clear of base, unit
+  ok   slide  clamp head, slide 50% up, head hanging: clear of base, unit
+  ok   swivel clamp head, slide 50% up, head hanging: clear of base, unit
+  ok   head   clamp head, slide 50% up, head hanging: clear of base, unit
+  ok   jaw    clamp head, slide 50% up, head hanging: clear of base, unit
+  ok   slide  clamp head, slide 25% up, head hanging: clear of base, unit
+  ok   swivel clamp head, slide 25% up, head hanging: clear of base, unit
+  ok   head   clamp head, slide 25% up, head hanging: clear of base, unit
+  ok   jaw    clamp head, slide 25% up, head hanging: clear of base, unit
+  ok   head   clamp head, folding, head at 180 deg: clear of base, unit, slide, swivel, jaw
+  ok   jaw    clamp head, folding, head at 180 deg: clear of base, unit, slide, swivel, head
+  ok   head   clamp head, folding, head at 150 deg: clear of base, unit, slide, swivel, jaw
+  ok   jaw    clamp head, folding, head at 150 deg: clear of base, unit, slide, swivel, head
+  ok   head   clamp head, folding, head at 120 deg: clear of base, unit, slide, swivel, jaw
+  ok   jaw    clamp head, folding, head at 120 deg: clear of base, unit, slide, swivel, head
+  ok   head   clamp head, folding, head at 90 deg: clear of base, unit, slide, swivel, jaw
+  ok   jaw    clamp head, folding, head at 90 deg: clear of base, unit, slide, swivel, head
+  ok   head   clamp head, folding, head at 60 deg: clear of base, unit, slide, swivel, jaw
+  ok   jaw    clamp head, folding, head at 60 deg: clear of base, unit, slide, swivel, head
+  ok   slide  clamp head, open, swivel -25 deg: clear of base, unit, swivel
+  ok   swivel clamp head, open, swivel -25 deg: clear of base, unit, slide
+  ok   head   clamp head, open, tilt 0 deg, swivel -25 deg: clear of base, unit, slide, swivel, jaw
+  ok   phone  clamp head, open, tilt 0 deg, swivel -25 deg: clear of base, unit, slide, swivel
+  ok   jaw    clamp head, open, tilt 0 deg, swivel -25 deg: clear of base, unit, slide, swivel, head
+  ok   head   clamp head, open, tilt 25 deg, swivel -25 deg: clear of base, unit, slide, swivel, jaw
+  ok   phone  clamp head, open, tilt 25 deg, swivel -25 deg: clear of base, unit, slide, swivel
+  ok   jaw    clamp head, open, tilt 25 deg, swivel -25 deg: clear of base, unit, slide, swivel, head
+  ok   head   clamp head, open, tilt 35 deg, swivel -25 deg: clear of base, unit, slide, swivel, jaw
+  ok   phone  clamp head, open, tilt 35 deg, swivel -25 deg: clear of base, unit, slide, swivel
+  ok   jaw    clamp head, open, tilt 35 deg, swivel -25 deg: clear of base, unit, slide, swivel, head
+  ok   slide  clamp head, open, swivel 20 deg: clear of base, unit, swivel
+  ok   swivel clamp head, open, swivel 20 deg: clear of base, unit, slide
+  ok   head   clamp head, open, tilt 0 deg, swivel 20 deg: clear of base, unit, slide, swivel, jaw
+  ok   phone  clamp head, open, tilt 0 deg, swivel 20 deg: clear of base, unit, slide, swivel
+  ok   jaw    clamp head, open, tilt 0 deg, swivel 20 deg: clear of base, unit, slide, swivel, head
+  ok   head   clamp head, open, tilt 25 deg, swivel 20 deg: clear of base, unit, slide, swivel, jaw
+  ok   phone  clamp head, open, tilt 25 deg, swivel 20 deg: clear of base, unit, slide, swivel
+  ok   jaw    clamp head, open, tilt 25 deg, swivel 20 deg: clear of base, unit, slide, swivel, head
+  ok   head   clamp head, open, tilt 35 deg, swivel 20 deg: clear of base, unit, slide, swivel, jaw
+  ok   phone  clamp head, open, tilt 35 deg, swivel 20 deg: clear of base, unit, slide, swivel
+  ok   jaw    clamp head, open, tilt 35 deg, swivel 20 deg: clear of base, unit, slide, swivel, head
+
+no part cuts into another

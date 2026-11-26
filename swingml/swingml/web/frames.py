@@ -21,6 +21,7 @@ from numpy.typing import NDArray
 from swingml.events import SwingEvent
 from swingml.pose.base import PoseSequence
 from swingml.skeleton import BONES, Landmark
+from swingml.video.reader import VideoReader
 
 BONE_COLOUR = (255, 214, 92)  # BGR
 JOINT_COLOUR = (60, 200, 255)
@@ -94,58 +95,59 @@ def body_crop(
     return round(left), round(top), round(right - left), round(bottom - top)
 
 
+def frames_at(
+    video_path: Path | str, sequence: PoseSequence, frames: list[int]
+) -> dict[int, NDArray[np.uint8]]:
+    """The video frames behind the given frames of the tracked sequence, as BGR.
+
+    Matched by time, not by position. A clip faster than sixty frames a second
+    is tracked at sixty, so frame n of the sequence is frame 4n of a 240 fps
+    clip; fetching by position showed a slow-motion swing at the wrong moment
+    with another moment's skeleton on it. The clip is read with the same reader
+    and the same clock the tracker used, forward rather than by seeking, because
+    seeking a variable-frame-rate clip is not dependable.
+    """
+    wanted = sorted({f for f in frames if 0 <= f < sequence.n_frames})
+    if not wanted:
+        return {}
+    times = {f: float(sequence.timestamps_s[f]) for f in wanted}
+    last_time = max(times.values())
+    best: dict[int, tuple[float, NDArray[np.uint8]]] = {}
+    with VideoReader(video_path) as reader:
+        for rgb, time_s in reader.frames():
+            for frame, target in times.items():
+                gap = abs(time_s - target)
+                if frame not in best or gap < best[frame][0]:
+                    best[frame] = (gap, rgb)
+            if time_s > last_time + 0.05:
+                break
+    return {
+        frame: np.asarray(cv2.cvtColor(image, cv2.COLOR_RGB2BGR), dtype=np.uint8)
+        for frame, (_, image) in best.items()
+    }
+
+
 def extract_event_frames(
     video_path: Path | str,
     sequence: PoseSequence,
     event_frames: tuple[int, ...],
     destination: Path,
     max_height: int = 640,
+    images: dict[int, NDArray[np.uint8]] | None = None,
 ) -> dict[str, str]:
     """Write one annotated JPEG per event. Returns event name to file name.
 
-    Seeking is attempted first and checked, because seeking in a
-    variable-frame-rate clip is not always exact and some builds of OpenCV will
-    happily return the wrong frame. If the seek lands somewhere else, the clip is
-    read forward from the start instead - slower, but right.
+    `event_frames` index the tracked sequence; `frames_at` finds the video frames
+    behind them, unless `images` already holds them from a shared read.
     """
     destination.mkdir(parents=True, exist_ok=True)
-    capture = cv2.VideoCapture(str(video_path))
-    if not capture.isOpened():
-        raise OSError(f"could not reopen {video_path} to extract frames")
-
-    if hasattr(cv2, "CAP_PROP_ORIENTATION_AUTO"):
-        capture.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
-
     wanted = {int(frame): SwingEvent(index) for index, frame in enumerate(event_frames)}
     written: dict[str, str] = {}
-    collected: dict[int, NDArray[np.uint8]] = {}
-
-    seek_works = True
-    for frame_index in sorted(wanted):
-        capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-        landed = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
-        ok, image = capture.read()
-        if not ok or abs(landed - frame_index) > 1:
-            seek_works = False
-            break
-        collected[frame_index] = np.asarray(image, dtype=np.uint8)
-
-    if not seek_works:
-        collected.clear()
-        capture.release()
-        capture = cv2.VideoCapture(str(video_path))
-        if hasattr(cv2, "CAP_PROP_ORIENTATION_AUTO"):
-            capture.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
-        index = 0
-        while collected.keys() != wanted.keys():
-            ok, raw = capture.read()
-            if not ok:
-                break
-            if index in wanted:
-                collected[index] = np.asarray(raw, dtype=np.uint8)
-            index += 1
-    capture.release()
-
+    collected = (
+        {f: images[f] for f in wanted if f in images}
+        if images is not None
+        else frames_at(video_path, sequence, list(wanted))
+    )
     if not collected:
         return written
 
@@ -156,8 +158,7 @@ def extract_event_frames(
 
     for frame_index, image in sorted(collected.items()):
         event = wanted[frame_index]
-        pose_frame = min(frame_index, sequence.n_frames - 1)
-        annotated = draw_pose(image, sequence, pose_frame)
+        annotated = draw_pose(image, sequence, frame_index)
         cropped: NDArray[np.uint8] = annotated[top : top + box_height, left : left + box_width]
         if cropped.shape[0] > max_height:
             scale = max_height / cropped.shape[0]
@@ -176,6 +177,22 @@ def extract_event_frames(
     return written
 
 
+def strip_frames(
+    sequence: PoseSequence, first_frame: int, last_frame: int, max_frames: int
+) -> list[int]:
+    """Which tracked frames the scrubbing strip shows: all of them, if they fit."""
+    first = max(0, first_frame)
+    last = min(last_frame, sequence.n_frames - 1)
+    if last <= first:
+        return []
+    span = last - first + 1
+    step = max(1, span // max_frames + (1 if span % max_frames else 0))
+    wanted = list(range(first, last + 1, step))
+    if wanted[-1] != last:
+        wanted.append(last)
+    return wanted
+
+
 def extract_sequence_frames(
     video_path: Path | str,
     sequence: PoseSequence,
@@ -185,6 +202,7 @@ def extract_sequence_frames(
     max_frames: int = 72,
     max_height: int = 560,
     crop_frames: list[int] | None = None,
+    images: dict[int, NDArray[np.uint8]] | None = None,
 ) -> list[dict[str, float | str | int]]:
     """Write the swing itself as a strip of images, for scrubbing through.
 
@@ -201,36 +219,14 @@ def extract_sequence_frames(
     Returns a manifest of what was written, in order.
     """
     destination.mkdir(parents=True, exist_ok=True)
-    first = max(0, first_frame)
-    last = min(last_frame, sequence.n_frames - 1)
-    if last <= first:
+    wanted = strip_frames(sequence, first_frame, last_frame, max_frames)
+    if not wanted:
         return []
-
-    span = last - first + 1
-    step = max(1, span // max_frames + (1 if span % max_frames else 0))
-    wanted = list(range(first, last + 1, step))
-    if wanted[-1] != last:
-        wanted.append(last)
-
-    capture = cv2.VideoCapture(str(video_path))
-    if not capture.isOpened():
-        return []
-    if hasattr(cv2, "CAP_PROP_ORIENTATION_AUTO"):
-        capture.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
-
-    # Read forward rather than seeking. The frames wanted are consecutive-ish and
-    # seeking a variable-frame-rate clip is not dependable.
-    collected: dict[int, NDArray[np.uint8]] = {}
-    target = set(wanted)
-    index = 0
-    while index <= last:
-        ok, raw = capture.read()
-        if not ok:
-            break
-        if index in target:
-            collected[index] = np.asarray(raw, dtype=np.uint8)
-        index += 1
-    capture.release()
+    collected = (
+        {f: images[f] for f in wanted if f in images}
+        if images is not None
+        else frames_at(video_path, sequence, wanted)
+    )
     if not collected:
         return []
 

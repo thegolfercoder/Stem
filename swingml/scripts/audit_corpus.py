@@ -23,11 +23,14 @@ import argparse
 import hashlib
 import sys
 from collections import defaultdict
+from itertools import pairwise
 from pathlib import Path
 
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from swingml.analysis import AnalysisConfig
 
 
 def clip_digest(clip: np.ndarray) -> str:
@@ -35,6 +38,40 @@ def clip_digest(clip: np.ndarray) -> str:
     return hashlib.blake2b(
         np.ascontiguousarray(clip, dtype=np.float32).tobytes(), digest_size=16
     ).hexdigest()
+
+
+def report_tempo_coverage(tempo: np.ndarray) -> None:
+    """The tempo histogram, against the range the pipeline will actually accept.
+
+    The buckets were here before and one of them read ">4.0: 0" for the whole
+    life of the project without anyone reading it as a problem, because a count
+    with nothing beside it is just a count. The gate accepts 1.2 to 6.0 and the
+    corpus occupied 2.1 to 4.0, so more than half the range the thing answers
+    questions about had never been trained on - and tempo is the number it
+    exists to report. Printing the gate next to the histogram is what turns that
+    zero into a sentence.
+    """
+    gate_lo, gate_hi = AnalysisConfig().plausible_tempo
+    edges = (gate_lo, 2.1, 3.3, 4.0, 4.6, gate_hi)
+    print("\n  tempo             ", end="")
+    empty: list[str] = []
+    for lo, hi in pairwise(edges):
+        count = int(((tempo >= lo) & (tempo < hi)).sum())
+        print(f"{lo:.1f}-{hi:.1f}: {count}  ", end="")
+        if count == 0:
+            empty.append(f"{lo:.1f}-{hi:.1f}")
+    below = int((tempo < gate_lo).sum())
+    above = int((tempo >= gate_hi).sum())
+    print(f"| outside the gate: {below + above}")
+    print(
+        f"                    the pipeline accepts {gate_lo:.1f} to {gate_hi:.1f}; "
+        f"this corpus spans {tempo.min():.2f} to {tempo.max():.2f}"
+    )
+    if empty:
+        # Not an error. Whether a hole matters depends on whether real swings
+        # land in it, which this script has no way to know, so it says where the
+        # hole is and leaves the judgement to whoever is choosing what to build.
+        print(f"                    NO FOOTAGE in {', '.join(empty)} of the accepted range")
 
 
 def audit(paths: list[Path]) -> int:
@@ -105,13 +142,7 @@ def audit(paths: list[Path]) -> int:
     print("  " + "".join(f"{c:>21d}" for c in counts))
     rates = "  ".join(f"{r:.0f} Hz: {int((rate == r).sum())}" for r in sorted(set(rate.tolist())))
     print("\n  capture rate      " + rates)
-    print(
-        "  tempo             "
-        f"<2.1: {int((tempo < 2.1).sum())}  "
-        f"2.1-3.3: {int(((tempo >= 2.1) & (tempo < 3.3)).sum())}  "
-        f"3.3-4.0: {int(((tempo >= 3.3) & (tempo < 4.0)).sum())}  "
-        f">4.0: {int((tempo >= 4.0).sum())}"
-    )
+    report_tempo_coverage(tempo)
     print(f"  left handed       {int(left.sum())} of {len(rows)}")
     known = ~np.isnan(landscape_flags)
     print(

@@ -22,6 +22,65 @@
   </div>
 </section>
 
+{% if analysis.capture_warnings %}
+<section class="banner-note capture-warnings">
+  <strong>How this was filmed</strong>
+  <ul>{% for w in analysis.capture_warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+{% if insight %}
+<section class="insight insight-{{ insight.kind }}" id="insight">
+  <p class="eyebrow">Your priority now &middot; evidence: {{ insight.confidence }}</p>
+  <h2>{{ insight.title }}</h2>
+  <p>{{ insight.summary }}</p>
+  {% if insight.evidence %}
+  <details class="evidence" {% if insight.kind in ('tempo_quick', 'tempo_slow', 'capture') %}open{% endif %}>
+    <summary>The evidence</summary>
+    <ul>
+      {% for e in insight.evidence %}
+      <li>
+        {% if e.swing_id %}<a href="{{ url_for('swing_page', swing_id=e.swing_id) }}">{{ e.label }}</a>{% else %}{{ e.label }}{% endif %}:
+        {{ e.value }} <span class="prov prov-{{ e.provenance }}">{{ e.provenance }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+  {% if insight.drill %}
+  <div class="drill">
+    <h3>Drill: {{ insight.drill.title }}</h3>
+    <ol>{% for step in insight.drill.steps %}<li>{{ step }}</li>{% endfor %}</ol>
+    <p><strong>Reps:</strong> {{ insight.drill.reps }}</p>
+    <p><strong>What counts as improvement:</strong> {{ insight.success }}</p>
+    <p><strong>Retest:</strong> {{ insight.retest }}</p>
+    <button class="btn primary start-plan" type="button" data-focus="{{ insight.drill.focus }}" data-from="{{ swing.id }}">Start practising this</button>
+  </div>
+  {% elif insight.choices %}
+  <div class="drill">
+    <h3>Choose what to practise</h3>
+    <p>{{ insight.retest }} The app will compare your next swings with these ones.</p>
+    <div class="choice-row">
+      {% for focus, label in insight.choices %}
+      <button class="btn start-plan" type="button" data-focus="{{ focus }}" data-from="{{ swing.id }}">{{ label }}</button>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <p><strong>Next:</strong> {{ insight.retest }}</p>
+  {% endif %}
+  {% if active_plan %}
+  <p class="plan-note">You are practising: {{ active_plan.focus.replace('_', ' ') }}. <a href="{{ url_for('practice.practice_page') }}">See whether it is working</a>.</p>
+  {% endif %}
+  {% if insight.limitations %}
+  <details class="limits"><summary>What this priority cannot tell you</summary>
+    <ul>{% for l in insight.limitations %}<li>{{ l }}</li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+  <p class="insight-status" id="plan-status" role="status"></p>
+</section>
+{% endif %}
+
 {% if refusal %}
 <section class="banner warn">
   <h2>No swing was found in this clip</h2>
@@ -38,6 +97,15 @@
 <section class="film">
   <h2>The eight positions</h2>
   <p class="section-sub">Click one to hold it. Times are relative to the start of the clip.</p>
+  {% if analysis.positions_set_by == 'golfer' %}
+  <p class="banner-note">
+    <strong>Positions set by you</strong>{% if positions %} &mdash; you moved
+    {{ positions.moved|select|list|length }} of eight{% endif %}. Every timing below
+    is measured from your frames; the model's error bands describe the model, so they
+    are not shown.
+    {% if positions and positions.training_label %}This swing is marked as a training label.{% endif %}
+  </p>
+  {% endif %}
   <div class="strip">
     {% for e in events %}
     <figure class="frame" data-time="{{ e.time_s }}" tabindex="0">
@@ -52,7 +120,7 @@
         {% if e.band_ms is not none %}
         <span class="frame-band" title="{{ e.band_note }}">&plusmn;{{ '%.0f'|format(e.band_ms) }} ms</span>
         {% endif %}
-        <span class="conf" style="--c: {{ e.confidence }}"><i></i></span>
+        {% if analysis.positions_set_by == 'model' %}<span class="conf" style="--c: {{ e.confidence }}"><i></i></span>{% endif %}
       </figcaption>
     </figure>
     {% endfor %}
@@ -62,10 +130,17 @@
     The &plusmn; figures are measured, not assumed. This model was run over
     {{ band_corpus }}, and the spread of its errors recorded. Each figure is the
     distance that contained
+    {% if band_by_confidence %}
     {{ band_coverage }}% of those errors at the confidence the model reported here, so a
     doubtful event gets a wider band than a certain one. A band appears only where
-    enough held-out clips landed at that confidence to measure one, and none of this is
-    a claim about footage of a real golfer on grass.
+    enough held-out clips landed at that confidence to measure one.
+    {% else %}
+    {{ band_coverage }}% of those errors. There is one band per event, measured on
+    {{ band_clips }} clips, so every swing gets the same band: it does not widen when
+    the model is doubtful or narrow when it is sure.
+    {% endif %}
+    Your own footage - a phone, another angle - may differ from what the bands were
+    measured on.
   </p>
   {% endif %}
   <p class="footnote">
@@ -94,6 +169,30 @@
     <input id="scrub-range" type="range" min="0" max="{{ sequence|length - 1 }}" value="0" step="1">
   </div>
   <div class="scrub-marks" id="scrub-marks"></div>
+  {% if can_set_positions %}
+  <div class="pos-editor" id="pos-editor">
+    <h3>Put a position on the right frame</h3>
+    <p class="section-sub">
+      Scrub to the frame where a position really happens, choose it, and set it.
+      The swing is re-measured from your frames when you save.
+    </p>
+    <div class="pos-row">
+      <select id="pos-event" aria-label="Position to set">
+        {% for e in events %}<option value="{{ loop.index0 }}">{{ e.label }}</option>{% endfor %}
+      </select>
+      <button class="btn" id="pos-set" type="button">Set to this frame</button>
+      {% if positions %}<button class="btn ghost" id="pos-reset" type="button">Reset to the model's</button>{% endif %}
+    </div>
+    <label class="pos-confirm">
+      <input type="checkbox" id="pos-label" {% if positions and positions.training_label %}checked{% endif %}>
+      All eight positions are right. Use this swing to train the model on phone footage.
+    </label>
+    <div class="pos-row">
+      <button class="btn primary" id="pos-save" type="button">Save positions</button>
+      <span class="pos-status" id="pos-status" role="status"></span>
+    </div>
+  </div>
+  {% endif %}
   <p class="footnote">
     <a href="{{ url_for('media_video', swing_id=swing.id) }}" download>Download the original clip</a>
     &mdash; kept exactly as you uploaded it.
@@ -102,6 +201,42 @@
 <script id="seq-data" type="application/json">{{ sequence|tojson }}</script>
 <script id="event-data" type="application/json">{{ events|tojson }}</script>
 {% endif %}
+
+{% if story %}
+<section class="story-section">
+  <h2>The swing, start to finish</h2>
+  <p class="section-sub">What happened in each part, in order. Every figure is one of the
+    measurements below; nothing is added that was not measured.</p>
+  <ol class="beats">
+    {% for beat in story %}
+    <li><div><h3>{{ beat.title }}<span class="prov prov-{{ beat.provenance }}">{{ beat.provenance }}</span></h3>
+      <p>{{ beat.text }}</p></div></li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
+
+{% if unknowns and not refusal %}
+<section class="unknowns">
+  <h2>What this analysis cannot tell you</h2>
+  <ul>{% for u in unknowns %}<li>{{ u }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+<section class="coach-section" id="coach" hidden>
+  <h2>A coach's read <span class="prov prov-opinion">local AI</span></h2>
+  <p class="section-sub">A language model on this computer looks at the eight positions and
+    the measurements above and says what it would work on. It is an opinion, not a
+    measurement, and nothing is sent anywhere.</p>
+  <div class="coach-box">
+    <div class="coach-actions">
+      <button class="btn primary" id="coach-ask" type="button">Get a coach's read</button>
+      <span class="coach-status" id="coach-status" role="status"></span>
+    </div>
+    <div class="coach-text" id="coach-text" aria-live="polite"></div>
+    <p class="coach-meta" id="coach-meta"></p>
+  </div>
+</section>
 
 {% for group in groups %}
 <section class="metrics">
@@ -117,6 +252,7 @@
         <div class="metric-range" title="{{ m.range_note }}">
           measured spread {{ '%.2f'|format(m.range_low) }} &ndash; {{ '%.2f'|format(m.range_high) }}
         </div>
+        {% if m.range_caveat %}<div class="metric-caveat">{{ m.range_caveat }}</div>{% endif %}
         {% endif %}
         <div class="metric-foot">
           <span class="prov prov-{{ m.provenance }}">{{ m.provenance.replace('_', ' ') }}</span>
@@ -167,4 +303,6 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='swing.js') }}"></script>
+<script src="{{ url_for('static', filename='coach.js') }}"></script>
+<script src="{{ url_for('static', filename='practice.js') }}"></script>
 {% endblock %}

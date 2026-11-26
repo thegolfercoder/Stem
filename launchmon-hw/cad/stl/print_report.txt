@@ -1,0 +1,23 @@
+Print audit: each STL as exported (its print orientation), no supports
+limits: overhang 44 deg from the bed, bridge 11.0 mm, unsupported reach 1.2 mm, bed contact 4.0 mm2. Geometry only: not a slice, not a print.
+
+  ok   ground_radar_arm_clamp_jaw.stl: 20.0 x 19.9 x 14.4 mm, 1.20 cm3; bed contact 150 mm2; widest bridge 6.8 mm, longest unsupported reach 1.1 mm
+  ok   ground_radar_arm_fit_coupon.stl: 59.4 x 49.6 x 15.0 mm, 4.13 cm3; 6 pieces, as designed; bed contact 1011 mm2; widest bridge 0.0 mm, longest unsupported reach 1.2 mm
+  ok   ground_radar_arm_head_clamp.stl: 98.0 x 41.0 x 18.3 mm, 8.70 cm3; bed contact 1364 mm2; widest bridge 0.0 mm, longest unsupported reach 1.2 mm
+  ok   ground_radar_arm_head_magsafe.stl: 60.0 x 65.0 x 6.4 mm, 10.97 cm3; bed contact 2797 mm2; widest bridge 0.0 mm, longest unsupported reach 1.2 mm
+  ok   ground_radar_arm_pin.stl: 28.0 x 3.0 x 2.8 mm, 0.19 cm3; bed contact 42 mm2; widest bridge 0.0 mm, longest unsupported reach 0.3 mm
+  ok   ground_radar_arm_slide.stl: 25.4 x 63.7 x 16.3 mm, 4.23 cm3; bed contact 1489 mm2; widest bridge 5.7 mm, longest unsupported reach 1.2 mm
+  ok   ground_radar_arm_swivel.stl: 12.0 x 30.0 x 11.0 mm, 1.94 cm3; bed contact 290 mm2; widest bridge 0.0 mm, longest unsupported reach 1.2 mm
+  ok   ground_radar_dock_base.stl: 96.0 x 99.5 x 65.0 mm, 21.78 cm3; bed contact 7079 mm2; widest bridge 8.1 mm, longest unsupported reach 1.2 mm
+  ok   ground_radar_esp32_clamp_tab_x2.stl: 6.0 x 4.6 x 1.6 mm, 0.03 cm3; bed contact 21 mm2; widest bridge 0.0 mm, longest unsupported reach 0.0 mm
+  ok   ground_radar_led_pipe.stl: 6.0 x 6.0 x 2.4 mm, 0.03 cm3; bed contact 28 mm2; widest bridge 0.0 mm, longest unsupported reach 0.0 mm
+  ok   ground_radar_lid.stl: 96.0 x 66.5 x 15.0 mm, 16.01 cm3; bed contact 5659 mm2; widest bridge 0.0 mm, longest unsupported reach 1.0 mm
+  ok   ground_radar_radome.stl: 25.1 x 25.1 x 1.0 mm, 0.62 cm3; bed contact 623 mm2; widest bridge 0.0 mm, longest unsupported reach 0.0 mm
+  ok   ground_radar_shell.stl: 96.0 x 66.5 x 21.6 mm, 30.50 cm3; bed contact 4759 mm2; widest bridge 10.8 mm, longest unsupported reach 1.2 mm
+  ok   shaft_pod_base.stl: 26.2 x 30.6 x 33.5 mm, 5.48 cm3; bed contact 277 mm2; accepted: the frame round the USB-C plug opening, 0.6 mm above the bed, where the plug's overmold seats: 1.3-1.6 mm wide at the sides, and up to 5.4 mm where it runs out to the split line (the lid closes it there). Three layers off the bed, inside the recess: at worst they droop a little (was: a 5.4 mm ledge, 49 mm2, sloping (down to 0 deg from the bed), print Z 0.6-1.1, near X 5.1 Y 13.0); accepted: the +X end wall's inside face, a 22 mm bridge across the cavity: the base stands on its USB end so the clamp's layers run round the C (lying down, a C-clamp splits along its layers), and the IMU, cell and charger fill that end, so there is no room for a rib or a 45-degree roof. Print it with the part fan on; any sag is on the inside face, toward the charger's end (0.3 mm clear) (was: a 22.0 mm bridge, 231 mm2, sloping (down to 0 deg from the bed), print Z 31.5-31.9, near X 7.6 Y 13.0); accepted: the +X end wall's inside face, a 22 mm bridge across the cavity: the base stands on its USB end so the clamp's layers run round the C (lying down, a C-clamp splits along its layers), and the IMU, cell and charger fill that end, so there is no room for a rib or a 45-degree roof. Print it with the part fan on; any sag is on the inside face, toward the charger's end (0.3 mm clear) (was: a 22.0 mm bridge, 7 mm2, sloping (down to 0 deg from the bed), print Z 31.5-31.9, near X 1.4 Y 13.0); widest bridge 22.0 mm, longest unsupported reach 10.4 mm
+  ok   shaft_pod_lid.stl: 31.7 x 24.2 x 6.2 mm, 1.21 cm3; bed contact 650 mm2; widest bridge 0.0 mm, longest unsupported reach 0.9 mm
+  ok   shaft_pod_strap_TPU.stl: 62.3 x 8.0 x 1.8 mm, 0.46 cm3; bed contact 433 mm2; widest bridge 0.0 mm, longest unsupported reach 0.0 mm
+  ok   shaft_pod_strap_fit_coupon_latch_TPU.stl: 17.8 x 8.0 x 1.8 mm, 0.13 cm3; bed contact 115 mm2; widest bridge 0.0 mm, longest unsupported reach 0.0 mm
+  ok   shaft_pod_strap_fit_coupon_post.stl: 8.0 x 6.3 x 10.0 mm, 0.33 cm3; bed contact 32 mm2; widest bridge 0.0 mm, longest unsupported reach 0.0 mm
+
+every part passes

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Your data{% endblock %}
+{% block content %}
+<section class="swing-head"><div>
+  <h1>Your data</h1>
+  <p class="sub">Everything below is on this computer and nowhere else. Nothing is uploaded, shared or
+    used to train anything unless you choose to send it.</p>
+</div></section>
+
+<section class="data-section">
+  <h2>What is stored</h2>
+  <p>{{ total }} swings ({{ ok_count }} analysed, {{ total - ok_count }} refused), each with its video,
+    the key frames, the tracked body positions and the analysis; your practice plans and feedback;
+    and a count of what you did in the app, listed below.</p>
+  <p><a class="btn" href="{{ url_for('practice.export') }}">Download everything (JSON, without videos)</a></p>
+</section>
+
+<section class="data-section">
+  <h2>What the app has counted</h2>
+  <p class="section-sub">Kept so you can see how you use it; it never leaves this computer.</p>
+  {% if events %}
+  <table class="events"><tbody>{% for name, n in events.items() %}<tr><td>{{ name.replace('_', ' ') }}</td><td>{{ n }}</td></tr>{% endfor %}</tbody></table>
+  {% else %}<p>Nothing yet.</p>{% endif %}
+</section>
+
+<section class="data-section danger-zone">
+  <h2>Delete everything</h2>
+  <p>Removes every swing, video, frame, plan, piece of feedback and count. It cannot be undone.
+    Type <code>ERASE</code> to confirm.</p>
+  <input id="erase-confirm" autocomplete="off" placeholder="ERASE">
+  <button class="btn danger" id="erase" type="button">Delete everything</button>
+  <span id="erase-status" role="status"></span>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='practice.js') }}"></script>{% endblock %}
